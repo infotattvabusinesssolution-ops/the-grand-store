@@ -481,6 +481,7 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
               filename: `TheGrandStore-VIP-Pass-${result.booking.ticketId}.pdf`,
               content: pdfBuffer,
               contentType: "application/pdf",
+              contentDisposition: "attachment",
               disposition: "attachment",
             };
           }
@@ -523,12 +524,14 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
             content: qrPngBuffer,
             contentType: "image/png",
             cid: "ticketqrcode",
+            contentDisposition: "inline",
           });
           // Downloadable image attachment in email client
           attachments.push({
             filename: `VIP-Pass-QR-${result.booking.ticketId}.png`,
             content: qrPngBuffer,
             contentType: "image/png",
+            contentDisposition: "attachment",
             disposition: "attachment",
           });
         }
@@ -605,8 +608,9 @@ const downloadTicketPdf = async (req, res) => {
       qrDataUrl: booking.qrCodeData,
     });
 
+    const isDownload = req.query.download === "true" || req.query.download === "1";
     res.set({
-      "Content-Type": "application/pdf",
+      "Content-Type": isDownload ? "application/octet-stream" : "application/pdf",
       "Content-Disposition": `attachment; filename="TheGrandStore-Pass-${booking.ticketId}.pdf"`,
       "Content-Length": pdfBuffer.length,
     });
@@ -686,6 +690,7 @@ const resendTicketEmail = async (req, res) => {
           filename: `TheGrandStore-VIP-Pass-${booking.ticketId}.pdf`,
           content: pdfBuffer,
           contentType: "application/pdf",
+          contentDisposition: "attachment",
           disposition: "attachment",
         };
       }
@@ -727,12 +732,14 @@ const resendTicketEmail = async (req, res) => {
         content: qrPngBuffer,
         contentType: "image/png",
         cid: "ticketqrcode",
+        contentDisposition: "inline",
       });
       // Downloadable image attachment in email client
       attachments.push({
         filename: `VIP-Pass-QR-${booking.ticketId}.png`,
         content: qrPngBuffer,
         contentType: "image/png",
+        contentDisposition: "attachment",
         disposition: "attachment",
       });
     }
