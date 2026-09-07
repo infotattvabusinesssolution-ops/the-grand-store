@@ -608,6 +608,18 @@ const downloadTicketPdf = async (req, res) => {
       qrDataUrl: booking.qrCodeData,
     });
 
+    if (req.query.format === "base64" || req.query.format === "json") {
+      return res.json({
+        success: true,
+        ticketId: booking.ticketId,
+        gsReference: booking.gsReference,
+        pdfBase64: `data:application/pdf;base64,${pdfBuffer.toString("base64")}`,
+        qrBase64: booking.qrCodeData,
+        filename: `TheGrandStore-VIP-Pass-${booking.ticketId}.pdf`,
+        qrFilename: `VIP-Pass-QR-${booking.ticketId}.png`,
+      });
+    }
+
     const isDownload = req.query.download === "true" || req.query.download === "1";
     res.set({
       "Content-Type": isDownload ? "application/octet-stream" : "application/pdf",

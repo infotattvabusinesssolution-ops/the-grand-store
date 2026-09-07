@@ -340,6 +340,31 @@ const getUserBookings = async (req, res) => {
     const bookings = await Booking.find({ user: req.user._id })
       .populate("event", "title date startTime location image")
       .sort({ bookingDate: -1 });
+
+    const QRCode = require("qrcode");
+    for (const b of bookings) {
+      if (!b.qrCodeData && b.ticketId) {
+        try {
+          const qrPayload = JSON.stringify({
+            ticketId: b.ticketId,
+            gsReference: b.gsReference,
+            event: b.event?.title,
+            date: b.event?.date,
+            tier: b.ticketType,
+            quantity: b.quantity,
+          });
+          b.qrCodeData = await QRCode.toDataURL(qrPayload, {
+            errorCorrectionLevel: "H",
+            margin: 1,
+            color: { dark: "#000000", light: "#ffffff" },
+          });
+          await Booking.updateOne({ _id: b._id }, { $set: { qrCodeData: b.qrCodeData } });
+        } catch (qrErr) {
+          console.error("Error auto-generating qrCodeData in getUserBookings:", qrErr);
+        }
+      }
+    }
+
     res.json(bookings);
   } catch (error) {
     console.error("Error fetching user bookings:", error);
