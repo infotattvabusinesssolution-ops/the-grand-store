@@ -517,11 +517,19 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
         }
 
         if (qrPngBuffer) {
+          // Inline CID for Gmail and HTML email body
           attachments.push({
             filename: "ticket-qr.png",
             content: qrPngBuffer,
             contentType: "image/png",
             cid: "ticketqrcode",
+          });
+          // Downloadable image attachment in email client
+          attachments.push({
+            filename: `VIP-Pass-QR-${result.booking.ticketId}.png`,
+            content: qrPngBuffer,
+            contentType: "image/png",
+            disposition: "attachment",
           });
         }
 
@@ -713,11 +721,19 @@ const resendTicketEmail = async (req, res) => {
     }
 
     if (qrPngBuffer) {
+      // Inline CID for Gmail HTML body
       attachments.push({
         filename: "ticket-qr.png",
         content: qrPngBuffer,
         contentType: "image/png",
         cid: "ticketqrcode",
+      });
+      // Downloadable image attachment in email client
+      attachments.push({
+        filename: `VIP-Pass-QR-${booking.ticketId}.png`,
+        content: qrPngBuffer,
+        contentType: "image/png",
+        disposition: "attachment",
       });
     }
 
