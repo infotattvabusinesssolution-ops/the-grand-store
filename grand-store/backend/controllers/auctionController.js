@@ -1038,7 +1038,8 @@ exports.getAuctionLotCertificate = async (req, res) => {
     const lotNum = lot.lotNumber || String(lot._id).slice(-6).toUpperCase();
     const filename = `TheGrandStore_Certificate_Lot_${lotNum}.pdf`;
 
-    res.setHeader('Content-Type', 'application/pdf');
+    const isDirectDownload = req.query.download === '1' || req.query.direct === '1';
+    res.setHeader('Content-Type', isDirectDownload ? 'application/octet-stream' : 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Length', certBuffer.length);
     return res.send(certBuffer);

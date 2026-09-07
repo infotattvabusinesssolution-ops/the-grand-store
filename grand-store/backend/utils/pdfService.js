@@ -243,7 +243,7 @@ const generateAuctionCertificateBuffer = async (lot, winner = {}, order = {}) =>
 
       // Extract and sanitize lot & winner data
       const winnerName = (winner && (winner.legalFullName || winner.name)) ||
-                         (order && order.shippingAddress && order.shippingAddress.name) ||
+                         (order && order.shippingAddress && (order.shippingAddress.name || `${order.shippingAddress.firstName || ''} ${order.shippingAddress.lastName || ''}`.trim())) ||
                          "Distinguished Patron";
       const bidderNumber = (winner && (winner.bidderNumber || (winner._id && String(winner._id).slice(-6).toUpperCase()))) || "VIP-PATRON";
       const lotTitle = (lot && lot.title) || "Exclusive Grand Store Auction Masterpiece";
@@ -253,18 +253,17 @@ const generateAuctionCertificateBuffer = async (lot, winner = {}, order = {}) =>
         ? new Date(lot.endDate || lot.updatedAt).toLocaleDateString("en-ZA", { year: "numeric", month: "long", day: "numeric" })
         : new Date().toLocaleDateString("en-ZA", { year: "numeric", month: "long", day: "numeric" });
       const certRef = lot.gsReference || (order && order.transactionId) || `GS-AUC-CERT-${lot._id ? String(lot._id).slice(-8).toUpperCase() : Date.now().toString().slice(-8)}`;
-      const category = (lot && (lot.category || lot.subcategory)) || "The Grand Store Private Vault Reserve";
 
       // Generate cryptographically unique verification hash
       const hashSeed = `${lot._id || ""}-${winner._id || ""}-${winningBid}-${certRef}`;
       const authHash = crypto.createHash("sha256").update(hashSeed).digest("hex").slice(0, 16).toUpperCase();
       const authCode = `GSC-${authHash.slice(0, 4)}-${authHash.slice(4, 8)}-${authHash.slice(8, 12)}`;
 
-      // --- 1. LUXURY PARCHMENT BACKGROUND ---
-      doc.setFillColor(253, 251, 246); // Rich warm ivory
+      // --- 1. CRISP WHITE / WARM LUXURY PARCHMENT BACKGROUND ---
+      doc.setFillColor(254, 253, 250); // Official warm white parchment
       doc.rect(0, 0, pageWidth, pageHeight, "F");
 
-      // --- 2. LOGO HANDLING ---
+      // --- 2. LOGO & WATERMARK HANDLING ---
       let logoData = null;
       try {
         const logoPath = path.join(__dirname, "../../frontend/public/logo.png");
@@ -276,279 +275,314 @@ const generateAuctionCertificateBuffer = async (lot, winner = {}, order = {}) =>
         console.warn("Could not load logo.png for Certificate generation:", err);
       }
 
-      // --- 3. GRAND STORE SECURITY WATERMARK ---
+      // Central Royal Lifestyle Watermark
       try {
-        doc.setGState(new doc.GState({ opacity: 0.05 }));
-      } catch (e) {
-        // Fallback if GState is not available
-      }
+        doc.setGState(new doc.GState({ opacity: 0.04 }));
+      } catch (e) {}
 
       if (logoData) {
-        doc.addImage(logoData, "PNG", centerX - 60, 68, 120, 42, "certWatermarkLogo", "FAST");
+        doc.addImage(logoData, "PNG", centerX - 55, 65, 110, 40, "certWatermarkLogo", "FAST");
       }
 
       doc.setFont("times", "bold");
-      doc.setFontSize(38);
-      doc.setTextColor(180, 140, 50);
-      doc.text("THE GRAND STORE", centerX, 115, { align: "center" });
-      doc.setFontSize(13);
-      doc.text("• OFFICIAL VAULT ARCHIVE • CERTIFIED AUTHENTIC PROVENANCE •", centerX, 125, { align: "center" });
+      doc.setFontSize(44);
+      doc.setTextColor(197, 160, 89);
+      doc.text("ROYAL LIFESTYLE", centerX, 112, { align: "center" });
+      doc.setFontSize(12);
+      doc.text("• THE GRAND STORE • VAULT ARCHIVE • CERTIFIED PROVENANCE •", centerX, 122, { align: "center" });
 
       try {
         doc.setGState(new doc.GState({ opacity: 1.0 }));
       } catch (e) {}
 
-      // --- 4. ORNATE DOUBLE GOLD SECURITY BORDERS ---
-      // Outer border (Solid Gold)
-      doc.setDrawColor(201, 163, 75);
-      doc.setLineWidth(1.6);
-      doc.rect(9, 9, pageWidth - 18, pageHeight - 18);
+      // --- 3. LUXURY DOUBLE BORDER (BLACK & GOLD) ---
+      // Outer Black Frame
+      doc.setDrawColor(22, 22, 22);
+      doc.setLineWidth(1.4);
+      doc.rect(8, 8, pageWidth - 16, pageHeight - 16);
 
-      // Inner border (Fine Gold Filigree)
-      doc.setDrawColor(228, 195, 115);
-      doc.setLineWidth(0.6);
+      // Inner Gold Border
+      doc.setDrawColor(197, 160, 89);
+      doc.setLineWidth(0.8);
+      doc.rect(11.5, 11.5, pageWidth - 23, pageHeight - 23);
+
+      // Fine Gold Pinstripe
+      doc.setDrawColor(225, 205, 150);
+      doc.setLineWidth(0.3);
       doc.rect(13, 13, pageWidth - 26, pageHeight - 26);
 
-      // Corner Rosettes/Diamonds
+      // Corner Gold Rosettes
       const corners = [
-        [11, 11],
-        [pageWidth - 11, 11],
-        [11, pageHeight - 11],
-        [pageWidth - 11, pageHeight - 11]
+        [11.5, 11.5],
+        [pageWidth - 11.5, 11.5],
+        [11.5, pageHeight - 11.5],
+        [pageWidth - 11.5, pageHeight - 11.5]
       ];
-      doc.setFillColor(201, 163, 75);
+      doc.setFillColor(197, 160, 89);
       corners.forEach(([cx, cy]) => {
-        doc.rect(cx - 1.5, cy - 1.5, 3, 3, "F");
+        doc.rect(cx - 1.2, cy - 1.2, 2.4, 2.4, "F");
       });
 
-      // --- 5. TOP HERALDIC HEADER ---
-      doc.setFont("times", "bold");
-      doc.setFontSize(10.5);
-      doc.setTextColor(185, 140, 45);
-      doc.text("• THE GRAND STORE OF SOUTH AFRICA •", centerX, 22, { align: "center" });
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.5);
-      doc.setTextColor(125, 110, 85);
-      doc.text("CURATORIAL AUCTION ARCHIVE & PROVENANCE REGISTRY", centerX, 26.5, { align: "center" });
-
-      // Fine golden divider with center diamond
-      doc.setDrawColor(201, 163, 75);
+      // --- 4. CORNER MOTTO RIBBONS (TOP-RIGHT & BOTTOM-LEFT) ---
+      // Top-Right Ribbon: "MORE THAN A DRINK A LEGACY"
+      doc.setFillColor(18, 18, 18);
+      doc.rect(pageWidth - 48, 13, 35, 18, "F");
+      doc.setDrawColor(197, 160, 89);
       doc.setLineWidth(0.4);
-      doc.line(65, 29.5, centerX - 8, 29.5);
-      doc.line(centerX + 8, 29.5, pageWidth - 65, 29.5);
+      doc.rect(pageWidth - 48, 13, 35, 18, "S");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(5.5);
+      doc.setTextColor(220, 185, 105);
+      doc.text("MORE", pageWidth - 30.5, 17, { align: "center" });
+      doc.text("THAN A", pageWidth - 30.5, 20.5, { align: "center" });
+      doc.text("DRINK", pageWidth - 30.5, 24, { align: "center" });
+      doc.text("A LEGACY", pageWidth - 30.5, 27.5, { align: "center" });
+
+      // Bottom-Left Ribbon: "COLLECT INVEST CELEBRATE"
+      doc.setFillColor(18, 18, 18);
+      doc.rect(13, pageHeight - 31, 35, 18, "F");
+      doc.setDrawColor(197, 160, 89);
+      doc.setLineWidth(0.4);
+      doc.rect(13, pageHeight - 31, 35, 18, "S");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(5.5);
+      doc.setTextColor(220, 185, 105);
+      doc.text("COLLECT", 30.5, pageHeight - 24.5, { align: "center" });
+      doc.text("INVEST", 30.5, pageHeight - 20.5, { align: "center" });
+      doc.text("CELEBRATE", 30.5, pageHeight - 16.5, { align: "center" });
+
+      // --- 5. TOP HEADER: BRANDING & CURATORIAL PILLARS ---
+      // Top-Left: True Royal Lifestyle Emblem Badge
+      const emblemX = 28;
+      const emblemY = 24;
+      doc.setFillColor(20, 20, 20);
+      doc.circle(emblemX, emblemY, 8.5, "F");
+      doc.setDrawColor(197, 160, 89);
+      doc.setLineWidth(0.7);
+      doc.circle(emblemX, emblemY, 8.5, "S");
+      doc.setDrawColor(225, 205, 150);
+      doc.setLineWidth(0.3);
+      doc.circle(emblemX, emblemY, 7.2, "S");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(4.2);
+      doc.setTextColor(220, 185, 105);
+      doc.text("ROYAL", emblemX, emblemY - 4.5, { align: "center" });
       doc.setFont("times", "bold");
+      doc.setFontSize(6.5);
+      doc.setTextColor(255, 255, 255);
+      doc.text("♔", emblemX, emblemY - 0.5, { align: "center" });
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(4);
+      doc.setTextColor(220, 185, 105);
+      doc.text("LIFESTYLE", emblemX, emblemY + 3.2, { align: "center" });
+      doc.setTextColor(220, 50, 50);
+      doc.setFontSize(4.5);
+      doc.text("★ ★ ★", emblemX, emblemY + 6.2, { align: "center" });
+
+      // Top-Left Branding Text
+      doc.setFont("times", "bold");
+      doc.setFontSize(15);
+      doc.setTextColor(180, 135, 45);
+      doc.text("THE GRAND STORE", 40, 23);
+      doc.setFont("times", "italic");
       doc.setFontSize(8);
-      doc.setTextColor(201, 163, 75);
-      doc.text("◆", centerX, 30.5, { align: "center" });
+      doc.setTextColor(115, 100, 80);
+      doc.text("Crafting Moments, Raising Spirits", 40, 27.5);
+      doc.setDrawColor(197, 160, 89);
+      doc.setLineWidth(0.3);
+      doc.line(40, 29, 88, 29);
+
+      // Top-Right Curatorial Categories
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      doc.setTextColor(110, 95, 75);
+      doc.text("FINE SPIRITS", pageWidth - 108, 23, { align: "center" });
+      doc.text("|", pageWidth - 91, 23, { align: "center" });
+      doc.text("RARE COLLECTIONS", pageWidth - 74, 23, { align: "center" });
+      doc.text("|", pageWidth - 57, 23, { align: "center" });
+      doc.text("EXCLUSIVE AUCTIONS", pageWidth - 42, 23, { align: "center" });
 
       // --- 6. MAIN CERTIFICATE TITLE ---
       doc.setFont("times", "bold");
-      doc.setFontSize(23);
-      doc.setTextColor(24, 22, 18);
-      doc.text("CERTIFICATE OF ACQUISITION", centerX, 39, { align: "center" });
+      doc.setFontSize(28);
+      doc.setTextColor(20, 20, 20);
+      doc.text("CERTIFICATE", centerX, 44, { align: "center" });
 
-      doc.setFont("times", "italic");
-      doc.setFontSize(10.5);
-      doc.setTextColor(175, 130, 45);
-      doc.text("And Verified Authenticity & Legal Ownership Transfer", centerX, 44.5, { align: "center" });
-
-      doc.setFont("courier", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(120, 105, 80);
-      doc.text(`ARCHIVE REGISTRY REF: ${certRef}`, centerX, 49.5, { align: "center" });
-
-      // --- 7. FORMAL PROCLAMATION ---
-      doc.setFont("times", "normal");
-      doc.setFontSize(9.5);
-      doc.setTextColor(65, 60, 50);
-      doc.text(
-        "Be it officially proclaimed that under the rules of auction gavel fall, full legal title and authenticated ownership",
-        centerX,
-        56.5,
-        { align: "center" }
-      );
-      doc.text(
-        "of the singular reserve piece described herein has been awarded to the registered patron:",
-        centerX,
-        61,
-        { align: "center" }
-      );
-
-      // --- 8. WINNER PATRON BLOCK ---
+      // Gold Subtitle with Flanking Flourish Rules
       doc.setFont("times", "bold");
-      doc.setFontSize(19);
-      doc.setTextColor(180, 130, 30);
+      doc.setFontSize(13);
+      doc.setTextColor(185, 140, 45);
+      doc.text("—  OF ACQUISITION  —", centerX, 50.5, { align: "center" });
+      doc.setDrawColor(197, 160, 89);
+      doc.setLineWidth(0.6);
+      doc.line(centerX - 68, 50, centerX - 38, 50);
+      doc.line(centerX + 38, 50, centerX + 68, 50);
+
+      // --- 7. RECIPIENT PROCLAMATION ---
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 85, 65);
+      doc.text("THIS CERTIFICATE IS PROUDLY PRESENTED TO", centerX, 60, { align: "center" });
+
+      // Winner Name with Gold Accent Underline
+      doc.setFont("times", "bold");
+      doc.setFontSize(21);
+      doc.setTextColor(22, 22, 22);
       doc.text(winnerName.toUpperCase(), centerX, 70, { align: "center" });
 
-      doc.setDrawColor(201, 163, 75);
-      doc.setLineWidth(0.7);
-      doc.line(75, 72.5, pageWidth - 75, 72.5);
+      doc.setDrawColor(197, 160, 89);
+      doc.setLineWidth(0.8);
+      doc.line(centerX - 62, 73, centerX + 62, 73);
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(115, 105, 90);
-      doc.text(
-        `Registered Vault Patron: ${bidderNumber}   •   Title: Permanent Private Collector   •   Status: Verified Acquisition`,
-        centerX,
-        77,
-        { align: "center" }
-      );
+      doc.setFontSize(7.5);
+      doc.setTextColor(120, 105, 85);
+      doc.text(`Registered Vault Patron Account #${bidderNumber}  •  Status: Verified Acquisition`, centerX, 77.5, { align: "center" });
 
-      // --- 9. LOT SPECIFICATION TABLE / FRAMED BOX ---
-      const boxX = 22;
-      const boxY = 82;
-      const boxW = pageWidth - 44; // 253mm
-      const boxH = 46;
+      // --- 8. OFFICIAL PROCLAMATION COPY ---
+      doc.setFont("times", "normal");
+      doc.setFontSize(10.5);
+      doc.setTextColor(45, 40, 35);
+      doc.text("In recognition of your successful bid and acquisition in The Grand Store Auction.", centerX, 86, { align: "center" });
+      doc.text("Your passion for exceptional spirits and rare collections is truly appreciated.", centerX, 91.5, { align: "center" });
+      doc.setFont("times", "italic");
+      doc.setFontSize(11);
+      doc.setTextColor(180, 135, 45);
+      doc.text("Cheers to Great Choices!", centerX, 98, { align: "center" });
 
-      doc.setFillColor(247, 244, 236);
+      // --- 9. LOT PARTICULARS & HAMMER RECORD BOX ---
+      const boxX = 36;
+      const boxY = 104;
+      const boxW = pageWidth - 72; // 225mm
+      const boxH = 34;
+
+      doc.setFillColor(250, 248, 242);
       doc.rect(boxX, boxY, boxW, boxH, "F");
-      doc.setDrawColor(218, 185, 110);
+      doc.setDrawColor(218, 192, 135);
       doc.setLineWidth(0.5);
       doc.rect(boxX, boxY, boxW, boxH, "S");
 
-      // Left Section: Lot Particulars
+      // Left Column: Lot details
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8);
-      doc.setTextColor(175, 130, 45);
+      doc.setTextColor(180, 135, 45);
       doc.text(`CATALOGUE LOT #${lotNumber}`, boxX + 8, boxY + 8);
 
       doc.setFont("times", "bold");
-      doc.setFontSize(13);
+      doc.setFontSize(12.5);
       doc.setTextColor(20, 20, 20);
-      const titleLines = doc.splitTextToSize(lotTitle, 142);
+      const titleLines = doc.splitTextToSize(lotTitle, 130);
       doc.text(titleLines.slice(0, 2), boxX + 8, boxY + 15);
 
       doc.setFont("times", "italic");
       doc.setFontSize(8.5);
-      doc.setTextColor(85, 75, 60);
-      doc.text(`Classification: ${category}`, boxX + 8, boxY + 26);
-      doc.text("Statutory Protection: South African CPA Section 45 Escrow Trust Certified", boxX + 8, boxY + 32);
-      doc.text("Provenance: Authenticated & Sealed via The Grand Store Private Vault", boxX + 8, boxY + 38);
+      doc.setTextColor(100, 90, 75);
+      doc.text("Authentication: The Grand Store Private Vault Archive Provenance", boxX + 8, boxY + 25);
+      doc.text("Statutory Compliance: South African CPA Section 45 Trust Protected", boxX + 8, boxY + 30);
 
-      // Divider inside box
-      doc.setDrawColor(220, 210, 190);
+      // Vertical Divider
+      doc.setDrawColor(220, 205, 175);
       doc.setLineWidth(0.4);
-      doc.line(boxX + 160, boxY + 4, boxX + 160, boxY + boxH - 4);
+      doc.line(boxX + 145, boxY + 4, boxX + 145, boxY + boxH - 4);
 
-      // Right Section: Financial & Security Record
+      // Right Column: Hammer Price & Auth
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(175, 130, 45);
-      doc.text("OFFICIAL HAMMER PRICE", boxX + 168, boxY + 8);
+      doc.setFontSize(7.5);
+      doc.setTextColor(180, 135, 45);
+      doc.text("OFFICIAL HAMMER PRICE", boxX + 152, boxY + 8);
 
       doc.setFont("times", "bold");
-      doc.setFontSize(16);
-      doc.setTextColor(25, 25, 25);
-      doc.text(
-        `R ${Number(winningBid).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`,
-        boxX + 168,
-        boxY + 17
-      );
+      doc.setFontSize(15);
+      doc.setTextColor(22, 22, 22);
+      doc.text(`R ${Number(winningBid).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, boxX + 152, boxY + 16.5);
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(95, 85, 70);
-      doc.text(`Date of Hammer Fall: ${hammerDate}`, boxX + 168, boxY + 25);
-      doc.text(`Currency: ZAR (South African Rand)`, boxX + 168, boxY + 30.5);
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 90, 75);
+      doc.text(`Currency: ZAR (Rand)`, boxX + 152, boxY + 23);
       doc.setFont("courier", "bold");
       doc.setFontSize(7.5);
-      doc.text(`Security Token: ${authCode}`, boxX + 168, boxY + 37);
+      doc.text(`Security Token: ${authCode}`, boxX + 152, boxY + 29);
 
-      // --- 10. OFFICIAL GOLD EMBOSSED SEAL ---
-      const sealX = 42;
-      const sealY = 153;
-
-      // Outer gold circle
-      doc.setFillColor(216, 175, 75);
-      doc.circle(sealX, sealY, 13, "F");
-      // Inner cream ring
-      doc.setFillColor(248, 235, 185);
-      doc.circle(sealX, sealY, 11, "F");
-      // Inner gold disc
-      doc.setFillColor(205, 160, 55);
-      doc.circle(sealX, sealY, 9.5, "F");
-
+      // --- 10. CENTER PROVENANCE CREST (LAUREL WREATH WITH GAVEL) ---
+      const emblemCenterY = 154;
       doc.setFont("times", "bold");
-      doc.setFontSize(6);
-      doc.setTextColor(255, 255, 255);
-      doc.text("THE GRAND STORE", sealX, sealY - 2.5, { align: "center" });
+      doc.setFontSize(16);
+      doc.setTextColor(197, 160, 89);
+      doc.text("⚜", centerX, emblemCenterY - 4, { align: "center" });
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(180, 135, 45);
+      doc.text("CERTIFIED", centerX, emblemCenterY + 2, { align: "center" });
+      doc.text("PROVENANCE", centerX, emblemCenterY + 6, { align: "center" });
+      doc.setFontSize(7);
+      doc.text("★  ★  ★", centerX, emblemCenterY + 10, { align: "center" });
+
+      // --- 11. BOTTOM-RIGHT GOLD MEDALLION SEAL ---
+      const sealX = pageWidth - 55;
+      const sealY = 155;
+
+      // Scalloped outer gold circle
+      doc.setFillColor(220, 180, 75);
+      doc.circle(sealX, sealY, 15, "F");
+      // Inner cream circle
+      doc.setFillColor(252, 245, 215);
+      doc.circle(sealX, sealY, 13.5, "F");
+      // Core gold disc
+      doc.setFillColor(197, 155, 50);
+      doc.circle(sealX, sealY, 12, "F");
+
+      doc.setFont("helvetica", "bold");
       doc.setFontSize(5.5);
-      doc.text("SEAL OF AUTHENTICITY", sealX, sealY + 1.2, { align: "center" });
+      doc.setTextColor(255, 255, 255);
+      doc.text("★  ★  ★", sealX, sealY - 5, { align: "center" });
+      doc.setFontSize(5.8);
+      doc.text("EXCEPTIONAL", sealX, sealY - 1.5, { align: "center" });
+      doc.text("PEOPLE", sealX, sealY + 1.5, { align: "center" });
+      doc.text("EXCEPTIONAL", sealX, sealY + 4.5, { align: "center" });
+      doc.text("SPIRITS", sealX, sealY + 7.5, { align: "center" });
       doc.setFontSize(6.5);
-      doc.text("★  ★  ★", sealX, sealY + 4.8, { align: "center" });
+      doc.text("∞", sealX, sealY + 10.5, { align: "center" });
 
-      // Ribbon tails below seal
-      doc.setFillColor(185, 140, 45);
-      doc.triangle(sealX - 7, sealY + 11, sealX - 2, sealY + 11, sealX - 5, sealY + 18, "F");
-      doc.triangle(sealX + 2, sealY + 11, sealX + 7, sealY + 11, sealX + 5, sealY + 18, "F");
+      // --- 12. BOTTOM FIELDS: DATE OF ISSUE & CERTIFICATE NO. ---
+      // (Two signatures explicitly omitted as commanded)
+      const bottomFieldsY = 177;
 
-      // --- 11. DUAL CURATORIAL SIGNATURES ---
-      // Left Signatory: Director of Curatorial Acquisitions
-      const sig1X = 100;
-      const sig1Y = 157;
-      doc.setFont("times", "italic");
-      doc.setFontSize(13);
-      doc.setTextColor(35, 35, 35);
-      doc.text("Julian Vance-Montgomery", sig1X, sig1Y - 3);
-
-      doc.setDrawColor(185, 150, 80);
-      doc.setLineWidth(0.6);
-      doc.line(sig1X - 25, sig1Y, sig1X + 48, sig1Y);
-
+      // Date of Issue
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(175, 130, 45);
-      doc.text("DIRECTOR OF CURATORIAL ACQUISITIONS", sig1X - 25, sig1Y + 4.2);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.8);
-      doc.setTextColor(115, 105, 90);
-      doc.text("The Grand Store Vault Archives", sig1X - 25, sig1Y + 8);
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 85, 65);
+      doc.text("DATE OF ISSUE", 42, bottomFieldsY);
+      doc.setDrawColor(197, 160, 89);
+      doc.setLineWidth(0.4);
+      doc.line(68, bottomFieldsY, 115, bottomFieldsY);
+      doc.setFont("times", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(30, 30, 30);
+      doc.text(hammerDate, 70, bottomFieldsY - 1);
 
-      // Right Signatory: Registrar of Escrow Trust
-      const sig2X = 215;
-      const sig2Y = 157;
-      doc.setFont("times", "italic");
-      doc.setFontSize(13);
-      doc.setTextColor(35, 35, 35);
-      doc.text("Eleanor St. Claire", sig2X, sig2Y - 3);
-
-      doc.setDrawColor(185, 150, 80);
-      doc.setLineWidth(0.6);
-      doc.line(sig2X - 25, sig2Y, sig2X + 48, sig2Y);
-
+      // Certificate No.
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(175, 130, 45);
-      doc.text("CHIEF REGISTRAR & ESCROW TRUSTEE", sig2X - 25, sig2Y + 4.2);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.8);
-      doc.setTextColor(115, 105, 90);
-      doc.text("South African CPA Section 45 Division", sig2X - 25, sig2Y + 8);
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 85, 65);
+      doc.text("CERTIFICATE NO.", 130, bottomFieldsY);
+      doc.setDrawColor(197, 160, 89);
+      doc.setLineWidth(0.4);
+      doc.line(160, bottomFieldsY, 215, bottomFieldsY);
+      doc.setFont("courier", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(30, 30, 30);
+      doc.text(authCode, 162, bottomFieldsY - 1);
 
-      // --- 12. BOTTOM LEGAL FOOTNOTE & CRYPTOGRAPHIC VERIFICATION ---
+      // --- 13. BOTTOM REGISTERED VAULT FOOTNOTE ---
       doc.setFont("times", "normal");
-      doc.setFontSize(6.5);
-      doc.setTextColor(135, 125, 110);
+      doc.setFontSize(7);
+      doc.setTextColor(125, 110, 90);
       doc.text(
-        "This certificate constitutes an immutable instrument of provenance and ownership issued under the corporate authority of The Grand Store (Pty) Ltd.",
+        "THE GRAND STORE   •   VAULT ARCHIVE   •   CERTIFIED PROVENANCE",
         centerX,
-        181,
-        { align: "center" }
-      );
-      doc.text(
-        "Recorded pursuant to Section 45 of the South African Consumer Protection Act 68 of 2008. All archive records are sealed in the Grand Store Vault Ledger.",
-        centerX,
-        185,
-        { align: "center" }
-      );
-
-      doc.setFont("courier", "normal");
-      doc.setFontSize(6);
-      doc.text(
-        `Digital Vault Hash: ${authCode}  •  Issued: ${new Date().toISOString()}  •  grandstoreglobal.com`,
-        centerX,
-        189,
+        191,
         { align: "center" }
       );
 

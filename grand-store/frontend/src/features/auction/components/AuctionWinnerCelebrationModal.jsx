@@ -121,18 +121,29 @@ export default function AuctionWinnerCelebrationModal({
   const isPaid = Boolean(lot.isPaid || lot.paymentStatus === 'Paid');
   const isAwaiting = Boolean(lot.paymentStatus === 'Awaiting_Approval' || lot.proofUrl);
 
-  const handleProceedToCheckout = () => {
+  const handleDismiss = () => {
+    if (lot?._id) {
+      try {
+        sessionStorage.setItem(`hasSeenAuctionCelebration_${lot._id}`, 'true');
+        localStorage.setItem(`hasSeenAuctionCelebration_${lot._id}`, 'true');
+      } catch (e) {}
+    }
     onClose?.();
+  };
+
+  const handleProceedToCheckout = () => {
+    handleDismiss();
     navigate(`/auction/checkout/${lot._id}`);
   };
 
   const handleDownloadCertificate = () => {
     if (!lot?._id) return;
-    window.open(`/api/auction/${lot._id}/certificate`, '_blank');
+    const API_URL = import.meta.env.VITE_API_URL || '';
+    window.open(`${API_URL}/api/auction/${lot._id}/certificate?download=1`, '_blank');
   };
 
   const handleViewCertificate = () => {
-    onClose?.();
+    handleDismiss();
     const el = document.getElementById('acquisition-certificate');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -147,7 +158,7 @@ export default function AuctionWinnerCelebrationModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
+          onClick={handleDismiss}
           className="fixed inset-0 bg-black/85 backdrop-blur-xl"
         />
 
@@ -165,7 +176,7 @@ export default function AuctionWinnerCelebrationModal({
           {/* Close Button */}
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleDismiss}
             className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-colors border border-white/10 cursor-pointer"
             aria-label="Close"
           >
