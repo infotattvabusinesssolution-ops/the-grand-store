@@ -1564,6 +1564,7 @@ exports.approveBidder = async (req, res) => {
 
     user.bidderApprovalStatus = 'approved';
     user.kycVerified = true;
+    user.isAgeVerified = true;
     user.bidderLevel = bidderLevel;
     user.biddingLimit = Number(biddingLimit) || 25000;
     user.bidderApprovedAt = new Date();

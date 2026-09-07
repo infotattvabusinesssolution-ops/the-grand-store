@@ -43,7 +43,7 @@ const sendTokenResponse = (user, statusCode, res) => {
     email: user.email,
     role: user.role,
     customerTier: user.customerTier || 'retail',
-    isAgeVerified: Boolean(user.isAgeVerified || user.dateOfBirth),
+    isAgeVerified: Boolean(user.isAgeVerified || user.dateOfBirth || user.bidderApprovalStatus === 'approved' || (user.bidderLevel && user.bidderLevel !== 'none')),
     bidderLevel: user.bidderLevel,
     bidderApprovalStatus: user.bidderApprovalStatus,
     phone: user.phone || user.phoneNumber || '',
