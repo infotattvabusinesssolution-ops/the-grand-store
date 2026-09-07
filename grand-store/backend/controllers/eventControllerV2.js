@@ -463,11 +463,13 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
       const { eventTicketConfirmationTemplate } = require("../utils/emailTemplates");
       const User = require("../models/User");
       const userId = result.booking.user?._id || result.booking.user;
-      const user = (result.booking.user && result.booking.user.email)
+      let user = (result.booking.user && result.booking.user.email)
         ? result.booking.user
-        : await User.findById(userId);
+        : (userId ? await User.findById(userId) : null);
 
-      if (user && user.email) {
+      const recipientEmail = user?.email || result.booking.customerEmail;
+
+      if (recipientEmail) {
         let pdfAttachment = null;
         try {
           const pdfBuffer = await generateTicketPdf({
@@ -537,7 +539,7 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
         }
 
         await sendEmail({
-          to: user.email,
+          to: recipientEmail,
           subject: `VIP Event Pass • ${result.event.title} [${result.booking.ticketId}]`,
           html: eventTicketConfirmationTemplate({
             booking: result.booking,
@@ -551,7 +553,7 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
 
         result.booking.emailDispatched = true;
         await result.booking.save();
-        console.log(`[EVENT TICKET] Successfully dispatched VIP pass email with QR & PDF attachment to ${user.email}`);
+        console.log(`[EVENT TICKET] Successfully dispatched VIP pass email with QR & PDF attachment to ${recipientEmail}`);
       }
     } catch (error) {
       console.error("Failed to send event ticket email:", error);
@@ -613,6 +615,12 @@ const downloadTicketPdf = async (req, res) => {
         success: true,
         ticketId: booking.ticketId,
         gsReference: booking.gsReference,
+        paymentStatus: booking.paymentStatus,
+        ticketStatus: booking.ticketStatus,
+        emailDispatched: booking.emailDispatched,
+        customerEmail: user?.email,
+        paymentProcessedAt: booking.paymentProcessedAt,
+        bookingDate: booking.bookingDate,
         pdfBase64: `data:application/pdf;base64,${pdfBuffer.toString("base64")}`,
         qrBase64: booking.qrCodeData,
         filename: `TheGrandStore-VIP-Pass-${booking.ticketId}.pdf`,
