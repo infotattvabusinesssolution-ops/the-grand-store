@@ -1038,6 +1038,16 @@ exports.getAuctionLotCertificate = async (req, res) => {
     const lotNum = lot.lotNumber || String(lot._id).slice(-6).toUpperCase();
     const filename = `TheGrandStore_Certificate_Lot_${lotNum}.pdf`;
 
+    if (req.query.format === 'base64') {
+      const base64Data = certBuffer.toString('base64');
+      return res.json({
+        success: true,
+        filename,
+        pdfBase64: `data:application/pdf;base64,${base64Data}`,
+        base64: base64Data
+      });
+    }
+
     const isDirectDownload = req.query.download === '1' || req.query.direct === '1';
     res.setHeader('Content-Type', isDirectDownload ? 'application/octet-stream' : 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
