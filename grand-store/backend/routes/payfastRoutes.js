@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const payfastController = require('../controllers/payfastController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, optionalAuth } = require('../middleware/authMiddleware');
 
-router.post('/generate-shop', protect, payfastController.generateShopPayment);
+router.post('/generate-shop', optionalAuth, payfastController.generateShopPayment);
 router.post('/generate-auction', protect, payfastController.generateAuctionPayment);
 router.post('/generate-deposit', protect, payfastController.generateDepositPayment);
 router.post('/generate-event', protect, payfastController.generateEventPayment);
 router.post('/generate-vendor', protect, payfastController.generateVendorPayment);
-router.post('/confirm-order', protect, payfastController.confirmOrderPayment);
+router.post('/confirm-order', optionalAuth, payfastController.confirmOrderPayment);
 // PayFast posts ITNs as application/x-www-form-urlencoded form data, not JSON.
 // Keep this parser on the public callback route so req.body contains the
 // payment_status, m_payment_id, and signature fields sent by PayFast.

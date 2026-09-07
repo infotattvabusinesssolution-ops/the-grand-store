@@ -127,7 +127,40 @@ const getPublicSettings = async (req, res) => {
               helpText: 'Utility bill or bank statement less than 3 months old for expedited review',
               enabled: true
             }
-          ]
+          ],
+      // Super Coins Loyalty Economy & Margin Engine
+      superCoinsEnabled: settings.superCoinsEnabled !== undefined ? settings.superCoinsEnabled : true,
+      superCoinValue: settings.superCoinValue !== undefined ? settings.superCoinValue : 0.10,
+      superCoinsEarnRatePer100: settings.superCoinsEarnRatePer100 !== undefined ? settings.superCoinsEarnRatePer100 : 10,
+      superCoinsMaxRedemptionPct: settings.superCoinsMaxRedemptionPct !== undefined ? settings.superCoinsMaxRedemptionPct : 10,
+      superCoinsMinPlatformMarginPct: settings.superCoinsMinPlatformMarginPct !== undefined ? settings.superCoinsMinPlatformMarginPct : 15,
+      superCoinsExpiryMonths: settings.superCoinsExpiryMonths !== undefined ? settings.superCoinsExpiryMonths : 12,
+      superCoinsRegistrationReward: settings.superCoinsRegistrationReward !== undefined ? settings.superCoinsRegistrationReward : 100,
+      superCoinsProfileReward: settings.superCoinsProfileReward !== undefined ? settings.superCoinsProfileReward : 100,
+      superCoinsFirstPurchaseReward: settings.superCoinsFirstPurchaseReward !== undefined ? settings.superCoinsFirstPurchaseReward : 500,
+      superCoinsReviewReward: settings.superCoinsReviewReward !== undefined ? settings.superCoinsReviewReward : 50,
+      superCoinsReferralReward: settings.superCoinsReferralReward !== undefined ? settings.superCoinsReferralReward : 500,
+      superCoinsBirthdayReward: settings.superCoinsBirthdayReward !== undefined ? settings.superCoinsBirthdayReward : 200,
+
+      // PostNet Courier Rates (ZAR)
+      postnetStandardFee: settings.postnetStandardFee !== undefined ? settings.postnetStandardFee : 120,
+      postnetExpressFee: settings.postnetExpressFee !== undefined ? settings.postnetExpressFee : 180,
+      postnetPickupFee: settings.postnetPickupFee !== undefined ? settings.postnetPickupFee : 100,
+
+      // "Who Pays?" Funding Source Engine (Costing GS Understanding Section 8)
+      whoPaysGatewayFee: settings.whoPaysGatewayFee || 'grand_store',
+      whoPaysPromotion: settings.whoPaysPromotion || 'grand_store',
+      whoPaysReferral: settings.whoPaysReferral || 'grand_store',
+      whoPaysSuperCoins: settings.whoPaysSuperCoins || 'grand_store',
+      whoPaysCourier: settings.whoPaysCourier || 'customer',
+      whoPaysInsurance: settings.whoPaysInsurance || 'customer',
+
+      // Platform Margin Targets & Profit Guard (Costing GS Understanding Section 9 & 13)
+      targetPlatformMarginPct: settings.targetPlatformMarginPct !== undefined ? settings.targetPlatformMarginPct : 30,
+      minimumPlatformMarginPct: settings.minimumPlatformMarginPct !== undefined ? settings.minimumPlatformMarginPct : 15,
+      marginHealthyThresholdPct: settings.marginHealthyThresholdPct !== undefined ? settings.marginHealthyThresholdPct : 15,
+      marginWarningThresholdPct: settings.marginWarningThresholdPct !== undefined ? settings.marginWarningThresholdPct : 10,
+      marginBlockedThresholdPct: settings.marginBlockedThresholdPct !== undefined ? settings.marginBlockedThresholdPct : 10
     });
   } catch (error) {
     console.error("Get Settings Error:", error);
@@ -292,6 +325,74 @@ const updateSettings = async (req, res) => {
           enabled: f.enabled !== false
         }));
     }
+
+    // Super Coins Loyalty Economy & Margin Safety updates
+    const {
+      superCoinsEnabled,
+      superCoinValue,
+      superCoinsEarnRatePer100,
+      superCoinsMaxRedemptionPct,
+      superCoinsMinPlatformMarginPct,
+      superCoinsExpiryMonths,
+      superCoinsRegistrationReward,
+      superCoinsProfileReward,
+      superCoinsFirstPurchaseReward,
+      superCoinsReviewReward,
+      superCoinsReferralReward,
+      superCoinsBirthdayReward,
+      postnetStandardFee,
+      postnetExpressFee,
+      postnetPickupFee
+    } = req.body;
+
+    if (superCoinsEnabled !== undefined) settings.superCoinsEnabled = Boolean(superCoinsEnabled);
+    if (superCoinValue !== undefined) settings.superCoinValue = Math.max(0.01, Number(superCoinValue) || 0.10);
+    if (superCoinsEarnRatePer100 !== undefined) settings.superCoinsEarnRatePer100 = Math.max(0, Number(superCoinsEarnRatePer100) || 0);
+    if (superCoinsMaxRedemptionPct !== undefined) settings.superCoinsMaxRedemptionPct = Math.min(100, Math.max(1, Number(superCoinsMaxRedemptionPct) || 10));
+    if (superCoinsMinPlatformMarginPct !== undefined) settings.superCoinsMinPlatformMarginPct = Math.min(100, Math.max(0, Number(superCoinsMinPlatformMarginPct) || 15));
+    if (superCoinsExpiryMonths !== undefined) settings.superCoinsExpiryMonths = Math.max(1, Number(superCoinsExpiryMonths) || 12);
+    if (superCoinsRegistrationReward !== undefined) settings.superCoinsRegistrationReward = Math.max(0, Number(superCoinsRegistrationReward) || 0);
+    if (superCoinsProfileReward !== undefined) settings.superCoinsProfileReward = Math.max(0, Number(superCoinsProfileReward) || 0);
+    if (superCoinsFirstPurchaseReward !== undefined) settings.superCoinsFirstPurchaseReward = Math.max(0, Number(superCoinsFirstPurchaseReward) || 0);
+    if (superCoinsReviewReward !== undefined) settings.superCoinsReviewReward = Math.max(0, Number(superCoinsReviewReward) || 0);
+    if (superCoinsReferralReward !== undefined) settings.superCoinsReferralReward = Math.max(0, Number(superCoinsReferralReward) || 0);
+    if (superCoinsBirthdayReward !== undefined) settings.superCoinsBirthdayReward = Math.max(0, Number(superCoinsBirthdayReward) || 0);
+
+    // PostNet Courier Rates (ZAR)
+    if (postnetStandardFee !== undefined) settings.postnetStandardFee = Math.max(0, Number(postnetStandardFee) || 120);
+    if (postnetExpressFee !== undefined) settings.postnetExpressFee = Math.max(0, Number(postnetExpressFee) || 180);
+    if (postnetPickupFee !== undefined) settings.postnetPickupFee = Math.max(0, Number(postnetPickupFee) || 100);
+
+    // "Who Pays?" Funding Source Engine
+    const {
+      whoPaysGatewayFee,
+      whoPaysPromotion,
+      whoPaysReferral,
+      whoPaysSuperCoins,
+      whoPaysCourier,
+      whoPaysInsurance,
+      targetPlatformMarginPct,
+      minimumPlatformMarginPct,
+      marginHealthyThresholdPct,
+      marginWarningThresholdPct,
+      marginBlockedThresholdPct
+    } = req.body;
+
+    const validFunding = ['grand_store', 'vendor', 'split'];
+    if (whoPaysGatewayFee && validFunding.includes(whoPaysGatewayFee)) settings.whoPaysGatewayFee = whoPaysGatewayFee;
+    if (whoPaysPromotion && validFunding.includes(whoPaysPromotion)) settings.whoPaysPromotion = whoPaysPromotion;
+    if (whoPaysReferral && validFunding.includes(whoPaysReferral)) settings.whoPaysReferral = whoPaysReferral;
+    if (whoPaysSuperCoins && validFunding.includes(whoPaysSuperCoins)) settings.whoPaysSuperCoins = whoPaysSuperCoins;
+    const validCourierFunding = ['customer', 'vendor', 'grand_store'];
+    if (whoPaysCourier && validCourierFunding.includes(whoPaysCourier)) settings.whoPaysCourier = whoPaysCourier;
+    if (whoPaysInsurance && validCourierFunding.includes(whoPaysInsurance)) settings.whoPaysInsurance = whoPaysInsurance;
+
+    // Platform Margin Targets & Profit Guard
+    if (targetPlatformMarginPct !== undefined) settings.targetPlatformMarginPct = Math.min(90, Math.max(1, Number(targetPlatformMarginPct) || 30));
+    if (minimumPlatformMarginPct !== undefined) settings.minimumPlatformMarginPct = Math.min(50, Math.max(0, Number(minimumPlatformMarginPct) || 15));
+    if (marginHealthyThresholdPct !== undefined) settings.marginHealthyThresholdPct = Math.max(0, Number(marginHealthyThresholdPct) || 15);
+    if (marginWarningThresholdPct !== undefined) settings.marginWarningThresholdPct = Math.max(0, Number(marginWarningThresholdPct) || 10);
+    if (marginBlockedThresholdPct !== undefined) settings.marginBlockedThresholdPct = Math.max(0, Number(marginBlockedThresholdPct) || 10);
 
     await settings.save();
     res.json({ message: "Settings updated successfully", settings });

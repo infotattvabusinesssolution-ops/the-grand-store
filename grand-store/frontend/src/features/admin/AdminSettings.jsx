@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { Settings, Save, RefreshCw, Percent, Truck, ShieldCheck, ShoppingBag, Users, Gift, Send, AlertCircle, CheckCircle2, Landmark, Plus, Trash2, RotateCcw, UserCheck, UploadCloud, FileText } from "lucide-react";
+import { Settings, Save, RefreshCw, Percent, Truck, ShieldCheck, ShoppingBag, Users, Gift, Send, AlertCircle, CheckCircle2, Landmark, Plus, Trash2, RotateCcw, UserCheck, UploadCloud, FileText, Coins, Sparkles, DollarSign, Scale, ShieldAlert } from "lucide-react";
 import api from '../../api';
 import Price from '../../components/ui/Price';
 
@@ -269,7 +269,288 @@ export default function AdminSettings() {
             <div className="space-y-6">
               <FeeRow label="VAT Rate" field="vatPct" note="Value Added Tax (Deducted from vendor)" />
               <FeeRow label="Marketplace Commission" field="marketplaceCommissionPct" note="The Grand Store's cut on shop product sales" />
-              <FeeRow label="Shipping Fee (ZAR)" field="shippingFee" isAmount={true} note="Flat-rate delivery fee charged to customer" />
+              <FeeRow label="Standard Shipping Fee (ZAR)" field="shippingFee" isAmount={true} note="Fallback flat-rate delivery fee charged to customer" />
+            </div>
+          </div>
+
+          {/* POSTNET COURIER RATES */}
+          <div className="bg-[#111] border border-white/10 rounded-xl p-6">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+              <h2 className="text-white font-serif text-xl flex items-center gap-2">
+                <Truck className="text-[var(--color-gold)]" size={20} /> PostNet Delivery & Collection Rates
+              </h2>
+              <span className="text-xs uppercase tracking-widest text-[#c9a35b] font-mono bg-[#c9a35b]/10 px-2.5 py-1 rounded-full border border-[#c9a35b]/20">
+                Courier Rates
+              </span>
+            </div>
+            <div className="space-y-6">
+              <FeeRow label="PostNet Standard Home Delivery (ZAR)" field="postnetStandardFee" isAmount={true} note="Door-to-door courier delivery (2–5 business days, default R120)" />
+              <FeeRow label="PostNet Express Home Delivery (ZAR)" field="postnetExpressFee" isAmount={true} note="Priority overnight delivery (1–2 business days, default R180)" />
+              <FeeRow label="PostNet Store Collection Point (ZAR)" field="postnetPickupFee" isAmount={true} note="PostNet-to-PostNet branch collection (2–3 business days, default R100)" />
+            </div>
+          </div>
+
+          {/* SUPER COINS LOYALTY ECONOMY & MARGIN ENGINE */}
+          <div className="bg-[#111] border border-white/10 rounded-xl p-6">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+              <div>
+                <h2 className="text-white font-serif text-xl flex items-center gap-2">
+                  <Coins className="text-[var(--color-gold)]" size={22} /> Super Coins Economy & Margin Engine
+                </h2>
+                <p className="text-[11px] text-white/40 mt-1">
+                  Manage Super Coin monetary value, earning ratios, maximum redemption caps, and the 15% platform margin safety threshold.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettings(prev => ({ ...prev, superCoinsEnabled: prev.superCoinsEnabled === false ? true : false }))}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  settings.superCoinsEnabled !== false ? 'bg-[#c9a35b]' : 'bg-white/10'
+                }`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-black shadow transition duration-200 ease-in-out ${
+                    settings.superCoinsEnabled !== false ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Coin Value */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-1 font-semibold">
+                    Super Coin Value (ZAR per Coin)
+                  </label>
+                  <p className="text-[10px] text-white/40">
+                    Monetary conversion rate for discounts (e.g. 0.10 means 1 Super Coin = R0.10; 100 coins = R10.00 discount)
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[var(--color-gold)] text-xs font-mono font-bold">1 COIN =</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={settings.superCoinValue !== undefined ? settings.superCoinValue : 0.10}
+                    onChange={e => handleChange('superCoinValue', e.target.value)}
+                    className="w-24 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono text-right focus:outline-none focus:border-[var(--color-gold)]/50 transition-colors [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                  />
+                  <span className="text-white/60 text-xs font-mono">ZAR</span>
+                </div>
+              </div>
+
+              {/* Earn Rate */}
+              <div className="flex items-center justify-between gap-4 pt-4 border-t border-white/5">
+                <div className="flex-1">
+                  <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-1 font-semibold">
+                    Coins Earned Per R100 Spent
+                  </label>
+                  <p className="text-[10px] text-white/40">
+                    Earn rate awarded strictly on eligible product subtotal (excludes taxes, delivery fees, and redeemed coin discounts)
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={settings.superCoinsEarnRatePer100 !== undefined ? settings.superCoinsEarnRatePer100 : 10}
+                    onChange={e => handleChange('superCoinsEarnRatePer100', e.target.value)}
+                    className="w-24 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono text-right focus:outline-none focus:border-[var(--color-gold)]/50 transition-colors [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                  />
+                  <span className="text-white/60 text-xs font-mono">Coins</span>
+                </div>
+              </div>
+
+              {/* Max Redemption % Cap */}
+              <div className="flex items-center justify-between gap-4 pt-4 border-t border-white/5">
+                <div className="flex-1">
+                  <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-1 font-semibold">
+                    Max Order Redemption Cap (%)
+                  </label>
+                  <p className="text-[10px] text-white/40">
+                    Maximum percentage of eligible product subtotal that can be offset using Super Coins per checkout (default 10%)
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="1"
+                    min="1"
+                    max="100"
+                    value={settings.superCoinsMaxRedemptionPct !== undefined ? settings.superCoinsMaxRedemptionPct : 10}
+                    onChange={e => handleChange('superCoinsMaxRedemptionPct', e.target.value)}
+                    className="w-24 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono text-right focus:outline-none focus:border-[var(--color-gold)]/50 transition-colors [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                  />
+                  <span className="text-white/60 text-xs font-mono">%</span>
+                </div>
+              </div>
+
+              {/* Platform Margin Protection Threshold */}
+              <div className="flex items-center justify-between gap-4 pt-4 border-t border-white/5 bg-[var(--color-gold)]/5 p-3 rounded-lg border border-[var(--color-gold)]/20">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block text-xs uppercase tracking-widest text-[var(--color-gold)] mb-0.5 font-bold">
+                      Platform Minimum Margin Protection Threshold (%)
+                    </label>
+                    <span className="text-[9px] uppercase font-mono bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                      Margin Shield
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-white/50">
+                    Automated mathematical margin safety engine. Clamps coin redemption dynamically so Grand Store's net contribution rate never falls below this percentage after gateway and vendor costs.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="50"
+                    value={settings.superCoinsMinPlatformMarginPct !== undefined ? settings.superCoinsMinPlatformMarginPct : 15}
+                    onChange={e => handleChange('superCoinsMinPlatformMarginPct', e.target.value)}
+                    className="w-24 bg-black/80 border border-[var(--color-gold)]/40 rounded-lg px-3 py-2 text-sm text-[var(--color-gold)] font-mono font-bold text-right focus:outline-none focus:border-[var(--color-gold)] transition-colors [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                  />
+                  <span className="text-[var(--color-gold)] text-xs font-mono font-bold">%</span>
+                </div>
+              </div>
+
+              {/* Expiry Duration */}
+              <div className="flex items-center justify-between gap-4 pt-4 border-t border-white/5">
+                <div className="flex-1">
+                  <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-1 font-semibold">
+                    Coin Validity / Expiry (Months)
+                  </label>
+                  <p className="text-[10px] text-white/40">
+                    Timeframe before earned Super Coins expire from customer balance (default 12 months from issuance)
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="1"
+                    min="1"
+                    max="60"
+                    value={settings.superCoinsExpiryMonths !== undefined ? settings.superCoinsExpiryMonths : 12}
+                    onChange={e => handleChange('superCoinsExpiryMonths', e.target.value)}
+                    className="w-24 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono text-right focus:outline-none focus:border-[var(--color-gold)]/50 transition-colors [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                  />
+                  <span className="text-white/60 text-xs font-mono">Months</span>
+                </div>
+              </div>
+
+              {/* Action Rewards Grid */}
+              <div className="pt-4 border-t border-white/5 space-y-3">
+                <div className="text-xs uppercase tracking-widest text-[var(--color-gold)] font-bold flex items-center gap-2">
+                  <Sparkles size={14} /> Action-Based Super Coin Rewards
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 bg-black/40 border border-white/5 rounded-lg flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs text-white">Welcome Registration</div>
+                      <div className="text-[10px] text-white/40">On creating account</div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        value={settings.superCoinsRegistrationReward !== undefined ? settings.superCoinsRegistrationReward : 100}
+                        onChange={e => handleChange('superCoinsRegistrationReward', e.target.value)}
+                        className="w-16 bg-black/60 border border-white/10 rounded px-2 py-1 text-xs text-white font-mono text-right"
+                      />
+                      <span className="text-[10px] text-[var(--color-gold)]">🪙</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-black/40 border border-white/5 rounded-lg flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs text-white">Profile Completion</div>
+                      <div className="text-[10px] text-white/40">Adding phone & details</div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        value={settings.superCoinsProfileReward !== undefined ? settings.superCoinsProfileReward : 100}
+                        onChange={e => handleChange('superCoinsProfileReward', e.target.value)}
+                        className="w-16 bg-black/60 border border-white/10 rounded px-2 py-1 text-xs text-white font-mono text-right"
+                      />
+                      <span className="text-[10px] text-[var(--color-gold)]">🪙</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-black/40 border border-white/5 rounded-lg flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs text-white">First Purchase Bonus</div>
+                      <div className="text-[10px] text-white/40">After first delivered order</div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        value={settings.superCoinsFirstPurchaseReward !== undefined ? settings.superCoinsFirstPurchaseReward : 500}
+                        onChange={e => handleChange('superCoinsFirstPurchaseReward', e.target.value)}
+                        className="w-16 bg-black/60 border border-white/10 rounded px-2 py-1 text-xs text-white font-mono text-right"
+                      />
+                      <span className="text-[10px] text-[var(--color-gold)]">🪙</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-black/40 border border-white/5 rounded-lg flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs text-white">Product Review</div>
+                      <div className="text-[10px] text-white/40">Verified customer feedback</div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        value={settings.superCoinsReviewReward !== undefined ? settings.superCoinsReviewReward : 50}
+                        onChange={e => handleChange('superCoinsReviewReward', e.target.value)}
+                        className="w-16 bg-black/60 border border-white/10 rounded px-2 py-1 text-xs text-white font-mono text-right"
+                      />
+                      <span className="text-[10px] text-[var(--color-gold)]">🪙</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-black/40 border border-white/5 rounded-lg flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs text-white">Referral Completed</div>
+                      <div className="text-[10px] text-white/40">Invited friend orders</div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        value={settings.superCoinsReferralReward !== undefined ? settings.superCoinsReferralReward : 500}
+                        onChange={e => handleChange('superCoinsReferralReward', e.target.value)}
+                        className="w-16 bg-black/60 border border-white/10 rounded px-2 py-1 text-xs text-white font-mono text-right"
+                      />
+                      <span className="text-[10px] text-[var(--color-gold)]">🪙</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-black/40 border border-white/5 rounded-lg flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs text-white">Birthday Celebration</div>
+                      <div className="text-[10px] text-white/40">Annual gift on birthday</div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        value={settings.superCoinsBirthdayReward !== undefined ? settings.superCoinsBirthdayReward : 200}
+                        onChange={e => handleChange('superCoinsBirthdayReward', e.target.value)}
+                        className="w-16 bg-black/60 border border-white/10 rounded px-2 py-1 text-xs text-white font-mono text-right"
+                      />
+                      <span className="text-[10px] text-[var(--color-gold)]">🪙</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
 
@@ -307,6 +588,314 @@ export default function AdminSettings() {
             <div className="space-y-6">
               <FeeRow label="Event Ticket Commission" field="eventCommissionPct" note="Deducted from event organizer payouts" />
               <FeeRow label="Payment Gateway Fee" field="gatewayFeePct" note="Internal cost tracking (not shown to customers)" />
+            </div>
+          </div>
+
+          {/* "WHO PAYS?" FUNDING SOURCE ENGINE */}
+          <div className="bg-[#111] border border-white/10 rounded-xl p-6">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+              <div>
+                <h2 className="text-white font-serif text-xl flex items-center gap-2">
+                  <Scale className="text-[var(--color-gold)]" size={22} /> "Who Pays?" Funding Source Engine
+                </h2>
+                <p className="text-[11px] text-white/40 mt-1">
+                  Configure the financial absorption source for every transaction fee, promotion, and reward.
+                </p>
+              </div>
+              <span className="text-xs uppercase tracking-widest text-[#c9a35b] font-mono bg-[#c9a35b]/10 px-2.5 py-1 rounded-full border border-[#c9a35b]/20">
+                Cost Attribution
+              </span>
+            </div>
+
+            <div className="space-y-6">
+              {/* Gateway Fee */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-semibold">
+                    Payment Gateway Fee ({settings.gatewayFeePct || 2.5}%)
+                  </label>
+                  <span className="text-[10px] text-white/40">Default: Grand Store</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'grand_store', label: 'Grand Store' },
+                    { id: 'vendor', label: 'Vendor' },
+                    { id: 'split', label: '50:50 Split' }
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleTypeChange('whoPaysGatewayFee', opt.id)}
+                      className={`py-2 px-3 text-xs rounded-lg font-semibold border transition-all ${
+                        (settings.whoPaysGatewayFee || 'grand_store') === opt.id
+                          ? 'bg-[var(--color-gold)] text-black border-[var(--color-gold)] shadow-sm'
+                          : 'bg-black/40 text-white/60 border-white/10 hover:border-white/20 hover:text-white'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Promotions & Coupons */}
+              <div className="space-y-2 pt-4 border-t border-white/5">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-semibold">
+                    Promotional / Coupon Discounts
+                  </label>
+                  <span className="text-[10px] text-white/40">Default: Grand Store</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'grand_store', label: 'Grand Store' },
+                    { id: 'vendor', label: 'Vendor' },
+                    { id: 'split', label: '50:50 Split' }
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleTypeChange('whoPaysPromotion', opt.id)}
+                      className={`py-2 px-3 text-xs rounded-lg font-semibold border transition-all ${
+                        (settings.whoPaysPromotion || 'grand_store') === opt.id
+                          ? 'bg-[var(--color-gold)] text-black border-[var(--color-gold)] shadow-sm'
+                          : 'bg-black/40 text-white/60 border-white/10 hover:border-white/20 hover:text-white'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Refer & Earn */}
+              <div className="space-y-2 pt-4 border-t border-white/5">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-semibold">
+                    Refer & Earn Rewards
+                  </label>
+                  <span className="text-[10px] text-white/40">Default: Grand Store</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'grand_store', label: 'Grand Store' },
+                    { id: 'vendor', label: 'Vendor' },
+                    { id: 'split', label: '50:50 Split' }
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleTypeChange('whoPaysReferral', opt.id)}
+                      className={`py-2 px-3 text-xs rounded-lg font-semibold border transition-all ${
+                        (settings.whoPaysReferral || 'grand_store') === opt.id
+                          ? 'bg-[var(--color-gold)] text-black border-[var(--color-gold)] shadow-sm'
+                          : 'bg-black/40 text-white/60 border-white/10 hover:border-white/20 hover:text-white'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Super Coins */}
+              <div className="space-y-2 pt-4 border-t border-white/5">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-semibold">
+                    Super Coins Redemptions
+                  </label>
+                  <span className="text-[10px] text-white/40">Default: Grand Store</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'grand_store', label: 'Grand Store' },
+                    { id: 'vendor', label: 'Vendor' },
+                    { id: 'split', label: '50:50 Split' }
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleTypeChange('whoPaysSuperCoins', opt.id)}
+                      className={`py-2 px-3 text-xs rounded-lg font-semibold border transition-all ${
+                        (settings.whoPaysSuperCoins || 'grand_store') === opt.id
+                          ? 'bg-[var(--color-gold)] text-black border-[var(--color-gold)] shadow-sm'
+                          : 'bg-black/40 text-white/60 border-white/10 hover:border-white/20 hover:text-white'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Courier Shipping */}
+              <div className="space-y-2 pt-4 border-t border-white/5">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-semibold">
+                    Courier Delivery
+                  </label>
+                  <span className="text-[10px] text-white/40">Default: Customer</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'customer', label: 'Customer' },
+                    { id: 'vendor', label: 'Vendor' },
+                    { id: 'grand_store', label: 'Grand Store' }
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleTypeChange('whoPaysCourier', opt.id)}
+                      className={`py-2 px-3 text-xs rounded-lg font-semibold border transition-all ${
+                        (settings.whoPaysCourier || 'customer') === opt.id
+                          ? 'bg-[var(--color-gold)] text-black border-[var(--color-gold)] shadow-sm'
+                          : 'bg-black/40 text-white/60 border-white/10 hover:border-white/20 hover:text-white'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Transit Insurance */}
+              <div className="space-y-2 pt-4 border-t border-white/5">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-semibold">
+                    Transit Insurance
+                  </label>
+                  <span className="text-[10px] text-white/40">Default: Customer</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'customer', label: 'Customer' },
+                    { id: 'vendor', label: 'Vendor' },
+                    { id: 'grand_store', label: 'Grand Store' }
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleTypeChange('whoPaysInsurance', opt.id)}
+                      className={`py-2 px-3 text-xs rounded-lg font-semibold border transition-all ${
+                        (settings.whoPaysInsurance || 'customer') === opt.id
+                          ? 'bg-[var(--color-gold)] text-black border-[var(--color-gold)] shadow-sm'
+                          : 'bg-black/40 text-white/60 border-white/10 hover:border-white/20 hover:text-white'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* PLATFORM MARGIN TARGETS & PROFIT GUARD */}
+          <div className="bg-[#111] border border-white/10 rounded-xl p-6">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+              <div>
+                <h2 className="text-white font-serif text-xl flex items-center gap-2">
+                  <ShieldAlert className="text-[var(--color-gold)]" size={22} /> Platform Margin Targets & Profit Guard
+                </h2>
+                <p className="text-[11px] text-white/40 mt-1">
+                  Enforce target margins and prevent loss-making promotions using automated Profit Guard thresholds.
+                </p>
+              </div>
+              <span className="text-xs uppercase tracking-widest text-emerald-400 font-mono bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                Profit Guard
+              </span>
+            </div>
+
+            <div className="space-y-6">
+              <FeeRow 
+                label="Target Platform Gross Margin (%)" 
+                field="targetPlatformMarginPct" 
+                note="Standard catalog pricing target (default 30% of selling price: Price = Cost / (1 - 0.30))" 
+              />
+              <FeeRow 
+                label="Minimum Platform Margin Floor (%)" 
+                field="minimumPlatformMarginPct" 
+                note="Protected minimum platform commission (default 15%: Price = VendorPayout / (1 - 0.15))" 
+              />
+
+              <div className="pt-4 border-t border-white/5 space-y-4">
+                <div className="text-xs uppercase tracking-widest text-[var(--color-gold)] font-bold flex items-center gap-2">
+                  <ShieldCheck size={16} /> Margin Health Status Thresholds
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  {/* Healthy */}
+                  <div className="p-3 bg-emerald-950/20 border border-emerald-500/30 rounded-lg flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">🟢</span>
+                      <div>
+                        <div className="text-xs font-bold text-emerald-400">Healthy Margin Floor</div>
+                        <div className="text-[10px] text-white/40">Contributions at or above this percent are safe</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-mono text-emerald-400">&ge;</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        max="50"
+                        value={settings.marginHealthyThresholdPct !== undefined ? settings.marginHealthyThresholdPct : 15}
+                        onChange={e => handleChange('marginHealthyThresholdPct', e.target.value)}
+                        className="w-16 bg-black/60 border border-emerald-500/40 rounded px-2 py-1 text-xs text-emerald-300 font-mono text-right"
+                      />
+                      <span className="text-xs font-mono text-emerald-400">%</span>
+                    </div>
+                  </div>
+
+                  {/* Warning */}
+                  <div className="p-3 bg-amber-950/20 border border-amber-500/30 rounded-lg flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">🟠</span>
+                      <div>
+                        <div className="text-xs font-bold text-amber-400">Warning Margin Range</div>
+                        <div className="text-[10px] text-white/40">Promotions compress margin into this caution zone</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        max="50"
+                        value={settings.marginWarningThresholdPct !== undefined ? settings.marginWarningThresholdPct : 10}
+                        onChange={e => handleChange('marginWarningThresholdPct', e.target.value)}
+                        className="w-16 bg-black/60 border border-amber-500/40 rounded px-2 py-1 text-xs text-amber-300 font-mono text-right"
+                      />
+                      <span className="text-xs font-mono text-amber-400">% to {settings.marginHealthyThresholdPct || 15}%</span>
+                    </div>
+                  </div>
+
+                  {/* Blocked */}
+                  <div className="p-3 bg-rose-950/20 border border-rose-500/30 rounded-lg flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">🔴</span>
+                      <div>
+                        <div className="text-xs font-bold text-rose-400">Blocked / Permission Required</div>
+                        <div className="text-[10px] text-white/40">Discounts below this floor are prevented by Profit Guard</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-mono text-rose-400">&lt;</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        max="50"
+                        value={settings.marginBlockedThresholdPct !== undefined ? settings.marginBlockedThresholdPct : 10}
+                        onChange={e => handleChange('marginBlockedThresholdPct', e.target.value)}
+                        className="w-16 bg-black/60 border border-rose-500/40 rounded px-2 py-1 text-xs text-rose-300 font-mono text-right"
+                      />
+                      <span className="text-xs font-mono text-rose-400">%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1001,6 +1590,115 @@ export default function AdminSettings() {
         {/* LIVE CALCULATORS */}
         <div className="space-y-6">
           
+          {/* Master Costing & Profitability Simulation Card */}
+          <div className="bg-black/60 border border-[var(--color-gold)]/30 rounded-xl p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-gold)]/5 rounded-full blur-3xl"></div>
+            <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+              <h3 className="text-[var(--color-gold)] font-serif text-xl flex items-center gap-2">
+                <DollarSign size={20} /> Master Costing & Profit Simulation
+              </h3>
+              <span className="text-[10px] font-mono uppercase bg-[var(--color-gold)]/10 text-[var(--color-gold)] px-2 py-0.5 rounded border border-[var(--color-gold)]/30">
+                Section 2 & 6 Flow
+              </span>
+            </div>
+            {(() => {
+              const supplierPrice = 100;
+              const supplierDiscountPct = 5;
+              const netSupplierCost = supplierPrice - (supplierPrice * supplierDiscountPct / 100);
+              const landedCost = 5;
+              const trueCost = netSupplierCost + landedCost; // R100
+              const targetMargin = Number(settings.targetPlatformMarginPct !== undefined ? settings.targetPlatformMarginPct : 30);
+              const marginRatio = targetMargin / 100;
+              const baseSellingPrice = marginRatio < 1 ? parseFloat((trueCost / (1 - marginRatio)).toFixed(2)) : trueCost; // R142.86
+              const promoPct = 10;
+              const promoAmount = parseFloat(((baseSellingPrice * promoPct) / 100).toFixed(2));
+              const customerPrice = parseFloat((baseSellingPrice - promoAmount).toFixed(2)); // R128.57
+              const refCost = parseFloat(((customerPrice * 5) / 100).toFixed(2)); // R6.43
+              const coinCost = 5.00;
+              const gatewayCost = parseFloat(((customerPrice * (settings.gatewayFeePct || 2.5)) / 100).toFixed(2)); // R3.21
+
+              // Who pays shares
+              const whoPaysPromo = settings.whoPaysPromotion || 'grand_store';
+              const whoPaysRef = settings.whoPaysReferral || 'grand_store';
+              const whoPaysCoins = settings.whoPaysSuperCoins || 'grand_store';
+              const whoPaysGateway = settings.whoPaysGatewayFee || 'grand_store';
+
+              const getShare = (amt, source) => {
+                if (source === 'vendor') return 0;
+                if (source === 'split') return parseFloat((amt * 0.5).toFixed(2));
+                return amt;
+              };
+
+              const gsPromo = getShare(promoAmount, whoPaysPromo);
+              const gsRef = getShare(refCost, whoPaysRef);
+              const gsCoins = getShare(coinCost, whoPaysCoins);
+              const gsGateway = getShare(gatewayCost, whoPaysGateway);
+
+              const baseMargin = parseFloat((baseSellingPrice - trueCost).toFixed(2));
+              const grossContribution = parseFloat((baseMargin - gsPromo).toFixed(2));
+              const netContribution = parseFloat((grossContribution - (gsRef + gsCoins + gsGateway)).toFixed(2));
+              const netMarginPct = customerPrice > 0 ? parseFloat(((netContribution / customerPrice) * 100).toFixed(2)) : 0;
+
+              const healthyFloor = Number(settings.marginHealthyThresholdPct || 15);
+              const warningFloor = Number(settings.marginWarningThresholdPct || 10);
+              let statusBadge = { icon: '🟢', label: 'Healthy', color: 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30' };
+              if (netMarginPct < warningFloor) {
+                statusBadge = { icon: '🔴', label: 'Blocked / Low Margin', color: 'text-rose-400 bg-rose-950/40 border-rose-500/30' };
+              } else if (netMarginPct < healthyFloor) {
+                statusBadge = { icon: '🟠', label: 'Warning', color: 'text-amber-400 bg-amber-950/40 border-amber-500/30' };
+              }
+
+              return (
+                <div className="space-y-3 text-xs font-mono relative z-10">
+                  <div className="flex justify-between text-gray-400">
+                    <span>Supplier Price (Less 5% Disc):</span><span className="text-white"><Price amount={netSupplierCost.toFixed(2)} /></span>
+                  </div>
+                  <div className="flex justify-between text-gray-400">
+                    <span>Landed Costs:</span><span className="text-white">+ <Price amount={landedCost.toFixed(2)} /></span>
+                  </div>
+                  <div className="flex justify-between font-bold text-white border-t border-white/10 pt-2">
+                    <span>TRUE PRODUCT COST:</span><span className="text-white"><Price amount={trueCost.toFixed(2)} /></span>
+                  </div>
+                  <div className="flex justify-between text-gray-400">
+                    <span>Target Margin ({targetMargin}%):</span><span className="text-[var(--color-gold)]">Base <Price amount={baseSellingPrice.toFixed(2)} /></span>
+                  </div>
+                  <div className="flex justify-between text-gray-400">
+                    <span>10% Promo (Paid by {whoPaysPromo}):</span><span className="text-yellow-400">- <Price amount={promoAmount.toFixed(2)} /></span>
+                  </div>
+                  <div className="flex justify-between font-bold text-white border-t border-white/10 pt-2">
+                    <span>CUSTOMER PAYMENT:</span><span className="text-white"><Price amount={customerPrice.toFixed(2)} /></span>
+                  </div>
+                  <div className="border-t border-white/10 my-2"></div>
+                  <div className="flex justify-between text-gray-400">
+                    <span>Gross Contribution:</span><span className="text-white"><Price amount={grossContribution.toFixed(2)} /></span>
+                  </div>
+                  <div className="flex justify-between text-gray-400">
+                    <span>Refer & Earn (5%):</span><span className="text-red-400/80">- <Price amount={gsRef.toFixed(2)} /></span>
+                  </div>
+                  <div className="flex justify-between text-gray-400">
+                    <span>SuperCoins (50 Coins):</span><span className="text-red-400/80">- <Price amount={gsCoins.toFixed(2)} /></span>
+                  </div>
+                  <div className="flex justify-between text-gray-400">
+                    <span>Payment Gateway ({settings.gatewayFeePct || 2.5}%):</span><span className="text-red-400/80">- <Price amount={gsGateway.toFixed(2)} /></span>
+                  </div>
+                  <div className="flex justify-between items-center font-bold text-base border-t border-white/10 pt-3">
+                    <span className="text-white">NET CONTRIBUTION:</span>
+                    <span className="text-emerald-400"><Price amount={netContribution.toFixed(2)} /></span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-gray-400">Effective Net Margin:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-white">{netMarginPct}%</span>
+                      <span className={`px-2 py-0.5 text-[10px] rounded border ${statusBadge.color} flex items-center gap-1`}>
+                        <span>{statusBadge.icon}</span> {statusBadge.label}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
           {/* Shop Calculator */}
           <div className="bg-black/60 border border-[var(--color-gold)]/30 rounded-xl p-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-gold)]/5 rounded-full blur-3xl"></div>

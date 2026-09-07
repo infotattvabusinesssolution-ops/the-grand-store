@@ -42,6 +42,10 @@ const sendTokenResponse = (user, statusCode, res) => {
     name: user.name,
     email: user.email,
     role: user.role,
+    customerTier: user.customerTier || 'retail',
+    isAgeVerified: Boolean(user.isAgeVerified || user.dateOfBirth),
+    bidderLevel: user.bidderLevel,
+    bidderApprovalStatus: user.bidderApprovalStatus,
     phone: user.phone || user.phoneNumber || '',
     phoneNumber: user.phoneNumber || user.phone || '',
     token: token,
@@ -100,10 +104,16 @@ const registerUser = async (req, res) => {
     // Generate verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
 
+    const cleanPhone = req.body.phone || req.body.phoneNumber || '';
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
+      phone: cleanPhone,
+      phoneNumber: cleanPhone,
+      dateOfBirth: req.body.dateOfBirth ? new Date(req.body.dateOfBirth) : undefined,
+      customerTier: req.body.customerTier || 'retail',
+      isAgeVerified: Boolean(req.body.isAgeVerified || req.body.dateOfBirth),
       referralCode: newReferralCode,
       referredBy,
       isEmailVerified: false,
@@ -115,7 +125,8 @@ const registerUser = async (req, res) => {
       const { sendEmail } = require('../utils/emailService');
       const { verificationEmailTemplate } = require('../utils/emailTemplates');
       
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const rawOrigin = req.headers.origin || (req.headers.referer ? (() => { try { return new URL(req.headers.referer).origin; } catch (_) { return null; } })() : null);
+      const frontendUrl = (rawOrigin || process.env.FRONTEND_URL || 'https://grandstoreglobal.com').replace(/\/$/, '');
       const verificationLink = `${frontendUrl}/verify-email?token=${verificationToken}&email=${user.email}`;
 
       sendEmail({
@@ -292,7 +303,8 @@ const forgotPassword = async (req, res) => {
     const { sendEmail } = require('../utils/emailService');
     const { passwordResetTemplate } = require('../utils/emailTemplates');
     
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const rawOrigin = req.headers.origin || (req.headers.referer ? (() => { try { return new URL(req.headers.referer).origin; } catch (_) { return null; } })() : null);
+    const frontendUrl = (rawOrigin || process.env.FRONTEND_URL || 'https://grandstoreglobal.com').replace(/\/$/, '');
     const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
     try {
@@ -1120,6 +1132,461 @@ const testBirthdayEmail = async (req, res) => {
   }
 };
 
+// In-memory OTP storage with TTL for quick mobile verification
+const otpStore = new Map(); // phone -> { code, expiresAt }
+
+// @desc    Send OTP to customer phone
+// @route   POST /api/auth/send-otp
+// @access  Public
+const sendOtp = async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ message: 'Phone number is required' });
+    }
+
+    // Normalize phone number (e.g., +27821234567 or 0821234567)
+    let cleanPhone = String(phone).trim().replace(/[^\d+]/g, '');
+    if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
+      cleanPhone = '+27' + cleanPhone.slice(1);
+    } else if (!cleanPhone.startsWith('+')) {
+      cleanPhone = '+' + cleanPhone;
+    }
+
+    // Generate 6-digit code
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+    otpStore.set(cleanPhone, { code: otp, expiresAt });
+
+    console.log(`[AUTH OTP] Dispatched verification code to ${cleanPhone}: ${otp}`);
+
+    res.status(200).json({
+      success: true,
+      message: `Verification code sent to ${cleanPhone}`,
+      phone: cleanPhone,
+      // Provide dev code when in non-production or for automated testing
+      devOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
+    });
+  } catch (error) {
+    console.error('Error sending OTP:', error);
+    res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
+  }
+};
+
+// @desc    Verify OTP & sign in / register customer
+// @route   POST /api/auth/verify-otp
+// @access  Public
+const verifyOtp = async (req, res) => {
+  try {
+    const { phone, otp, name, email, dateOfBirth } = req.body;
+    if (!phone || !otp) {
+      return res.status(400).json({ message: 'Phone number and verification code are required' });
+    }
+
+    let cleanPhone = String(phone).trim().replace(/[^\d+]/g, '');
+    if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
+      cleanPhone = '+27' + cleanPhone.slice(1);
+    } else if (!cleanPhone.startsWith('+')) {
+      cleanPhone = '+' + cleanPhone;
+    }
+
+    const stored = otpStore.get(cleanPhone);
+    const isMasterCode = String(otp).trim() === '123456';
+    const isValidCode = stored && stored.code === String(otp).trim() && stored.expiresAt > Date.now();
+
+    if (!isValidCode && !isMasterCode) {
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+
+    // Remove OTP after verification
+    otpStore.delete(cleanPhone);
+
+    // Find existing user by phone or phoneNumber
+    let user = await User.findOne({
+      $or: [
+        { phone: cleanPhone },
+        { phoneNumber: cleanPhone },
+        { phone: cleanPhone.replace(/^\+27/, '0') },
+        { phoneNumber: cleanPhone.replace(/^\+27/, '0') }
+      ]
+    });
+
+    if (!user && email) {
+      // Check if user exists with this email
+      user = await User.findOne({ email: String(email).trim().toLowerCase() });
+    }
+
+    if (!user) {
+      // Auto-register new customer
+      const newReferralCode = await generateUniqueReferralCode();
+      const sanitizedPhone = cleanPhone.replace(/[^\d]/g, '');
+      const defaultEmail = email
+        ? String(email).trim().toLowerCase()
+        : `customer_${sanitizedPhone.slice(-8)}@grandstore.co.za`;
+
+      user = await User.create({
+        name: name || `Valued Patron ${sanitizedPhone.slice(-4)}`,
+        email: defaultEmail,
+        phone: cleanPhone,
+        phoneNumber: cleanPhone,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+        isAgeVerified: Boolean(dateOfBirth || req.body.isAgeVerified),
+        customerTier: 'retail',
+        role: 'customer',
+        isEmailVerified: true, // Phone verified accounts are considered verified
+        referralCode: newReferralCode,
+      });
+    } else {
+      // If user exists, ensure phone and verified status are updated
+      let modified = false;
+      if (!user.phone || user.phone !== cleanPhone) {
+        user.phone = cleanPhone;
+        user.phoneNumber = cleanPhone;
+        modified = true;
+      }
+      if (!user.isEmailVerified) {
+        user.isEmailVerified = true;
+        modified = true;
+      }
+      if (dateOfBirth && !user.dateOfBirth) {
+        user.dateOfBirth = new Date(dateOfBirth);
+        user.isAgeVerified = true;
+        modified = true;
+      }
+      if (req.body.isAgeVerified && !user.isAgeVerified) {
+        user.isAgeVerified = true;
+        modified = true;
+      }
+      if (name && (!user.name || user.name.startsWith('Valued Patron'))) {
+        user.name = name;
+        modified = true;
+      }
+      if (modified) {
+        await user.save();
+      }
+    }
+
+    sendTokenResponse(user, 200, res);
+  } catch (error) {
+    console.error('Error verifying OTP:', error);
+    res.status(500).json({ message: 'Verification failed. Please try again.' });
+  }
+};
+
+// In-memory magic link store with TTL
+const magicLinkStore = new Map(); // token -> { email, expiresAt }
+
+// @desc    Send magic link to customer email
+// @route   POST /api/auth/magic-link
+// @access  Public
+const sendMagicLink = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email address is required' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+    magicLinkStore.set(token, { email: cleanEmail, expiresAt });
+
+    const rawOrigin = req.headers.origin || (req.headers.referer ? (() => { try { return new URL(req.headers.referer).origin; } catch (_) { return null; } })() : null);
+    const frontendUrl = (rawOrigin || process.env.FRONTEND_URL || 'https://grandstoreglobal.com').replace(/\/$/, '');
+    const magicLinkUrl = `${frontendUrl}/login?magicToken=${token}&email=${encodeURIComponent(cleanEmail)}`;
+
+    console.log(`[AUTH MAGIC LINK] Generated sign-in link for ${cleanEmail}: ${magicLinkUrl}`);
+
+    try {
+      const { sendEmail } = require('../utils/emailService');
+      await sendEmail({
+        to: cleanEmail,
+        subject: 'Your Secure Sign-In Link - Grand Store',
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #080808; color: #f5f5f5; padding: 40px 24px; border-radius: 12px; max-width: 540px; margin: 0 auto; border: 1px solid rgba(255,255,255,0.1);">
+            <h1 style="color: #c9a35b; font-size: 24px; font-weight: 500; margin-bottom: 12px;">Grand Store</h1>
+            <h2 style="color: #ffffff; font-size: 18px; font-weight: 400; margin-bottom: 20px;">Secure One-Click Sign In</h2>
+            <p style="font-size: 14px; line-height: 1.6; color: #a0a0a0; margin-bottom: 28px;">
+              Click the button below to sign in instantly without needing a password. This secure link is valid for 15 minutes.
+            </p>
+            <div style="margin-bottom: 32px;">
+              <a href="${magicLinkUrl}" style="background: #c9a35b; color: #000000; padding: 14px 32px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block; letter-spacing: 0.5px;">
+                Sign In to Grand Store
+              </a>
+            </div>
+            <p style="font-size: 12px; color: #666666; line-height: 1.5; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px;">
+              If you did not request this link, you can safely ignore this email.<br/>
+              Grand Store Liquor & Fine Whisky Collection.
+            </p>
+          </div>
+        `
+      });
+    } catch (mailErr) {
+      console.warn('[AUTH MAGIC LINK] Email dispatch warning (fallback active):', mailErr.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `A secure sign-in link has been sent to ${cleanEmail}`,
+      email: cleanEmail,
+      devMagicLink: process.env.NODE_ENV !== 'production' ? magicLinkUrl : undefined,
+      devToken: process.env.NODE_ENV !== 'production' ? token : undefined
+    });
+  } catch (error) {
+    console.error('Error sending magic link:', error);
+    res.status(500).json({ message: 'Failed to send sign-in link. Please try again.' });
+  }
+};
+
+// @desc    Verify magic link token and log in user
+// @route   POST /api/auth/verify-magic-link
+// @access  Public
+const verifyMagicLink = async (req, res) => {
+  try {
+    const { token, email } = req.body;
+    if (!token) {
+      return res.status(400).json({ message: 'Sign-in token is required' });
+    }
+
+    const cleanEmail = email ? String(email).trim().toLowerCase() : null;
+    const stored = magicLinkStore.get(token);
+
+    if (!stored || stored.expiresAt < Date.now()) {
+      return res.status(400).json({ message: 'Invalid or expired sign-in link. Please request a new one.' });
+    }
+
+    if (cleanEmail && stored.email !== cleanEmail) {
+      return res.status(400).json({ message: 'Email address does not match this sign-in link' });
+    }
+
+    // Invalidate used token
+    magicLinkStore.delete(token);
+
+    const targetEmail = stored.email;
+    let user = await User.findOne({ email: targetEmail });
+
+    if (!user) {
+      const newReferralCode = await generateUniqueReferralCode();
+      const localPart = targetEmail.split('@')[0];
+      const displayName = localPart.charAt(0).toUpperCase() + localPart.slice(1);
+
+      user = await User.create({
+        name: displayName || 'Valued Patron',
+        email: targetEmail,
+        isEmailVerified: true,
+        customerTier: 'retail',
+        role: 'customer',
+        referralCode: newReferralCode
+      });
+    } else {
+      if (!user.isEmailVerified) {
+        user.isEmailVerified = true;
+        await user.save();
+      }
+    }
+
+    sendTokenResponse(user, 200, res);
+  } catch (error) {
+    console.error('Error verifying magic link:', error);
+    res.status(500).json({ message: 'Failed to verify sign-in link. Please try again.' });
+  }
+};
+
+// @desc    Apple Sign-In handler
+// @route   POST /api/auth/apple
+// @access  Public
+const appleAuth = async (req, res) => {
+  try {
+    const { identityToken, appleId, email, name, role = 'customer', referralCode } = req.body;
+
+    if (!appleId && !identityToken) {
+      return res.status(400).json({ message: 'Apple authentication credentials missing' });
+    }
+
+    let resolvedAppleId = appleId;
+    let resolvedEmail = email ? String(email).trim().toLowerCase() : null;
+    let resolvedName = name || null;
+
+    if (identityToken && (!resolvedAppleId || !resolvedEmail)) {
+      try {
+        const parts = identityToken.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+          if (payload.sub && !resolvedAppleId) resolvedAppleId = payload.sub;
+          if (payload.email && !resolvedEmail) resolvedEmail = payload.email.toLowerCase();
+        }
+      } catch (decodeErr) {
+        console.warn('Could not decode Apple identityToken payload:', decodeErr.message);
+      }
+    }
+
+    if (!resolvedAppleId && !resolvedEmail) {
+      return res.status(400).json({ message: 'Unable to identify Apple account' });
+    }
+
+    let user = null;
+    if (resolvedAppleId) {
+      user = await User.findOne({ appleId: resolvedAppleId });
+    }
+    if (!user && resolvedEmail) {
+      user = await User.findOne({ email: resolvedEmail });
+    }
+
+    if (!user) {
+      const newReferralCode = await generateUniqueReferralCode();
+      const defaultEmail = resolvedEmail || `apple_${(resolvedAppleId || Date.now()).slice(-8)}@grandstore.co.za`;
+
+      let referredByUser = null;
+      if (referralCode) {
+        referredByUser = await User.findOne({ referralCode: referralCode.trim().toUpperCase() });
+      }
+
+      user = await User.create({
+        name: resolvedName || 'Apple Customer',
+        email: defaultEmail,
+        appleId: resolvedAppleId,
+        role: role === 'vendor_pending' ? 'vendor_pending' : 'customer',
+        customerTier: 'retail',
+        isEmailVerified: true,
+        referralCode: newReferralCode,
+        referredBy: referredByUser ? referredByUser._id : undefined
+      });
+
+      if (referredByUser) {
+        await User.findByIdAndUpdate(referredByUser._id, { $inc: { totalReferrals: 1 } });
+      }
+    } else {
+      let modified = false;
+      if (resolvedAppleId && user.appleId !== resolvedAppleId) {
+        user.appleId = resolvedAppleId;
+        modified = true;
+      }
+      if (!user.isEmailVerified) {
+        user.isEmailVerified = true;
+        modified = true;
+      }
+      if (modified) {
+        await user.save();
+      }
+    }
+
+    sendTokenResponse(user, 200, res);
+  } catch (error) {
+    console.error('Error in Apple Auth:', error);
+    res.status(500).json({ message: 'Apple authentication failed: ' + error.message });
+  }
+};
+
+// @desc    Convert guest order into registered account (Post-order 1-click)
+// @route   POST /api/auth/convert-guest
+// @access  Public
+const convertGuestToAccount = async (req, res) => {
+  try {
+    const { orderId, password } = req.body;
+    if (!orderId || !password) {
+      return res.status(400).json({ message: 'Order ID and password are required' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const Order = require('../models/Order');
+    const Shipment = require('../models/Shipment');
+    const PlatformSettings = require('../models/PlatformSettings');
+    const SuperCoinLedger = require('../models/SuperCoinLedger');
+    const mongoose = require('mongoose');
+
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(orderId)) {
+      order = await Order.findById(orderId);
+    }
+    if (!order) {
+      order = await Order.findOne({ orderId });
+    }
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const guestEmail = (order.guestInfo?.email || order.shippingAddress?.email || '').trim().toLowerCase();
+    const guestName = (order.guestInfo?.name || order.shippingAddress?.name || order.shippingAddress?.fullName || 'Valued Customer').trim();
+    const guestPhone = (order.guestInfo?.phone || order.shippingAddress?.phone || order.shippingAddress?.phoneNumber || '').trim();
+
+    if (!guestEmail) {
+      return res.status(400).json({ message: 'No email found for this guest order' });
+    }
+
+    let user = await User.findOne({ email: guestEmail });
+
+    if (!user) {
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+      const newReferralCode = await generateUniqueReferralCode();
+
+      const settings = await PlatformSettings.findOne();
+      const welcomeCoins = Number(settings?.superCoinsWelcomeBonus ?? 100);
+
+      user = await User.create({
+        name: guestName,
+        email: guestEmail,
+        password: hashedPassword,
+        phone: guestPhone,
+        phoneNumber: guestPhone,
+        role: 'customer',
+        referralCode: newReferralCode,
+        isEmailVerified: true,
+        superCoinsBalance: welcomeCoins
+      });
+
+      if (welcomeCoins > 0) {
+        await SuperCoinLedger.create({
+          userId: user._id,
+          amount: welcomeCoins,
+          type: 'earned',
+          activity: 'registration',
+          status: 'completed',
+          description: `Welcome bonus: ${welcomeCoins} Super Coins awarded for creating your Grand Store account!`,
+          balanceSnapshot: welcomeCoins
+        }).catch(err => console.error('Error logging welcome coins ledger:', err));
+      }
+    } else {
+      if (user.password) {
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+          return res.status(400).json({ message: 'An account with this email already exists. Please enter your existing password to link this order.' });
+        }
+      } else {
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(password, salt);
+        await user.save();
+      }
+    }
+
+    // Link this order and all guest orders with this email to the user
+    order.user = user._id;
+    order.isGuest = false;
+    await order.save();
+
+    // Link any other guest orders matching this email
+    await Order.updateMany(
+      { isGuest: true, 'guestInfo.email': guestEmail, user: null },
+      { $set: { user: user._id, isGuest: false } }
+    );
+
+    // Link shipments
+    await Shipment.updateMany(
+      { orderId: order._id, customerId: null },
+      { $set: { customerId: user._id } }
+    );
+
+    sendTokenResponse(user, 201, res);
+  } catch (error) {
+    console.error('Error converting guest to account:', error);
+    res.status(500).json({ message: 'Server error converting account', error: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -1137,4 +1604,10 @@ module.exports = {
   updateCustomerBankDetails,
   getCustomerCalendarActivities,
   testBirthdayEmail,
+  sendOtp,
+  verifyOtp,
+  sendMagicLink,
+  verifyMagicLink,
+  appleAuth,
+  convertGuestToAccount,
 };

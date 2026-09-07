@@ -219,6 +219,7 @@ const createProduct = async (req, res) => {
       flavorProfile: normalizedProduct.flavorProfile,
       foodPairing: normalizedProduct.foodPairing,
       stock: Number(stock) || 0,
+      costing: parseJsonValue(req.body.costing, undefined),
       vendorId: canManageInternalProducts(req.user) ? null : req.user._id,
       approvalStatus: 'approved'
     });
@@ -303,6 +304,9 @@ const updateProduct = async (req, res) => {
     product.flavorProfile = normalizedProduct.flavorProfile;
     product.foodPairing = normalizedProduct.foodPairing;
     product.stock = stock !== undefined ? Number(stock) : product.stock;
+    if (req.body.costing !== undefined) {
+      product.costing = parseJsonValue(req.body.costing, product.costing);
+    }
 
     let uploadedImages = [];
     if (req.files) {

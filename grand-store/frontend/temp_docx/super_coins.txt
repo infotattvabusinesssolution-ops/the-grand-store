@@ -1,0 +1,404 @@
+Absolutely. Think of Super Coins as a simple reward points system inside Grand Store. The customer earns coins when they buy, refer friends, or take certain actions, and then uses those coins to reduce the cost of a future purchase.
+Simple example
+Suppose:
+Product selling price = R1,000 
+Customer earns 100 Super Coins 
+Grand Store decides 100 Super Coins = R10 
+Customer later has 500 Super Coins = R50 
+The customer can then use the R50 equivalent toward a future order.
+So the customer sees:
+Product: R1,000Super Coins used: R50Customer pays: R950
+How the costing should work
+The important part is that Super Coins must be treated as a marketing/reward cost, not as additional money that the vendor has to absorb.
+For example:
+Calculation
+Amount
+Vendor product cost
+R800
+Grand Store selling price
+R1,000
+Grand Store gross margin
+R200
+Customer uses Super Coins
+R50
+Customer pays
+R950
+Effective Grand Store revenue
+R950
+Gross margin after coins
+R150
+If your platform must never make less than 15%, the system should check the margin after the Super Coin discount.
+Even better system
+Don't simply say:
+"100 coins = R10"
+Instead, build a controlled coin economy.
+For example:
+1 Super Coin = R0.10
+Therefore:
+100 coins = R10 
+500 coins = R50 
+1,000 coins = R100 
+But put a maximum percentage of an order that can be paid with coins.
+For example:
+Customer can use Super Coins for a maximum of 10% of the order value.
+So on a R2,000 order:
+Maximum coins usable = R200 
+Customer still pays = R1,800 
+This prevents customers from accumulating enough coins to wipe out your margin.
+How customers earn Super Coins
+You can make the system more attractive by rewarding different activities.
+Customer activity
+Example reward
+Create account
+100 coins
+Complete profile
+50 coins
+First purchase
+200 coins
+Purchase R1,000
+100 coins
+Refer a friend
+500 coins
+Friend makes first purchase
+Additional 500 coins
+Write a genuine review
+50 coins
+Birthday reward
+200 coins
+Special promotion
+2× or 3× coins
+The actual values can be changed by Grand Store from the Admin Dashboard.
+The most important costing rule
+I would recommend that Grand Store's system works backwards from the minimum 15% platform margin.
+For example:
+Vendor cost = R100
+If Grand Store wants a 15% margin based on the selling price:
+Selling price = R117.65
+because:
+R117.65 − R100 = R17.65R17.65 ÷ R117.65 = 15%
+Now suppose the customer wants to use Super Coins.
+If the customer receives a R5 coin discount:
+Customer pays R112.65
+That means the margin becomes:
+R112.65 − R100 = R12.65
+R12.65 ÷ R112.65 = 11.23%
+So this would violate your 15% minimum-margin rule.
+Therefore, the system should not allow the customer to use R5 of coins on this transaction unless the original selling price has enough margin to accommodate it.
+The better Grand Store model
+I would structure it like this:
+1. Vendor gives Grand Store their price
+Vendor price: R100
+2. Grand Store applies its required margin
+Example:
+Selling price: R125
+3. System calculates maximum allowable Super Coins
+The system knows:
+"Grand Store must retain at least 15%."
+Therefore, it calculates how much of the price can be given back as Super Coins.
+4. Customer sees the benefit
+Instead of showing complicated costing, the customer simply sees:
+Price: R125Super Coins available: 500Use 500 coins: −R5You pay: R120
+Behind the scenes, the system checks that the transaction remains profitable.
+I would also separate 3 things
+This is very important for your developer.
+A. Vendor Price
+What Grand Store owes the vendor.
+Example: R100
+B. Selling Price
+What Grand Store displays to the customer.
+Example: R125
+C. Super Coin Liability
+The value of coins the customer has earned and can potentially redeem.
+Example: 500 coins = R5
+The coins should be recorded separately in the accounting system.
+Think of Super Coins as "future discounts"
+The easiest way to understand the business model is:
+Grand Store gives a customer a small reward today so that the customer comes back and spends again tomorrow.
+For example:
+Customer spends R1,000 today.
+Grand Store gives them 100 Super Coins = R10.
+The customer thinks:
+"I have R10 waiting for me on Grand Store, so I'll come back."
+The R10 is therefore essentially a customer-retention/marketing cost.
+One rule I strongly recommend
+Never allow Super Coins to be used without the platform's margin engine checking the transaction first.
+The checkout should automatically calculate:
+Vendor Cost → Selling Price → Commission/Margin → Super Coin Discount → Final Platform Margin
+and display:
+🟢 Margin protected — coins can be used
+or
+🔴 Maximum coins usable on this order: 250
+That way, the customer gets the benefit, but Grand Store never accidentally gives away its profit.
+If you want, I can also give you the exact Super Coin costing formula and database/checkout logic for your developer, including earning, redemption, expiry, referral coins, refunds and accounting entries.
+Today 10:55 AM
+yes
+Yes. For Grand Store, I would design Super Coins as a controlled loyalty currency, with the costing engine protecting the platform's minimum margin.
+1. The basic Super Coin rule
+Keep it extremely simple for the customer:
+1 Super Coin = R0.10
+Therefore:
+10 coins = R1 
+100 coins = R10 
+500 coins = R50 
+1,000 coins = R100 
+The customer earns coins and later uses them as a discount.
+2. How the system should calculate it
+The important calculation should happen behind the scenes.
+Example
+Vendor gives Grand Store a product for:
+Vendor Cost = R100
+Grand Store wants at least 15% margin.
+If we calculate margin on the final selling price:
+Minimum selling price = R117.65
+Suppose Grand Store actually sells it for:
+Selling Price = R125
+Grand Store's initial margin:
+R125 − R100 = R25
+Now the customer has Super Coins worth R5.
+If they redeem them:
+Customer pays = R120
+Grand Store's remaining margin:
+R120 − R100 = R20
+Margin:
+R20 ÷ R120 = 16.67%
+✅ Super Coins can be accepted.
+3. What if the customer has too many coins?
+Suppose the selling price is only R117.65.
+The customer has R20 worth of Super Coins.
+If they use all R20:
+R117.65 − R20 = R97.65
+Vendor cost = R100.
+Grand Store would actually lose money.
+Therefore:
+The system must automatically restrict redemption.
+It could say:
+You can redeem up to 176 Super Coins on this order.
+The customer doesn't need to understand the accounting.
+They simply see:
+Order: R117.65Super Coins used: R17.65You pay: R100.00
+And the system can enforce the required margin/other cost rules.
+4. I recommend a second protection: maximum redemption
+Even when there is enough margin, I would put a general limit.
+For example:
+Maximum Super Coins that can be used = 10% of product/order value.
+So:
+R1,000 order
+Maximum redemption:
+R100
+Customer pays at least:
+R900
+R5,000 order
+Maximum redemption:
+R500
+Customer pays at least:
+R4,500
+This protects the business and encourages repeat purchases rather than allowing coins to become a substitute for payment.
+5. How customers earn coins
+I would make the earning system configurable from Admin.
+For example:
+Activity
+Super Coins
+Register
+100
+Complete profile
+100
+First purchase
+500
+Spend R100
+10
+Product review
+50
+Refer a friend
+500
+Friend completes purchase
+500
+Birthday reward
+200
+Special campaign
+Admin controlled
+Example
+Customer purchases:
+R2,000
+If the earning rate is:
+10 coins per R100 spent
+They earn:
+200 Super Coins
+Value:
+200 × R0.10 = R20
+So the customer gets:
+Spend R2,000 → Earn R20 for your next purchase.
+This is psychologically attractive without giving away a large percentage of the sale.
+6. Very important: earn coins on the right amount
+I recommend that coins are not earned on everything.
+For example:
+Customer buys:
+Product value: R2,000 
+Delivery: R100 
+Tax/VAT: R315 
+Super Coin discount: R50 
+The earning calculation should normally be based on the eligible product subtotal, not delivery, tax or previous coin redemption.
+So:
+Eligible spend = R2,000
+Not:
+R2,000 + R100 + R315
+This prevents the loyalty system from becoming unnecessarily expensive.
+7. Refunds
+This needs to be built into the system from day one.
+Example
+Customer buys R1,000 product.
+They earn:
+100 coins
+Later they return the product.
+Those 100 coins should automatically be:
+Reversed
+If they have already spent those coins, the system should record a negative Super Coin balance or deduct the equivalent from future eligible rewards.
+Likewise, if the customer used coins on the original purchase and receives a refund, the system should reverse the redemption appropriately.
+8. Expiry
+I strongly recommend giving Super Coins an expiry date.
+For example:
+Super Coins expire 12 months after they are earned.
+This creates urgency and prevents Grand Store accumulating an unlimited long-term loyalty liability.
+You can also have promotional coins with shorter expiry:
+Normal coins: 12 monthsPromotional coins: 30–90 days
+The customer should see:
+250 Super Coins expire on 15 October 2027
+9. Referral system
+This can become one of the strongest parts of the feature.
+Example:
+Existing customer
+Shares referral code:
+PRAVIN500
+Friend registers and purchases.
+Existing customer receives:
+500 coins = R50
+New customer receives:
+250 coins = R25
+But don't release the referral reward immediately.
+Use:
+Pending → Purchase completed → Return period passed → Coins released
+This protects against fake accounts and people creating multiple accounts to collect referral rewards.
+10. Super Coin status
+Every transaction should have a status.
+Earning
+Pending → Approved → Available → Expired/Reversed
+Redemption
+Requested → Applied → Completed → Reversed
+This gives the admin and accounting team a complete audit trail.
+11. Customer wallet
+The customer should have a very simple Super Coins Wallet.
+For example:
+My Super Coins
+2,450 Coins
+Value: R245
+Then:
+Available: 2,000Pending: 450Expiring soon: 300
+Transaction history:
+Date
+Activity
+Coins
+Sep 5
+Purchase
++200
+Sep 2
+Referral
++500
+Aug 28
+Redeemed
+−300
+Aug 20
+Purchase
++150
+12. Checkout experience
+Don't make checkout complicated.
+Customer reaches checkout:
+Order Total: R1,500
+Then:
+⭐ You have 850 Super Coins worth R85
+Checkbox:
+☑ Use Super Coins
+System calculates the maximum permitted amount.
+For example:
+Super Coins used: −R85
+Total to Pay: R1,415
+If only R40 can safely be redeemed:
+⭐ You can use up to 400 Super Coins (R40) on this order.
+This is all the customer needs to know.
+13. Admin controls
+Your Grand Store Admin should be able to control:
+Super Coin Settings
+Coin value 
+Coins earned per R100 
+Maximum redemption % 
+Minimum order value 
+Maximum coins per order 
+Expiry period 
+Registration reward 
+Review reward 
+Referral reward 
+Birthday reward 
+Promotional multiplier 
+Which products/categories qualify 
+Which vendors qualify 
+Whether coins can be combined with promotions 
+Whether coins can be used on auctions 
+Whether coins can be used on trade/wholesale orders 
+This makes the system flexible rather than hard-coded.
+14. Special rule for your marketplace
+Because Grand Store is a multi-vendor marketplace, I would keep this rule:
+The customer sees one Grand Store Super Coin system. Vendors should not have to manage or understand the coin system.
+The vendor simply receives the agreed vendor amount according to the marketplace settlement rules.
+Grand Store absorbs/manages the loyalty cost as a marketing/customer-acquisition expense, subject to the platform's pricing and margin rules.
+This makes the marketplace much easier to operate.
+15. Accounting behind the scenes
+A simple accounting structure could be:
+Customer purchases product
+Customer payment → Grand Store
+Then the system records:
+Vendor payableGrand Store revenue/commissionSuper Coin liability/marketing costTax/VAT where applicablePayment gateway feesShipping/delivery costs
+When coins are redeemed:
+Super Coin liability decreasesCustomer discount increases
+The customer does not need to see any of this.
+16. One important correction to the earlier example
+For Grand Store, I would not rely only on the 15% margin calculation.
+Your actual protection should consider:
+**Vendor Cost
+Payment Gateway Cost 
+Shipping Subsidy 
+Taxes/levies where applicable 
+Other transaction costs 
+Super Coin Cost= Total Cost** 
+Then:
+Final Selling Price − Total Cost = Grand Store Contribution
+The system should check that the transaction remains above your minimum required contribution/margin.
+This is much safer than simply saying:
+"We have a 15% markup."
+Markup and margin are not the same thing.
+17. Developer logic — simple version
+Your developer can build the checkout engine around this sequence:
+STEP 1Get vendor cost.
+↓
+STEP 2Calculate Grand Store minimum selling price.
+↓
+STEP 3Add applicable fees/costs.
+↓
+STEP 4Calculate normal selling price.
+↓
+STEP 5Calculate customer's available Super Coins.
+↓
+STEP 6Calculate maximum allowable redemption.
+Maximum Coin Redemption = MIN(Customer Coins Value, Order Limit, Margin-Safe Amount)
+↓
+STEP 7Apply coins.
+↓
+STEP 8Recalculate final platform contribution.
+↓
+STEP 9If contribution is below minimum:
+Reduce permitted coins automatically.
+↓
+STEP 10Complete order and create accounting entries.
+The Grand Store Super Coin philosophy
+I would position it very simply:
+Buy. Earn. Save. Repeat.
+The customer feels they are being rewarded.
+The vendor continues to operate under the marketplace pricing structure.
+And most importantly, Grand Store's costing engine remains in control of how much reward can actually be given.

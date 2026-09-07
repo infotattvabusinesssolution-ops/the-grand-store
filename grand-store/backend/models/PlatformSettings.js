@@ -65,7 +65,40 @@ const platformSettingsSchema = new mongoose.Schema({
       helpText: { type: String, default: '' },
       enabled: { type: Boolean, default: true }
     }
-  ]
+  ],
+  // Super Coins Loyalty & Margin Protection Settings (Admin Configurable)
+  superCoinsEnabled: { type: Boolean, default: true },
+  superCoinValue: { type: Number, default: 0.10 }, // 1 Super Coin = R0.10
+  superCoinsEarnRatePer100: { type: Number, default: 10 }, // e.g. 10 coins per R100 spent
+  superCoinsMaxRedemptionPct: { type: Number, default: 10 }, // Max 10% of order value
+  superCoinsMinPlatformMarginPct: { type: Number, default: 15 }, // Margin safety threshold: 15%
+  superCoinsExpiryMonths: { type: Number, default: 12 }, // Coins expire after 12 months
+  superCoinsRegistrationReward: { type: Number, default: 100 }, // Welcome bonus
+  superCoinsProfileReward: { type: Number, default: 100 },
+  superCoinsFirstPurchaseReward: { type: Number, default: 500 },
+  superCoinsReviewReward: { type: Number, default: 50 },
+  superCoinsReferralReward: { type: Number, default: 500 },
+  superCoinsBirthdayReward: { type: Number, default: 200 },
+
+  // PostNet Delivery Rates (Admin Configurable in ZAR)
+  postnetStandardFee: { type: Number, default: 120 },
+  postnetExpressFee: { type: Number, default: 180 },
+  postnetPickupFee: { type: Number, default: 100 },
+
+  // "Who Pays?" Funding Source Engine (Costing GS Understanding Section 8)
+  whoPaysGatewayFee: { type: String, enum: ['grand_store', 'vendor', 'split'], default: 'grand_store' },
+  whoPaysPromotion: { type: String, enum: ['grand_store', 'vendor', 'split'], default: 'grand_store' },
+  whoPaysReferral: { type: String, enum: ['grand_store', 'vendor', 'split'], default: 'grand_store' },
+  whoPaysSuperCoins: { type: String, enum: ['grand_store', 'vendor', 'split'], default: 'grand_store' },
+  whoPaysCourier: { type: String, enum: ['customer', 'vendor', 'grand_store'], default: 'customer' },
+  whoPaysInsurance: { type: String, enum: ['customer', 'vendor', 'grand_store'], default: 'customer' },
+
+  // Platform Margin Targets & Profit Guard (Costing GS Understanding Section 9 & 13)
+  targetPlatformMarginPct: { type: Number, default: 30 },
+  minimumPlatformMarginPct: { type: Number, default: 15 },
+  marginHealthyThresholdPct: { type: Number, default: 15 }, // 🟢 Healthy >= 15%
+  marginWarningThresholdPct: { type: Number, default: 10 }, // 🟠 Warning 10% - 14.9%
+  marginBlockedThresholdPct: { type: Number, default: 10 }  // 🔴 Blocked < 10%
 }, { timestamps: true });
 
 module.exports = mongoose.model("PlatformSettings", platformSettingsSchema);

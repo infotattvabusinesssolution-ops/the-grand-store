@@ -1,0 +1,345 @@
+Absolutely. I would structure the Grand Store costing engine as a single system with two views:
+Customer view: simple — one final price. 
+Admin/accounting view: detailed — every cost, discount, commission and profit component. 
+Grand Store Pricing & Profit Engine
+1. The master calculation flow
+Supplier List Price↓Supplier Discount↓Net Supplier Cost↓Landed Cost / Additional Costs↓Target Grand Store Margin↓Base Selling Price↓Promotion / Coupon Discount↓Customer Price↓Refer & Earn Reward↓Supercoins / Loyalty Cost↓Payment Gateway Cost↓Vendor Commission, if applicable↓
+Net Grand Store Contribution
+2. Example
+Let's use a product with a supplier price of R100.
+Component
+Calculation
+Amount
+Supplier price
+—
+R100.00
+Supplier discount
+5%
+-R5.00
+Net supplier cost
+R95.00
+Landed/other costs
+Example
+R5.00
+True cost
+R100.00
+Target margin
+30%
+Base selling price
+R100 ÷ 70%
+R142.86
+So the product's base selling price is R142.86.
+3. Promotion
+Suppose Grand Store runs a 10% promotion.
+R142.86 × 10% = R14.29
+Customer pays:
+R128.57
+The system should retain both:
+Original price: R142.86 
+Promotional price: R128.57 
+Customer saving: R14.29 
+This is important for reporting.
+4. Refer & Earn
+Suppose the referral reward is 5% of the actual product price paid.
+R128.57 × 5% = R6.43
+So:
+Amount
+Customer pays
+R128.57
+True product cost
+-R100.00
+Referral reward
+-R6.43
+Contribution before payment costs
+R22.14
+5. Supercoins
+Suppose the customer uses R5 worth of Supercoins.
+Now you need to decide whether Supercoins are:
+Option A — Marketing expense
+Grand Store absorbs the R5.
+Contribution:
+R22.14 − R5 = R17.14
+Option B — Customer wallet liability
+The accounting system treats the coins as a customer-wallet redemption.
+I recommend Option B in the accounting architecture, while showing the customer a simple discount/redemption at checkout.
+6. Payment gateway
+Suppose payment processing costs 2.5%.
+R128.57 × 2.5% = R3.21
+Now:
+Item
+Amount
+Customer payment
+R128.57
+True product cost
+-R100.00
+Refer & Earn
+-R6.43
+Supercoin redemption
+-R5.00
+Payment gateway
+-R3.21
+Net contribution
+R13.93
+This is the number management should care about.
+7. Vendor commission
+Because Grand Store operates as a marketplace, I would make vendor commission a separate calculation engine.
+For example, if the vendor receives the product sale and Grand Store charges 15% commission:
+Customer pays: R128.57
+15% commission:
+R19.29
+Vendor settlement:
+R109.28
+But you need to decide whether:
+Refer & Earn is paid by Grand Store 
+Refer & Earn is shared with vendor 
+Promotions are funded by Grand Store 
+Promotions are funded by vendor 
+Payment gateway fees are deducted from vendor settlement 
+Shipping is paid by customer/vendor/Grand Store 
+These should never be hard-coded into one margin formula.
+8. Create a "Who Pays?" engine
+This is one of the most important parts for your developer.
+Every cost should have a funding source.
+Cost
+Paid By
+Supplier discount
+Supplier
+Product cost
+Vendor
+Grand Store promotion
+Grand Store
+Vendor promotion
+Vendor
+Refer & Earn
+Grand Store
+Supercoins
+Grand Store / Marketing
+Payment gateway
+Configurable
+Courier
+Customer / Vendor / Grand Store
+Insurance
+Configurable
+VAT
+Customer / applicable party
+Marketplace commission
+Vendor
+Auction buyer fee
+Buyer
+Auction seller fee
+Seller
+That makes your system extremely flexible.
+9. Minimum Selling Price
+Every product should have a Minimum Selling Price.
+For example:
+True Cost = R100
+Grand Store says:
+We will never accept less than R115 contribution-adjusted selling economics.
+The system calculates every promotion and incentive against this threshold.
+For example:
+Normal
+R142.86 → 🟢 Healthy
+10% promotion
+R128.57 → 🟢 Healthy
+20% promotion
+R114.29 → 🟠 Warning
+25% promotion
+R107.14 → 🔴 Not permitted
+The administrator can override it only with the correct permission.
+10. Admin should see a "Costing Calculator"
+I would give your admin product screen something like:
+PRODUCT COSTING
+Supplier Price: R100.00Supplier Discount: 5%Net Supplier Cost: R95.00
+Freight: R2.00Insurance: R1.00Duties: R1.00Other: R1.00
+TRUE COST
+R100.00
+PRICING
+Target Margin: 30%Base Selling Price: R142.86
+RRP: R150.00
+Minimum Selling Price: R120.00
+ACTIVE INCENTIVES
+Promotion: 10%Refer & Earn: 5%Supercoins: R5 maximum
+PROFIT SIMULATOR
+Customer Price: R128.57Product Cost: R100.00Referral: R6.43Supercoins: R5.00Payment Fee: R3.21
+NET CONTRIBUTION
+R13.93
+Effective Net Margin: 10.83%
+🟢 / 🟠 / 🔴 Margin Status
+11. Checkout should be much simpler
+The customer should never see this complexity.
+They see:
+Product: Premium WhiskyR128.57
+You save: R14.29
+Supercoins available: R5.00
+Delivery: RXX
+Total: RXXX
+Earn: XX Supercoins
+Refer & Earn: Available
+That's it.
+12. Build one central pricing engine
+This is particularly important for Grand Store because you have:
+Normal retail 
+Vendor marketplace 
+Wholesale/trade 
+Promotions 
+Refer & Earn 
+Supercoins 
+Auctions 
+Potential international sales 
+Don't allow each section to have its own pricing calculation.
+Create one central:
+PRICING ENGINE
+It receives:
+Product + Vendor + Customer + Country + Quantity + Promotion + Referral + Loyalty + Shipping + Tax
+and returns:
+Cost + Selling Price + Discounts + Fees + Commissions + Vendor Settlement + Grand Store Contribution
+This will prevent major accounting problems later.
+13. Database structure
+At a high level, I'd have:
+products
+product_id 
+vendor_id 
+supplier_price 
+supplier_discount 
+net_cost 
+landed_cost 
+target_margin 
+base_price 
+minimum_price 
+RRP 
+VAT_class 
+pricing_rules
+rule_id 
+product_id/category_id 
+margin_percentage 
+minimum_margin 
+maximum_discount 
+effective_from 
+effective_to 
+promotions
+promotion_id 
+discount_type 
+discount_value 
+funding_party 
+start_date 
+end_date 
+maximum_discount 
+referral_rules
+referral_percentage 
+fixed_reward 
+maximum_reward 
+qualifying_amount 
+funding_party 
+loyalty_rules
+coin_value 
+earning_rate 
+redemption_rate 
+maximum_redemption 
+funding_party 
+fees
+payment_fee 
+platform_fee 
+courier_fee 
+insurance 
+other_fee 
+order_financials
+This is the most important table.
+Store the actual numbers used at the time of the transaction, not just the rules.
+That means if your referral rate changes from 5% to 7% next month, an old order still retains the original 5% calculation.
+14. The golden rule for your developer
+I would give the developer this instruction:
+Never recalculate historical orders using today's pricing rules. Every order must capture a complete financial snapshot at the moment the transaction is completed.
+This protects Grand Store's:
+Accounting 
+Vendor settlements 
+Customer statements 
+Referral payments 
+Promotions 
+Refunds 
+Auditing 
+Tax calculations 
+Profit reporting 
+15. Management dashboard
+Your admin dashboard should ultimately show:
+Today's Sales: RXXXProduct Cost: RXXXVendor Commission: RXXXPromotions: RXXXRefer & Earn: RXXXSupercoins Redeemed: RXXXPayment Fees: RXXXShipping Cost: RXXX
+Gross Contribution
+RXXX
+Net Contribution
+RXXX
+And importantly:
+Net Margin: XX%
+That gives you a true picture of whether Grand Store is actually making money—not just whether products are selling.
+If you want to hand this directly to your developer, I can turn the above into a complete technical specification with formulas, database fields, API logic, checkout logic, vendor settlement calculations, refund calculations and accounting journal entries.
+ok
+Great. I can turn this into a developer-ready Grand Store Pricing & Costing Engine Specification, covering:
+Product costing formulas 
+Supplier discounts 
+Landed cost 
+Gross margin vs markup 
+Retail pricing 
+Wholesale/trade pricing 
+Promotions & coupons 
+Refer & Earn 
+Supercoins 
+Payment gateway fees 
+Courier/shipping costs 
+15% vendor commission 
+Vendor settlement 
+Refunds & cancellations 
+VAT/tax treatment 
+Minimum-margin protection 
+Profit Guard 
+Order financial snapshots 
+Accounting journal entries 
+Admin costing calculator 
+Customer checkout calculation 
+Reporting & profitability dashboard 
+I'll structure it so your developer can use it as the actual functional specification, including the formulas and calculation sequence rather than just a conceptual description.
+give an explaination to a vendor that when he completes the form the calculation should be clear that the platform will get a better price when displayed. the platform will make nothing less then 15%. the vendor will add the percentage other then the profit but the figure will be clear
+Yes. I would explain it to the vendor in a very simple and transparent way, so the vendor understands that they are not being asked to guess the final selling price.
+Vendor Pricing Explanation
+How Your Product Price Is Calculated
+When you complete the product pricing form, the system will clearly show you how your product will be priced and what price the customer will see on the platform.
+You simply enter your cost/price and the percentage you would like to add for your own profit.
+The platform will then automatically calculate the final selling price.
+Example
+If your product cost is:
+R100.00
+You decide to add:
+20% profit
+Your price becomes:
+R120.00
+The platform will then apply its required platform margin of 15% and calculate the final customer selling price.
+The important point is that the platform's minimum 15% margin is protected automatically. You do not need to calculate this yourself.
+What You Will See
+The form will clearly show:
+Calculation
+Amount
+Your Product Cost
+R100.00
+Your Profit – 20%
+R20.00
+Your Price to Platform
+R120.00
+Platform Margin – Minimum 15%
+R21.18
+Customer Selling Price
+R141.18
+Therefore, you can see exactly:
+What your original cost is
+What profit percentage you have added
+What amount you will receive
+What the platform adds
+What the customer will see as the selling price
+The Purpose
+The system is designed to make the calculation simple, transparent and easy to understand.
+You decide your own profit percentage.
+The platform then calculates the customer-facing price while ensuring that the platform receives not less than its required 15% margin.
+You therefore do not need to manually work out complicated pricing formulas.
+Promotions and Special Offers
+If the platform later runs a promotion, coupon, Refer & Earn campaign or other customer incentive, the system will calculate this separately.
+Your agreed product price and profit will remain clearly identifiable, while the platform can manage its own promotional costs and incentives.
+Important
+The price displayed to the customer may therefore be higher than the price you enter, because it includes the platform's required margin and any applicable charges.
+Everything is shown clearly before the product is submitted, so you can see the exact figures and understand the final customer selling price.
+Product Costing:

@@ -4,6 +4,7 @@
  */
 
 const Vendor = require('../models/Vendor');
+const PlatformSettings = require('../models/PlatformSettings');
 
 const isSouthAfrica = (country) => {
   if (!country) return false;
@@ -29,14 +30,26 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
     let estimatedTaxes = 0;
     let customsFees = 0;
 
+    // Load admin platform settings if not provided
+    let platformSettings = options.settings;
+    if (!platformSettings) {
+      try {
+        platformSettings = await PlatformSettings.findOne();
+      } catch (err) {
+        platformSettings = null;
+      }
+    }
+
     // SIMULATED COURIER API LOGIC
 
     // 1. DOMESTIC SA
     if (originSA && destSA) {
       // Check if vendor has free shipping threshold
       const freeThreshold = vendor?.shippingProfile?.freeDeliveryThreshold;
-      let standardCost = 150;
-      let expressCost = 250;
+      let postnetStandardCost = Number(platformSettings?.postnetStandardFee !== undefined ? platformSettings.postnetStandardFee : 120);
+      let postnetExpressCost = Number(platformSettings?.postnetExpressFee !== undefined ? platformSettings.postnetExpressFee : 180);
+      let postnetCollectionCost = Number(platformSettings?.postnetPickupFee !== undefined ? platformSettings.postnetPickupFee : 100);
+      let courierGuyCost = 150;
 
       // Simple mock zone check
       if (vendor?.shippingProfile?.shippingZones?.length > 0) {
@@ -44,44 +57,81 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
           z.name.toLowerCase().includes(customerAddress.city.toLowerCase())
         );
         if (zone) {
-          standardCost = zone.rate;
-          expressCost = standardCost + 100;
+          postnetStandardCost = zone.rate || 120;
+          postnetExpressCost = postnetStandardCost + 60;
+          postnetCollectionCost = Math.max(50, postnetStandardCost - 20);
+          courierGuyCost = postnetStandardCost + 30;
         }
       }
 
       if (freeThreshold && shipmentItemsSubtotal >= freeThreshold) {
-        standardCost = 0;
+        postnetStandardCost = 0;
+        postnetCollectionCost = 0;
       }
 
+      // 1A. PostNet Standard Home Delivery
+      quotes.push({
+        courierName: 'PostNet',
+        serviceLevel: 'PostNet Standard Delivery',
+        deliveryType: 'home',
+        cost: postnetStandardCost,
+        estimatedDays: '2–5 business days',
+        description: 'PostNet door-to-door delivery',
+        legs: [
+          {
+            courierName: 'PostNet Standard Courier',
+            origin: originCountry,
+            destination: customerAddress.city || destCountry,
+            cost: postnetStandardCost > 0 ? postnetStandardCost * 0.7 : 70
+          }
+        ]
+      });
+
+      // 1B. PostNet Express Home Delivery
+      quotes.push({
+        courierName: 'PostNet',
+        serviceLevel: 'PostNet Express Delivery',
+        deliveryType: 'home',
+        cost: postnetExpressCost,
+        estimatedDays: '1–2 business days',
+        description: 'Priority overnight door delivery',
+        legs: [
+          {
+            courierName: 'PostNet Express Air/Road',
+            origin: originCountry,
+            destination: customerAddress.city || destCountry,
+            cost: postnetExpressCost * 0.75
+          }
+        ]
+      });
+
+      // 1C. Courier Guy Alternative Door Delivery
       quotes.push({
         courierName: 'Courier Guy',
-        serviceLevel: 'Home Delivery',
-        cost: standardCost, // What customer sees
-        estimatedDays: '2-4 business days',
+        serviceLevel: 'Courier Guy Door Delivery',
+        deliveryType: 'home',
+        cost: courierGuyCost,
+        estimatedDays: '2–4 business days',
+        description: 'Direct courier delivery',
         legs: [
           {
             courierName: 'Courier Guy Primary',
             origin: originCountry,
             destination: destCountry,
-            cost: standardCost > 0 ? standardCost * 0.6 : 80 // Internal commercial cost
-          },
-          {
-            courierName: 'Local Courier Guy Partner',
-            origin: 'Local Hub',
-            destination: customerAddress.city || 'Customer',
-            cost: standardCost > 0 ? standardCost * 0.2 : 30 // Internal commercial cost
+            cost: courierGuyCost > 0 ? courierGuyCost * 0.6 : 80
           }
         ]
       });
       
-      // PostNet branches are resolved once by the checkout controller. If the
-      // selected city has no branch, the locator supplies the nearest real ones.
+      // 1D. PostNet Branch Collection (PostNet-to-PostNet)
       const postnetLookup = options.postnetLookup || {};
       quotes.push({
         courierName: 'PostNet',
-        serviceLevel: 'PostNet to PostNet',
-        cost: expressCost,
-        estimatedDays: '1-3 business days',
+        serviceLevel: 'PostNet Store Collection',
+        deliveryType: 'pickup',
+        cost: postnetCollectionCost,
+        estimatedDays: '2–3 business days',
+        description: 'Collect at your preferred PostNet branch',
         stores: postnetLookup.stores || [],
         searchedCity: postnetLookup.searchedCity || customerAddress.city || '',
         hasCityMatch: Boolean(postnetLookup.hasCityMatch),
@@ -89,10 +139,10 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
         storeLookupError: postnetLookup.error || '',
         legs: [
           {
-            courierName: 'PostNet Express',
+            courierName: 'PostNet PUDO Network',
             origin: originCountry,
             destination: customerAddress.city || 'Customer',
-            cost: expressCost * 0.8
+            cost: postnetCollectionCost * 0.7
           }
         ]
       });
@@ -100,13 +150,13 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
     // 2. EXPORT (SA -> Intl)
     else if (originSA && !destSA) {
       isInternational = true;
-      // Mock DHL/Fedex rates
       let baseRate = 1800; // R1800 flat rate mock
       if (totalWeightKg > 10) baseRate += 500;
       
       quotes.push({
         courierName: 'DHL Express',
         serviceLevel: 'International Express',
+        deliveryType: 'home',
         cost: baseRate,
         estimatedDays: '5-8 business days',
         legs: [
@@ -131,8 +181,6 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
         ]
       });
 
-      // Mock Duties/Taxes (DAP by default, but we can quote landed cost)
-      // Usually duties are 10-20% on alcohol, plus destination VAT
       estimatedDuties = parseFloat((shipmentItemsSubtotal * 0.15).toFixed(2));
       estimatedTaxes = parseFloat((shipmentItemsSubtotal * 0.20).toFixed(2));
       customsFees = 250; 
@@ -144,6 +192,7 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
       quotes.push({
         courierName: 'DHL Express',
         serviceLevel: 'International Priority',
+        deliveryType: 'home',
         cost: baseRate,
         estimatedDays: '7-14 business days',
         legs: [

@@ -8,11 +8,11 @@ const {
   getMyOrders,
   markOrderAsPaid
 } = require('../controllers/orderController');
-const { protect, requireRoles, financeStaff } = require('../middleware/authMiddleware');
+const { protect, optionalAuth, requireRoles, financeStaff } = require('../middleware/authMiddleware');
 
-router.route('/').post(protect, addOrderItems);
+router.route('/').post(optionalAuth, addOrderItems);
 router.route('/myorders').get(protect, getMyOrders);
-router.route('/:id/pay').put(protect, markOrderAsPaid).post(protect, markOrderAsPaid);
+router.route('/:id/pay').put(optionalAuth, markOrderAsPaid).post(optionalAuth, markOrderAsPaid);
 router.route('/vendor/sales').get(
   protect,
   requireRoles('vendor_active', 'admin', 'super_admin', 'product_manager'),
@@ -23,11 +23,11 @@ router.route('/vendor/sales/:shipmentId/status').patch(
   requireRoles('vendor_active', 'admin', 'super_admin', 'product_manager'),
   updateShipmentStatus,
 );
-router.route('/:id').get(protect, getOrderById);
+router.route('/:id').get(optionalAuth, getOrderById);
 
 // Bank Transfer Routes
 const { uploadProofOfPayment, approvePayment, rejectPayment } = require('../controllers/bankTransferController');
-router.route('/:orderId/bank-transfer/upload').post(protect, uploadProofOfPayment);
+router.route('/:orderId/bank-transfer/upload').post(optionalAuth, uploadProofOfPayment);
 router.route('/:orderId/bank-transfer/approve').post(protect, financeStaff, approvePayment);
 router.route('/:orderId/bank-transfer/reject').post(protect, financeStaff, rejectPayment);
 

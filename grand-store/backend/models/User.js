@@ -40,6 +40,27 @@ const userSchema = new mongoose.Schema({
     unique: true,
     sparse: true,
   },
+  appleId: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+  magicLinkToken: {
+    type: String,
+    sparse: true,
+  },
+  magicLinkExpires: {
+    type: Date,
+  },
+  isAgeVerified: {
+    type: Boolean,
+    default: false,
+  },
+  customerTier: {
+    type: String,
+    enum: ['retail', 'premium', 'verified_bidder', 'trade_wholesale', 'vendor'],
+    default: 'retail',
+  },
   role: {
     type: String,
     enum: ['customer', 'admin', 'super_admin', 'accountant', 'product_manager', 'vendor_pending', 'vendor_approved_unpaid', 'vendor_active', 'vendor_rejected', 'auction_host', 'event_host'],
@@ -187,6 +208,14 @@ const userSchema = new mongoose.Schema({
     ref: 'User'
   },
   rewardBalance: {
+    type: Number,
+    default: 0
+  },
+  superCoinsBalance: {
+    type: Number,
+    default: 0
+  },
+  pendingSuperCoins: {
     type: Number,
     default: 0
   },

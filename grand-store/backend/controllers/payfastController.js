@@ -76,16 +76,26 @@ exports.generateShopPayment = async (req, res) => {
     const config = getPayfastConfig();
     const frontendUrl = getFrontendUrl(req);
     const backendUrl = getBackendUrl(req);
+
+    const customerName = order.user?.name || order.guestInfo?.name || order.shippingAddress?.name || order.shippingAddress?.fullName || 'Guest Customer';
+    const customerEmail = order.user?.email || order.guestInfo?.email || order.shippingAddress?.email || 'customer@grandstore.co.za';
+    const nameParts = customerName.trim().split(/\s+/);
+    const returnUrl = order.isGuest 
+      ? `${frontendUrl}/order-success/${order._id}?payment=success&guest=true`
+      : `${frontendUrl}/customer/order/${order._id}?payment=success`;
+    const cancelUrl = order.isGuest
+      ? `${frontendUrl}/order-success/${order._id}?payment=cancel&guest=true`
+      : `${frontendUrl}/customer/order/${order._id}?payment=cancel`;
     
     const data = {
       merchant_id: config.merchant_id,
       merchant_key: config.merchant_key,
-      return_url: `${frontendUrl}/customer/order/${order._id}?payment=success`,
-      cancel_url: `${frontendUrl}/customer/order/${order._id}?payment=cancel`,
+      return_url: returnUrl,
+      cancel_url: cancelUrl,
       notify_url: `${backendUrl}/api/payfast/itn`,
-      name_first: order.user.name.split(' ')[0],
-      name_last: order.user.name.split(' ').slice(1).join(' ') || 'Customer',
-      email_address: order.user.email,
+      name_first: nameParts[0] || 'Customer',
+      name_last: nameParts.slice(1).join(' ') || 'Guest',
+      email_address: customerEmail,
       m_payment_id: `SHP-${order._id}`,
       amount: order.totalPrice.toFixed(2),
       item_name: `Order ${order.orderId}`

@@ -26,12 +26,16 @@ exports.uploadProofOfPayment = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    if (order.user.toString() !== req.user._id.toString()) {
+    const isOwner = order.user && req.user && order.user.toString() === req.user._id.toString();
+    const isGuestOwner = order.isGuest;
+    const isAdmin = req.user && ['admin', 'super_admin', 'product_manager', 'finance_staff'].includes(req.user.role);
+
+    if (!isOwner && !isGuestOwner && !isAdmin) {
       return res.status(403).json({ message: 'Not authorized to modify this order' });
     }
 
     // Append event
-    await CheckoutEngine.appendEvent(orderId, 'ProofOfPaymentUploaded', { proofUrl }, req.user._id);
+    await CheckoutEngine.appendEvent(order._id.toString(), 'ProofOfPaymentUploaded', { proofUrl }, req.user ? req.user._id : null);
 
     // Update read model state
     order.paymentStatus = 'Awaiting_Approval';

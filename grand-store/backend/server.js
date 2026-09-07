@@ -19,6 +19,11 @@ const glossaryRoutes = require("./routes/glossaryRoutes");
 const app = express();
 app.set('trust proxy', 1);
 
+app.use((req, res, next) => {
+  console.log(`[API] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // Middleware
 // Parse allowed origins from .env or fallback to localhost
 let allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -31,6 +36,10 @@ let allowedOrigins = process.env.ALLOWED_ORIGINS
     ];
 
 const productionDomains = [
+  "https://grandstoreglobal.com",
+  "https://www.grandstoreglobal.com",
+  "http://grandstoreglobal.com",
+  "http://www.grandstoreglobal.com",
   "https://grandstore.yogapranafitness.com",
   "https://www.grandstore.yogapranafitness.com",
   "http://grandstore.yogapranafitness.com",
@@ -53,15 +62,12 @@ app.use(
 
       if (
         allowedOrigins.indexOf(origin) !== -1 ||
-        allowedOrigins.includes("*")
+        allowedOrigins.includes("*") ||
+        process.env.NODE_ENV !== "production"
       ) {
         callback(null, true);
       } else {
-        callback(
-          new Error(
-            "The CORS policy for this site does not allow access from the specified Origin.",
-          ),
-        );
+        callback(null, false);
       }
     },
     credentials: true,
@@ -155,12 +161,14 @@ const newsletterRoutes = require("./routes/newsletterRoutes");
 const chatbotRoutes = require("./routes/chatbotRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const couponRoutes = require("./routes/couponRoutes");
+const superCoinRoutes = require("./routes/superCoinRoutes");
 
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/vendor", vendorRoutes);
 app.use("/api/coupons", couponRoutes);
+app.use("/api/super-coins", superCoinRoutes);
 app.use("/api/auction", auctionRoutes);
 app.use("/api/auctions", auctionRoutes);
 app.use("/api/events", eventRoutes);
@@ -204,5 +212,19 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+
+  // Auto-reverse port 5000 and 8081 for connected Android devices
+  try {
+    const { exec } = require('child_process');
+    const autoReverse = () => {
+      exec('adb reverse tcp:5000 tcp:5000', () => {});
+      exec('adb reverse tcp:8081 tcp:8081', () => {});
+    };
+    autoReverse();
+    setInterval(autoReverse, 10000);
+  } catch (e) {
+    // ignore if adb unavailable
+  }
 });
+
 

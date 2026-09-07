@@ -16,6 +16,10 @@ import {
   Clock,
   AlertCircle,
   RefreshCw,
+  Truck,
+  MapPin,
+  Coins,
+  ShieldCheck,
 } from "lucide-react";
 import Price from "../../components/ui/Price";
 
@@ -240,6 +244,154 @@ export default function CustomerOrdersPage() {
                   </button>
                 </div>
               </div>
+
+              {/* PostNet 7-Stage Milestone Progression & Service Summary */}
+              {(() => {
+                const isPickup = order.deliveryPreference === 'pickup' || Boolean(order.selectedPostnetStore);
+                const currentStage = (() => {
+                  if (order.isDelivered || order.deliveryStatus === 'Delivered') return 7;
+                  if (order.deliveryStatus === 'At Collection Point' || order.deliveryStatus === 'Out for Delivery') return 6;
+                  if (order.deliveryStatus === 'In Transit') return 5;
+                  if (order.deliveryStatus === 'Collected' || order.deliveryStatus === 'Dispatched') return 4;
+                  if (order.deliveryStatus === 'Processing' || order.orderStatus === 'Processing') return 3;
+                  if (order.isPaid || order.paymentStatus === 'Paid') return 2;
+                  return 1;
+                })();
+
+                const stages = [
+                  { step: 1, name: "Payment Confirmed" },
+                  { step: 2, name: "Order Confirmed" },
+                  { step: 3, name: "Vendor Preparing" },
+                  { step: 4, name: "Collected" },
+                  { step: 5, name: "In Transit" },
+                  { step: 6, name: isPickup ? "At Collection Point" : "Out for Delivery" },
+                  { step: 7, name: isPickup ? "Collected" : "Delivered" },
+                ];
+
+                return (
+                  <div className="px-4 sm:px-6 md:px-8 py-5 bg-white/[0.015] border-b border-white/[0.05] space-y-4">
+                    {/* Milestone Progress Bar */}
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1.5 rounded-lg bg-[var(--color-gold)]/10 text-[var(--color-gold)] border border-[var(--color-gold)]/20">
+                            <Truck size={14} />
+                          </span>
+                          <span className="text-xs font-serif text-white">
+                            {isPickup ? 'PostNet Store Collection' : 'PostNet Door Delivery'}
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] text-[var(--color-gold)] border border-white/10">
+                          Milestone {currentStage} of 7: {stages[currentStage - 1]?.name}
+                        </span>
+                      </div>
+
+                      {/* Progression Steps */}
+                      <div className="relative pt-2 pb-1">
+                        <div className="hidden md:flex items-center justify-between relative">
+                          <div className="absolute top-3 left-3 right-3 h-0.5 bg-white/10 -z-0"></div>
+                          <div
+                            className="absolute top-3 left-3 h-0.5 bg-gradient-to-r from-[var(--color-gold)] to-emerald-400 -z-0 transition-all duration-500"
+                            style={{ width: `${Math.max(0, Math.min(100, ((currentStage - 1) / 6) * 100))}%` }}
+                          ></div>
+
+                          {stages.map((st) => {
+                            const isDone = st.step <= currentStage;
+                            const isCurrent = st.step === currentStage;
+                            return (
+                              <div key={st.step} className="flex flex-col items-center relative z-10 text-center w-24">
+                                <div
+                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-mono font-bold transition-all ${
+                                    isCurrent
+                                      ? "bg-[var(--color-gold)] text-black ring-4 ring-[var(--color-gold)]/20 shadow-[0_0_10px_rgba(212,175,55,0.5)]"
+                                      : isDone
+                                      ? "bg-emerald-500 text-black"
+                                      : "bg-[#161616] text-white/40 border border-white/10"
+                                  }`}
+                                >
+                                  {isDone && !isCurrent ? "✓" : st.step}
+                                </div>
+                                <span
+                                  className={`text-[10px] mt-1.5 leading-tight font-medium ${
+                                    isCurrent
+                                      ? "text-[var(--color-gold)] font-bold"
+                                      : isDone
+                                      ? "text-white/80"
+                                      : "text-white/30"
+                                  }`}
+                                >
+                                  {st.name}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Mobile Simplified Milestone Bar */}
+                        <div className="md:hidden flex flex-col gap-2">
+                          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gold-gradient transition-all"
+                              style={{ width: `${(currentStage / 7) * 100}%` }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between text-[11px] text-white/60">
+                            <span>Stage {currentStage}/7</span>
+                            <span className="text-[var(--color-gold)] font-semibold">{stages[currentStage - 1]?.name}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* PostNet Pickup Store Card & Ready Alert */}
+                    {isPickup && order.selectedPostnetStore && (
+                      <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        currentStage >= 6
+                          ? 'bg-[var(--color-gold)]/10 border-[var(--color-gold)]/40 shadow-[0_0_20px_rgba(212,175,55,0.15)]'
+                          : 'bg-white/[0.02] border-white/10'
+                      }`}>
+                        <div className="space-y-1">
+                          <div className="text-xs font-bold text-[var(--color-gold)] flex items-center gap-1.5">
+                            <MapPin size={13} />
+                            {currentStage >= 6 ? 'Ready For Collection: ' : 'Designated Collection Point: '}
+                            {order.selectedPostnetStore.name}
+                          </div>
+                          <div className="text-xs text-white/70">
+                            {order.selectedPostnetStore.address}
+                            {order.selectedPostnetStore.hours && ` • ${order.selectedPostnetStore.hours}`}
+                          </div>
+                        </div>
+
+                        {currentStage >= 6 ? (
+                          <span className="text-xs font-bold font-mono px-3 py-1 rounded-lg bg-[var(--color-gold)] text-black shrink-0 self-start sm:self-auto flex items-center gap-1.5 shadow-[0_0_10px_rgba(212,175,55,0.4)]">
+                            <ShieldCheck size={14} /> PIN Sent (Bring ID)
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-mono text-white/50 shrink-0 self-start sm:self-auto">
+                            Est. 2–3 Business Days
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Super Coins Badges */}
+                    {(order.superCoinsEarned > 0 || order.superCoinsUsed > 0) && (
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        {order.superCoinsEarned > 0 && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium bg-[var(--color-gold)]/10 text-[var(--color-gold)] border border-[var(--color-gold)]/20">
+                            <Coins size={12} /> +{order.superCoinsEarned} Super Coins ({order.isDelivered ? 'Credited to Wallet' : 'Pending Clearance on Delivery'})
+                          </span>
+                        )}
+                        {order.superCoinsUsed > 0 && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium bg-white/[0.04] text-white/70 border border-white/10">
+                            🪙 {order.superCoinsUsed} Coins Redeemed (-R{Number(order.superCoinsDiscount || 0).toFixed(2)})
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               <div className="p-4 sm:p-6 md:px-8 bg-black/20">
                 <div className="grid grid-cols-1 md:flex gap-3 md:gap-4 md:overflow-x-auto custom-scrollbar md:pb-2">

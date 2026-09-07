@@ -7,6 +7,7 @@ import { useCategories } from '../../context/CategoryContext';
 import DynamicIcon from '../../components/DynamicIcon';
 import CatalogHierarchyFields from '../../components/CatalogHierarchyFields';
 import ProductImageManager, { existingImageEntries } from '../../components/ProductImageManager';
+import ProductCostingCard from '../../components/ProductCostingCard';
 
 export default function EditProduct({ onNotify }) {
   const { user } = useAuth();
@@ -16,6 +17,7 @@ export default function EditProduct({ onNotify }) {
   const { categories } = useCategories();
   const storeCategories = categories.map(c => c.name);
   
+  const [costingData, setCostingData] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     type: '',
@@ -93,6 +95,9 @@ export default function EditProduct({ onNotify }) {
             minOrderQuantity: product.minOrderQuantity || '',
             exportReady: product.exportReady || false
           });
+          if (product.costing) {
+            setCostingData(product.costing);
+          }
           setImageEntries(existingImageEntries(product.image, product.gallery));
         }
       } catch (err) {
@@ -179,11 +184,13 @@ export default function EditProduct({ onNotify }) {
       }));
       payload.append('description', formData.description);
       payload.append('price', formData.price);
+      if (costingData) {
+        payload.append('costing', JSON.stringify(costingData));
+      }
       payload.append('stock', formData.stock);
       
       const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(Boolean);
       payload.append('tags', JSON.stringify(tagsArray));
-      
       const notesArray = formData.tastingNotes.split(',').map(t => t.trim()).filter(Boolean);
       payload.append('tastingNotes', JSON.stringify(notesArray));
       
@@ -319,6 +326,15 @@ export default function EditProduct({ onNotify }) {
                   />
                 </div>
                 
+                {/* Section 300-344 Vendor Product Costing & Protected Margin Calculator */}
+                <ProductCostingCard
+                  initialCosting={costingData}
+                  currentPrice={formData.price}
+                  onPriceChange={(newPrice) => setFormData(prev => ({ ...prev, price: newPrice }))}
+                  onCostingChange={(costing) => setCostingData(costing)}
+                  isInternalProductManager={isInternalProductManager}
+                />
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
                   <div className="relative z-0 w-full group">
                     <input 

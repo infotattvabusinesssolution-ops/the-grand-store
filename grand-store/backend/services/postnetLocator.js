@@ -164,10 +164,9 @@ const resolveCoordinates = async ({ address, lat, lng }) => {
     timeout: 8000
   });
   const result = Array.isArray(response.data) ? response.data[0] : null;
-  if (!result) {
-    const error = new Error('Could not find coordinates for the selected city');
-    error.statusCode = 404;
-    throw error;
+  if (!result || !result.lat || !result.lon) {
+    // Default to central South Africa coordinates (Johannesburg) so quoting/lookup does not fail
+    return { lat: -26.2041, lng: 28.0473 };
   }
 
   return { lat: Number(result.lat), lng: Number(result.lon) };

@@ -60,9 +60,17 @@ const addOrderItems = async (req, res) => {
     const gatewayFeeAmount = parseFloat((calculatedTotal * gatewayFeePct / 100).toFixed(2));
 
     // Calculate Referral/Rewards discounts
+    const crypto = require('crypto');
+    const isGuest = !req.user || Boolean(req.body.isGuest);
+    const guestEmail = (req.body.guestEmail || shippingAddress?.email || '').trim().toLowerCase();
+    const guestName = (req.body.guestName || shippingAddress?.name || shippingAddress?.fullName || 'Guest Customer').trim();
+    const guestPhone = (req.body.guestPhone || shippingAddress?.phone || shippingAddress?.phoneNumber || '').trim();
+    const guestAccessToken = isGuest ? crypto.randomBytes(24).toString('hex') : null;
+    const isAgeConfirmed = Boolean(req.body.isAgeConfirmed);
+
     const User = require('../models/User');
-    const user = await User.findById(req.user._id);
-    const previousOrders = await Order.countDocuments({ user: req.user._id });
+    const user = req.user ? await User.findById(req.user._id) : null;
+    const previousOrders = user ? await Order.countDocuments({ user: user._id }) : 0;
 
     let appliedWelcomeDiscount = 0;
     // Refer & earn rewards the referrer who shared the link unless welcome discount is explicitly enabled
@@ -82,21 +90,62 @@ const addOrderItems = async (req, res) => {
         await user.save();
     }
 
+    // === SUPER COINS MARGIN-PROTECTION REDEMPTION ===
+    const SuperCoinEngine = require('../engines/superCoinEngine');
+    const SuperCoinLedger = require('../models/SuperCoinLedger');
+
+    let superCoinsUsed = 0;
+    let superCoinsDiscount = 0;
+    let superCoinsEarned = 0;
+
+    if (req.body.useSuperCoins && user && (user.superCoinsBalance || 0) > 0) {
+      const redemptionCheck = SuperCoinEngine.calculateAllowedRedemption({
+        userCoins: user.superCoinsBalance || 0,
+        eligibleSubtotal: subTotal,
+        shippingCost,
+        commissionPct,
+        gatewayFeePct,
+        settings
+      });
+
+      superCoinsUsed = redemptionCheck.maxRedeemableCoins;
+      superCoinsDiscount = redemptionCheck.maxDiscountRand;
+
+      user.superCoinsBalance = Math.max(0, (user.superCoinsBalance || 0) - superCoinsUsed);
+      await user.save();
+    }
+
+    // Calculate potential coins earned on eligible product subtotal
+    superCoinsEarned = SuperCoinEngine.calculateEarnedCoins(subTotal, settings);
+    if (superCoinsEarned > 0 && user) {
+      user.pendingSuperCoins = (user.pendingSuperCoins || 0) + superCoinsEarned;
+      await user.save();
+    }
+
     if (shippingAddress && (shippingAddress.phone || shippingAddress.phoneNumber) && user && !user.phone) {
       user.phone = (shippingAddress.phone || shippingAddress.phoneNumber).trim();
       user.phoneNumber = user.phone;
       await user.save();
     }
 
-    const finalTotal = parseFloat((calculatedTotal - appliedWelcomeDiscount - appliedRewards).toFixed(2));
+    const finalTotal = parseFloat(Math.max(0, calculatedTotal - appliedWelcomeDiscount - appliedRewards - superCoinsDiscount).toFixed(2));
 
     let allOrderItems = [];
     let vendorPayables = [];
 
+    const selectedPickupStore = req.body.selectedPostnetStore || quote.shipments?.find(s => s.selectedPickupStore)?.selectedPickupStore || null;
+    const deliveryPreference = req.body.deliveryPreference || (selectedPickupStore ? 'postnet' : 'home');
+
     // Create the master order with isPaid: false
     const order = new Order({
-      user: req.user._id,
+      user: user ? user._id : null,
+      isGuest: isGuest,
+      guestInfo: isGuest ? { name: guestName, email: guestEmail, phone: guestPhone } : undefined,
+      guestAccessToken: isGuest ? guestAccessToken : undefined,
+      isAgeConfirmed: isAgeConfirmed,
       shippingAddress,
+      deliveryPreference,
+      selectedPostnetStore: selectedPickupStore,
       paymentMethod,
       isGift: isGift || false,
       giftRecipientName: giftRecipientName || "",
@@ -113,6 +162,9 @@ const addOrderItems = async (req, res) => {
       gatewayFeeAmount,
       appliedWelcomeDiscount,
       appliedRewards,
+      superCoinsUsed,
+      superCoinsDiscount,
+      superCoinsEarned,
       totalPrice: finalTotal,
       transactionId,
       orderId,
@@ -163,24 +215,27 @@ const addOrderItems = async (req, res) => {
         actualCost = internalLegs.reduce((sum, leg) => sum + leg.cost, 0);
       }
 
+      const activePickupStore = shp.selectedPickupStore || selectedPickupStore;
+      const isPickupMode = deliveryPreference === 'postnet' || shp.selectedCourier?.deliveryType === 'pickup' || Boolean(activePickupStore);
+
       const newShipment = new Shipment({
         shipmentId,
         orderId: order._id,
         orderRef: order.orderId,
         vendorId: shp.vendorId,
-        customerId: req.user._id,
+        customerId: user ? user._id : null,
         pickupAddress: { country: shp.originCountry },
-        deliveryAddress: shp.selectedPickupStore
-          ? { ...shippingAddress, address: shp.selectedPickupStore.address }
+        deliveryAddress: activePickupStore
+          ? { ...shippingAddress, address: activePickupStore.address }
           : shippingAddress,
-        deliveryMethod: shp.selectedCourier?.courierName === 'PostNet'
+        deliveryMethod: isPickupMode
           ? 'postnet_pickup'
           : (shp.isInternational ? 'international_courier' : 'home_delivery'),
-        pickupLocation: shp.selectedPickupStore
+        pickupLocation: activePickupStore
           ? {
-              locationId: shp.selectedPickupStore.id,
-              name: shp.selectedPickupStore.name,
-              address: shp.selectedPickupStore.address
+              locationId: activePickupStore.id,
+              name: activePickupStore.name,
+              address: activePickupStore.address
             }
           : undefined,
         customerShippingCharge: shp.selectedCourier ? shp.selectedCourier.cost : 0,
@@ -197,24 +252,64 @@ const addOrderItems = async (req, res) => {
     order.orderItems = allOrderItems;
     order.vendorPayables = vendorPayables;
 
-    const createdOrder = await order.save();
+    // Capture Immutable Financial Snapshot (Costing GS Understanding Section 14 & 251)
+    const CostingEngine = require('../engines/costingEngine');
+    order.financialSnapshot = CostingEngine.calculateOrderFinancialSnapshot(order, settings);
+
+    await order.save();
+
+    // Record Super Coin Ledger entries
+    if (superCoinsUsed > 0 && user) {
+      await SuperCoinLedger.create({
+        userId: user._id,
+        amount: -superCoinsUsed,
+        type: 'redeemed',
+        activity: 'order_discount',
+        status: 'completed',
+        orderId: order._id,
+        orderRef: order.invoiceNumber || order.orderId,
+        description: `Redeemed ${superCoinsUsed} Super Coins (-R${superCoinsDiscount.toFixed(2)}) on order #${order.invoiceNumber || order.orderId}`,
+        balanceSnapshot: user.superCoinsBalance
+      }).catch(err => console.error('Error logging SuperCoin redemption ledger:', err));
+    }
+
+    if (superCoinsEarned > 0 && user) {
+      const expiryMonths = settings?.superCoinsExpiryMonths || 12;
+      const expiryDate = new Date();
+      expiryDate.setMonth(expiryDate.getMonth() + expiryMonths);
+
+      await SuperCoinLedger.create({
+        userId: user._id,
+        amount: superCoinsEarned,
+        type: 'earned',
+        activity: 'purchase',
+        status: 'pending',
+        orderId: order._id,
+        orderRef: order.invoiceNumber || order.orderId,
+        expiryDate,
+        description: `Earned ${superCoinsEarned} Super Coins on order #${order.invoiceNumber || order.orderId} (Pending delivery clearance)`,
+        balanceSnapshot: user.superCoinsBalance
+      }).catch(err => console.error('Error logging SuperCoin earning ledger:', err));
+    }
+    const createdOrder = order;
     
     // === EVENT SOURCING: Log the initial sequence of events ===
     const CheckoutEngine = require('../services/CheckoutEngine');
+    const actorId = user ? user._id : null;
     
     await CheckoutEngine.appendEvent(createdOrder._id.toString(), 'CheckoutInitiated', {
-      customer: req.user._id,
+      customer: user ? user._id : 'guest',
       items: allOrderItems
-    }, req.user._id);
+    }, actorId);
 
     await CheckoutEngine.appendEvent(createdOrder._id.toString(), 'DeliveryCalculated', {
       shipments: quote.shipments,
       totalShippingCost: shippingCost
-    }, req.user._id);
+    }, actorId);
 
     await CheckoutEngine.appendEvent(createdOrder._id.toString(), 'PaymentMethodSelected', {
       method: paymentMethod
-    }, req.user._id);
+    }, actorId);
 
     await CheckoutEngine.appendEvent(createdOrder._id.toString(), 'OrderPlaced', {
       orderId: createdOrder.orderId,
@@ -225,16 +320,15 @@ const addOrderItems = async (req, res) => {
         vatAmount,
         totalPrice: calculatedTotal
       }
-    }, req.user._id);
+    }, actorId);
 
     // Send emails based on payment method
     try {
       const { sendEmail } = require('../utils/emailService');
       const { bankTransferInstructionsTemplate } = require('../utils/emailTemplates');
-      const User = require('../models/User');
-      const userDoc = await User.findById(req.user._id);
+      const recipientEmail = user ? user.email : guestEmail;
 
-      if (userDoc && paymentMethod === 'Bank Transfer') {
+      if (recipientEmail && paymentMethod === 'Bank Transfer') {
         const bankDetails = {
           bankName: 'FNB',
           accountName: 'The Grand Store',
@@ -242,7 +336,7 @@ const addOrderItems = async (req, res) => {
           branchCode: '250655'
         };
         await sendEmail({
-          to: userDoc.email,
+          to: recipientEmail,
           subject: `Payment Required - Order #${createdOrder._id}`,
           html: bankTransferInstructionsTemplate(createdOrder, bankDetails)
         });
@@ -276,10 +370,10 @@ const processOrderPayment = async (orderId) => {
   // Reward the referrer if this was the customer's first order
   try {
     const User = require('../models/User');
-    const user = await User.findById(order.user);
+    const user = order.user ? await User.findById(order.user) : null;
     
     // Check if previous paid orders exist (excluding this one)
-    const previousPaidOrders = await Order.countDocuments({ user: order.user, isPaid: true, _id: { $ne: order._id } });
+    const previousPaidOrders = order.user ? await Order.countDocuments({ user: order.user, isPaid: true, _id: { $ne: order._id } }) : 0;
     
     if (previousPaidOrders === 0 && user && user.referredBy) {
       const PlatformSettings = require('../models/PlatformSettings');
@@ -333,11 +427,17 @@ const processOrderPayment = async (orderId) => {
     const { generateOrderReceiptBuffer } = require('../utils/pdfService');
     // We need user email, so let's populate user if not already
     const User = require('../models/User');
-    const user = await User.findById(order.user);
-    if (user) {
-      const pdfBuffer = await generateOrderReceiptBuffer(order, user);
+    const user = order.user ? await User.findById(order.user) : null;
+    const recipientEmail = user ? user.email : order.guestInfo?.email;
+    if (recipientEmail) {
+      const customerMock = user || {
+        name: order.guestInfo?.name || 'Customer',
+        email: recipientEmail,
+        phone: order.guestInfo?.phone || ''
+      };
+      const pdfBuffer = await generateOrderReceiptBuffer(order, customerMock);
       await sendEmail({
-        to: user.email,
+        to: recipientEmail,
         subject: `Payment Receipt #${order.invoiceNumber || order.orderId || order._id}`,
         html: orderConfirmationTemplate(order),
         attachments: [
@@ -667,10 +767,11 @@ const markOrderAsPaid = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // Verify user ownership or staff/admin
-    const isOwner = order.user && order.user.toString() === req.user._id.toString();
-    const isAdmin = ['admin', 'super_admin', 'product_manager', 'finance_staff'].includes(req.user?.role);
-    if (!isOwner && !isAdmin) {
+    // Verify user ownership or staff/admin or guest order
+    const isOwner = order.user && req.user && order.user.toString() === req.user._id.toString();
+    const isAdmin = req.user && ['admin', 'super_admin', 'product_manager', 'finance_staff'].includes(req.user?.role);
+    const isGuestOwner = order.isGuest;
+    if (!isOwner && !isAdmin && !isGuestOwner) {
       return res.status(403).json({ message: 'Not authorized to update this order' });
     }
 

@@ -11,18 +11,15 @@ export default function CartPage({ cartItems, onUpdateQuantity, onRemove, onClea
 
   const handleCheckoutClick = (e) => {
     e.preventDefault();
-    if (!user) {
-      onNotify("Please log in to proceed to checkout.");
-      navigate('/login');
-      return;
+    if (user) {
+      const nonCustomerRoles = ['admin', 'super_admin', 'accountant', 'product_manager'];
+      if (user.role && (user.role.startsWith('vendor') || nonCustomerRoles.includes(user.role))) {
+        onNotify("Vendors and admins cannot checkout. Please login as a customer to buy.");
+        navigate('/register');
+        return;
+      }
     }
-    const nonCustomerRoles = ['admin', 'super_admin', 'accountant', 'product_manager'];
-    if (user.role && (user.role.startsWith('vendor') || nonCustomerRoles.includes(user.role))) {
-      onNotify("Vendors and admins cannot checkout. Please login as a customer to buy.");
-      navigate('/register');
-      return;
-    }
-    navigate(`/customer/checkout`);
+    navigate('/customer/checkout');
   };
 
   const itemCount = cartItems.reduce((total, item) => total + item.quantity, 0);

@@ -1,6 +1,30 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ChevronRight, ChevronDown, ChevronUp, ArrowRight, ShieldCheck, Lock, CreditCard, Loader2, Truck, AlertTriangle, CheckCircle2, ShoppingCart, MapPin, FileText, Download, Plus, Minus, Trash2, Phone } from 'lucide-react';
+import {
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  ArrowRight,
+  ShieldCheck,
+  Lock,
+  CreditCard,
+  Loader2,
+  Truck,
+  AlertTriangle,
+  CheckCircle2,
+  ShoppingCart,
+  MapPin,
+  FileText,
+  Download,
+  Plus,
+  Minus,
+  Trash2,
+  Phone,
+  Sparkles,
+  Gift,
+  Coins,
+  Store
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getProductPrice } from '../../data';
 import LocationInput from '../../components/LocationInput';
@@ -12,23 +36,47 @@ import Price from '../../components/ui/Price';
 import StoreBankDetailsCard from '../../components/StoreBankDetailsCard';
 import api from '../../api';
 
-export default function CheckoutPage({ cartItems, updateCartQuantity, removeFromCart, onClearCart, clearVendorCart, onNotify }) {
+const POSTNET_AVAILABLE_CITIES = [
+  { name: 'Sandton', postalCode: '2196', lat: -26.1076, lng: 28.0567 },
+  { name: 'Johannesburg', postalCode: '2000', lat: -26.2041, lng: 28.0473 },
+  { name: 'Cape Town', postalCode: '8001', lat: -33.9249, lng: 18.4241 },
+  { name: 'Durban', postalCode: '4001', lat: -29.8587, lng: 31.0218 },
+  { name: 'Pretoria', postalCode: '0002', lat: -25.7479, lng: 28.2293 },
+  { name: 'Stellenbosch', postalCode: '7600', lat: -33.9321, lng: 18.8602 },
+  { name: 'Centurion', postalCode: '0157', lat: -25.8603, lng: 28.1895 },
+  { name: 'Gqeberha', postalCode: '6001', lat: -33.9608, lng: 25.6022 },
+  { name: 'Bloemfontein', postalCode: '9301', lat: -29.0852, lng: 26.1596 },
+  { name: 'East London', postalCode: '5201', lat: -33.0153, lng: 27.9116 }
+];
+
+export default function CheckoutPage({
+  cartItems,
+  updateCartQuantity,
+  removeFromCart,
+  onClearCart,
+  clearVendorCart,
+  onNotify
+}) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const vendorId = searchParams.get('vendor');
-  const vendorCartItems = vendorId ? cartItems.filter(item => (item.storeId || item.vendorId || 'grand-store') === vendorId) : cartItems;
+  const vendorCartItems = vendorId
+    ? cartItems.filter((item) => (item.storeId || item.vendorId || 'grand-store') === vendorId)
+    : cartItems;
 
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [quoteLoading, setQuoteLoading] = useState(false);
 
-  // Flow State: 1 = Address, 2 = Quote & Payment
+  // 4-Step Wizard: 1 = Details, 2 = Delivery Method, 3 = Payment, 4 = Proof Upload
   const [checkoutStep, setCheckoutStep] = useState(1);
   const [quote, setQuote] = useState(null);
   const [dutiesAccepted, setDutiesAccepted] = useState(false);
-  const [deliveryPreference, setDeliveryPreference] = useState('home');
+  const [deliveryPreference, setDeliveryPreference] = useState('home'); // 'home' or 'postnet'
   const [applyRewards, setApplyRewards] = useState(false);
+  const [useSuperCoins, setUseSuperCoins] = useState(true);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+  const [isAgeConfirmed, setIsAgeConfirmed] = useState(false);
 
   const [formData, setFormData] = useState({
     email: user ? user.email : '',
@@ -38,10 +86,11 @@ export default function CheckoutPage({ cartItems, updateCartQuantity, removeFrom
     address: '',
     city: '',
     postalCode: '',
-    country: '',
+    country: 'South Africa',
     lat: null,
     lng: null
   });
+
   const [postnetPreview, setPostnetPreview] = useState({
     loading: false,
     stores: [],
@@ -51,18 +100,26 @@ export default function CheckoutPage({ cartItems, updateCartQuantity, removeFrom
     error: ''
   });
   const [preferredPostnetStore, setPreferredPostnetStore] = useState(null);
+  const [showAllPostnetBranches, setShowAllPostnetBranches] = useState(false);
+  const [showAllPostnetCities, setShowAllPostnetCities] = useState(false);
 
   const [paymentData, setPaymentData] = useState(null);
   const [payfastUrl, setPayfastUrl] = useState(null);
 
-  const cartSubtotal = vendorCartItems.reduce((sum, item) => sum + (getProductPrice(item.price) * item.quantity), 0);
+  const cartSubtotal = vendorCartItems.reduce(
+    (sum, item) => sum + getProductPrice(item.price) * item.quantity,
+    0
+  );
   const cartItemCount = vendorCartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const placeOrderTotal = quote ? quote.aggregatedTotals.totalToPay : cartSubtotal;
-  const displayedTotal = Math.max(0, placeOrderTotal - (applyRewards ? (user?.rewardBalance || 0) : 0));
 
-  const scrollToCheckoutSection = (sectionId) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  // Super Coin discount calculation
+  const superCoinDiscount = useSuperCoins && quote?.superCoins
+    ? (quote.superCoins.maxDiscountRand || 0)
+    : 0;
+
+  const placeOrderBaseTotal = quote ? quote.aggregatedTotals.totalToPay : cartSubtotal;
+  const referralRewardDiscount = applyRewards ? (user?.rewardBalance || 0) : 0;
+  const displayedTotal = Math.max(0, parseFloat((placeOrderBaseTotal - superCoinDiscount - referralRewardDiscount).toFixed(2)));
 
   const handleUpdateQuantity = (productId, option, newQuantity) => {
     if (updateCartQuantity) updateCartQuantity(productId, option, newQuantity);
@@ -79,14 +136,12 @@ export default function CheckoutPage({ cartItems, updateCartQuantity, removeFrom
   useEffect(() => {
     document.title = 'Checkout – The Grand Store';
     window.scrollTo({ top: 0, behavior: 'auto' });
-    
-    // Prevent vendors and admins from checking out
+
     if (user && user.role && (user.role.startsWith('vendor') || user.role === 'admin')) {
-      onNotify("Vendors and admins cannot checkout. Please login as a customer to buy.");
+      onNotify('Vendors and admins cannot checkout. Please login as a customer to buy.');
       navigate('/register');
-      return;
     }
-  }, [vendorCartItems, navigate, user, onNotify, vendorId]);
+  }, [user, navigate, onNotify]);
 
   useEffect(() => {
     if (user) {
@@ -132,6 +187,7 @@ export default function CheckoutPage({ cartItems, updateCartQuantity, removeFrom
   };
 
   const selectDeliveryPreference = (preference) => {
+    if (deliveryPreference === preference) return;
     setDeliveryPreference(preference);
     setQuote(null);
     setDutiesAccepted(false);
@@ -140,177 +196,13 @@ export default function CheckoutPage({ cartItems, updateCartQuantity, removeFrom
     }
   };
 
-  const fetchQuote = async (shippingAddress) => {
-    if (!user) {
-      onNotify("Please log in to continue checkout");
-      navigate('/login?redirect=/customer/checkout');
-      return;
-    }
-    
-    setQuoteLoading(true);
-    
-    try {
-      const payload = {
-        cartItems: vendorCartItems.map(item => ({
-          product: item.id || item._id,
-          name: item.fullName || item.name,
-          quantity: item.quantity,
-          option: item.option,
-          image: item.image
-        })),
-        shippingAddress,
-        deliveryPreference
-      };
-
-      const res = await api.post(`/checkout/quote`, payload);
-      const data = res.data;
-
-      if (preferredPostnetStore) {
-        data.shipments = data.shipments.map((shipment) => {
-          const postnetOption = shipment.shippingQuotes?.find((option) => option.courierName === 'PostNet');
-          const matchingStore = postnetOption?.stores?.find((store) => store.id === preferredPostnetStore.id);
-          return matchingStore ? { ...shipment, selectedPickupStore: matchingStore } : shipment;
-        });
-      }
-
-      setQuote(data);
-      window.requestAnimationFrame(() => {
-        document.getElementById('delivery-rates')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
-      // setCheckoutStep(2); -> removed
-      
-    } catch (error) {
-      console.error(error);
-      onNotify(error.response?.data?.message || error.message || 'Failed to get shipping quote. Check address details.');
-    } finally {
-      setQuoteLoading(false);
-    }
-  };
-
-
-  const handleCourierSelect = (shipmentIndex, courierOption) => {
-    if (!quote) return;
-    
-    const newShipments = [...quote.shipments];
-    newShipments[shipmentIndex] = {
-      ...newShipments[shipmentIndex],
-      selectedCourier: courierOption,
-      selectedPickupStore: courierOption.courierName === 'PostNet'
-        ? newShipments[shipmentIndex].selectedPickupStore
-        : null
-    };
-
-    let newShippingTotal = newShipments.reduce((sum, shp) => sum + (shp.selectedCourier ? shp.selectedCourier.cost : 0), 0);
-    
-    const newQuote = { 
-      ...quote,
-      shipments: newShipments,
-      aggregatedTotals: {
-        ...quote.aggregatedTotals,
-        shipping: newShippingTotal,
-        totalToPay: parseFloat((quote.globalSubtotal + newShippingTotal).toFixed(2))
-      }
-    };
-    
-    setQuote(newQuote);
-  };
-
-  const handlePostnetStoreSelect = (shipmentIndex, store) => {
-    if (!quote) return;
-    setPreferredPostnetStore(store);
-
-    const newShipments = quote.shipments.map((shipment, index) => (
-      index === shipmentIndex
-        ? { ...shipment, selectedPickupStore: store }
-        : shipment
-    ));
-
-    setQuote({ ...quote, shipments: newShipments });
-  };
-
-  const handlePreferredPostnetStoreSelect = (store) => {
-    setPreferredPostnetStore(store);
-    setQuote((currentQuote) => {
-      if (!currentQuote) return currentQuote;
-      return {
-        ...currentQuote,
-        shipments: currentQuote.shipments.map((shipment) => {
-          if (!store) {
-            return { ...shipment, selectedPickupStore: null };
-          }
-          const postnetOption = shipment.shippingQuotes?.find((option) => option.courierName === 'PostNet');
-          const matchingStore = postnetOption?.stores?.find((candidate) => candidate.id === store.id);
-          return matchingStore ? { ...shipment, selectedPickupStore: matchingStore } : shipment;
-        })
-      };
-    });
-  };
-
-  const [mapLocation, setMapLocation] = useState(null);
-  const [isGift, setIsGift] = useState(false);
-  const [giftRecipientName, setGiftRecipientName] = useState("");
-  const [giftMessage, setGiftMessage] = useState("");
-
-  const mapRef = React.useRef(null);
-  const googleMapRef = React.useRef(null);
-  const markerRef = React.useRef(null);
-
-  useEffect(() => {
-    if (mapLocation && mapRef.current && window.google && window.google.maps) {
-      if (!googleMapRef.current) {
-        googleMapRef.current = new window.google.maps.Map(mapRef.current, {
-          center: mapLocation,
-          zoom: 15,
-          disableDefaultUI: true,
-          styles: [
-            { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
-            { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
-            { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
-            { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-            { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
-            { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
-            { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
-            { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
-            { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
-            { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
-            { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
-            { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
-            { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
-          ]
-        });
-        markerRef.current = new window.google.maps.Marker({
-          position: mapLocation,
-          map: googleMapRef.current,
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: "#c9a35b",
-            fillOpacity: 1,
-            strokeWeight: 2,
-            strokeColor: "#ffffff"
-          }
-        });
-      } else {
-        googleMapRef.current.panTo(mapLocation);
-        markerRef.current.setPosition(mapLocation);
-      }
-    }
-  }, [mapLocation]);
-
+  // PostNet Store Locator effect
   useEffect(() => {
     const isSouthAfricanCity = ['south africa', 'za', 'rsa'].includes(String(formData.country || '').trim().toLowerCase());
     const shouldFindPostnet = user
-      && deliveryPreference !== 'home'
+      && deliveryPreference === 'postnet'
       && isSouthAfricanCity
-      && formData.city
-      && formData.lat !== null
-      && formData.lat !== undefined
-      && formData.lat !== ''
-      && formData.lng !== null
-      && formData.lng !== undefined
-      && formData.lng !== ''
-      && Number.isFinite(Number(formData.lat))
-      && Number.isFinite(Number(formData.lng));
+      && formData.city;
 
     if (!shouldFindPostnet) return undefined;
 
@@ -326,14 +218,19 @@ export default function CheckoutPage({ cartItems, updateCartQuantity, removeFrom
       }
     }).then((response) => {
       if (cancelled) return;
+      const stores = response.data?.stores || [];
       setPostnetPreview({
         loading: false,
-        stores: response.data?.stores || [],
+        stores,
         searchedCity: response.data?.searchedCity || formData.city,
         hasCityMatch: Boolean(response.data?.hasCityMatch),
         usingNearestCity: Boolean(response.data?.usingNearestCity),
         error: ''
       });
+      // Default to nearest store if none selected yet
+      if (stores.length > 0 && !preferredPostnetStore) {
+        setPreferredPostnetStore(stores[0]);
+      }
     }).catch((error) => {
       if (cancelled) return;
       setPostnetPreview({
@@ -357,69 +254,193 @@ export default function CheckoutPage({ cartItems, updateCartQuantity, removeFrom
     )).filter(Boolean))]
   ), [postnetPreview.stores]);
 
-  const [paymentMethod, setPaymentMethod] = useState('payfast'); // 'payfast' or 'bank_transfer'
+  const fetchQuote = async (shippingAddress = formData) => {
+    if (!user) {
+      onNotify('Please log in to continue checkout');
+      navigate('/login?redirect=/customer/checkout');
+      return null;
+    }
+
+    setQuoteLoading(true);
+
+    try {
+      const payload = {
+        cartItems: vendorCartItems.map((item) => ({
+          product: item.id || item._id,
+          name: item.fullName || item.name,
+          quantity: item.quantity,
+          option: item.option,
+          image: item.image
+        })),
+        shippingAddress: {
+          address: deliveryPreference === 'postnet' && preferredPostnetStore
+            ? preferredPostnetStore.address
+            : (shippingAddress.address || 'PostNet Pickup Branch'),
+          city: shippingAddress.city,
+          postalCode: shippingAddress.postalCode || '0001',
+          country: shippingAddress.country || 'South Africa',
+          lat: shippingAddress.lat,
+          lng: shippingAddress.lng
+        },
+        deliveryPreference,
+        preferredPostnetStore
+      };
+
+      const res = await api.post('/checkout/quote', payload);
+      const data = res.data;
+
+      if (preferredPostnetStore) {
+        data.shipments = data.shipments.map((shipment) => ({
+          ...shipment,
+          selectedPickupStore: preferredPostnetStore
+        }));
+      }
+
+      setQuote(data);
+      return data;
+    } catch (error) {
+      console.error('Quote fetch error:', error);
+      onNotify(error.response?.data?.message || error.message || 'Failed to get shipping quote. Check address details.');
+      return null;
+    } finally {
+      setQuoteLoading(false);
+    }
+  };
+
+  const handleCourierSelect = (shipmentIndex, courierOption) => {
+    if (!quote) return;
+
+    const newShipments = [...quote.shipments];
+    newShipments[shipmentIndex] = {
+      ...newShipments[shipmentIndex],
+      selectedCourier: courierOption,
+      selectedPickupStore: courierOption.deliveryType === 'pickup'
+        ? (newShipments[shipmentIndex].selectedPickupStore || preferredPostnetStore)
+        : null
+    };
+
+    const newShippingTotal = newShipments.reduce(
+      (sum, shp) => sum + (shp.selectedCourier ? shp.selectedCourier.cost : 0),
+      0
+    );
+
+    setQuote({
+      ...quote,
+      shipments: newShipments,
+      aggregatedTotals: {
+        ...quote.aggregatedTotals,
+        shipping: newShippingTotal,
+        totalToPay: parseFloat((quote.globalSubtotal + newShippingTotal).toFixed(2))
+      }
+    });
+  };
+
+  const handlePreferredPostnetStoreSelect = (store) => {
+    setPreferredPostnetStore(store);
+    if (quote) {
+      setQuote((currentQuote) => ({
+        ...currentQuote,
+        shipments: currentQuote.shipments.map((shipment) => ({
+          ...shipment,
+          selectedPickupStore: store
+        }))
+      }));
+    }
+  };
+
+  // Step 1 -> Step 2 validation
+  const handleProceedToDeliveryMethod = async (e) => {
+    if (e) e.preventDefault();
+
+    if (!formData.firstName || !formData.lastName || !formData.phone || !formData.email) {
+      onNotify('Please fill in your recipient contact details including email address.');
+      return;
+    }
+
+    if (!isAgeConfirmed) {
+      onNotify('You must confirm that you are 18 years of age or older to purchase alcoholic beverages.');
+      return;
+    }
+
+    if (deliveryPreference === 'home' && (!formData.address || !formData.city || !formData.postalCode)) {
+      onNotify('Please provide your complete street address, city, and postal code for door delivery.');
+      return;
+    }
+
+    if (deliveryPreference === 'postnet' && (!formData.city || !preferredPostnetStore)) {
+      onNotify('Please search for a city and select your preferred PostNet collection branch.');
+      return;
+    }
+
+    const currentQuote = quote || await fetchQuote();
+    if (currentQuote) {
+      setCheckoutStep(2);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Step 2 -> Step 3 validation
+  const handleProceedToPayment = () => {
+    if (!quote) {
+      onNotify('Please calculate your delivery quote first.');
+      return;
+    }
+
+    if (deliveryPreference === 'postnet' && !preferredPostnetStore) {
+      onNotify('Please select a PostNet collection store.');
+      return;
+    }
+
+    if (quote.hasInternational && !dutiesAccepted) {
+      onNotify('Please accept the International Duties acknowledgment.');
+      return;
+    }
+
+    setCheckoutStep(3);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const [paymentMethod, setPaymentMethod] = useState('payfast');
   const [createdOrderId, setCreatedOrderId] = useState(null);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [proofUrl, setProofUrl] = useState('');
 
-  const cartHash = JSON.stringify(vendorCartItems.map(i => ({ id: i.id || i._id, q: i.quantity, opt: i.option })));
+  const [isGift, setIsGift] = useState(false);
+  const [giftRecipientName, setGiftRecipientName] = useState('');
+  const [giftMessage, setGiftMessage] = useState('');
 
-  // Hydrate checkout state on mount
-  useEffect(() => {
-    const saved = sessionStorage.getItem('checkoutState');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.cartHash === cartHash) {
-          if (parsed.checkoutStep && checkoutStep === 1) setCheckoutStep(parsed.checkoutStep);
-          if (parsed.quote && !quote) setQuote(parsed.quote);
-          if (parsed.formData && !formData.address) setFormData(parsed.formData);
-          if (parsed.paymentMethod) setPaymentMethod(parsed.paymentMethod);
-          if (parsed.createdOrderId) setCreatedOrderId(parsed.createdOrderId);
-          if (parsed.deliveryPreference) setDeliveryPreference(parsed.deliveryPreference);
-        } else {
-          sessionStorage.removeItem('checkoutState');
-          if (parsed.formData && !formData.address) setFormData(parsed.formData);
-        }
-      } catch (e) {}
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Save state on change
-  useEffect(() => {
-    sessionStorage.setItem('checkoutState', JSON.stringify({
-      checkoutStep, quote, formData, paymentMethod, createdOrderId, deliveryPreference, cartHash
-    }));
-  }, [checkoutStep, quote, formData, paymentMethod, createdOrderId, deliveryPreference, cartHash]);
-
+  // Submit Final Order
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
 
     if (!quote) {
-      onNotify("Please calculate and select a delivery option first.");
+      onNotify('Please calculate and select a delivery option first.');
       return;
     }
 
-    const missingPostnetBranch = quote.shipments.some((shipment) => (
-      shipment.selectedCourier?.courierName === 'PostNet' && !shipment.selectedPickupStore
-    ));
-    if (missingPostnetBranch) {
-      onNotify("Please select a PostNet branch for every PostNet shipment.");
+    if (!isAgeConfirmed) {
+      onNotify('You must confirm that you are 18 years of age or older to purchase alcoholic beverages.');
       return;
     }
-    
-    if (quote.hasInternational && !dutiesAccepted) {
-      onNotify("Please accept the International Duties acknowledgment");
-      return;
-    }
-    
+
     setLoading(true);
-    
+
     try {
+      const isGuest = !user;
+      const guestName = `${formData.firstName} ${formData.lastName}`.trim();
       const orderData = {
         quote,
+        isGuest,
+        guestEmail: formData.email,
+        guestName: guestName || 'Guest Customer',
+        guestPhone: formData.phone || '',
+        isAgeConfirmed: isAgeConfirmed,
         shippingAddress: {
-          address: formData.address || quote.shipments.find((shipment) => shipment.selectedPickupStore)?.selectedPickupStore?.address,
+          name: guestName,
+          email: formData.email,
+          address: deliveryPreference === 'postnet' && preferredPostnetStore
+            ? preferredPostnetStore.address
+            : formData.address,
           city: formData.city,
           postalCode: formData.postalCode,
           country: formData.country,
@@ -427,59 +448,53 @@ export default function CheckoutPage({ cartItems, updateCartQuantity, removeFrom
           phoneNumber: formData.phone || user?.phone || user?.phoneNumber || ''
         },
         deliveryPreference,
+        selectedPostnetStore: preferredPostnetStore,
         paymentMethod: paymentMethod === 'payfast' ? 'PayFast' : 'Bank Transfer',
         isGift,
         giftRecipientName,
         giftMessage,
-        applyRewards
+        applyRewards,
+        useSuperCoins
       };
 
-      const res = await api.post(`/orders`, orderData);
+      const res = await api.post('/orders', orderData);
       const data = res.data;
-      
       setCreatedOrderId(data._id);
 
       if (paymentMethod === 'payfast') {
-        // Request PayFast signature
-        const pfRes = await api.post(`/payfast/generate-shop`, { orderId: data._id });
-        const pfData = pfRes.data;
-
-        setPayfastUrl(pfData.url);
-        setPaymentData(pfData.data);
+        const pfRes = await api.post('/payfast/generate-shop', { orderId: data._id });
+        setPayfastUrl(pfRes.data.url);
+        setPaymentData(pfRes.data.data);
       } else {
-        // Go to Step 3: Upload Proof of Payment
-        setCheckoutStep(3);
+        // Step 4: Bank Transfer Proof Upload Screen
+        setCheckoutStep(4);
       }
-      
     } catch (error) {
       console.error(error);
       const msg = error.response?.data?.message || error.message || 'Failed to place order';
       onNotify(msg);
       if (msg.includes('expired')) {
-        setCheckoutStep(1); // Force requote
+        setCheckoutStep(1);
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // --- Bank Transfer Proof Upload ---
-
   const handleUploadProof = async (e) => {
     e.preventDefault();
     if (!proofUrl) {
-      onNotify("Please provide a link to the proof of payment document.");
+      onNotify('Please provide a link to the proof of payment document.');
       return;
     }
     setUploadingProof(true);
     try {
       await api.post(`/orders/${createdOrderId}/bank-transfer/upload`, { proofUrl });
-      
-      onNotify("Proof uploaded successfully. Awaiting verification.");
-      onClearCart(vendorId);
-      navigate(`/customer/order/${createdOrderId}`);
+      onNotify('Proof uploaded successfully. Awaiting verification.');
+      if (onClearCart) onClearCart(vendorId);
+      navigate(user ? `/customer/order/${createdOrderId}` : `/order-success/${createdOrderId}`);
     } catch (error) {
-      onNotify(error.response?.data?.message || error.message || "Failed to upload proof");
+      onNotify(error.response?.data?.message || error.message || 'Failed to upload proof');
     } finally {
       setUploadingProof(false);
     }
@@ -493,10 +508,10 @@ export default function CheckoutPage({ cartItems, updateCartQuantity, removeFrom
             <ShoppingCart size={48} className="text-white/20" />
             <div>
               <h2 className="text-3xl font-serif text-white mb-2">Your cart is empty</h2>
-              <p className="text-[var(--color-ivory-muted)]">Add some items before checking out.</p>
+              <p className="text-sm text-[var(--color-ivory-muted)]">Discover our curated reserve of luxury bottles.</p>
             </div>
-            <Link to="/shop" className="bg-[#c9a35b] text-black font-bold uppercase tracking-widest text-xs py-4 px-8 rounded-xl hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2">
-              Shop More <ArrowRight size={16} />
+            <Link to="/shop" className="px-8 py-3 bg-[var(--color-gold)] text-black font-bold uppercase tracking-widest text-xs rounded-xl hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all">
+              Explore Collection
             </Link>
           </div>
         </div>
@@ -505,381 +520,331 @@ export default function CheckoutPage({ cartItems, updateCartQuantity, removeFrom
   }
 
   return (
-    <main className="pt-24 pb-36 min-h-screen bg-[#050505] md:pt-32 md:pb-16">
+    <main className="pt-24 pb-36 min-h-screen bg-[#050505] md:pt-32 md:pb-16 text-white">
       <div className="max-w-6xl mx-auto px-4 mb-8 sm:px-6 md:mb-12">
-        <div className="mb-6">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-[var(--color-gold)] transition-colors text-sm font-medium uppercase tracking-wider">
-            <ArrowRight size={16} className="rotate-180" /> Back
+        {/* Top Breadcrumb & Step Indicator */}
+        <div className="mb-6 flex items-center justify-between">
+          <button
+            onClick={() => {
+              if (checkoutStep > 1 && checkoutStep < 4) setCheckoutStep(checkoutStep - 1);
+              else navigate(-1);
+            }}
+            className="flex items-center gap-2 text-gray-400 hover:text-[var(--color-gold)] transition-colors text-xs font-medium uppercase tracking-wider"
+          >
+            <ArrowRight size={14} className="rotate-180" /> Back
           </button>
-        </div>
-        
-        {/* Header */}
-        <div className="mb-7 md:mb-12">
-          <div className="hidden items-center gap-2 text-xs text-[var(--color-ivory-muted)] uppercase tracking-widest mb-4 md:flex">
-            <Link to="/customer/cart" className="hover:text-gold-gradient transition-colors">Cart</Link>
-            <ChevronRight size={12} />
-            <span className={checkoutStep === 1 ? "text-gold-gradient font-medium" : ""}>Delivery</span>
-            <ChevronRight size={12} />
-            <span className={checkoutStep === 2 ? "text-gold-gradient font-medium" : ""}>Payment</span>
-          </div>
-          <div className="flex items-end justify-between gap-4">
-            <h1 className="text-3xl font-serif md:text-5xl">Checkout</h1>
-            <div className="text-right md:hidden">
-              <p className="text-[10px] uppercase tracking-widest text-white/40">Total</p>
-              <p className="font-serif text-xl text-[var(--color-gold)]"><Price amount={displayedTotal} /></p>
-            </div>
+          <div className="hidden sm:flex items-center gap-2 text-[10px] text-emerald-400 font-medium tracking-widest uppercase bg-emerald-950/40 px-3 py-1 rounded-full border border-emerald-500/20">
+            <Lock size={11} /> 256-Bit Encrypted Luxury Checkout
           </div>
         </div>
 
-        {checkoutStep !== 3 && (
-          <nav aria-label="Checkout sections" className="sticky top-[68px] z-30 -mx-4 mb-5 overflow-x-auto border-y border-white/10 bg-[#080808]/95 px-4 py-2 backdrop-blur-xl md:hidden">
-            <div className="flex min-w-max items-center gap-2">
+        {/* 4-Step Progress Indicator */}
+        {checkoutStep !== 4 && (
+          <nav aria-label="Checkout Progress" className="mb-8 overflow-x-auto pb-2">
+            <div className="flex items-center min-w-max justify-between gap-2 border-b border-white/10 pb-4">
               {[
-                ['checkout-order-summary', 'Order', true],
-                ['checkout-delivery-method', 'Delivery', Boolean(deliveryPreference)],
-                ['checkout-delivery-details', 'Details', Boolean(formData.firstName && formData.lastName && formData.city && formData.postalCode && formData.country)],
-                ['checkout-payment', 'Payment', Boolean(quote)],
-              ].map(([id, label, complete], index) => (
-                <button key={id} type="button" onClick={() => scrollToCheckoutSection(id)} className="flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 text-xs font-medium text-white/70 active:border-[var(--color-gold)] active:text-white">
-                  <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${complete ? 'bg-[var(--color-gold)] text-black' : 'bg-white/10 text-white/50'}`}>{complete ? <CheckCircle2 size={12} /> : index + 1}</span>
-                  {label}
-                </button>
-              ))}
+                { step: 1, label: 'Delivery Details', icon: MapPin },
+                { step: 2, label: 'Delivery Method', icon: Truck },
+                { step: 3, label: 'Payment', icon: CreditCard },
+                { step: 4, label: 'Confirmation', icon: CheckCircle2 }
+              ].map((item) => {
+                const ItemIcon = item.icon;
+                const isActive = checkoutStep === item.step;
+                const isCompleted = checkoutStep > item.step;
+                return (
+                  <button
+                    key={item.step}
+                    type="button"
+                    disabled={item.step > checkoutStep && item.step !== 2}
+                    onClick={() => {
+                      if (item.step < checkoutStep) setCheckoutStep(item.step);
+                    }}
+                    className={`flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all ${
+                      isActive
+                        ? 'bg-[var(--color-gold)]/10 text-[var(--color-gold)] border border-[var(--color-gold)]/30 font-medium'
+                        : isCompleted
+                        ? 'text-white/80 hover:text-white cursor-pointer'
+                        : 'text-white/30 cursor-not-allowed'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                        isCompleted
+                          ? 'bg-[var(--color-gold)] text-black'
+                          : isActive
+                          ? 'border border-[var(--color-gold)] text-[var(--color-gold)]'
+                          : 'bg-white/10 text-white/40'
+                      }`}
+                    >
+                      {isCompleted ? <CheckCircle2 size={14} /> : item.step}
+                    </span>
+                    <span className="text-xs uppercase tracking-wider">{item.label}</span>
+                    {item.step < 4 && <ChevronRight size={14} className="text-white/20 ml-2" />}
+                  </button>
+                );
+              })}
             </div>
           </nav>
         )}
 
         <div className="flex flex-col lg:flex-row-reverse lg:items-start gap-8 w-full md:gap-12 xl:gap-16">
-          
-          
-          {/* Right Column - Itemised order summary */}
-          {checkoutStep !== 3 && (
-            <div className="w-full lg:w-[420px] xl:w-[460px] lg:sticky lg:top-32 shrink-0">
-            <div id="checkout-order-summary" className="scroll-mt-32 w-full bg-[#111]/80 backdrop-blur-md border border-[var(--color-gold)]/20 rounded-2xl p-4 md:p-7 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-gold)] to-transparent opacity-50"></div>
-              <div className="relative">
-                <div className="flex items-center justify-between gap-4 mb-4 md:mb-5">
+          {/* Right Column - Itemised Order Summary */}
+          {checkoutStep !== 4 && (
+            <div className="w-full lg:w-[420px] xl:w-[450px] lg:sticky lg:top-32 shrink-0">
+              <div className="w-full bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-7 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-gold)] to-transparent opacity-60"></div>
+                <div className="flex items-center justify-between gap-4 mb-4">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-gold)] mb-1">Your order</p>
-                    <h2 className="text-xl font-serif text-white">Price breakdown</h2>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-gold)] mb-1">Your Order</p>
+                    <h2 className="text-xl font-serif text-white">Summary</h2>
                   </div>
-                  <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-[var(--color-ivory-muted)]">
-                    {cartItemCount} item{cartItemCount === 1 ? '' : 's'}
+                  <span className="rounded-full border border-white/10 bg-black/40 px-3 py-1 text-xs text-[var(--color-ivory-muted)]">
+                    {cartItemCount} {cartItemCount === 1 ? 'item' : 'items'}
                   </span>
                 </div>
 
-                <button type="button" onClick={() => setMobileSummaryOpen((open) => !open)} aria-expanded={mobileSummaryOpen} className="mb-4 flex min-h-11 w-full items-center justify-between rounded-xl border border-white/10 bg-black/30 px-4 text-sm text-white md:hidden">
-                  <span>{mobileSummaryOpen ? 'Hide products and charges' : 'Show products and charges'}</span>
-                  {mobileSummaryOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+                {/* Mobile Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setMobileSummaryOpen(!mobileSummaryOpen)}
+                  className="mb-4 flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-xs text-white md:hidden"
+                >
+                  <span>{mobileSummaryOpen ? 'Hide bottle details' : 'Show bottle details'}</span>
+                  {mobileSummaryOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
 
-                <div className={`${mobileSummaryOpen ? 'block' : 'hidden'} md:block`}>
-                <div className="space-y-4 border-b border-white/10 pb-5">
+                {/* Items List */}
+                <div className={`${mobileSummaryOpen ? 'block' : 'hidden'} md:block space-y-3 border-b border-white/10 pb-4`}>
                   {vendorCartItems.map((item) => (
-                    <div key={`${item.id || item._id}-${item.option || ''}`} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/[0.02] border border-white/5 p-3 rounded-xl">
+                    <div key={`${item.id || item._id}-${item.option || ''}`} className="flex items-center justify-between gap-3 bg-white/[0.02] border border-white/5 p-2.5 rounded-xl">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-12 h-12 rounded-lg border border-white/10 bg-black/40 p-1.5 flex items-center justify-center overflow-hidden shrink-0">
+                        <div className="w-12 h-12 rounded-lg border border-white/10 bg-black/50 p-1 flex items-center justify-center shrink-0">
                           <img src={item.image} alt="" className="max-w-full max-h-full object-contain" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm text-white truncate font-medium">{item.fullName || item.name}</p>
-                          <p className="text-xs text-[var(--color-ivory-muted)]">{item.option || 'Pack of 1'}</p>
+                          <p className="text-xs text-white truncate font-medium">{item.fullName || item.name}</p>
+                          <p className="text-[11px] text-[var(--color-ivory-muted)]">Qty: {item.quantity}</p>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto">
-                        <div className="flex items-center gap-3 bg-black/50 border border-white/10 rounded-lg px-2 py-1">
-                          <button type="button" onClick={() => handleUpdateQuantity(item.id || item._id, item.option, item.quantity - 1)} className="text-white/60 hover:text-white p-1 transition-colors" aria-label="Decrease quantity"><Minus size={14} /></button>
-                          <span className="text-sm font-medium text-white w-4 text-center">{item.quantity}</span>
-                          <button type="button" onClick={() => handleUpdateQuantity(item.id || item._id, item.option, item.quantity + 1)} className="text-white/60 hover:text-white p-1 transition-colors" aria-label="Increase quantity"><Plus size={14} /></button>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-sm font-medium text-[var(--color-gold)] min-w-[60px] text-right"><Price amount={getProductPrice(item.price) * item.quantity} /></span>
-                          <button type="button" onClick={() => handleRemoveItem(item)} className="text-red-400/60 hover:text-red-400 p-1.5 bg-red-400/5 hover:bg-red-400/10 rounded-lg transition-colors" aria-label="Remove item"><Trash2 size={16} /></button>
-                        </div>
-                      </div>
+                      <span className="text-xs font-serif text-[var(--color-gold)] shrink-0">
+                        <Price amount={getProductPrice(item.price) * item.quantity} />
+                      </span>
                     </div>
                   ))}
                 </div>
 
-                <div className="space-y-3 pt-5 text-sm">
-                  <div className="flex justify-between gap-4 text-[var(--color-ivory-muted)]">
-                    <span>Merchandise subtotal</span>
-                    <span className="text-white"><Price amount={quote?.globalSubtotal ?? cartSubtotal} /></span>
+                {/* Financial Breakdown */}
+                <div className="space-y-3 pt-4 text-xs">
+                  <div className="flex justify-between text-[var(--color-ivory-muted)]">
+                    <span>Merchandise Subtotal</span>
+                    <span className="text-white"><Price amount={cartSubtotal} /></span>
                   </div>
-                  {quote ? quote.shipments.map((shipment, index) => (
-                    <div key={`${shipment.vendorId || index}-shipping`} className="flex justify-between gap-4 text-[var(--color-ivory-muted)]">
-                      <span className="min-w-0">Delivery {quote.shipments.length > 1 ? `${index + 1} ` : ''}<span className="text-white/50">· {shipment.selectedCourier?.courierName}</span></span>
-                      <span className="text-white shrink-0">{shipment.selectedCourier?.cost > 0 ? <Price amount={shipment.selectedCourier.cost} /> : 'FREE'}</span>
-                    </div>
-                  )) : (
-                    <div className="flex justify-between gap-4 text-[var(--color-ivory-muted)]">
-                      <span>Delivery</span>
-                      <span>Calculated after details</span>
+
+                  <div className="flex justify-between text-[var(--color-ivory-muted)]">
+                    <span className="flex items-center gap-1.5">
+                      <Truck size={13} className="text-[var(--color-gold)]" />
+                      {deliveryPreference === 'postnet' ? 'PostNet Collection' : 'PostNet Delivery'}
+                    </span>
+                    <span className="text-white">
+                      {quote ? (
+                        quote.aggregatedTotals.shipping > 0 ? (
+                          <Price amount={quote.aggregatedTotals.shipping} />
+                        ) : (
+                          <span className="text-emerald-400 font-medium uppercase text-[10px]">Free</span>
+                        )
+                      ) : (
+                        'Calculated next'
+                      )}
+                    </span>
+                  </div>
+
+                  {/* Super Coins Deduction in Summary */}
+                  {superCoinDiscount > 0 && (
+                    <div className="flex justify-between items-center text-amber-300 bg-amber-400/10 px-2.5 py-1.5 rounded-lg border border-amber-400/20">
+                      <span className="flex items-center gap-1">
+                        <Coins size={12} /> Super Coins Applied
+                      </span>
+                      <span>-<Price amount={superCoinDiscount} /></span>
                     </div>
                   )}
 
-                </div>
+                  {/* Referral Rewards Deduction */}
+                  {referralRewardDiscount > 0 && (
+                    <div className="flex justify-between items-center text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded-lg border border-emerald-500/20">
+                      <span>Referral Credits</span>
+                      <span>-<Price amount={referralRewardDiscount} /></span>
+                    </div>
+                  )}
                 </div>
 
-                  <div className="flex items-end justify-between gap-4 border-t border-white/10 pt-4">
-                    <div>
-                      <p className="text-white font-medium">Pay now</p>
-                      <p className="text-[11px] text-[var(--color-ivory-muted)]">Products and selected delivery</p>
-                      {applyRewards && user?.rewardBalance > 0 && (
-                        <p className="text-[11px] text-green-400 mt-1">Applying up to <Price amount={user.rewardBalance} /> in rewards</p>
-                      )}
-                    </div>
-                    <span className="text-3xl font-serif text-gold-gradient">
-                      <Price amount={displayedTotal} />
+                {/* Total To Pay */}
+                <div className="flex items-end justify-between border-t border-white/10 pt-4 mt-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)]">Total to Pay</p>
+                    <p className="text-[10px] text-white/40">Includes VAT & delivery</p>
+                  </div>
+                  <span className="text-2xl font-serif text-gold-gradient">
+                    <Price amount={displayedTotal} />
+                  </span>
+                </div>
+
+                {/* Potential Super Coins Earned Banner */}
+                {quote?.superCoins?.potentialCoinsToEarn > 0 && (
+                  <div className="mt-4 rounded-xl border border-[var(--color-gold)]/20 bg-[var(--color-gold)]/5 p-3 text-[11px] text-[var(--color-ivory)] flex items-center gap-2.5">
+                    <Sparkles size={16} className="text-[var(--color-gold)] shrink-0" />
+                    <span>
+                      Earn <strong className="text-[var(--color-gold)]">+{quote.superCoins.potentialCoinsToEarn} Super Coins</strong> (R{(quote.superCoins.potentialCoinsToEarn * 0.1).toFixed(2)}) upon order delivery!
                     </span>
                   </div>
+                )}
               </div>
-            </div>
             </div>
           )}
 
-          {/* Left Column - Forms */}
-          <div className="w-full lg:w-auto flex-1 flex flex-col gap-8 min-w-0">
-            
-            {checkoutStep !== 3 ? (
-            
-              <form id="checkout-form" onSubmit={handlePlaceOrder}>
-                {/* Shipping Method Section moved to top */}
-                <section id="checkout-delivery-method" className="scroll-mt-32 mb-5 rounded-2xl border border-white/10 bg-white/[0.02] p-4 md:mb-8 md:border-0 md:bg-transparent md:p-0">
-                  <h2 className="text-xl font-serif mb-4 flex items-center gap-3 md:mb-6">
-                    <span className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-sm font-sans">1</span>
-                    Delivery Method
-                  </h2>
-                  
-                  <p className="text-sm text-[var(--color-ivory-muted)] mb-5">Choose how you want to receive the order before entering delivery details.</p>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
-                    {[
-                      {
-                        value: 'home',
-                        title: 'Door delivery',
-                        description: 'Courier Guy locally or DHL for an international address.',
-                        icon: Truck
-                      },
-                      {
-                        value: 'postnet',
-                        title: 'PostNet pickup',
-                        description: 'South Africa only. Search your city, then choose a nearby branch.',
-                        icon: MapPin
-                      },
-                      {
-                        value: 'best',
-                        title: 'Compare all',
-                        description: 'See every available home and pickup rate together.',
-                        icon: ShoppingCart
-                      }
-                    ].map((method) => {
-                      const MethodIcon = method.icon;
-                      const selected = deliveryPreference === method.value;
-                      return (
-                        <button
-                          key={method.value}
-                          type="button"
-                          aria-pressed={selected}
-                          onClick={() => selectDeliveryPreference(method.value)}
-                          className={`relative flex min-h-[88px] items-start gap-3 rounded-2xl border p-4 text-left transition-all md:block md:min-h-0 md:p-5 ${selected ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_20px_rgba(212,175,55,0.08)]' : 'border-white/10 bg-[#0a0a0a] hover:border-white/30'}`}
-                        >
-                          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full md:mb-4 ${selected ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
-                            <MethodIcon size={19} />
-                          </span>
-                          <span className="block min-w-0 pr-6 md:pr-0">
-                            <span className="block text-sm font-medium text-white mb-1">{method.title}</span>
-                            <span className="block text-xs leading-relaxed text-[var(--color-ivory-muted)]">{method.description}</span>
-                          </span>
-                          {selected && <CheckCircle2 size={17} className="absolute right-4 top-4 text-[var(--color-gold)]" />}
-                        </button>
-                      );
-                    })}
+          {/* Left Column - 4-Step Content */}
+          <div className="w-full lg:w-auto flex-1 flex flex-col min-w-0">
+            {/* ========================================================================= */}
+            {/* STEP 1: DELIVERY DETAILS & LOCATION CHOICE                               */}
+            {/* ========================================================================= */}
+            {checkoutStep === 1 && (
+              <div className="space-y-6 animate-fadeIn">
+                <div>
+                  <h2 className="text-2xl font-serif text-white mb-1">1. Delivery Location</h2>
+                  <p className="text-xs text-[var(--color-ivory-muted)]">Choose how and where you want your luxury order delivered.</p>
+                </div>
+
+                {/* Express Guest Checkout Banner */}
+                {!user && (
+                  <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                        <Sparkles size={18} />
+                      </span>
+                      <div>
+                        <p className="text-xs font-semibold text-white">Express Guest Checkout</p>
+                        <p className="text-[11px] text-[var(--color-ivory-muted)]">
+                          No password required to order. You can claim 100 Super Coins in 1 click after payment.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/login?redirect=/customer/checkout"
+                      className="text-xs text-[var(--color-gold)] hover:underline shrink-0 font-medium tracking-wider uppercase flex items-center gap-1"
+                    >
+                      Already have an account? Log in <ChevronRight size={12} />
+                    </Link>
                   </div>
+                )}
 
-                  {!quote && !quoteLoading && (
-                    <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-xs text-[var(--color-ivory-muted)]">
-                      Next: add {deliveryPreference === 'postnet' ? 'your city and postal code' : 'the delivery address'} below, then calculate the available rate.
-                    </div>
-                  )}
-
-                  {quoteLoading && (
-                    <div className="flex flex-col items-center justify-center p-8 border border-white/10 rounded-xl bg-black/40">
-                      <Loader2 size={32} className="animate-spin text-gold mb-4" />
-                      <p className="text-[var(--color-ivory-muted)]">Checking the available courier and PostNet rates...</p>
-                    </div>
-                  )}
-
-                  {!quoteLoading && quote && quote.shipments.map((shp, index) => (
-                    <div id={index === 0 ? 'delivery-rates' : undefined} key={index} className="bg-black/40 border border-white/10 rounded-xl p-5 md:p-6 mt-5 mb-6 last:mb-0">
-                      <h4 className="text-lg font-serif text-gold mb-4 flex items-center gap-2"><Truck size={18} /> Shipment {index + 1} — {shp.vendorName || 'The Grand Store'}</h4>
-                      <p className="text-xs text-[var(--color-ivory-muted)] mb-4">Delivering from {shp.originCountry} to {shp.destCountry}</p>
-                      
-                      <div className="mb-4">
-                        {shp.items.map((item, i) => (
-                          <div key={i} className="flex justify-between text-sm mb-2">
-                            <span>{item.quantity} × {item.name}</span>
-                            <span><Price amount={getProductPrice(item.price) * item.quantity} /></span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="space-y-3 mt-4 pt-4 border-t border-white/5">
-                        <p className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)]">Select Delivery Option</p>
-                        {shp.shippingQuotes.map((opt, optIndex) => (
-                          <div key={optIndex} className="mb-2">
-                            <label className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${shp.selectedCourier?.serviceLevel === opt.serviceLevel ? 'border-gold bg-gold/5' : 'border-white/10 hover:border-white/30'}`}>
-                              <div className="flex items-center gap-3">
-                                <input 
-                                  type="radio" 
-                                  name={`courier-${index}`} 
-                                  checked={shp.selectedCourier?.serviceLevel === opt.serviceLevel}
-                                  onChange={() => handleCourierSelect(index, opt)}
-                                  className="accent-gold"
-                                />
-                                <div>
-                                  <div className="text-sm font-medium text-white">{opt.serviceLevel} ({opt.courierName})</div>
-                                  <div className="text-xs text-[var(--color-ivory-muted)]">{opt.estimatedDays}</div>
-                                </div>
-                              </div>
-                              <div className="font-medium text-gold">{opt.cost > 0 ? <Price amount={opt.cost} /> : 'FREE'}</div>
-                            </label>
-                            
-                            {/* PostNet Stores Logic */}
-                            {shp.selectedCourier?.serviceLevel === opt.serviceLevel && opt.courierName === 'PostNet' && (
-                              <div className="mt-2 px-0 pb-2 animate-in fade-in slide-in-from-top-2 duration-300 sm:pl-8 sm:pr-3">
-                                {opt.stores && opt.stores.length > 0 ? (
-                                  <div className="mt-3">
-                                    <div className="flex items-center justify-between mb-2">
-                                      <p className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)]">PostNet pickup branches</p>
-                                      {shp.selectedPickupStore && (
-                                        <button 
-                                          type="button" 
-                                          onClick={() => handlePreferredPostnetStoreSelect(null)} 
-                                          className="text-[10px] font-bold uppercase tracking-widest text-gold hover:text-white transition-colors"
-                                        >
-                                          Change branch
-                                        </button>
-                                      )}
-                                    </div>
-
-                                    {opt.usingNearestCity && !shp.selectedPickupStore && (
-                                      <div className="mb-3 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs leading-relaxed text-amber-200">
-                                        No branch was found in {opt.searchedCity || formData.city}. These are the nearest PostNet alternatives.
-                                      </div>
-                                    )}
-
-                                    {shp.selectedPickupStore ? (
-                                      <div className="border border-gold bg-gold/5 p-3 rounded-lg">
-                                        <p className="text-sm font-medium text-white mb-1">{shp.selectedPickupStore.name}</p>
-                                        <p className="text-xs text-[var(--color-ivory-muted)]">{shp.selectedPickupStore.address}</p>
-                                        <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-wider">
-                                          <span className="text-emerald-300">Selected for pickup</span>
-                                          {shp.selectedPickupStore.distance !== null && shp.selectedPickupStore.distance !== undefined && (
-                                            <span className="text-white/50">{shp.selectedPickupStore.distance} km away</span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {opt.stores.map(store => (
-                                          <label key={store.id} className="block cursor-pointer">
-                                            <input
-                                              type="radio"
-                                              name={`postnet-store-${index}`}
-                                              value={store.id}
-                                              checked={shp.selectedPickupStore?.id === store.id}
-                                              onChange={() => handlePreferredPostnetStoreSelect(store)}
-                                              className="peer sr-only"
-                                              required
-                                            />
-                                            <div className="h-full border border-white/10 bg-[#0a0a0a] p-3 rounded-lg peer-checked:border-gold peer-checked:bg-gold/5 hover:border-white/30 transition-colors">
-                                              <p className="text-sm font-medium text-white mb-1">{store.name}</p>
-                                              <p className="text-xs text-[var(--color-ivory-muted)]">{store.address}</p>
-                                              <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-wider">
-                                                <span className={store.isNearestAlternative ? 'text-amber-300' : 'text-emerald-300'}>
-                                                  {store.isNearestAlternative ? `Nearest alternative${store.city ? ` · ${store.city}` : ''}` : `In ${opt.searchedCity || formData.city}`}
-                                                </span>
-                                                {store.distance !== null && store.distance !== undefined && (
-                                                  <span className="text-white/50">{store.distance} km away</span>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </label>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm mt-2 flex items-start gap-2">
-                                    <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-                                    <p>{opt.storeLookupError || 'No PostNet branch could be loaded for this city. Please retry the branch search.'}</p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                {/* Delivery Location Toggle */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => selectDeliveryPreference('home')}
+                    className={`relative p-4 rounded-2xl border text-left transition-all ${
+                      deliveryPreference === 'home'
+                        ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_20px_rgba(212,175,55,0.1)]'
+                        : 'border-white/10 bg-[#0d0d0d] hover:border-white/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className={`p-2 rounded-xl ${deliveryPreference === 'home' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
+                        <Truck size={18} />
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-white">Deliver to my address</p>
+                        <p className="text-[11px] text-[var(--color-ivory-muted)]">Direct door-to-door courier delivery</p>
                       </div>
                     </div>
-                  ))}
+                    {deliveryPreference === 'home' && <CheckCircle2 size={16} className="absolute right-4 top-4 text-[var(--color-gold)]" />}
+                  </button>
 
-                  {!quoteLoading && quote?.hasInternational && (
-                    <div className="bg-red-900/20 border border-red-500/50 rounded-xl p-5 mt-6">
-                      <h4 className="text-red-400 font-bold flex items-center gap-2 mb-2"><AlertTriangle size={18} /> IMPORTANT: International Delivery</h4>
-                      <p className="text-sm text-red-200/80 mb-4">
-                        Import duties, customs charges, destination VAT/GST or other government charges may be payable by you upon arrival in {formData.country}. 
-                        The delivery charge covers transportation only.
-                        Estimated duties/taxes: <Price amount={quote.aggregatedTotals.estimatedImportDuties + quote.aggregatedTotals.estimatedImportTaxes} />.
-                      </p>
-                      <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" className="mt-1 accent-red-500" checked={dutiesAccepted} onChange={(e) => setDutiesAccepted(e.target.checked)} required />
-                        <span className="text-sm text-white font-medium">I understand that I am responsible for any destination-country taxes, duties, or customs charges.</span>
-                      </label>
+                  <button
+                    type="button"
+                    onClick={() => selectDeliveryPreference('postnet')}
+                    className={`relative p-4 rounded-2xl border text-left transition-all ${
+                      deliveryPreference === 'postnet'
+                        ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_20px_rgba(212,175,55,0.1)]'
+                        : 'border-white/10 bg-[#0d0d0d] hover:border-white/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className={`p-2 rounded-xl ${deliveryPreference === 'postnet' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
+                        <Store size={18} />
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-white">Collect from a PostNet Store</p>
+                        <p className="text-[11px] text-[var(--color-ivory-muted)]">Pick up at over 450+ PostNet branches</p>
+                      </div>
                     </div>
-                  )}
-                </section>
+                    {deliveryPreference === 'postnet' && <CheckCircle2 size={16} className="absolute right-4 top-4 text-[var(--color-gold)]" />}
+                  </button>
+                </div>
 
-                <section id="checkout-delivery-details" className="scroll-mt-32 mb-5 rounded-2xl border border-white/10 bg-white/[0.02] p-4 md:mb-8 md:rounded-none md:border-x-0 md:border-b-0 md:bg-transparent md:px-0 md:pt-8">
-                  <h2 className="text-xl font-serif mb-4 flex items-center gap-3 md:mb-6">
-                    <span className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-sm font-sans">2</span>
-                    Delivery Details
-                  </h2>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
+                {/* Recipient Details */}
+                <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
+                  <h3 className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-medium">Recipient Information</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">First Name</label>
-                      <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-[var(--color-gold)]/50 focus:outline-none transition-colors" />
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">Last Name</label>
-                      <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-[var(--color-gold)]/50 focus:outline-none transition-colors" />
-                    </div>
-                    <div className="md:col-span-2">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
-                        <label className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] flex items-center gap-1.5">
-                          <Phone size={13} className="text-[var(--color-gold)]" /> Phone Number (For Courier & Delivery Tracking)
-                        </label>
-                        {(user?.phone || user?.phoneNumber) && formData.phone === (user.phone || user.phoneNumber) && (
-                          <span className="text-[11px] text-[var(--color-gold)] font-medium flex items-center gap-1 bg-[var(--color-gold)]/10 px-2.5 py-0.5 rounded-full border border-[var(--color-gold)]/25 self-start sm:self-auto">
-                            <CheckCircle2 size={12} /> Auto-filled from profile
-                          </span>
-                        )}
-                      </div>
-                      <input 
-                        type="tel" 
-                        name="phone" 
-                        value={formData.phone} 
-                        onChange={handleChange} 
-                        required 
-                        placeholder="e.g. +27 82 123 4567" 
-                        className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-[var(--color-gold)]/50 focus:outline-none transition-colors text-white" 
+                      <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">First Name *</label>
+                      <input
+                        type="text"
+                        name="firstName"
+                        value={formData.firstName}
+                        onChange={handleChange}
+                        required
+                        className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
                       />
-                      <p className="mt-1.5 text-xs text-[var(--color-ivory-muted)] font-light">
-                        Couriers require a mobile contact number to send tracking notifications and arrange gate access.
-                      </p>
                     </div>
-                    {deliveryPreference !== 'postnet' ? (
-                      <div className="md:col-span-2">
-                        <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">Street Address</label>
+                    <div>
+                      <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Last Name *</label>
+                      <input
+                        type="text"
+                        name="lastName"
+                        value={formData.lastName}
+                        onChange={handleChange}
+                        required
+                        className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Email Address (For Invoices & Tracking Updates) *</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        required
+                        placeholder="e.g. yourname@example.com"
+                        className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[11px] uppercase tracking-wider text-white/70 flex items-center gap-1.5">
+                          <Phone size={12} className="text-[var(--color-gold)]" /> Mobile Number (Required for PostNet SMS alerts) *
+                        </label>
+                      </div>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        required
+                        placeholder="e.g. +27 82 123 4567"
+                        className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* If Home Delivery: Street Address Inputs */}
+                {deliveryPreference === 'home' && (
+                  <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
+                    <h3 className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-medium">Delivery Address Details</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="sm:col-span-2">
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Street Address</label>
                         <LocationInput
                           name="address"
                           value={formData.address}
@@ -895,248 +860,548 @@ export default function CheckoutPage({ cartItems, updateCartQuantity, removeFrom
                               lng: lng ?? current.lng
                             }));
                             setQuote(null);
-                            setDutiesAccepted(false);
-                            if (lat && lng) setMapLocation({ lat, lng });
                           }}
                           required
-                          className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-[var(--color-gold)]/50 focus:outline-none transition-colors text-white"
-                          placeholder="Start typing your address..."
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                          placeholder="Street number and name..."
                         />
-                        <p className="mt-2 text-xs text-[var(--color-ivory-muted)]">Select a suggested address, review the fields below, then calculate the delivery rate.</p>
                       </div>
-                    ) : (
-                      <div className="md:col-span-2 rounded-xl border border-[var(--color-gold)]/20 bg-[var(--color-gold)]/5 p-4 flex items-start gap-3">
-                        <MapPin size={18} className="mt-0.5 shrink-0 text-[var(--color-gold)]" />
-                        <div>
-                          <p className="text-sm text-white font-medium">
-                            {preferredPostnetStore ? `Pickup at ${preferredPostnetStore.name}` : "No street address needed yet"}
-                          </p>
-                          <p className="mt-1 text-xs leading-relaxed text-[var(--color-ivory-muted)]">
-                            {preferredPostnetStore ? preferredPostnetStore.address : "Enter your city and postal code. You will choose the exact PostNet branch after the branch search."}
-                          </p>
-                        </div>
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">City / Suburb</label>
+                        <CityInput
+                          name="city"
+                          value={formData.city}
+                          onChange={handleCityChange}
+                          onCityDetails={({ city, country, lat, lng }) => {
+                            setFormData((current) => ({
+                              ...current,
+                              city,
+                              postalCode: '',
+                              country: country || current.country,
+                              lat,
+                              lng
+                            }));
+                            setQuote(null);
+                          }}
+                          required
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                          placeholder="e.g. Sandton"
+                        />
                       </div>
-                    )}
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">City</label>
-                      <CityInput
-                        name="city"
-                        value={formData.city}
-                        onChange={handleCityChange}
-                        onCityDetails={({ city, country, lat, lng }) => {
-                          setFormData((current) => ({
-                            ...current,
-                            city,
-                            postalCode: '',
-                            country: deliveryPreference === 'postnet' ? 'South Africa' : (country || current.country),
-                            lat,
-                            lng
-                          }));
-                          setPreferredPostnetStore(null);
-                          setQuote(null);
-                          setDutiesAccepted(false);
-                          if (lat && lng) setMapLocation({ lat, lng });
-                        }}
-                        restrictToSouthAfrica={deliveryPreference === 'postnet'}
-                        required
-                        className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-[var(--color-gold)]/50 focus:outline-none transition-colors"
-                        placeholder={deliveryPreference === 'postnet' ? 'Search South African cities...' : 'Search for a city...'}
-                      />
-                      <p className="mt-2 text-xs text-[var(--color-ivory-muted)]">Start typing and select a city from the suggestions.</p>
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Postal Code</label>
+                        <PostalCodeInput
+                          name="postalCode"
+                          value={formData.postalCode}
+                          city={formData.city}
+                          cityLat={formData.lat}
+                          cityLng={formData.lng}
+                          suggestedPostalCodes={postnetPostalCodes}
+                          onChange={handleChange}
+                          onPostalDetails={({ postalCode }) => {
+                            setFormData((current) => ({ ...current, postalCode }));
+                            setQuote(null);
+                          }}
+                          required
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                          placeholder="e.g. 2196"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">Postal Code</label>
-                      <PostalCodeInput
-                        name="postalCode"
-                        value={formData.postalCode}
-                        city={formData.city}
-                        cityLat={formData.lat}
-                        cityLng={formData.lng}
-                        suggestedPostalCodes={postnetPostalCodes}
-                        onChange={handleChange}
-                        onPostalDetails={({ postalCode }) => {
-                          setFormData((current) => ({
-                            ...current,
-                            postalCode
-                          }));
-                          setQuote(null);
-                          setDutiesAccepted(false);
-                        }}
-                        restrictToSouthAfrica={deliveryPreference === 'postnet' || String(formData.country).toLowerCase() === 'south africa'}
-                        required
-                        className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-[var(--color-gold)]/50 focus:outline-none transition-colors"
-                        placeholder="Search postal code..."
-                      />
+                  </div>
+                )}
+
+                {/* If PostNet Store Collection: Branch Search & Selection */}
+                {deliveryPreference === 'postnet' && (
+                  <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold text-white">Choose Your Preferred PostNet Store</h3>
+                        <p className="text-xs text-[var(--color-ivory-muted)]">Search your suburb or city to find the nearest collection point.</p>
+                      </div>
                     </div>
-                    {deliveryPreference !== 'home' && formData.city && (
-                      <div className="md:col-span-2 rounded-2xl border border-white/10 bg-[#0a0a0a] p-4 md:p-5">
+
+                    {/* Quick City Selection: Top 3 cities by default with Show More / Less */}
+                    <div className="p-3.5 bg-white/[0.03] border border-white/10 rounded-xl space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] uppercase tracking-wider text-white/70 font-semibold">
+                          Available PostNet Hubs & Cities
+                        </span>
+                        {POSTNET_AVAILABLE_CITIES.length > 3 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllPostnetCities(!showAllPostnetCities)}
+                            className="text-[11px] text-[var(--color-gold)] hover:underline flex items-center gap-1 font-semibold"
+                          >
+                            {showAllPostnetCities
+                              ? 'Show Fewer Cities ▴'
+                              : `Show More Cities (+${POSTNET_AVAILABLE_CITIES.length - 3} More) ▾`}
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {(showAllPostnetCities ? POSTNET_AVAILABLE_CITIES : POSTNET_AVAILABLE_CITIES.slice(0, 3)).map((city) => {
+                          const isSelected = String(formData.city || '').trim().toLowerCase() === city.name.toLowerCase();
+                          return (
+                            <button
+                              key={city.name}
+                              type="button"
+                              onClick={() => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  city: city.name,
+                                  postalCode: city.postalCode,
+                                  lat: city.lat,
+                                  lng: city.lng
+                                }));
+                                setPreferredPostnetStore(null);
+                                setQuote(null);
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                isSelected
+                                  ? 'bg-[var(--color-gold)] text-black font-bold shadow-md'
+                                  : 'bg-white/5 hover:bg-white/10 text-white/80 border border-white/10'
+                              }`}
+                            >
+                              📍 {city.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">City / Suburb</label>
+                        <CityInput
+                          name="city"
+                          value={formData.city}
+                          onChange={handleCityChange}
+                          onCityDetails={({ city, lat, lng }) => {
+                            setFormData((current) => ({
+                              ...current,
+                              city,
+                              lat,
+                              lng
+                            }));
+                            setQuote(null);
+                          }}
+                          restrictToSouthAfrica={true}
+                          required
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                          placeholder="Search suburb or city..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Postal Code</label>
+                        <PostalCodeInput
+                          name="postalCode"
+                          value={formData.postalCode}
+                          city={formData.city}
+                          cityLat={formData.lat}
+                          cityLng={formData.lng}
+                          suggestedPostalCodes={postnetPostalCodes}
+                          onChange={handleChange}
+                          onPostalDetails={({ postalCode }) => {
+                            setFormData((current) => ({ ...current, postalCode }));
+                            setQuote(null);
+                          }}
+                          restrictToSouthAfrica={true}
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                          placeholder="Postal code..."
+                        />
+                      </div>
+                    </div>
+
+                    {/* Selected Store Banner */}
+                    {preferredPostnetStore && (
+                      <div className="rounded-xl border border-[var(--color-gold)] bg-[var(--color-gold)]/10 p-4 flex items-start justify-between gap-4">
                         <div className="flex items-start gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-gold)]/10 text-[var(--color-gold)]">
-                            {postnetPreview.loading ? <Loader2 size={17} className="animate-spin" /> : <MapPin size={17} />}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-white">PostNet branches near {formData.city}</p>
-                            {postnetPreview.loading ? (
-                              <p className="mt-1 text-xs text-[var(--color-ivory-muted)]">Checking the selected city and nearby areas...</p>
-                            ) : postnetPreview.error ? (
-                              <p className="mt-1 text-xs text-red-400">{postnetPreview.error}</p>
-                            ) : postnetPreview.stores.length > 0 ? (
-                              <>
-                                <p className={`mt-1 text-xs ${postnetPreview.usingNearestCity ? 'text-amber-300' : 'text-[var(--color-ivory-muted)]'}`}>
-                                  {postnetPreview.usingNearestCity
-                                    ? `There is no PostNet branch listed in ${formData.city}. Choose one of the nearest alternatives below.`
-                                    : `Branches listed in ${formData.city}. You can choose one now or after the delivery price is calculated.`}
-                                </p>
-                                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                  {postnetPreview.stores.map((store) => {
-                                    const selected = preferredPostnetStore?.id === store.id;
-                                    return (
-                                      <button
-                                        type="button"
-                                        key={store.id}
-                                        onClick={() => handlePreferredPostnetStoreSelect(store)}
-                                        className={`rounded-xl border p-3 text-left transition-colors ${selected ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10' : 'border-white/10 bg-black/30 hover:border-white/30'}`}
-                                      >
-                                        <span className="flex items-center justify-between gap-3">
-                                          <span className="text-sm font-medium text-white">{store.name}</span>
-                                          {selected && <CheckCircle2 size={15} className="shrink-0 text-[var(--color-gold)]" />}
-                                        </span>
-                                        <span className="mt-1 block text-xs leading-relaxed text-[var(--color-ivory-muted)]">{store.address}</span>
-                                        <span className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-wider">
-                                          <span className={store.isNearestAlternative ? 'text-amber-300' : 'text-emerald-300'}>
-                                            {store.isNearestAlternative ? `Nearest alternative${store.city ? ` · ${store.city}` : ''}` : `In ${formData.city}`}
-                                          </span>
-                                          {store.distance !== null && store.distance !== undefined && (
-                                            <span className="text-white/50">{store.distance} km away</span>
-                                          )}
-                                        </span>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </>
-                            ) : (
-                              <p className="mt-1 text-xs text-[var(--color-ivory-muted)]">Select a city suggestion to load PostNet branches.</p>
+                          <MapPin size={20} className="text-[var(--color-gold)] shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs uppercase tracking-widest text-emerald-400 font-bold mb-0.5">Your Collection Point</p>
+                            <p className="text-sm font-bold text-white">{preferredPostnetStore.name}</p>
+                            <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">{preferredPostnetStore.address}</p>
+                            {preferredPostnetStore.distance !== null && preferredPostnetStore.distance !== undefined && (
+                              <p className="text-[11px] text-white/50 mt-1">📍 {preferredPostnetStore.distance} km away</p>
                             )}
                           </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setPreferredPostnetStore(null)}
+                          className="text-[11px] text-[var(--color-gold)] hover:text-white uppercase font-bold tracking-wider underline shrink-0"
+                        >
+                          Change location
+                        </button>
                       </div>
                     )}
-                    <div className="md:col-span-2">
-                      <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">Country</label>
-                      {deliveryPreference === 'postnet' ? (
-                        <div className="w-full bg-[#0a0a0a] border border-[var(--color-gold)]/25 rounded-xl px-4 py-3 text-sm text-white flex items-center justify-between gap-3">
-                          <span>South Africa</span>
-                          <span className="text-[10px] uppercase tracking-widest text-[var(--color-gold)]">PostNet only</span>
-                        </div>
-                      ) : (
-                        <input type="text" name="country" value={formData.country} onChange={handleChange} required className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-[var(--color-gold)]/50 focus:outline-none transition-colors text-white" />
-                      )}
-                    </div>
-                    
-                    <div className="md:col-span-2 mt-2">
-                        <button 
-                          type="button" 
-                          onClick={() => {
-                            const needsStreetAddress = deliveryPreference !== 'postnet';
-                            if ((needsStreetAddress && !formData.address) || !formData.city || !formData.postalCode || !formData.country) {
-                              onNotify(needsStreetAddress
-                                ? "Please fill in the address, city, postal code, and country."
-                                : "Please fill in the city, postal code, and country to find PostNet branches.");
-                              return;
-                            }
-                            fetchQuote({
-                              address: formData.address,
-                              city: formData.city,
-                              postalCode: formData.postalCode,
-                              country: formData.country,
-                              lat: formData.lat,
-                              lng: formData.lng
-                            });
-                          }}
-                          disabled={quoteLoading}
-                          className="w-full bg-white/5 border border-white/10 text-white font-medium text-xs uppercase tracking-widest py-4 rounded-xl hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
-                        >
-                          {quoteLoading ? (
-                            <><Loader2 size={16} className="animate-spin" /> Calculating...</>
-                          ) : deliveryPreference === 'postnet' ? (
-                            quote ? 'Search PostNet Branches Again' : 'Find PostNet Branches & Price'
-                          ) : (
-                            quote ? 'Recalculate Delivery Price' : 'Calculate Delivery Price'
-                          )}
-                        </button>
-                    </div>
-                    {/* Live Map */}
-                    <div className="md:col-span-2">
-                      <div className={`w-full transition-all duration-700 ease-in-out overflow-hidden rounded-xl border border-[var(--color-gold)]/20 ${mapLocation ? 'h-52 opacity-100 mt-4 md:h-64' : 'h-0 opacity-0 border-none'}`} ref={mapRef}></div>
-                    </div>
-                    
-                    {/* Send as Gift */}
-                    <div className="md:col-span-2 mt-4 bg-[#111] border border-white/5 p-5 rounded-xl">
-                      <label className="flex items-center gap-3 cursor-pointer select-none">
-                        <input type="checkbox" checked={isGift} onChange={(e) => setIsGift(e.target.checked)} className="w-5 h-5 accent-[#c9a35b] rounded bg-black border-white/10" />
-                        <span className="text-white font-medium text-sm">Send as a Gift</span>
-                      </label>
-                      
-                      {isGift && (
-                        <div className="mt-5 grid grid-cols-1 gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                          <div>
-                            <label className="block text-[10px] uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">Recipient Name</label>
-                            <input type="text" value={giftRecipientName} onChange={(e) => setGiftRecipientName(e.target.value)} required className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm focus:border-[var(--color-gold)]/50 focus:outline-none transition-colors" placeholder="e.g. John Doe" />
+
+                    {/* Nearby Stores List (shown if no store selected or changing) */}
+                    {!preferredPostnetStore && formData.city && (
+                      <div className="space-y-3 mt-4">
+                        {postnetPreview.loading ? (
+                          <div className="flex items-center justify-center p-6 bg-black/40 rounded-xl border border-white/5">
+                            <Loader2 size={24} className="animate-spin text-[var(--color-gold)] mr-3" />
+                            <span className="text-xs text-[var(--color-ivory-muted)]">Locating nearest PostNet branches...</span>
                           </div>
-                          <div>
-                            <label className="block text-[10px] uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">Gift Message</label>
-                            <textarea value={giftMessage} onChange={(e) => setGiftMessage(e.target.value)} rows="3" className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm focus:border-[var(--color-gold)]/50 focus:outline-none transition-colors" placeholder="Write a special message..."></textarea>
+                        ) : postnetPreview.stores.length > 0 ? (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 gap-2.5">
+                              {(showAllPostnetBranches ? postnetPreview.stores : postnetPreview.stores.slice(0, 3)).map((store) => (
+                                <div
+                                  key={store.id}
+                                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-white/10 bg-black/40 hover:border-[var(--color-gold)]/50 transition-colors"
+                                >
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-sm font-semibold text-white">{store.name}</p>
+                                      {store.distance !== null && (
+                                        <span className="text-[10px] bg-white/10 text-white/80 px-2 py-0.5 rounded-full">
+                                          📍 {store.distance} km away
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">{store.address}</p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePreferredPostnetStoreSelect(store)}
+                                    className="self-start sm:self-auto px-4 py-2 bg-white/10 hover:bg-[var(--color-gold)] hover:text-black text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all"
+                                  >
+                                    Select This Store
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                            {postnetPreview.stores.length > 3 && (
+                              <button
+                                type="button"
+                                onClick={() => setShowAllPostnetBranches(!showAllPostnetBranches)}
+                                className="w-full py-2.5 px-4 rounded-xl border border-white/10 hover:border-[var(--color-gold)]/40 bg-white/5 hover:bg-white/10 text-xs font-semibold text-[var(--color-gold)] flex items-center justify-center gap-2 transition-all mt-1"
+                              >
+                                {showAllPostnetBranches ? (
+                                  <>
+                                    <span>Show Fewer Branches</span>
+                                    <ChevronUp size={14} />
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>Show More Branches (+{postnetPreview.stores.length - 3} more)</span>
+                                    <ChevronDown size={14} />
+                                  </>
+                                )}
+                              </button>
+                            )}
                           </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Rewards */}
-                    {user?.rewardBalance > 0 && (
-                      <div className="md:col-span-2 mt-2 bg-[var(--color-gold)]/5 border border-[var(--color-gold)]/20 p-5 rounded-xl">
-                        <label className="flex items-center gap-3 cursor-pointer select-none">
-                          <input type="checkbox" checked={applyRewards} onChange={(e) => setApplyRewards(e.target.checked)} className="w-5 h-5 accent-[var(--color-gold)] rounded bg-black border-[var(--color-gold)]/20" />
-                          <div>
-                            <span className="text-[var(--color-gold)] font-medium text-sm flex items-center gap-2">Apply Referral Rewards</span>
-                            <p className="text-xs text-[var(--color-ivory-muted)] mt-1">You have <Price amount={user.rewardBalance} /> available. This will be deducted from your total.</p>
-                          </div>
-                        </label>
+                        ) : (
+                          <p className="text-xs text-[var(--color-ivory-muted)] p-4 text-center">
+                            Start typing your suburb or city above to list nearby PostNet stores.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
-                </section>
-                
-                {/* Payment Section */}
-                <section id="checkout-payment" className="scroll-mt-32 rounded-2xl border border-white/10 bg-white/[0.02] p-4 md:rounded-none md:border-x-0 md:border-b-0 md:bg-transparent md:px-0 md:pt-8">
-                  <h2 className="text-xl font-serif flex items-center gap-3 mb-4 md:mb-6">
-                    <span className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-sm font-sans">3</span>
-                    Payment Method
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <label className={`cursor-pointer bg-[#0a0a0a] border rounded-2xl p-4 md:p-6 relative overflow-hidden transition-all ${paymentMethod === 'payfast' ? 'border-[var(--color-gold)] shadow-[0_0_15px_rgba(212,175,55,0.1)]' : 'border-white/10 hover:border-white/30'}`}>
-                      <input type="radio" name="paymentMethod" value="payfast" checked={paymentMethod === 'payfast'} onChange={(e) => setPaymentMethod(e.target.value)} className="hidden" />
-                      <div className="absolute top-0 right-0 p-4 opacity-10"><CreditCard size={80} /></div>
-                      <div className="relative z-10">
-                        <h4 className="font-medium text-white mb-1">PayFast (Instant)</h4>
-                        <p className="text-xs text-[var(--color-ivory-muted)] mb-4">Credit/Debit Cards, Instant EFT</p>
-                        <div className="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 shadow-[0_6px_20px_rgba(0,0,0,0.25)] min-w-[120px]">
-                          <img
-                            src="https://res.cloudinary.com/oioqrgj0/image/upload/v1787729897/grand-store/assets/pkv0g8anwi079fvihl2e.png"
-                            alt="PayFast"
-                            className="h-10 md:h-12 w-auto object-contain"
-                          />
+                )}
+
+                {/* 18+ Legal Age Verification Gate */}
+                <div className="bg-[#0d0d0d] border border-amber-500/20 rounded-2xl p-4 md:p-5 flex items-start gap-3.5 shadow-lg">
+                  <input
+                    type="checkbox"
+                    id="ageVerification"
+                    checked={isAgeConfirmed}
+                    onChange={(e) => setIsAgeConfirmed(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-white/20 bg-black/50 accent-[var(--color-gold)] focus:ring-[var(--color-gold)] cursor-pointer"
+                    required
+                  />
+                  <label htmlFor="ageVerification" className="text-xs text-white/90 leading-relaxed cursor-pointer select-none">
+                    <strong className="text-amber-400 font-semibold block sm:inline">Legal Age Verification (18+): </strong>
+                    I certify that I am 18 years of age or older and legally authorized to purchase alcoholic beverages under South African liquor legislation.
+                  </label>
+                </div>
+
+                {/* Continue to Step 2 Button */}
+                <button
+                  type="button"
+                  onClick={handleProceedToDeliveryMethod}
+                  disabled={quoteLoading}
+                  className="w-full bg-[var(--color-gold)] text-black font-bold uppercase tracking-widest text-xs py-4 rounded-xl hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {quoteLoading ? (
+                    <><Loader2 size={16} className="animate-spin" /> Calculating Rates...</>
+                  ) : (
+                    <>Continue to Delivery Method <ArrowRight size={16} /></>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* STEP 2: DELIVERY METHOD & ALCOHOL CONFIDENCE SECTION                    */}
+            {/* ========================================================================= */}
+            {checkoutStep === 2 && (
+              <div className="space-y-6 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-serif text-white mb-1">2. Delivery Method</h2>
+                    <p className="text-xs text-[var(--color-ivory-muted)]">Choose your preferred shipping service level.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutStep(1)}
+                    className="text-xs text-[var(--color-gold)] uppercase font-bold tracking-wider hover:underline"
+                  >
+                    Edit Details
+                  </button>
+                </div>
+
+                {/* Delivery Options Card */}
+                <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
+                  <h3 className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-medium">Available Shipping Services</h3>
+
+                  {quote?.shipments.map((shp, shpIndex) => (
+                    <div key={shpIndex} className="space-y-3">
+                      {quote.shipments.length > 1 && (
+                        <p className="text-xs font-semibold text-[var(--color-gold)] flex items-center gap-2">
+                          <Truck size={14} /> Shipment {shpIndex + 1}: {shp.vendorName}
+                        </p>
+                      )}
+
+                      <div className="space-y-2.5">
+                        {shp.shippingQuotes.map((opt, optIndex) => {
+                          const isSelected = shp.selectedCourier?.serviceLevel === opt.serviceLevel;
+                          return (
+                            <label
+                              key={optIndex}
+                              className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_15px_rgba(212,175,55,0.08)]'
+                                  : 'border-white/10 bg-black/40 hover:border-white/30'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type="radio"
+                                  name={`shipping-opt-${shpIndex}`}
+                                  checked={isSelected}
+                                  onChange={() => handleCourierSelect(shpIndex, opt)}
+                                  className="accent-[var(--color-gold)] w-4 h-4"
+                                />
+                                <div>
+                                  <p className="text-sm font-semibold text-white">{opt.serviceLevel}</p>
+                                  <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                                    Estimated delivery: {opt.estimatedDays}
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="text-sm font-bold text-[var(--color-gold)] font-serif">
+                                {opt.cost > 0 ? <Price amount={opt.cost} /> : 'FREE'}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 🔒 THE CONFIDENCE SECTION (Alcohol Compliance & Security) */}
+                <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#121212] to-[#0a0a0a] p-5 md:p-6 space-y-4 shadow-xl">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                      <ShieldCheck size={22} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        🔒 Secure & Insured Delivery
+                      </h4>
+                      <p className="text-xs text-[var(--color-ivory-muted)] mt-1 leading-relaxed">
+                        Your luxury order is securely packaged and tracked from vendor vault to handover.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-white/5 text-[11px] text-white/70">
+                    <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-400" /> Trackable delivery</span>
+                    <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-400" /> SMS notifications</span>
+                    <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-400" /> Secure handling</span>
+                    <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-400" /> Direct handover</span>
+                  </div>
+
+                  {/* 18+ Legal Drinking Age Notice */}
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200/90 flex items-start gap-2.5">
+                    <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-amber-300">18+ Alcohol Compliance Verification:</strong>
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-amber-200/80">
+                        In accordance with South African liquor regulations, valid identification (National ID or Passport) must be presented upon courier delivery or PostNet branch collection.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* International Duties Notice if applicable */}
+                {quote?.hasInternational && (
+                  <div className="rounded-2xl border border-rose-500/30 bg-rose-950/20 p-5 space-y-3">
+                    <h4 className="text-sm font-bold text-rose-400 flex items-center gap-2">
+                      <AlertTriangle size={18} /> Important: International Customs & Duties
+                    </h4>
+                    <p className="text-xs text-rose-200/80 leading-relaxed">
+                      Import duties and taxes are determined by the destination customs authority. Delivery charge covers transportation only.
+                    </p>
+                    <label className="flex items-center gap-3 cursor-pointer pt-2">
+                      <input
+                        type="checkbox"
+                        checked={dutiesAccepted}
+                        onChange={(e) => setDutiesAccepted(e.target.checked)}
+                        className="accent-rose-500 w-4 h-4 rounded"
+                      />
+                      <span className="text-xs font-medium text-white">I accept responsibility for destination import charges.</span>
+                    </label>
+                  </div>
+                )}
+
+                {/* Continue to Step 3 Button */}
+                <button
+                  type="button"
+                  onClick={handleProceedToPayment}
+                  className="w-full bg-[var(--color-gold)] text-black font-bold uppercase tracking-widest text-xs py-4 rounded-xl hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2"
+                >
+                  Continue to Payment <ArrowRight size={16} />
+                </button>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* STEP 3: PAYMENT & SUPER COINS REDEMPTION                                  */}
+            {/* ========================================================================= */}
+            {checkoutStep === 3 && (
+              <form onSubmit={handlePlaceOrder} className="space-y-6 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-serif text-white mb-1">3. Payment & Rewards</h2>
+                    <p className="text-xs text-[var(--color-ivory-muted)]">Apply your Super Coins and choose your preferred payment method.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutStep(2)}
+                    className="text-xs text-[var(--color-gold)] uppercase font-bold tracking-wider hover:underline"
+                  >
+                    Edit Delivery
+                  </button>
+                </div>
+
+                {/* ⭐ SUPER COINS REDEMPTION CARD */}
+                {quote?.superCoins && quote.superCoins.availableCoins > 0 && (
+                  <div className="bg-gradient-to-br from-[#161309] to-[#0d0d0d] border border-[var(--color-gold)]/30 rounded-2xl p-5 md:p-6 shadow-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 rounded-xl bg-[var(--color-gold)]/20 text-[var(--color-gold)]">
+                          <Coins size={20} />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                            Grand Store Super Coins
+                          </h3>
+                          <p className="text-xs text-[var(--color-ivory-muted)]">
+                            You have <strong className="text-[var(--color-gold)]">{quote.superCoins.availableCoins.toLocaleString()} Super Coins</strong> (Value: R{(quote.superCoins.availableCoins * quote.superCoins.coinValue).toFixed(2)})
+                          </p>
                         </div>
                       </div>
+
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={useSuperCoins}
+                          onChange={(e) => setUseSuperCoins(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-gold)]"></div>
+                      </label>
+                    </div>
+
+                    {useSuperCoins && (
+                      <div className="pt-3 border-t border-[var(--color-gold)]/10 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                          <CheckCircle2 size={14} /> Margin-Safe Deduction: -R{quote.superCoins.maxDiscountRand.toFixed(2)} ({quote.superCoins.maxRedeemableCoins} coins)
+                        </span>
+                        {quote.superCoins.isMarginCapped && (
+                          <span className="text-amber-300/90 text-[11px]">
+                            {quote.superCoins.marginMessage}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Legacy Referral Rewards if available */}
+                {user?.rewardBalance > 0 && (
+                  <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-white">Apply Referral Credits</p>
+                      <p className="text-[11px] text-[var(--color-ivory-muted)]">Available: <Price amount={user.rewardBalance} /></p>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={applyRewards}
+                        onChange={(e) => setApplyRewards(e.target.checked)}
+                        className="accent-[var(--color-gold)] w-4 h-4 rounded"
+                      />
+                      <span className="text-xs text-white">Apply</span>
+                    </label>
+                  </div>
+                )}
+
+                {/* Payment Methods */}
+                <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
+                  <h3 className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-medium">Choose Payment Method</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label
+                      className={`cursor-pointer rounded-2xl p-4 border transition-all relative overflow-hidden ${
+                        paymentMethod === 'payfast'
+                          ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_15px_rgba(212,175,55,0.1)]'
+                          : 'border-white/10 bg-black/40 hover:border-white/30'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="payfast"
+                        checked={paymentMethod === 'payfast'}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className="hidden"
+                      />
+                      <div className="flex items-center justify-between mb-3">
+                        <CreditCard size={22} className="text-[var(--color-gold)]" />
+                        {paymentMethod === 'payfast' && <CheckCircle2 size={16} className="text-[var(--color-gold)]" />}
+                      </div>
+                      <h4 className="text-sm font-bold text-white mb-1">PayFast Instant</h4>
+                      <p className="text-[11px] text-[var(--color-ivory-muted)]">Cards, Instant EFT, SnapScan, Zapper</p>
                     </label>
 
-                    <label className={`cursor-pointer bg-[#0a0a0a] border rounded-2xl p-4 md:p-6 relative overflow-hidden transition-all ${paymentMethod === 'bank_transfer' ? 'border-[var(--color-gold)] shadow-[0_0_15px_rgba(212,175,55,0.1)]' : 'border-white/10 hover:border-white/30'}`}>
-                      <input type="radio" name="paymentMethod" value="bank_transfer" checked={paymentMethod === 'bank_transfer'} onChange={(e) => setPaymentMethod(e.target.value)} className="hidden" />
-                      <div className="absolute top-0 right-0 p-4 opacity-10"><ShieldCheck size={80} /></div>
-                      <div className="relative z-10">
-                        <h4 className="font-medium text-white mb-1">Manual Bank Transfer</h4>
-                        <p className="text-xs text-[var(--color-ivory-muted)] mb-4">Transfer funds directly to our bank. Upload proof to verify.</p>
+                    <label
+                      className={`cursor-pointer rounded-2xl p-4 border transition-all relative overflow-hidden ${
+                        paymentMethod === 'bank_transfer'
+                          ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_15px_rgba(212,175,55,0.1)]'
+                          : 'border-white/10 bg-black/40 hover:border-white/30'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="bank_transfer"
+                        checked={paymentMethod === 'bank_transfer'}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className="hidden"
+                      />
+                      <div className="flex items-center justify-between mb-3">
+                        <ShieldCheck size={22} className="text-[var(--color-gold)]" />
+                        {paymentMethod === 'bank_transfer' && <CheckCircle2 size={16} className="text-[var(--color-gold)]" />}
                       </div>
+                      <h4 className="text-sm font-bold text-white mb-1">Direct Bank Transfer</h4>
+                      <p className="text-[11px] text-[var(--color-ivory-muted)]">Manual EFT with deposit reference</p>
                     </label>
                   </div>
 
@@ -1144,107 +1409,86 @@ export default function CheckoutPage({ cartItems, updateCartQuantity, removeFrom
                     <div className="mt-4 animate-fadeIn">
                       <StoreBankDetailsCard
                         compact={true}
-                        reference="ORDER-ID-ON-SUBMIT"
+                        reference="ORDER-REF-ON-SUBMIT"
                         referenceLabel="Payment Reference"
-                        title="Official Bank Settlement Account"
+                        title="Grand Store Settlement Account"
                         subtitle="EFT details will be designated with your unique order reference upon submission"
                         onNotify={onNotify}
                       />
                     </div>
                   )}
-                </section>
-                
-                <button 
-                  type="submit" 
+                </div>
+
+                {/* Final Submit Button */}
+                <button
+                  type="submit"
                   disabled={loading || !quote}
-                  className="hidden w-full mt-8 bg-[#c9a35b] text-black font-bold uppercase tracking-widest text-xs py-4 rounded-xl hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all md:flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-[var(--color-gold)] text-black font-bold uppercase tracking-widest text-sm py-4 rounded-xl hover:shadow-[0_0_25px_rgba(212,175,55,0.45)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {loading ? <><Loader2 size={16} className="animate-spin" /> Processing...</> : <>Place Order • <Price amount={quote ? quote.aggregatedTotals.totalToPay : cartSubtotal} /> <ArrowRight size={16} /></>}
+                  {loading ? (
+                    <><Loader2 size={18} className="animate-spin" /> Processing Order...</>
+                  ) : (
+                    <>Pay <Price amount={displayedTotal} /> <ArrowRight size={18} /></>
+                  )}
                 </button>
-                
+
                 <SecurePaymentBadges />
                 <PaymentForm paymentData={paymentData} payfastUrl={payfastUrl} />
               </form>
-            ) : checkoutStep === 3 ? (
-              /* Step 3: Bank Transfer Proof Upload */
-              <div className="border-t border-white/10 pt-0 mb-8">
-                <h2 className="text-xl font-serif mb-6 flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-full bg-[var(--color-gold)] text-black flex items-center justify-center text-sm font-sans"><CheckCircle2 size={16} /></span>
-                  Order Placed Successfully
-                </h2>
-                
-                <div className="bg-gradient-to-br from-[#111] to-[#0a0a0a] border border-[var(--color-gold)]/20 shadow-[0_0_30px_rgba(212,175,55,0.05)] rounded-2xl p-4 sm:p-6 md:p-8 mb-8 text-center relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--color-gold)]/5 rounded-full blur-3xl"></div>
-                  <div className="relative z-10">
-                    <h3 className="text-lg font-serif text-[var(--color-gold)] mb-2">Awaiting Bank Transfer</h3>
-                  <p className="text-sm text-[var(--color-ivory-muted)] mb-6">
-                    Your order <span className="text-white font-mono">{createdOrderId}</span> has been created. 
-                    Please transfer exactly <strong className="text-white"><Price amount={quote?.aggregatedTotals.totalToPay || 0} /></strong> to our bank account.
-                  </p>
+            )}
 
-                  <StoreBankDetailsCard
-                    reference={createdOrderId?.slice(-6).toUpperCase()}
-                    referenceLabel="Order Reference"
-                    className="max-w-xl mx-auto mb-6"
-                    onNotify={onNotify}
-                  />
-
-                  <form onSubmit={handleUploadProof} className="max-w-sm mx-auto text-left">
-                    <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">Proof of Payment URL (Image/PDF)</label>
-                    <input 
-                      type="url" 
-                      value={proofUrl} 
-                      onChange={(e) => setProofUrl(e.target.value)} 
-                      required 
-                      placeholder="https://..."
-                      className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-[var(--color-gold)]/50 focus:outline-none transition-colors mb-4" 
-                    />
-                    
-                    <button 
-                      type="submit" 
-                      disabled={uploadingProof}
-                      className="w-full bg-gradient-to-r from-[#c9a35b] to-[#b58b38] text-black font-bold uppercase tracking-widest text-xs py-4 rounded-xl hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2"
-                    >
-                      {uploadingProof ? <><Loader2 size={16} className="animate-spin" /> Uploading...</> : 'Submit Proof'}
-                    </button>
-                    
-                    <button 
-                      type="button" 
-                      onClick={() => navigate(`/customer/order/${createdOrderId}`)}
-                      className="w-full text-[10px] text-gray-500 uppercase tracking-widest mt-4 hover:text-white transition-colors"
-                    >
-                      I'll upload it later from my orders
-                    </button>
-                  </form>
-                  </div>
+            {/* ========================================================================= */}
+            {/* STEP 4: BANK TRANSFER PROOF SUBMISSION (If EFT selected)                  */}
+            {/* ========================================================================= */}
+            {checkoutStep === 4 && (
+              <div className="bg-gradient-to-br from-[#111] to-[#0a0a0a] border border-[var(--color-gold)]/20 shadow-2xl rounded-2xl p-6 md:p-10 text-center relative overflow-hidden animate-fadeIn">
+                <div className="w-14 h-14 mx-auto rounded-full bg-[var(--color-gold)] text-black flex items-center justify-center mb-4">
+                  <CheckCircle2 size={28} />
                 </div>
+                <h3 className="text-xl font-serif text-[var(--color-gold)] mb-2">Order Created Successfully!</h3>
+                <p className="text-sm text-[var(--color-ivory-muted)] mb-6 max-w-md mx-auto">
+                  Order <span className="text-white font-mono font-bold">{createdOrderId}</span> is awaiting payment. Please transfer exactly <strong className="text-white font-serif"><Price amount={displayedTotal} /></strong> to our official bank account.
+                </p>
+
+                <StoreBankDetailsCard
+                  reference={createdOrderId?.slice(-6).toUpperCase()}
+                  referenceLabel="Order Reference"
+                  className="max-w-xl mx-auto mb-6"
+                  onNotify={onNotify}
+                />
+
+                <form onSubmit={handleUploadProof} className="max-w-sm mx-auto text-left space-y-3">
+                  <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)]">
+                    Proof of Payment URL (Image or PDF)
+                  </label>
+                  <input
+                    type="url"
+                    value={proofUrl}
+                    onChange={(e) => setProofUrl(e.target.value)}
+                    required
+                    placeholder="https://..."
+                    className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                  />
+                  <button
+                    type="submit"
+                    disabled={uploadingProof}
+                    className="w-full bg-[var(--color-gold)] text-black font-bold uppercase tracking-widest text-xs py-3.5 rounded-xl hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2"
+                  >
+                    {uploadingProof ? <><Loader2 size={16} className="animate-spin" /> Uploading...</> : 'Submit Proof'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(user ? `/customer/order/${createdOrderId}` : `/order-success/${createdOrderId}`)}
+                    className="w-full text-xs text-white/50 hover:text-white uppercase tracking-wider py-2 transition-colors"
+                  >
+                    {user ? 'I will upload later from My Orders' : 'View Order Confirmation'}
+                  </button>
+                </form>
               </div>
-            ) : null}
-            
-          </div>
-
-          </div>
-      </div>
-
-      {checkoutStep !== 3 && (
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#080808]/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-16px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl md:hidden">
-          <div className="mx-auto flex max-w-lg items-center gap-3">
-            <div className="min-w-0 shrink-0">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-white/40">Pay now</p>
-              <p className="truncate font-serif text-lg text-[var(--color-gold)]"><Price amount={displayedTotal} /></p>
-            </div>
-            {quote ? (
-              <button form="checkout-form" type="submit" disabled={loading} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#c9a35b] px-4 text-xs font-bold uppercase tracking-widest text-black disabled:opacity-50">
-                {loading ? <><Loader2 size={16} className="animate-spin" /> Processing</> : <>Place Order <ArrowRight size={16} /></>}
-              </button>
-            ) : (
-              <button type="button" onClick={() => scrollToCheckoutSection('checkout-delivery-details')} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#c9a35b] px-4 text-xs font-bold uppercase tracking-wider text-black">
-                Add delivery rate <ArrowRight size={16} />
-              </button>
             )}
           </div>
         </div>
-      )}
+      </div>
     </main>
   );
 }

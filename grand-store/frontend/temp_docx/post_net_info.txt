@@ -1,0 +1,253 @@
+For an e-commerce site such as Grand Store, the PostNet integration should feel like a simple delivery service built into checkout, not like a separate courier system.
+The key principle is:
+The customer chooses where they want the order delivered, sees the delivery cost and expected timing clearly, and PostNet handles the logistics in the background.
+Recommended Checkout Flow
+1. Customer reaches Checkout
+After reviewing the cart:
+CART → CHECKOUT → DELIVERY → PAYMENT → ORDER CONFIRMATION
+At the top, show a simple progress indicator:
+① Delivery Details → ② Delivery Method → ③ Payment → ④ Confirmation
+This immediately gives the customer confidence about where they are in the process.
+2. Delivery Details
+Ask for only the information necessary.
+Delivery Address
+Where would you like your order delivered?
+Full Name 
+Mobile Number 
+Email 
+Address / Street 
+Suburb 
+City 
+Province 
+Postal Code 
+Country 
+Then provide:
+📍 Choose your delivery location
+○ Deliver to my address
+○ Collect from a PostNet Store
+This is important because PostNet gives you an opportunity to offer PostNet-to-PostNet collection as an alternative to home delivery.
+3. If Customer Chooses PostNet Collection
+The experience should be extremely simple.
+Collect from PostNet
+Choose your preferred PostNet store
+Search:
+🔍 Search by suburb, city or postal code
+Then display nearby stores:
+PostNet Sandton CitySandton, Gauteng📍 0.8 km away
+PostNet RosebankRosebank, Gauteng📍 2.4 km away
+PostNet Hyde ParkHyde Park, Gauteng📍 3.1 km away
+Customer taps:
+SELECT THIS STORE
+The selected location should then appear clearly:
+Your collection pointPostNet Sandton CitySandton, GautengChange location
+4. If Customer Chooses Home Delivery
+The system should automatically calculate the available PostNet delivery option based on:
+Origin/vendor location 
+Customer destination 
+Parcel dimensions 
+Parcel weight 
+Number of parcels 
+Delivery service available 
+Any applicable surcharges 
+The customer shouldn't have to understand any of this.
+Instead show:
+🚚 Delivery Options
+PostNet Standard DeliveryEstimated delivery: 2–5 business daysRXX.XX
+PostNet Express DeliveryEstimated delivery: 1–2 business daysRXX.XX
+Then:
+● Standard — RXX.XX
+○ Express — RXX.XX
+If only one service is available, don't make the customer choose. Simply show:
+PostNet DeliveryEstimated delivery: 2–5 business daysRXX.XX
+5. The Confidence Section
+This is particularly important for an alcohol e-commerce platform.
+Immediately below the delivery selection, show a small reassuring box:
+🔒 Secure Delivery
+Your order will be securely processed and delivered through our trusted delivery network.
+✓ Trackable delivery✓ Delivery notifications✓ Secure handling✓ Delivery to your selected address or collection point
+For alcohol, also clearly state whatever age-verification / identification requirement applies to the applicable delivery process.
+6. Checkout Summary
+The right-hand or lower summary should remain extremely clean.
+ORDER SUMMARY
+Whisky × 1R1,250.00
+Wine × 2R800.00
+SubtotalR2,050.00
+PostNet DeliveryR120.00
+Total
+R2,170.00
+Then:
+CONTINUE TO PAYMENT
+No surprises.
+The customer knows exactly what they're paying before proceeding.
+7. Payment
+After clicking Continue to Payment, the delivery information should remain locked into the order.
+Payment options could be displayed:
+Choose Payment Method
+○ Credit / Debit Card○ EFT○ Other supported payment method○ Grand Store Wallet / Supercoins
+Then:
+PAY R2,170.00
+The button should show the actual amount.
+8. Order Confirmation
+After successful payment:
+🎉 Order Confirmed
+Thank you for your order!
+Order #GS102458
+Delivery
+🚚 PostNet Standard Delivery
+Delivering to:Customer's selected address
+Estimated delivery:2–5 business days
+Tracking:Tracking number will appear here
+TRACK MY ORDER
+The customer should also receive an email/SMS/WhatsApp notification, depending on what Grand Store supports.
+9. PostNet Tracking Flow
+This is where the integration can become particularly professional.
+Inside My Orders, show:
+Order #GS102458
+Payment: ✅ Confirmed
+Order: ✅ Confirmed
+Vendor: ✅ Preparing
+Collected: ✅
+In Transit: 🚚
+At Delivery/Collection Point: 📍
+Delivered: ✅
+For a PostNet collection order:
+Ready for Collection
+PostNet Sandton City
+Your order is ready for collection.
+The customer can then tap:
+VIEW COLLECTION DETAILS
+10. What Should Happen Behind the Scenes
+The customer should never see the complicated courier logic.
+The technical flow should be:
+CUSTOMER
+   ↓
+CHECKOUT
+   ↓
+ENTER DELIVERY ADDRESS
+   ↓
+GRAND STORE
+   ↓
+POSTNET API
+   ↓
+Validate Address
+   ↓
+Calculate Delivery Rate
+   ↓
+Determine Available Service
+   ↓
+Return Price + ETA
+   ↓
+CUSTOMER SELECTS DELIVERY
+   ↓
+PAYMENT
+   ↓
+ORDER CONFIRMED
+   ↓
+GRAND STORE CREATES SHIPMENT
+   ↓
+POSTNET WAYBILL / LABEL
+   ↓
+VENDOR / COLLECTION
+   ↓
+POSTNET
+   ↓
+TRACKING UPDATES
+   ↓
+GRAND STORE ORDER STATUS
+   ↓
+CUSTOMER
+11. Very Important for a Multi-Vendor Grand Store
+Because Grand Store is a multi-vendor marketplace, I would not make PostNet integration directly customer → PostNet.
+Instead:
+CUSTOMER
+      ↓
+GRAND STORE ORDER
+      ↓
+ORDER SPLIT BY VENDOR
+      ↓
+VENDOR A ──→ PostNet Shipment A
+VENDOR B ──→ PostNet Shipment B
+VENDOR C ──→ PostNet Shipment C
+      ↓
+      GRAND STORE
+      ↓
+ONE CUSTOMER ORDER
+The customer should ideally still see:
+Order #GS102458
+rather than becoming confused by three different courier orders.
+Behind the scenes, however, Grand Store maintains:
+Master Order ID 
+Vendor Order ID 
+Shipment ID 
+PostNet Waybill Number 
+Tracking Number 
+Parcel Number 
+Weight 
+Dimensions 
+Shipping cost 
+Vendor responsible 
+Delivery status 
+12. The Most Important UX Rule
+Don't make PostNet feel like a technical integration.
+Don't show:
+API RateService CodeCarrier CodeZoneWaybill GenerationShipment Reference
+Those belong in the Admin/Vendor system.
+The buyer should see only:
+🚚 PostNet DeliveryReliable, trackable deliveryR120Estimated 2–5 business days
+and:
+Continue to Payment
+13. Recommended Grand Store Checkout Screen
+I would structure the actual page like this:
+┌───────────────────────────────────────────┐
+│              GRAND STORE                  │
+│                                           │
+│  ① DELIVERY  ─── ② PAYMENT ─── ③ DONE    │
+├───────────────────────────────────────────┤
+│                                           │
+│  DELIVERY DETAILS                         │
+│                                           │
+│  Where should we deliver your order?     │
+│                                           │
+│  ○ Deliver to my address                  │
+│  ○ Collect from a PostNet Store           │
+│                                           │
+│  [ Address Details ]                      │
+│                                           │
+├───────────────────────────────────────────┤
+│                                           │
+│  DELIVERY METHOD                          │
+│                                           │
+│  🚚 PostNet Standard                      │
+│  Estimated 2–5 business days              │
+│                              R120.00      │
+│                                           │
+│  ○ PostNet Express                       │
+│  Estimated 1–2 business days              │
+│                              R180.00      │
+│                                           │
+├───────────────────────────────────────────┤
+│                                           │
+│  🔒 SECURE & TRACKABLE DELIVERY          │
+│  ✓ Track your order                       │
+│  ✓ Delivery notifications                 │
+│  ✓ Secure handling                        │
+│                                           │
+├───────────────────────────────────────────┤
+│                                           │
+│  ORDER SUMMARY                            │
+│  Products                    R2,050       │
+│  Delivery                      R120       │
+│  ─────────────────────────────────        │
+│  TOTAL                       R2,170       │
+│                                           │
+│       [ CONTINUE TO PAYMENT ]             │
+│                                           │
+└───────────────────────────────────────────┘
+One additional feature I strongly recommend
+Give the customer a "Change Delivery Method" option right up until payment.
+So if they initially select:
+Home Delivery — R120
+they can easily change to:
+PostNet Collection — R80
+without restarting checkout.
+This creates a much more polished experience and can also reduce delivery costs.

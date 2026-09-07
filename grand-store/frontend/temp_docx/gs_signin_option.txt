@@ -1,0 +1,151 @@
+SIGN IN DOCUMENT:
+or a liquor-selling platform, I would make sign-in extremely simple while adding age verification and strong account security. You don't want customers abandoning checkout because registration is complicated.
+Best customer sign-in options
+Method
+Customer experience
+Security
+Recommended
+Mobile number + OTP
+⭐⭐⭐⭐⭐
+⭐⭐⭐⭐
+Yes — primary
+Email + password
+⭐⭐⭐⭐
+⭐⭐⭐⭐
+Yes
+Email magic link
+⭐⭐⭐⭐⭐
+⭐⭐⭐⭐
+Yes
+Google Sign-In
+⭐⭐⭐⭐⭐
+⭐⭐⭐⭐⭐
+Yes
+Apple Sign-In
+⭐⭐⭐⭐⭐
+⭐⭐⭐⭐⭐
+Yes
+Facebook Sign-In
+⭐⭐⭐⭐
+⭐⭐⭐
+Optional
+WhatsApp OTP
+⭐⭐⭐⭐⭐
+⭐⭐⭐⭐
+Excellent if supported
+Guest checkout
+⭐⭐⭐⭐⭐
+⭐⭐⭐
+Yes, with age verification
+1. Mobile Number + OTP — probably your best option
+Customer enters:
+Mobile Number+27 82 123 4567
+Then:
+Enter 6-digit OTP
+No password to remember.
+After verification, the platform can ask for:
+First name 
+Last name 
+Email 
+Date of birth / age confirmation 
+Delivery address 
+This is particularly good for a platform such as Grand Store, where customers may be purchasing from their phones.
+2. Google / Apple Sign-In
+Have buttons such as:
+Continue with GoogleContinue with Apple
+The customer doesn't have to create another password.
+However, after social sign-in, your platform should still collect whatever information is required for age verification and alcohol-sale compliance before allowing an alcohol purchase.
+3. Email + Password
+Traditional option:
+Email addressPasswordSign In
+Include:
+Forgot Password?
+This is useful for customers who prefer a conventional account and particularly useful for business/trade customers.
+4. Email Magic Link
+Customer enters their email:
+customer@email.com
+Then:
+We've sent you a secure sign-in link.
+They click the link in their email and are logged in.
+This removes password frustration and is very user-friendly.
+5. WhatsApp Login / OTP
+For a South African-focused platform, this could be a very attractive option.
+Continue with WhatsApp
+Customer receives a verification code through WhatsApp.
+It can also eventually be useful for:
+Order notifications 
+Delivery updates 
+Auction notifications 
+Promotional messages 
+Abandoned-cart reminders 
+6. Guest Checkout
+I would definitely consider guest checkout, rather than forcing somebody to create an account before buying.
+For example:
+Add to Cart → Checkout → Continue as Guest
+Then collect the minimum required information.
+After the order:
+Create an account to track your order, save your details and earn rewards.
+This converts a guest buyer into a registered customer without creating friction.
+The sign-in screen I would recommend
+For a premium liquor marketplace, I'd keep it very clean:
+Welcome to Grand Store
+Sign in or create your account
+Mobile Number+27 | Mobile number
+Send OTP
+or
+Continue with GoogleContinue with AppleContinue with WhatsApp
+──────── OR ────────
+Continue with Email
+Then at the bottom:
+New to Grand Store? Create Account
+And:
+By continuing, you agree to our Terms & Conditions and Privacy Policy.
+Very important: separate LOGIN from AGE VERIFICATION
+For alcohol, I wouldn't make the sign-in system itself responsible for everything.
+Think of it as two separate gates:
+1. Account authentication“Are you really this customer?”
+2. Alcohol eligibility verification“Is this customer legally permitted to purchase alcohol?”
+That allows you to have a very easy login while still having appropriate compliance controls.
+For example:
+Sign in → Verify age → Shop → Checkout → Delivery verification
+Depending on the jurisdiction, you can make the age-verification process more or less stringent.
+My recommended Grand Store structure
+I would actually build three customer entry paths:
+🟢 Returning Customer
+Mobile OTPGoogleAppleEmail
+↓
+Customer dashboard
+↓
+Browse / Buy / Auction / Trade
+🔵 New Customer
+Create Account
+Name 
+Mobile 
+Email 
+Date of birth / required age information 
+Password optional 
+Address later 
+↓
+Age verification
+↓
+Account created
+🟡 Quick Buyer
+Continue as Guest
+↓
+Age verification
+↓
+Delivery details
+↓
+Payment
+↓
+Order confirmation
+↓
+Create your Grand Store account
+One more thing I would add
+Since your platform has normal retail + premium whisky + auctions + potentially wholesale/trade, don't make every customer account identical.
+Use a single Customer ID, but allow account types:
+Retail Customer↓Premium Customer↓Verified Auction Bidder↓Trade Customer / Business↓Vendor
+That gives you one central identity system while allowing different verification levels and permissions.
+For an online liquor + premium whisky auction platform, my preferred combination would be:
+Mobile OTP + Google + Apple + Email + Guest Checkout
+with age verification at the appropriate point and additional verification for auction bidders.

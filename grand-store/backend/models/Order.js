@@ -4,8 +4,17 @@ const orderSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false,
+    default: null
   },
+  isGuest: { type: Boolean, default: false },
+  guestInfo: {
+    name: { type: String, default: '' },
+    email: { type: String, default: '' },
+    phone: { type: String, default: '' }
+  },
+  isAgeConfirmed: { type: Boolean, default: false },
+  guestAccessToken: { type: String },
   // GS Reference IDs
   transactionId: { type: String, unique: true },
   orderId: { type: String, unique: true },
@@ -59,6 +68,19 @@ const orderSchema = new mongoose.Schema({
 
   appliedWelcomeDiscount: { type: Number, default: 0 },
   appliedRewards: { type: Number, default: 0 },
+  superCoinsUsed: { type: Number, default: 0 },
+  superCoinsDiscount: { type: Number, default: 0 },
+  superCoinsEarned: { type: Number, default: 0 },
+  deliveryPreference: { type: String, enum: ['home', 'postnet'], default: 'home' },
+  selectedPostnetStore: {
+    id: { type: String },
+    name: { type: String },
+    address: { type: String },
+    city: { type: String },
+    telephone: { type: String },
+    postalCode: { type: String },
+    distance: { type: Number }
+  },
   totalPrice: { type: Number, required: true, default: 0 }, // = subTotal + shipping + VAT + duties - discounts
 
   shipments: [{
@@ -86,7 +108,30 @@ const orderSchema = new mongoose.Schema({
   isPaid: { type: Boolean, required: true, default: false },
   paidAt: { type: Date },
   isDelivered: { type: Boolean, required: true, default: false },
-  deliveredAt: { type: Date }
+  deliveredAt: { type: Date },
+
+  // Immutable Order Financial Snapshot (Costing GS Understanding Section 14 & 251)
+  financialSnapshot: {
+    subTotal: { type: Number },
+    totalPrice: { type: Number },
+    grossPlatformCommission: { type: Number },
+    totalVendorPayouts: { type: Number },
+    gatewayFeeTotal: { type: Number },
+    gatewayFeeAbsorbedByGS: { type: Number },
+    superCoinsDiscountTotal: { type: Number },
+    superCoinsAbsorbedByGS: { type: Number },
+    referralDiscountTotal: { type: Number },
+    referralAbsorbedByGS: { type: Number },
+    netPlatformContribution: { type: Number },
+    netMarginPct: { type: Number },
+    marginStatus: { type: String },
+    fundingSourceSnapshot: {
+      whoPaysGateway: { type: String },
+      whoPaysPromo: { type: String },
+      whoPaysReferral: { type: String },
+      whoPaysCoins: { type: String }
+    }
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

@@ -68,6 +68,7 @@ import CustomerBankDetails from './features/customer/CustomerBankDetails'
 import CustomerCalendar from './features/customer/CustomerCalendar'
 import ReferralsTab from './features/customer/ReferralsTab'
 import CustomerOrdersPage from './features/customer/CustomerOrdersPage'
+import SuperCoinsWallet from './features/customer/SuperCoinsWallet'
 import UserAuctionDashboard from './features/customer/UserAuctionDashboard'
 import CustomerLayout from './features/customer/CustomerLayout'
 import OnboardingWizard from './features/vendor/OnboardingWizard'
@@ -627,7 +628,15 @@ function App() {
           }
         />
         <Route
+          path="/checkout"
+          element={<Navigate to="/customer/checkout" replace />}
+        />
+        <Route
           path="/customer/order/:id"
+          element={<OrderSuccessPage onClearCart={clearCart} />}
+        />
+        <Route
+          path="/order-success/:id"
           element={<OrderSuccessPage onClearCart={clearCart} />}
         />
         <Route
@@ -665,6 +674,7 @@ function App() {
           <Route path="/customer/banking" element={<CustomerBankDetails />} />
           <Route path="/customer/referrals" element={<ReferralsTab />} />
           <Route path="/customer/orders" element={<CustomerOrdersPage />} />
+          <Route path="/customer/super-coins" element={<SuperCoinsWallet />} />
           <Route path="/customer/auctions" element={<UserAuctionDashboard />} />
           <Route path="/customer/tickets" element={<MyTickets />} />
           <Route

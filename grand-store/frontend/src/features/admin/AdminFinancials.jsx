@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api';
-import { DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp, History, Download, FileSpreadsheet, Layers3 } from 'lucide-react';
+import { DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp, History, Download, FileSpreadsheet, Layers3, Scale, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { downloadAccountingWorkbook, downloadCategoryAccountingWorkbook, downloadAuctionsWorkbook, downloadEventsWorkbook, downloadVendorWorkbook, downloadLedgerWorkbook } from '../../utils/accountingWorkbook';
 
@@ -45,6 +45,70 @@ export default function AdminFinancials({ hideHeader = false }) {
 
     fetchFinanceData();
   }, [user?.token]);
+
+  const managementSummary = React.useMemo(() => {
+    let totalSales = 0;
+    let totalVendorPayouts = 0;
+    let grossCommission = 0;
+    let promosAbsorbed = 0;
+    let referralAbsorbed = 0;
+    let coinsAbsorbed = 0;
+    let gatewayAbsorbed = 0;
+    let courierAbsorbed = 0;
+    let netContribution = 0;
+
+    (shopOrders || []).forEach(order => {
+      if (order.financialSnapshot) {
+        const snap = order.financialSnapshot;
+        totalSales += Number(snap.subTotal || snap.totalPrice || 0);
+        totalVendorPayouts += Number(snap.totalVendorPayouts || 0);
+        grossCommission += Number(snap.grossPlatformCommission || 0);
+        promosAbsorbed += Number(snap.promoDiscountAbsorbedByGS || 0);
+        referralAbsorbed += Number(snap.referralAbsorbedByGS || 0);
+        coinsAbsorbed += Number(snap.superCoinsAbsorbedByGS || 0);
+        gatewayAbsorbed += Number(snap.gatewayFeeAbsorbedByGS || 0);
+        courierAbsorbed += Number(snap.courierCostAbsorbedByGS || 0);
+        netContribution += Number(snap.netPlatformContribution || 0);
+      } else {
+        // Fallback calculation for orders prior to immutable snapshot engine
+        const subtotal = Number(order.totalPrice || 0);
+        const comm = subtotal * 0.15;
+        const vendor = subtotal - comm;
+        const gw = subtotal * 0.025;
+        const coins = Number(order.superCoinsDiscount || 0);
+        const ref = Number(order.appliedWelcomeDiscount || 0);
+        totalSales += subtotal;
+        totalVendorPayouts += vendor;
+        grossCommission += comm;
+        coinsAbsorbed += coins;
+        referralAbsorbed += ref;
+        gatewayAbsorbed += gw;
+        netContribution += (comm - (coins + ref + gw));
+      }
+    });
+
+    const netMarginPct = totalSales > 0 ? parseFloat(((netContribution / totalSales) * 100).toFixed(2)) : 0;
+    let statusBadge = { icon: '🟢', label: 'Healthy Margin', color: 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30' };
+    if (netMarginPct < 10) {
+      statusBadge = { icon: '🔴', label: 'Blocked / Low Margin', color: 'text-rose-400 bg-rose-950/40 border-rose-500/30' };
+    } else if (netMarginPct < 15) {
+      statusBadge = { icon: '🟠', label: 'Warning Range', color: 'text-amber-400 bg-amber-950/40 border-amber-500/30' };
+    }
+
+    return {
+      totalSales: parseFloat(totalSales.toFixed(2)),
+      totalVendorPayouts: parseFloat(totalVendorPayouts.toFixed(2)),
+      grossCommission: parseFloat(grossCommission.toFixed(2)),
+      promosAbsorbed: parseFloat(promosAbsorbed.toFixed(2)),
+      referralAbsorbed: parseFloat(referralAbsorbed.toFixed(2)),
+      coinsAbsorbed: parseFloat(coinsAbsorbed.toFixed(2)),
+      gatewayAbsorbed: parseFloat(gatewayAbsorbed.toFixed(2)),
+      courierAbsorbed: parseFloat(courierAbsorbed.toFixed(2)),
+      netContribution: parseFloat(netContribution.toFixed(2)),
+      netMarginPct,
+      statusBadge
+    };
+  }, [shopOrders]);
 
   const exportToExcel = async (reportType) => {
     try {
@@ -123,6 +187,89 @@ export default function AdminFinancials({ hideHeader = false }) {
           <p className="text-[#888] text-xs mt-2">Pending payables to be disbursed</p>
         </div>
       </div>
+
+      {/* SECTION 15 MANAGEMENT PROFITABILITY DASHBOARD */}
+      <section className="bg-black/60 border border-[var(--color-gold)]/40 rounded-xl p-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--color-gold)]/5 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-white/10 pb-4 mb-6 gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-[var(--color-gold)] mb-1">
+              <Scale size={18} />
+              <span className="text-[10px] font-bold tracking-[0.2em] uppercase font-mono">Executive Accounting • Section 15</span>
+            </div>
+            <h3 className="text-white font-serif text-2xl">Management Profitability Dashboard</h3>
+            <p className="text-gray-400 text-xs mt-1">
+              True net contribution and margin health after vendor payouts, customer incentives, and "Who Pays?" cost absorption.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className={`px-3 py-1 text-xs font-mono rounded-full border ${managementSummary.statusBadge.color} flex items-center gap-1.5 shadow-sm`}>
+              <span>{managementSummary.statusBadge.icon}</span>
+              <span>{managementSummary.statusBadge.label}</span>
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
+          <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
+            <div className="text-[10px] text-gray-400 uppercase font-mono mb-1">Total Sales</div>
+            <div className="text-sm font-bold text-white font-mono">{formatMoney(managementSummary.totalSales)}</div>
+          </div>
+          <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
+            <div className="text-[10px] text-gray-400 uppercase font-mono mb-1">Vendor Payouts</div>
+            <div className="text-sm font-bold text-amber-300 font-mono">- {formatMoney(managementSummary.totalVendorPayouts)}</div>
+          </div>
+          <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
+            <div className="text-[10px] text-gray-400 uppercase font-mono mb-1">Gross Margin</div>
+            <div className="text-sm font-bold text-emerald-400 font-mono">{formatMoney(managementSummary.grossCommission)}</div>
+          </div>
+          <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
+            <div className="text-[10px] text-gray-400 uppercase font-mono mb-1">Promos Absorbed</div>
+            <div className="text-sm font-bold text-rose-300 font-mono">- {formatMoney(managementSummary.promosAbsorbed)}</div>
+          </div>
+          <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
+            <div className="text-[10px] text-gray-400 uppercase font-mono mb-1">Refer &amp; Earn</div>
+            <div className="text-sm font-bold text-rose-300 font-mono">- {formatMoney(managementSummary.referralAbsorbed)}</div>
+          </div>
+          <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
+            <div className="text-[10px] text-gray-400 uppercase font-mono mb-1">Super Coins</div>
+            <div className="text-sm font-bold text-rose-300 font-mono">- {formatMoney(managementSummary.coinsAbsorbed)}</div>
+          </div>
+          <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
+            <div className="text-[10px] text-gray-400 uppercase font-mono mb-1">Gateway Fees</div>
+            <div className="text-sm font-bold text-rose-300 font-mono">- {formatMoney(managementSummary.gatewayAbsorbed)}</div>
+          </div>
+          <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
+            <div className="text-[10px] text-gray-400 uppercase font-mono mb-1">Courier Costs</div>
+            <div className="text-sm font-bold text-rose-300 font-mono">- {formatMoney(managementSummary.courierAbsorbed)}</div>
+          </div>
+        </div>
+
+        {/* Bottom Contribution Summary Banner */}
+        <div className="p-4 bg-black/80 border border-[var(--color-gold)]/30 rounded-xl grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+          <div>
+            <span className="text-[10px] uppercase tracking-widest text-gray-400 font-mono">Gross Contribution</span>
+            <div className="text-xl font-serif text-white">{formatMoney(managementSummary.grossCommission)}</div>
+            <p className="text-[10px] text-gray-400 mt-0.5">Platform commission before incentive absorption</p>
+          </div>
+          <div>
+            <span className="text-[10px] uppercase tracking-widest text-emerald-400 font-mono">Net Grand Store Contribution</span>
+            <div className="text-2xl font-serif font-bold text-emerald-400">{formatMoney(managementSummary.netContribution)}</div>
+            <p className="text-[10px] text-gray-400 mt-0.5">Actual retained profit after all deductions</p>
+          </div>
+          <div className="flex items-center justify-between md:justify-end gap-3 border-t md:border-t-0 md:border-l border-white/10 pt-2 md:pt-0 md:pl-6">
+            <div>
+              <span className="text-[10px] uppercase tracking-widest text-[var(--color-gold)] font-mono font-semibold">True Net Margin</span>
+              <div className="text-2xl font-mono font-bold text-white">{managementSummary.netMarginPct}%</div>
+            </div>
+            <div className={`p-2.5 rounded-full border ${managementSummary.statusBadge.color}`}>
+              <ShieldCheck size={24} />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* REPORT EXPORTS */}
       <section className="bg-[#111] border border-white/10 rounded-sm px-6 py-5">

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
-import { CheckCircle2, AlertCircle, Loader2, Store, Clock, Landmark, ArrowRight, Phone, Calendar as CalendarIcon } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, Store, Clock, Landmark, ArrowRight, Phone, Calendar as CalendarIcon, Coins } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BidderKycCard from '../../components/auction/BidderKycCard';
 import CustomerCalendar from './CustomerCalendar';
@@ -174,6 +174,32 @@ export default function ProfilePage() {
           className="py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-white text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition-all self-start sm:self-auto shrink-0 cursor-pointer"
         >
           Manage Bank Account <ArrowRight size={13} />
+        </Link>
+      </section>
+
+      {/* Super Coins Loyalty Wallet Quick Card */}
+      <section className="bg-gradient-to-r from-[#17140e] via-[#0d0d0d] to-black border border-[var(--color-gold)]/25 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-[var(--color-gold)]/15 border border-[var(--color-gold)]/30 flex items-center justify-center text-[var(--color-gold)] shrink-0">
+            <Coins size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-white">Super Coins Loyalty Wallet</h3>
+              <span className="text-[10px] font-mono text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-0.5 rounded border border-[var(--color-gold)]/20">
+                {user.superCoinsBalance || 0} Coins
+              </span>
+            </div>
+            <p className="text-xs text-white/50">
+              Spend up to 10% on checkout with your loyalty coins. Redeemable on eligible fine wines, spirits, and luxury cigars.
+            </p>
+          </div>
+        </div>
+        <Link
+          to="/customer/super-coins"
+          className="py-2.5 px-4 rounded-xl bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20 border border-[var(--color-gold)]/30 text-[var(--color-gold)] text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition-all self-start sm:self-auto shrink-0 cursor-pointer"
+        >
+          View Wallet <ArrowRight size={13} />
         </Link>
       </section>
 

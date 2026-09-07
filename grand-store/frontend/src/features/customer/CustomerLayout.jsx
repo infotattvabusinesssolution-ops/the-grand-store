@@ -16,6 +16,7 @@ import {
   Trash2,
   Landmark,
   Calendar,
+  Coins,
 } from "lucide-react";
 import api from '../../api';
 
@@ -96,6 +97,19 @@ export default function CustomerLayout() {
         }`}
       >
         <Package size={16} /> My Orders
+      </button>
+      <button
+        onClick={() => {
+          navigate("/customer/super-coins");
+          setMobileMenuOpen(false);
+        }}
+        className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-left text-xs uppercase tracking-widest border ${
+          location.pathname === "/customer/super-coins"
+            ? "bg-white/[0.05] text-gold-gradient shadow-[0_0_15px_rgba(212,175,55,0.05)] font-semibold border-white/[0.05]"
+            : "text-[var(--color-ivory-muted)] hover:bg-white/[0.03] hover:text-[var(--color-ivory)] border-transparent"
+        }`}
+      >
+        <Coins size={16} /> Super Coins
       </button>
       <button
         onClick={() => {

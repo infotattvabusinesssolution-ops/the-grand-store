@@ -142,8 +142,12 @@ const generateQuote = async (req, res) => {
       }
 
       const availableQuotes = shippingData.quotes.filter((shippingQuote) => {
-        if (deliveryPreference === 'postnet') return shippingQuote.courierName === 'PostNet';
-        if (deliveryPreference === 'home') return shippingQuote.courierName !== 'PostNet';
+        if (deliveryPreference === 'postnet') {
+          return shippingQuote.deliveryType === 'pickup' || shippingQuote.serviceLevel.includes('Collection');
+        }
+        if (deliveryPreference === 'home') {
+          return shippingQuote.deliveryType === 'home';
+        }
         return true;
       });
 
@@ -168,7 +172,7 @@ const generateQuote = async (req, res) => {
         landedCostEstimates: shippingData.landedCostEstimates,
         // Default selected courier is the first one
         selectedCourier: availableQuotes[0] || null,
-        selectedPickupStore: null
+        selectedPickupStore: req.body.preferredPostnetStore || null
       });
     }
 
@@ -180,6 +184,26 @@ const generateQuote = async (req, res) => {
     // For now, we display them as estimates, but do NOT add them to the Grand Store total to pay at checkout.
     // VAT is also deducted from the vendor's earnings, so it is NOT added to the customer's total to pay.
     const totalToPay = parseFloat((globalSubtotal + defaultShippingTotal).toFixed(2));
+
+    // Calculate Super Coins allowance and earning
+    const SuperCoinEngine = require('../engines/superCoinEngine');
+    const User = require('../models/User');
+    let userCoins = 0;
+    if (req.user && req.user._id) {
+      const dbUser = await User.findById(req.user._id).select('superCoinsBalance');
+      if (dbUser) userCoins = dbUser.superCoinsBalance || 0;
+    }
+
+    const superCoinsEstimate = SuperCoinEngine.calculateAllowedRedemption({
+      userCoins,
+      eligibleSubtotal: globalSubtotal,
+      shippingCost: defaultShippingTotal,
+      commissionPct: settings.marketplaceCommissionPct || 15,
+      gatewayFeePct: settings.gatewayFeePct || 2.5,
+      settings
+    });
+
+    const potentialCoinsToEarn = SuperCoinEngine.calculateEarnedCoins(globalSubtotal, settings);
 
     const quoteId = `QUOTE-${Date.now()}`;
     const expiresAt = new Date(Date.now() + 10 * 60000); // 10 minutes
@@ -196,12 +220,15 @@ const generateQuote = async (req, res) => {
         estimatedImportDuties: globalEstimatedDuties,
         estimatedImportTaxes: globalEstimatedTaxes,
         estimatedCustomsFees: globalCustomsFees,
-        totalToPay // The amount to charge the card
+        totalToPay // The amount to charge the card before coin discount
+      },
+      superCoins: {
+        ...superCoinsEstimate,
+        potentialCoinsToEarn
       },
       bankDetails: settings.bankDetails,
       shipments
     });
-
   } catch (error) {
     console.error('Quote Generation Error:', error);
     res.status(500).json({ message: 'Server Error generating quote' });

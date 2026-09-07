@@ -48,9 +48,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password, referralCode) => {
+  const register = async (name, email, password, referralCode, extraData = {}) => {
     try {
-      const res = await api.post(`/auth/register`, { name, email, password, referralCode });
+      const res = await api.post(`/auth/register`, { name, email, password, referralCode, ...extraData });
       return res.data; // Now returns { message: '...' }
     } catch (error) {
       throw new Error(error.response?.data?.message || "Registration failed");
@@ -97,6 +97,84 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const sendMobileOtp = async (phone) => {
+    try {
+      const res = await api.post('/auth/send-otp', { phone });
+      return res.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Failed to send verification code");
+    }
+  };
+
+  const verifyMobileOtp = async (phone, otp, profileData = {}) => {
+    try {
+      const res = await api.post('/auth/verify-otp', { phone, otp, ...profileData });
+      const data = res.data;
+      localStorage.setItem("userInfo", JSON.stringify(data));
+      setUser(data);
+      return data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Verification code invalid or expired");
+    }
+  };
+
+  const sendMagicLink = async (email) => {
+    try {
+      const res = await api.post('/auth/magic-link', { email });
+      return res.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Failed to send sign-in link");
+    }
+  };
+
+  const verifyMagicLink = async (token, email) => {
+    try {
+      const res = await api.post('/auth/verify-magic-link', { token, email });
+      const data = res.data;
+      localStorage.setItem("userInfo", JSON.stringify(data));
+      setUser(data);
+      return data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Sign-in link invalid or expired");
+    }
+  };
+
+  const appleLogin = async (userCredentialOrData, role = 'customer', referralCode) => {
+    try {
+      let identityToken = undefined;
+      let appleId = undefined;
+      let email = undefined;
+      let name = undefined;
+
+      if (userCredentialOrData?.user) {
+        identityToken = await userCredentialOrData.user.getIdToken();
+        email = userCredentialOrData.user.email;
+        name = userCredentialOrData.user.displayName;
+        appleId = userCredentialOrData.user.uid;
+      } else if (typeof userCredentialOrData === 'object') {
+        identityToken = userCredentialOrData.identityToken || userCredentialOrData.token;
+        appleId = userCredentialOrData.appleId || userCredentialOrData.uid;
+        email = userCredentialOrData.email;
+        name = userCredentialOrData.name;
+      }
+
+      const res = await api.post('/auth/apple', {
+        identityToken,
+        appleId,
+        email,
+        name,
+        role,
+        referralCode
+      });
+      const data = res.data;
+      localStorage.setItem("userInfo", JSON.stringify(data));
+      setUser(data);
+      return data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Apple Sign-In failed");
+    }
+  };
+
   const logout = async () => {
     try {
       await api.post('/auth/logout');
@@ -122,7 +200,21 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, adminLogin, register, googleLogin, logout, updateUser, refreshUser }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      adminLogin, 
+      register, 
+      googleLogin, 
+      appleLogin,
+      sendMobileOtp,
+      verifyMobileOtp,
+      sendMagicLink,
+      verifyMagicLink,
+      logout, 
+      updateUser, 
+      refreshUser 
+    }}>
       {children}
     </AuthContext.Provider>
   );

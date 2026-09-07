@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { CheckCircle2, ChevronLeft, Download, Loader2 } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Download, Loader2, Truck, MapPin, Coins, ShieldCheck, ArrowRight, Clock, AlertTriangle, Package } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useCurrency } from "../../context/CurrencyContext";
 import Price from "../../components/ui/Price";
@@ -11,13 +11,44 @@ import autoTable from "jspdf-autotable";
 
 export default function OrderSuccessPage({ onClearCart }) {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { formatPrice } = useCurrency();
   const [searchParams] = useSearchParams();
   const paymentStatus = searchParams.get("payment");
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // 1-Click Post-Order Account Creation State (Section 6 & Quick Buyer)
+  const [accountPassword, setAccountPassword] = useState("");
+  const [convertingAccount, setConvertingAccount] = useState(false);
+  const [accountCreated, setAccountCreated] = useState(false);
+  const [accountError, setAccountError] = useState("");
+
+  const handleCreateAccount = async (e) => {
+    e.preventDefault();
+    if (!accountPassword || accountPassword.length < 6) {
+      setAccountError("Password must be at least 6 characters long.");
+      return;
+    }
+    setConvertingAccount(true);
+    setAccountError("");
+    try {
+      const res = await api.post("/auth/convert-guest", {
+        orderId: order._id,
+        password: accountPassword
+      });
+      if (updateUser) {
+        updateUser(res.data);
+      }
+      setAccountCreated(true);
+      setOrder((prev) => prev ? { ...prev, isGuest: false, user: { _id: res.data._id, name: res.data.name, email: res.data.email } } : prev);
+    } catch (err) {
+      setAccountError(err.response?.data?.message || err.message || "Failed to create account. Please try again.");
+    } finally {
+      setConvertingAccount(false);
+    }
+  };
 
   useEffect(() => {
     document.title = "Order Confirmation - The Grand Store";
@@ -38,10 +69,12 @@ export default function OrderSuccessPage({ onClearCart }) {
       }
     };
 
-    if (user && id) {
+    if (id) {
       fetchOrder();
+    } else {
+      setLoading(false);
     }
-  }, [id, user]);
+  }, [id, paymentStatus]);
 
   if (loading) {
     return (
@@ -125,10 +158,10 @@ export default function OrderSuccessPage({ onClearCart }) {
       
       doc.setFont("helvetica", "bold");
       doc.setTextColor(0);
-      doc.text(order.user?.name || "Customer", 120, 55);
+      doc.text(order.user?.name || order.guestInfo?.name || order.shippingAddress?.name || "Customer", 120, 55);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(60);
-      doc.text(order.user?.email || "", 120, 60);
+      doc.text(order.user?.email || order.guestInfo?.email || order.shippingAddress?.email || "", 120, 60);
       
       // Wrap Address so it doesn't overflow page
       const addressLines = doc.splitTextToSize(order.shippingAddress?.address || "", 76);
@@ -317,6 +350,236 @@ export default function OrderSuccessPage({ onClearCart }) {
           )}
         </div>
 
+        {/* Section 8: PostNet Delivery & Super Coins Loyalty Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+          {/* PostNet Delivery / Collection Card */}
+          <div className="bg-white/[0.025] backdrop-blur-md border border-[var(--color-gold)]/30 rounded-2xl p-6 relative overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-[var(--color-gold)]/15 text-[var(--color-gold)] rounded-xl border border-[var(--color-gold)]/30">
+                  <Truck size={22} />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-mono tracking-widest text-[var(--color-gold)] block">
+                    Courier Service
+                  </span>
+                  <h3 className="text-white font-serif text-lg">
+                    {order.deliveryPreference === 'pickup' || order.selectedPostnetStore ? 'PostNet Store Collection' : 'PostNet Door Delivery'}
+                  </h3>
+                </div>
+              </div>
+              <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                {order.deliveryPreference === 'pickup' || order.selectedPostnetStore ? '2–3 Business Days' : '2–5 Business Days'}
+              </span>
+            </div>
+
+            {order.deliveryPreference === 'pickup' || order.selectedPostnetStore ? (
+              <div className="space-y-3">
+                <div className="p-3.5 bg-black/40 rounded-xl border border-white/10 space-y-1.5">
+                  <div className="text-xs text-[var(--color-gold)] font-bold flex items-center gap-1.5">
+                    <MapPin size={14} /> {order.selectedPostnetStore?.name || 'Selected PostNet Branch'}
+                  </div>
+                  <div className="text-xs text-white/80 leading-relaxed">
+                    {order.selectedPostnetStore?.address || 'Branch pickup location'}
+                  </div>
+                  {order.selectedPostnetStore?.hours && (
+                    <div className="text-[11px] text-white/50 pt-1 border-t border-white/5 flex items-center gap-1.5">
+                      <Clock size={12} /> {order.selectedPostnetStore.hours}
+                    </div>
+                  )}
+                </div>
+                <div className="text-[11px] text-white/60 bg-[var(--color-gold)]/5 border border-[var(--color-gold)]/20 rounded-xl p-3 space-y-1">
+                  <div className="text-[var(--color-gold)] font-semibold flex items-center gap-1.5">
+                    <ShieldCheck size={13} /> PIN Code & ID Collection Notice
+                  </div>
+                  <p>
+                    An SMS and email containing your secure collection PIN will be sent as soon as your parcel arrives. Present your South African ID, passport, or driver's license at the counter.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="p-3.5 bg-black/40 rounded-xl border border-white/10 space-y-1">
+                  <div className="text-xs text-[var(--color-gold)] font-bold flex items-center gap-1.5">
+                    <MapPin size={14} /> Delivery Address
+                  </div>
+                  <div className="text-xs text-white/80">
+                    {order.shippingAddress?.address}, {order.shippingAddress?.city}, {order.shippingAddress?.postalCode}
+                  </div>
+                </div>
+                <div className="text-[11px] text-white/60 bg-white/[0.02] border border-white/10 rounded-xl p-3 space-y-1">
+                  <div className="text-white font-semibold flex items-center gap-1.5">
+                    <ShieldCheck size={13} className="text-emerald-400" /> 18+ Verification & Gate Access
+                  </div>
+                  <p>
+                    PostNet courier will contact you via phone before arrival. Valid 18+ adult signature is required upon delivery.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Super Coins Loyalty & Tracking Card */}
+          <div className="bg-gradient-to-br from-[#13120e] via-[#0e0e0e] to-black border border-[var(--color-gold)]/30 rounded-2xl p-6 flex flex-col justify-between shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+            <div>
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-[var(--color-gold)]/20 text-[var(--color-gold)] rounded-xl border border-[var(--color-gold)]/40">
+                    <Coins size={22} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-mono tracking-widest text-[var(--color-gold)] block">
+                      Grand Store Loyalty
+                    </span>
+                    <h3 className="text-white font-serif text-lg">Super Coins Status</h3>
+                  </div>
+                </div>
+                <Link
+                  to="/customer/super-coins"
+                  className="text-xs text-[var(--color-gold)] hover:underline flex items-center gap-1"
+                >
+                  Wallet <ArrowRight size={12} />
+                </Link>
+              </div>
+
+              <div className="space-y-3">
+                {order.superCoinsEarned > 0 ? (
+                  <div className="p-3.5 bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/30 rounded-xl flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-bold text-[var(--color-gold)] flex items-center gap-1.5">
+                        🪙 +{order.superCoinsEarned} Super Coins Earned!
+                      </div>
+                      <div className="text-[11px] text-white/60 mt-0.5">
+                        Will be credited to your wallet once order is delivered.
+                      </div>
+                    </div>
+                    <span className="text-xs font-mono text-[var(--color-gold)] font-bold bg-[var(--color-gold)]/15 px-2 py-1 rounded">
+                      +R{(order.superCoinsEarned * 0.10).toFixed(2)} Value
+                    </span>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl text-xs text-white/60">
+                    Coins earned on eligible product spend will activate upon completion.
+                  </div>
+                )}
+
+                {order.superCoinsUsed > 0 && (
+                  <div className="p-3 bg-white/[0.02] border border-white/10 rounded-xl text-xs flex items-center justify-between">
+                    <span className="text-white/70">Coins Redeemed on this Order:</span>
+                    <span className="font-mono text-[var(--color-gold)] font-semibold">
+                      {order.superCoinsUsed} Coins (-R{Number(order.superCoinsDiscount || 0).toFixed(2)})
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center gap-3">
+              <Link
+                to={user ? "/customer/orders" : "/shop"}
+                className="w-full bg-gradient-to-r from-[#c9a35b] to-[#b58b38] hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] text-black font-bold uppercase tracking-widest text-xs py-3.5 px-6 rounded-xl transition-all flex items-center justify-center gap-2"
+              >
+                <Package size={15} /> {user ? "Track My Order" : "Continue Shopping"}
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Post-Order 1-Click Account Creation (Section 6 & Quick Buyer) */}
+        {(!user || order.isGuest) && !accountCreated && (
+          <div className="bg-gradient-to-br from-[#1a160d] via-[#12100a] to-[#0a0a0a] border-2 border-[var(--color-gold)]/40 rounded-2xl p-6 md:p-8 mb-10 shadow-[0_0_35px_rgba(212,175,55,0.15)] relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-72 h-72 bg-[var(--color-gold)]/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="relative z-10">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-[var(--color-gold)]/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-[var(--color-gold)] text-black">
+                    <Coins size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-serif text-white font-bold">
+                      Claim Your 100 Welcome Super Coins
+                    </h3>
+                    <p className="text-xs text-[var(--color-ivory-muted)]">
+                      Create an account to track this order, get 100 Super Coins (R10.00 value), and save your details for next time.
+                    </p>
+                  </div>
+                </div>
+                <span className="self-start sm:self-center px-3 py-1 bg-[var(--color-gold)]/20 border border-[var(--color-gold)]/40 text-[var(--color-gold)] text-xs font-bold uppercase tracking-wider rounded-full shrink-0">
+                  +100 Coins Bonus
+                </span>
+              </div>
+
+              {accountError && (
+                <div className="p-3 mb-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                  <AlertTriangle size={14} className="shrink-0" />
+                  <span>{accountError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleCreateAccount} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-white/60 mb-1.5">
+                    Account Email
+                  </label>
+                  <input
+                    type="email"
+                    disabled
+                    value={order.guestInfo?.email || order.shippingAddress?.email || ""}
+                    className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white/70 cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">
+                    Create Password (Min. 6 chars) *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder="Enter a secure password..."
+                    value={accountPassword}
+                    onChange={(e) => setAccountPassword(e.target.value)}
+                    className="w-full bg-black/80 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={convertingAccount || !accountPassword}
+                  className="w-full bg-[var(--color-gold)] text-black font-bold uppercase tracking-widest text-xs py-3.5 px-6 rounded-xl hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {convertingAccount ? (
+                    <><Loader2 size={16} className="animate-spin" /> Creating Account...</>
+                  ) : (
+                    <>Activate & Claim 100 Coins <ArrowRight size={15} /></>
+                  )}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {accountCreated && (
+          <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-5 mb-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 size={24} className="text-emerald-400 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-white">Account Created Successfully!</p>
+                <p className="text-xs text-emerald-300/80">
+                  100 Welcome Super Coins have been credited to your wallet and this order is linked to your profile.
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/customer/orders"
+              className="px-5 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold uppercase tracking-wider rounded-xl transition-all shrink-0"
+            >
+              View Order in Dashboard
+            </Link>
+          </div>
+        )}
+
         {/* Bank Transfer Upload Form */}
         {order.paymentMethod === "Bank Transfer" &&
           (order.paymentStatus === "Pending" ||
@@ -422,9 +685,11 @@ export default function OrderSuccessPage({ onClearCart }) {
                   <div className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">
                     Billed To
                   </div>
-                  <div className="text-sm font-semibold text-white">{order.user?.name}</div>
+                  <div className="text-sm font-semibold text-white">
+                    {order.user?.name || order.guestInfo?.name || order.shippingAddress?.name || "Valued Customer"}
+                  </div>
                   <div className="text-sm text-[var(--color-ivory-muted)]">
-                    {order.user?.email}
+                    {order.user?.email || order.guestInfo?.email || order.shippingAddress?.email || ""}
                   </div>
                 </div>
                 <div className="md:text-right">
@@ -513,9 +778,19 @@ export default function OrderSuccessPage({ onClearCart }) {
                   <div className="flex justify-between items-center py-2 text-sm text-[var(--color-ivory-muted)]">
                     <span>Subtotal</span>
                     <span className="font-mono text-base font-medium text-white">
-                      <Price amount={order.totalPrice - order.shippingCost} />
+                      <Price amount={(order.totalPrice - order.shippingCost) + (order.superCoinsDiscount || 0)} />
                     </span>
                   </div>
+                  {order.superCoinsDiscount > 0 && (
+                    <div className="flex justify-between items-center py-1.5 text-sm text-[var(--color-gold)] font-medium">
+                      <span className="flex items-center gap-1.5">
+                        <Coins size={14} /> Super Coins ({order.superCoinsUsed} coins)
+                      </span>
+                      <span className="font-mono text-base">
+                        - <Price amount={order.superCoinsDiscount} />
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center py-2 text-sm text-[var(--color-ivory-muted)] border-b border-white/10">
                     <span>Shipping</span>
                     <span className="font-mono text-base font-medium text-white">
@@ -578,10 +853,10 @@ export default function OrderSuccessPage({ onClearCart }) {
         {order.paymentMethod !== "Bank Transfer" && (
           <div className="mt-8 text-center">
             <Link
-              to="/customer/orders"
+              to={user ? "/customer/orders" : "/shop"}
               className="bg-white/5 hover:bg-white/10 border border-white/10 px-8 py-4 rounded-xl text-sm uppercase tracking-widest transition-colors flex items-center justify-center gap-2 max-w-sm mx-auto"
             >
-              View My Orders
+              {user ? "View My Orders" : "Continue Shopping"}
             </Link>
           </div>
         )}

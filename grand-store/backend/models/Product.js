@@ -114,6 +114,25 @@ const productSchema = new mongoose.Schema(
       ref: "Product",
       default: null,
     },
+    // Costing & Pricing Engine Fields (Costing GS Understanding Section 13)
+    costing: {
+      supplierPrice: { type: Number, default: 0 },
+      supplierDiscountPct: { type: Number, default: 0 },
+      netSupplierCost: { type: Number, default: 0 },
+      freightCost: { type: Number, default: 0 },
+      insuranceCost: { type: Number, default: 0 },
+      dutiesCost: { type: Number, default: 0 },
+      otherLandedCost: { type: Number, default: 0 },
+      trueCost: { type: Number, default: 0 },
+      vendorProfitPct: { type: Number, default: 0 },
+      vendorPriceToPlatform: { type: Number, default: 0 },
+      platformMarginPct: { type: Number, default: 15 },
+      targetMarginPct: { type: Number, default: 30 },
+      baseSellingPrice: { type: Number, default: 0 },
+      minimumSellingPrice: { type: Number, default: 0 },
+      rrp: { type: Number, default: 0 },
+      marginStatus: { type: String, enum: ['healthy', 'warning', 'blocked'], default: 'healthy' }
+    },
   },
   { timestamps: true },
 );
