@@ -55,6 +55,7 @@ const bookingSchema = new mongoose.Schema({
   gatewayTransactionId: { type: String },
   ticketId: { type: String, required: true, unique: true },
   qrCodeData: { type: String }, // Base64 data URL for QR pass
+  emailDispatched: { type: Boolean, default: false },
   bookingDate: { type: Date, default: Date.now }
 });
 

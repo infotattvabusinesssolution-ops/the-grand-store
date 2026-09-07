@@ -1,9 +1,9 @@
 import axios from 'axios';
 
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const defaultBaseUrl = isLocalhost ? 'http://localhost:5000' : window.location.origin;
+const defaultBaseUrl = isLocalhost ? 'http://localhost:5000' : 'https://api.grandstoreglobal.com';
 const apiBaseUrl = import.meta.env.VITE_API_URL?.includes('localhost') && !isLocalhost 
-  ? window.location.origin 
+  ? 'https://api.grandstoreglobal.com' 
   : (import.meta.env.VITE_API_URL || defaultBaseUrl);
 
 const api = axios.create({

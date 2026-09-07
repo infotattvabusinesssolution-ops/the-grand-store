@@ -359,42 +359,67 @@ const bookEvent = async (req, res) => {
 const processEventPayment = async (bookingId, gatewayDetails = {}) => {
   let result = { processed: false };
   try {
-    const booking = await Booking.findById(bookingId);
-    if (!booking) throw new Error("Event booking not found");
-    if (
-      PAID_PAYMENT_STATUSES.includes(booking.paymentStatus) &&
-      (booking.inventoryStatus === "sold" || ["Valid", "Used"].includes(booking.ticketStatus))
-    ) {
-      result = { processed: false, booking };
-      return;
+    let booking = null;
+    if (mongoose.Types.ObjectId.isValid(bookingId)) {
+      booking = await Booking.findById(bookingId);
     }
+    if (!booking) {
+      booking = await Booking.findOne({ $or: [{ ticketId: bookingId }, { gsReference: bookingId }] });
+    }
+    if (!booking) throw new Error("Event booking not found");
+
     if (booking.paymentStatus === "Refunded") throw new Error("Refunded bookings cannot be paid again");
 
     const event = await Event.findById(booking.event);
     if (!event) throw new Error("Event not found for booking");
-    const tier = booking.ticketTierId
-      ? event.ticketTiers.id(booking.ticketTierId)
-      : event.ticketTiers.find((item) => item.name === booking.ticketType);
-    if (!tier) throw new Error("Ticket tier no longer exists");
 
-    if (booking.inventoryStatus === "reserved") {
-      if ((tier.reserved || 0) < booking.quantity) throw new Error("Reserved ticket inventory is inconsistent");
-      tier.reserved -= booking.quantity;
-    } else {
-      const available = tier.quantity - (tier.sold || 0) - (tier.reserved || 0);
-      if (available < booking.quantity) throw new Error("Ticket inventory is no longer available");
+    const isAlreadyPaid = PAID_PAYMENT_STATUSES.includes(booking.paymentStatus) &&
+      (booking.inventoryStatus === "sold" || ["Valid", "Used"].includes(booking.ticketStatus));
+
+    if (!isAlreadyPaid) {
+      const tier = booking.ticketTierId
+        ? event.ticketTiers.id(booking.ticketTierId)
+        : event.ticketTiers.find((item) => item.name === booking.ticketType);
+      if (!tier) throw new Error("Ticket tier no longer exists");
+
+      if (booking.inventoryStatus === "reserved") {
+        if ((tier.reserved || 0) < booking.quantity) throw new Error("Reserved ticket inventory is inconsistent");
+        tier.reserved -= booking.quantity;
+      } else {
+        const available = tier.quantity - (tier.sold || 0) - (tier.reserved || 0);
+        if (available < booking.quantity) throw new Error("Ticket inventory is no longer available");
+      }
+      tier.sold = (tier.sold || 0) + booking.quantity;
+      await event.save();
+
+      booking.paymentStatus = "Paid";
+      booking.ticketStatus = "Valid";
+      booking.inventoryStatus = "sold";
+      if (booking.paymentMethod === "Bank Transfer") booking.bankTransferStatus = "Approved";
+      booking.paymentProcessedAt = new Date();
+      booking.gatewayTransactionId = gatewayDetails.gatewayTransactionId || `PF-${Date.now()}`;
+
+      const seqNum = await getNextSequence("eventTransaction");
+      const seq = seqNum.toString().padStart(6, "0");
+      const transactionYear = new Date().getFullYear().toString().slice(-2);
+      await Transaction.create([
+        { gsReference: `GS-${transactionYear}-EVT-TXN-${seq}`, type: "payment", module: "events", amount: booking.totalPrice, netAmount: Number((booking.totalPrice * 0.975).toFixed(2)), customer: booking.user, vendor: booking.vendor, gatewayTransactionId: booking.gatewayTransactionId, status: "cleared", description: `Event Ticket Purchase - ${event.title}` },
+        { gsReference: `GS-${transactionYear}-EVT-COM-${seq}`, type: "commission", module: "events", amount: booking.commissionAmount, netAmount: booking.commissionAmount, customer: booking.user, vendor: booking.vendor, status: "cleared", description: `Event Commission - ${event.title}` },
+        { gsReference: `GS-${transactionYear}-EVT-VAT-${seq}`, type: "vat", module: "events", amount: booking.vatAmount, netAmount: booking.vatAmount, customer: booking.user, vendor: booking.vendor, status: "cleared", description: `Event VAT - ${event.title}` },
+        { gsReference: `GS-${transactionYear}-EVT-PAYABLE-${seq}`, type: "payout", module: "events", amount: booking.organizerPayable, netAmount: booking.organizerPayable, customer: booking.user, vendor: booking.vendor, status: "pending", description: `Event Vendor Payable - ${event.title}` },
+      ]);
+
+      if (booking.vendor) {
+        await Wallet.findOneAndUpdate(
+          { vendorId: booking.vendor },
+          { $setOnInsert: { vendorId: booking.vendor }, $inc: { pendingBalance: booking.organizerPayable, totalEarned: booking.organizerPayable } },
+          { upsert: true }
+        );
+      }
     }
-    tier.sold = (tier.sold || 0) + booking.quantity;
-    await event.save();
 
-    booking.paymentStatus = "Paid";
-    booking.ticketStatus = "Valid";
-    booking.inventoryStatus = "sold";
-    if (booking.paymentMethod === "Bank Transfer") booking.bankTransferStatus = "Approved";
-    booking.paymentProcessedAt = new Date();
-    booking.gatewayTransactionId = gatewayDetails.gatewayTransactionId || "";
-
-    // Generate Real Scannable QR Code Data URL
+    // Ensure Real Scannable QR Code Data URL is always generated and saved
+    let qrPngBuffer = null;
     try {
       const QRCode = require("qrcode");
       const qrPayload = JSON.stringify({
@@ -405,9 +430,19 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
         tier: booking.ticketType,
         quantity: booking.quantity,
       });
-      booking.qrCodeData = await QRCode.toDataURL(qrPayload, {
+
+      if (!booking.qrCodeData) {
+        booking.qrCodeData = await QRCode.toDataURL(qrPayload, {
+          errorCorrectionLevel: "H",
+          margin: 1,
+          color: { dark: "#000000", light: "#ffffff" },
+        });
+      }
+
+      qrPngBuffer = await QRCode.toBuffer(qrPayload, {
         errorCorrectionLevel: "H",
         margin: 1,
+        width: 300,
         color: { dark: "#000000", light: "#ffffff" },
       });
     } catch (qrErr) {
@@ -415,35 +450,23 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
     }
 
     await booking.save();
-
-    const seqNum = await getNextSequence("eventTransaction");
-    const seq = seqNum.toString().padStart(6, "0");
-    const transactionYear = new Date().getFullYear().toString().slice(-2);
-    await Transaction.create([
-      { gsReference: `GS-${transactionYear}-EVT-TXN-${seq}`, type: "payment", module: "events", amount: booking.totalPrice, netAmount: Number((booking.totalPrice * 0.975).toFixed(2)), customer: booking.user, vendor: booking.vendor, gatewayTransactionId: booking.gatewayTransactionId, status: "cleared", description: `Event Ticket Purchase - ${event.title}` },
-      { gsReference: `GS-${transactionYear}-EVT-COM-${seq}`, type: "commission", module: "events", amount: booking.commissionAmount, netAmount: booking.commissionAmount, customer: booking.user, vendor: booking.vendor, status: "cleared", description: `Event Commission - ${event.title}` },
-      { gsReference: `GS-${transactionYear}-EVT-VAT-${seq}`, type: "vat", module: "events", amount: booking.vatAmount, netAmount: booking.vatAmount, customer: booking.user, vendor: booking.vendor, status: "cleared", description: `Event VAT - ${event.title}` },
-      { gsReference: `GS-${transactionYear}-EVT-PAYABLE-${seq}`, type: "payout", module: "events", amount: booking.organizerPayable, netAmount: booking.organizerPayable, customer: booking.user, vendor: booking.vendor, status: "pending", description: `Event Vendor Payable - ${event.title}` },
-    ]);
-    if (booking.vendor) {
-      await Wallet.findOneAndUpdate(
-        { vendorId: booking.vendor },
-        { $setOnInsert: { vendorId: booking.vendor }, $inc: { pendingBalance: booking.organizerPayable, totalEarned: booking.organizerPayable } },
-        { upsert: true }
-      );
-    }
-    result = { processed: true, booking, event };
+    result = { processed: true, booking, event, isAlreadyPaid };
   } catch (error) {
     console.error("Error processing event payment:", error);
     throw error;
   }
 
-  if (result.processed) {
+  // Send Confirmation Email with PDF Pass attachment and CID QR Code
+  if (result.processed && !result.booking.emailDispatched) {
     try {
       const { sendEmail } = require("../utils/emailService");
       const { eventTicketConfirmationTemplate } = require("../utils/emailTemplates");
       const User = require("../models/User");
-      const user = await User.findById(result.booking.user);
+      const userId = result.booking.user?._id || result.booking.user;
+      const user = (result.booking.user && result.booking.user.email)
+        ? result.booking.user
+        : await User.findById(userId);
+
       if (user && user.email) {
         let pdfAttachment = null;
         try {
@@ -458,10 +481,48 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
               filename: `TheGrandStore-VIP-Pass-${result.booking.ticketId}.pdf`,
               content: pdfBuffer,
               contentType: "application/pdf",
+              disposition: "attachment",
             };
           }
         } catch (pdfErr) {
           console.error("Error generating PDF ticket pass for email:", pdfErr);
+        }
+
+        const attachments = [];
+        if (pdfAttachment) {
+          attachments.push(pdfAttachment);
+        }
+
+        // Add QR code image as CID attachment for Gmail inline rendering
+        let qrPngBuffer = null;
+        try {
+          const QRCode = require("qrcode");
+          const qrPayload = JSON.stringify({
+            ticketId: result.booking.ticketId,
+            gsReference: result.booking.gsReference,
+            event: result.event.title,
+            date: result.event.date,
+            tier: result.booking.ticketType,
+            quantity: result.booking.quantity,
+          });
+          qrPngBuffer = await QRCode.toBuffer(qrPayload, {
+            errorCorrectionLevel: "H",
+            margin: 1,
+            width: 300,
+          });
+        } catch (qrBufferErr) {
+          if (result.booking.qrCodeData && result.booking.qrCodeData.includes("base64,")) {
+            qrPngBuffer = Buffer.from(result.booking.qrCodeData.split("base64,")[1], "base64");
+          }
+        }
+
+        if (qrPngBuffer) {
+          attachments.push({
+            filename: "ticket-qr.png",
+            content: qrPngBuffer,
+            contentType: "image/png",
+            cid: "ticketqrcode",
+          });
         }
 
         await sendEmail({
@@ -472,140 +533,41 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
             event: result.event,
             user,
             qrCodeDataUrl: result.booking.qrCodeData,
+            qrCodeCid: "cid:ticketqrcode",
           }),
-          attachments: pdfAttachment ? [pdfAttachment] : undefined,
+          attachments: attachments.length > 0 ? attachments : undefined,
         });
-        console.log(`[EVENT TICKET] Successfully dispatched VIP pass email with QR & PDF to ${user.email}`);
+
+        result.booking.emailDispatched = true;
+        await result.booking.save();
+        console.log(`[EVENT TICKET] Successfully dispatched VIP pass email with QR & PDF attachment to ${user.email}`);
       }
     } catch (error) {
       console.error("Failed to send event ticket email:", error);
     }
   }
-  return result;
-};
 
-// Generate high-resolution luxury PDF Ticket Pass
-const generateTicketPdf = async ({ booking, event, user, qrDataUrl }) => {
-  const { jsPDF } = require("jspdf");
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-
-  // Luxury dark background
-  doc.setFillColor(10, 10, 10);
-  doc.rect(0, 0, 210, 297, "F");
-
-  // Dual gold borders
-  doc.setDrawColor(201, 163, 91);
-  doc.setLineWidth(1.5);
-  doc.rect(10, 10, 190, 277);
-  doc.setLineWidth(0.4);
-  doc.rect(13, 13, 184, 271);
-
-  // Header Title
-  doc.setTextColor(201, 163, 91);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.text("THE GRAND STORE", 105, 32, { align: "center" });
-
-  doc.setFontSize(10);
-  doc.setTextColor(180, 180, 180);
-  doc.setFont("helvetica", "normal");
-  doc.text("OFFICIAL VIP ACCESS PASS", 105, 40, { align: "center" });
-
-  // Gold divider
-  doc.setDrawColor(201, 163, 91);
-  doc.setLineWidth(0.5);
-  doc.line(30, 46, 180, 46);
-
-  // Event Details
-  doc.setFontSize(16);
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.text(event.title || "Exclusive Tasting Experience", 105, 58, { align: "center", maxWidth: 160 });
-
-  doc.setFontSize(11);
-  doc.setTextColor(200, 200, 200);
-  doc.setFont("helvetica", "normal");
-  const eventDateFormatted = new Date(event.date).toLocaleDateString("en-ZA", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  doc.text(`Date: ${eventDateFormatted}`, 105, 70, { align: "center" });
-  doc.text(`Time: ${event.startTime || "18:00"}`, 105, 77, { align: "center" });
-  doc.text(`Venue: ${event.location || "The Grand Store Private Vault"}`, 105, 84, { align: "center", maxWidth: 160 });
-
-  // Card Box for Pass Details
-  doc.setFillColor(20, 18, 15);
-  doc.setDrawColor(201, 163, 91);
-  doc.rect(25, 96, 160, 52, "FD");
-
-  doc.setTextColor(201, 163, 91);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text("PASS HOLDER:", 35, 107);
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-  doc.text(user?.name || "Distinguished Guest", 35, 114);
-
-  doc.setTextColor(201, 163, 91);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text("TICKET ID:", 35, 126);
-  doc.setTextColor(245, 215, 127);
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text(booking.ticketId || "N/A", 35, 133);
-
-  doc.setTextColor(201, 163, 91);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text("TIER & QUANTITY:", 115, 107);
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-  doc.text(`${booking.ticketType} (Qty: ${booking.quantity})`, 115, 114);
-
-  doc.setTextColor(201, 163, 91);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text("TOTAL SETTLED:", 115, 126);
-  doc.setTextColor(74, 222, 128);
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text(`R ${Number(booking.totalPrice || 0).toLocaleString("en-ZA")}`, 115, 133);
-
-  // QR Code
-  if (qrDataUrl) {
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(63, 158, 84, 84, 3, 3, "F");
-    doc.addImage(qrDataUrl, "PNG", 65, 160, 80, 80);
-  }
-
-  doc.setTextColor(201, 163, 91);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("SCAN AT RECEPTION FOR VIP CELLAR ADMISSION", 105, 254, { align: "center" });
-
-  doc.setTextColor(140, 140, 140);
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.text("Strictly 18+ • Non-Transferable Digital Access Pass • The Grand Store PTY LTD", 105, 268, { align: "center" });
-
-  return Buffer.from(doc.output("arraybuffer"));
+  return { success: true, booking: result.booking, event: result.event };
 };
 
 // Public/authenticated endpoint to download ticket pass as PDF
 const downloadTicketPdf = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const booking = await Booking.findById(bookingId);
+    let booking = null;
+    if (mongoose.Types.ObjectId.isValid(bookingId)) {
+      booking = await Booking.findById(bookingId);
+    }
+    if (!booking) {
+      booking = await Booking.findOne({ $or: [{ ticketId: bookingId }, { gsReference: bookingId }] });
+    }
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-    const event = await Event.findById(booking.event);
+    const eventId = booking.event?._id || booking.event;
+    const event = (booking.event && booking.event.title) ? booking.event : (eventId ? await Event.findById(eventId) : null);
     const User = require("../models/User");
-    const user = await User.findById(booking.user);
+    const userId = booking.user?._id || booking.user;
+    const user = (booking.user && booking.user.name) ? booking.user : (userId ? await User.findById(userId) : null);
 
     if (!booking.qrCodeData) {
       const QRCode = require("qrcode");
@@ -635,16 +597,282 @@ const downloadTicketPdf = async (req, res) => {
       qrDataUrl: booking.qrCodeData,
     });
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=TheGrandStore-Pass-${booking.ticketId}.pdf`
-    );
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="TheGrandStore-Pass-${booking.ticketId}.pdf"`,
+      "Content-Length": pdfBuffer.length,
+    });
     return res.send(pdfBuffer);
   } catch (error) {
     console.error("Error downloading ticket PDF:", error);
     return res.status(500).json({ message: "Could not generate ticket PDF", error: error.message });
   }
+};
+
+// Resend Ticket Pass email with PDF attachment
+const resendTicketEmail = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    let booking = null;
+    if (mongoose.Types.ObjectId.isValid(bookingId)) {
+      booking = await Booking.findById(bookingId);
+    }
+    if (!booking) {
+      booking = await Booking.findOne({ $or: [{ ticketId: bookingId }, { gsReference: bookingId }] });
+    }
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+    // Authorization check
+    if (
+      req.user &&
+      booking.user &&
+      booking.user.toString() !== req.user._id.toString() &&
+      req.user.role !== "admin" &&
+      req.user.role !== "superadmin"
+    ) {
+      return res.status(403).json({ message: "Not authorized to resend tickets for this booking" });
+    }
+
+    const eventId = booking.event?._id || booking.event;
+    const event = (booking.event && booking.event.title) ? booking.event : (eventId ? await Event.findById(eventId) : null);
+    const User = require("../models/User");
+    const userId = booking.user?._id || booking.user;
+    const user = (booking.user && booking.user.name) ? booking.user : (userId ? await User.findById(userId) : null);
+
+    const recipientEmail = user?.email || req.user?.email;
+    if (!recipientEmail) {
+      return res.status(400).json({ message: "No recipient email address on record" });
+    }
+
+    if (!booking.qrCodeData) {
+      const QRCode = require("qrcode");
+      const qrPayload = JSON.stringify({
+        ticketId: booking.ticketId,
+        gsReference: booking.gsReference,
+        event: event?.title,
+        date: event?.date,
+        tier: booking.ticketType,
+        quantity: booking.quantity,
+      });
+      booking.qrCodeData = await QRCode.toDataURL(qrPayload, {
+        errorCorrectionLevel: "H",
+        margin: 1,
+        color: { dark: "#000000", light: "#ffffff" },
+      });
+      await Booking.updateOne(
+        { _id: booking._id },
+        { $set: { qrCodeData: booking.qrCodeData } }
+      );
+    }
+
+    let pdfAttachment = null;
+    try {
+      const pdfBuffer = await generateTicketPdf({
+        booking,
+        event: event || { title: "Grand Store Event", location: "Cape Town", date: new Date() },
+        user: user || req.user || { name: "Valued Patron" },
+        qrDataUrl: booking.qrCodeData,
+      });
+      if (pdfBuffer) {
+        pdfAttachment = {
+          filename: `TheGrandStore-VIP-Pass-${booking.ticketId}.pdf`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+          disposition: "attachment",
+        };
+      }
+    } catch (pdfErr) {
+      console.error("Error generating PDF ticket pass for resend email:", pdfErr);
+    }
+
+    const attachments = [];
+    if (pdfAttachment) {
+      attachments.push(pdfAttachment);
+    }
+
+    let qrPngBuffer = null;
+    try {
+      const QRCode = require("qrcode");
+      const qrPayload = JSON.stringify({
+        ticketId: booking.ticketId,
+        gsReference: booking.gsReference,
+        event: event?.title,
+        date: event?.date,
+        tier: booking.ticketType,
+        quantity: booking.quantity,
+      });
+      qrPngBuffer = await QRCode.toBuffer(qrPayload, {
+        errorCorrectionLevel: "H",
+        margin: 1,
+        width: 300,
+      });
+    } catch (qrBufferErr) {
+      if (booking.qrCodeData && booking.qrCodeData.includes("base64,")) {
+        qrPngBuffer = Buffer.from(booking.qrCodeData.split("base64,")[1], "base64");
+      }
+    }
+
+    if (qrPngBuffer) {
+      attachments.push({
+        filename: "ticket-qr.png",
+        content: qrPngBuffer,
+        contentType: "image/png",
+        cid: "ticketqrcode",
+      });
+    }
+
+    await sendEmail({
+      to: recipientEmail,
+      subject: `VIP Event Pass • ${event?.title || 'Grand Store Event'} [${booking.ticketId}]`,
+      html: eventTicketConfirmationTemplate({
+        booking,
+        event: event || { title: "Grand Store Event", location: "Cape Town", date: new Date() },
+        user: user || req.user || { name: "Valued Patron" },
+        qrCodeDataUrl: booking.qrCodeData,
+        qrCodeCid: "cid:ticketqrcode",
+      }),
+      attachments: attachments.length > 0 ? attachments : undefined,
+    });
+
+    return res.json({
+      success: true,
+      message: `VIP Pass email successfully resent to ${recipientEmail} with PDF attachment!`,
+    });
+  } catch (error) {
+    console.error("Error in resendTicketEmail:", error);
+    return res.status(500).json({ message: "Could not resend ticket email", error: error.message });
+  }
+};
+
+// Generate high-resolution luxury PDF Ticket Pass
+const generateTicketPdf = async ({ booking, event, user, qrDataUrl }) => {
+  const { jsPDF } = require("jspdf");
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  // Luxury dark background
+  doc.setFillColor(10, 10, 10);
+  doc.rect(0, 0, 210, 297, "F");
+
+  // Dual gold borders
+  doc.setDrawColor(201, 163, 91);
+  doc.setLineWidth(1.5);
+  doc.rect(10, 10, 190, 277);
+  doc.setLineWidth(0.4);
+  doc.rect(13, 13, 184, 271);
+
+  // Header Title
+  doc.setTextColor(201, 163, 91);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.text("THE GRAND STORE", 105, 32, { align: "center" });
+
+  doc.setFontSize(10);
+  doc.setTextColor(180, 180, 180);
+  doc.setFont("helvetica", "normal");
+  doc.text("OFFICIAL VIP CELLAR ACCESS PASS", 105, 40, { align: "center" });
+
+  // Gold divider
+  doc.setDrawColor(201, 163, 91);
+  doc.setLineWidth(0.5);
+  doc.line(30, 46, 180, 46);
+
+  // Event Details
+  doc.setFontSize(16);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.text(event?.title || "Exclusive Tasting Experience", 105, 58, { align: "center", maxWidth: 160 });
+
+  doc.setFontSize(10);
+  doc.setTextColor(200, 200, 200);
+  doc.setFont("helvetica", "normal");
+  const eventDateFormatted = new Date(event?.date || Date.now()).toLocaleDateString("en-ZA", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  doc.text(`Date: ${eventDateFormatted}`, 105, 69, { align: "center" });
+  doc.text(`Time: ${event?.startTime || "18:00 Doors Open"}`, 105, 76, { align: "center" });
+  doc.text(`Venue: ${event?.location || "The Grand Store Private Vault"}`, 105, 83, { align: "center", maxWidth: 160 });
+
+  // Card Box for Pass Details
+  doc.setFillColor(20, 18, 15);
+  doc.setDrawColor(201, 163, 91);
+  doc.rect(25, 93, 160, 56, "FD");
+
+  doc.setTextColor(201, 163, 91);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("PASS HOLDER:", 35, 104);
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.text(user?.name || "Distinguished Guest", 35, 111);
+
+  doc.setTextColor(201, 163, 91);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("TICKET ID:", 35, 122);
+  doc.setTextColor(245, 215, 127);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text(booking.ticketId || "N/A", 35, 129);
+
+  doc.setTextColor(201, 163, 91);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("REF:", 35, 139);
+  doc.setTextColor(170, 170, 170);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.text(booking.gsReference || "N/A", 48, 139);
+
+  doc.setTextColor(201, 163, 91);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("TIER & QUANTITY:", 115, 104);
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.text(`${booking.ticketType} (Qty: ${booking.quantity})`, 115, 111);
+
+  doc.setTextColor(201, 163, 91);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("STATUS & TOTAL:", 115, 122);
+  doc.setTextColor(74, 222, 128);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text(`R ${Number(booking.totalPrice || 0).toLocaleString("en-ZA")} • VERIFIED`, 115, 129);
+
+  doc.setTextColor(201, 163, 91);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("ADMISSION:", 115, 139);
+  doc.setTextColor(74, 222, 128);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("VALID FOR ENTRY", 140, 139);
+
+  // QR Code
+  if (qrDataUrl) {
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(63, 156, 84, 84, 3, 3, "F");
+    doc.addImage(qrDataUrl, "PNG", 65, 158, 80, 80);
+  }
+
+  doc.setTextColor(201, 163, 91);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("SCAN AT RECEPTION FOR VIP CELLAR ADMISSION", 105, 252, { align: "center" });
+
+  doc.setTextColor(140, 140, 140);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.text("Strictly 18+ • Non-Transferable Digital Access Pass • The Grand Store PTY LTD", 105, 264, { align: "center" });
+  doc.text("Please present this document on your mobile device or as a printed pass on arrival.", 105, 270, { align: "center" });
+
+  return Buffer.from(doc.output("arraybuffer"));
 };
 
 const uploadEventBankTransferProof = async (req, res) => {
@@ -898,6 +1126,7 @@ module.exports = {
   rejectEvent,
   releaseExpiredReservations,
   downloadTicketPdf,
+  resendTicketEmail,
   generateTicketPdf,
   uploadEventBankTransferProof,
   verifyTicket,

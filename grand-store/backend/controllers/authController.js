@@ -37,13 +37,17 @@ const sendTokenResponse = (user, statusCode, res) => {
     secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
   };
+  const isApprovedBidder = user.bidderApprovalStatus === 'approved';
+  const isPendingBidder = user.bidderApprovalStatus === 'pending_approval';
+  const isAgeVerifiedBool = !isPendingBidder && (isApprovedBidder || Boolean(user.isAgeVerified) || (user.bidderLevel && user.bidderLevel !== 'none'));
+
   res.status(statusCode).cookie('jwt', token, options).json({
     _id: user._id,
     name: user.name,
     email: user.email,
     role: user.role,
     customerTier: user.customerTier || 'retail',
-    isAgeVerified: Boolean(user.isAgeVerified || user.dateOfBirth || user.bidderApprovalStatus === 'approved' || (user.bidderLevel && user.bidderLevel !== 'none')),
+    isAgeVerified: isAgeVerifiedBool,
     bidderLevel: user.bidderLevel,
     bidderApprovalStatus: user.bidderApprovalStatus,
     phone: user.phone || user.phoneNumber || '',

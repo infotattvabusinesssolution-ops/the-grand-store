@@ -124,7 +124,12 @@ const addOrderItems = async (req, res) => {
       if (guestIdType) user.idType = guestIdType;
       if (guestIdNumber) user.idNumber = guestIdNumber;
       if (guestDob) user.dateOfBirth = guestBirthDate || new Date(guestDob);
-      user.bidderApprovalStatus = 'pending_approval';
+      if (user.bidderApprovalStatus === 'approved') {
+        user.isAgeVerified = true;
+      } else {
+        user.isAgeVerified = false;
+        user.bidderApprovalStatus = 'pending_approval';
+      }
       await user.save().catch(err => console.warn('Error saving user KYC from checkout:', err.message));
     }
 

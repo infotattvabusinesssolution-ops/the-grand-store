@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock3,
+  Download,
   ExternalLink,
   Landmark,
   Loader2,
@@ -37,6 +38,7 @@ export default function EventSuccessPage() {
   const [bankDetailsList, setBankDetailsList] = useState(null);
   const [paymentData, setPaymentData] = useState(null);
   const [payfastUrl, setPayfastUrl] = useState(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const fetchBooking = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setRefreshing(true);
@@ -60,6 +62,13 @@ export default function EventSuccessPage() {
     let active = true;
     let attempts = 0;
 
+    // Immediately trigger backend confirmation to ensure MongoDB update & email dispatch
+    if (paymentResult === 'success' && id) {
+      api.post('/payfast/confirm-order', { bookingId: id })
+        .then(() => fetchBooking({ silent: true }))
+        .catch((err) => console.log('Event confirm-order result:', err));
+    }
+
     fetchBooking({ silent: true });
 
     const poller = paymentResult === 'success'
@@ -77,7 +86,32 @@ export default function EventSuccessPage() {
       active = false;
       if (poller) window.clearInterval(poller);
     };
-  }, [fetchBooking, paymentResult]);
+  }, [fetchBooking, paymentResult, id]);
+
+  const downloadTicketPdf = async () => {
+    if (!booking) return;
+    setDownloadingPdf(true);
+    setFeedback('');
+    try {
+      const response = await api.get(`/events/bookings/${booking._id}/ticket-pdf`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `TheGrandStore-VIP-Pass-${booking.ticketId || booking._id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download ticket pass PDF:', err);
+      setFeedback('Unable to generate ticket pass PDF right now. You can also download it from My Tickets.');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   useEffect(() => {
     if (booking?.paymentMethod !== 'Bank Transfer') return;
@@ -260,9 +294,18 @@ export default function EventSuccessPage() {
 
             {isPaid ? (
               <>
-                <p className="mb-6 text-sm text-[#888]">Your QR ticket is available in My Tickets. Present it at the event entrance.</p>
-                <Link to="/customer/tickets" className="button button-gold mb-3 w-full text-center">View My Tickets</Link>
-                <Link to="/events" className="button button-dark w-full text-center">Discover More Events</Link>
+                <p className="mb-6 text-sm text-[#888]">Your official VIP Pass and QR code are confirmed and attached to your confirmation email.</p>
+                <button
+                  type="button"
+                  onClick={downloadTicketPdf}
+                  disabled={downloadingPdf}
+                  className="button button-gold mb-3 flex w-full items-center justify-center gap-2"
+                >
+                  {downloadingPdf ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                  {downloadingPdf ? 'Generating Ticket PDF...' : 'Download VIP Ticket Pass (PDF)'}
+                </button>
+                <Link to="/customer/tickets" className="button button-dark mb-3 w-full text-center">View All My Tickets</Link>
+                <Link to="/events" className="button button-dark w-full text-center opacity-80 hover:opacity-100">Discover More Events</Link>
               </>
             ) : isRejected ? (
               <>

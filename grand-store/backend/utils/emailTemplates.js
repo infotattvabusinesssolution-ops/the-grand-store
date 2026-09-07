@@ -604,13 +604,15 @@ const birthdayCelebrationEmailTemplate = ({
   return generateEmailTemplate(`Happy Birthday from The Grand Store! 🥂`, content);
 };
 
-const eventTicketConfirmationTemplate = ({ booking, event, user, qrCodeDataUrl }) => {
+const eventTicketConfirmationTemplate = ({ booking, event, user, qrCodeDataUrl, qrCodeCid }) => {
   const eventDateFormatted = new Date(event.date).toLocaleDateString('en-ZA', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
+
+  const qrImageSrc = qrCodeCid || 'cid:ticketqrcode';
 
   const content = `
     <div style="text-align: center; margin-bottom: 30px;">
@@ -657,11 +659,11 @@ const eventTicketConfirmationTemplate = ({ booking, event, user, qrCodeDataUrl }
       <!-- REAL QR CODE CONTAINER -->
       <div style="background-color: #050505; border: 1px solid rgba(201,163,91,0.3); border-radius: 8px; padding: 20px; text-align: center; margin-top: 15px;">
         <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #c9a35b; margin: 0 0 14px 0; font-weight: bold;">Official Cellar Admission QR</p>
-        ${qrCodeDataUrl ? `
-          <img src="${qrCodeDataUrl}" alt="VIP Ticket QR Code" style="width: 180px; height: 180px; border-radius: 8px; border: 3px solid #c9a35b; padding: 6px; background-color: #ffffff; display: inline-block;" />
-        ` : ''}
-        <p style="font-size: 12px; color: #aaa; margin: 12px 0 0 0;">Present this QR code on arrival for instant white-glove verification.</p>
-        <p style="font-size: 11px; color: #777; margin: 4px 0 0 0;">An official PDF Pass attachment is also included with this email.</p>
+        <div style="display: inline-block; padding: 8px; background-color: #ffffff; border: 3px solid #c9a35b; border-radius: 10px;">
+          <img src="${qrImageSrc}" alt="VIP Ticket QR Code" width="180" height="180" style="display: block; width: 180px; height: 180px; margin: 0 auto; border: 0;" />
+        </div>
+        <p style="font-size: 12px; color: #ccc; margin: 12px 0 0 0; font-weight: 500;">Present this QR code on arrival for instant white-glove cellar admission.</p>
+        <p style="font-size: 11px; color: #c9a35b; margin: 6px 0 0 0;">✨ Your official printable VIP Pass PDF is attached to this email.</p>
       </div>
     </div>
 

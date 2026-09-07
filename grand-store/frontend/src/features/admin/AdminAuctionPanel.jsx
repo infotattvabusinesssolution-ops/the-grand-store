@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { Gavel, CheckCircle2, ShieldAlert, BookOpen, AlertTriangle, ShieldCheck, Check, Clock, RefreshCw, UserCheck, UserX, Ban, CreditCard, ExternalLink, Shield, Eye, Play, Video, Film, Image as ImageIcon, X, Award, Globe, FileText } from 'lucide-react';
@@ -21,6 +22,7 @@ const getEmbedVideoUrl = (url) => {
 
 export default function AdminAuctionPanel({ onNotify }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [lots, setLots] = useState([]);
   const [allLots, setAllLots] = useState([]);
   const [fraudAlerts, setFraudAlerts] = useState([]);
@@ -293,11 +295,18 @@ export default function AdminAuctionPanel({ onNotify }) {
             Pending Lots & Custody ({lots.length})
           </button>
           <button 
+            onClick={() => navigate('/admin/kyc-verifications')}
+            className="text-xs uppercase tracking-widest font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 text-amber-400 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 shadow-sm"
+          >
+            <UserCheck size={15} />
+            Dedicated 18+ KYC Portal →
+          </button>
+          <button 
             onClick={() => { setActiveTab('bidders'); fetchBidders(); fetchDeposits(); }}
             className={`text-xs uppercase tracking-widest font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${activeTab === 'bidders' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40 shadow-lg shadow-blue-500/10' : 'text-white/60 hover:text-white bg-white/5'}`}
           >
             <UserCheck size={15} />
-            Bidder Approvals & KYC ({bidders.filter(b => b.bidderApprovalStatus === 'pending_approval').length})
+            Quick Approvals ({bidders.filter(b => b.bidderApprovalStatus === 'pending_approval').length})
           </button>
           <button 
             onClick={() => { setActiveTab('fraud'); fetchFraudAlerts(); }}

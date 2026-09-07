@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Navigate, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, Gavel, Wallet, Settings, Menu, X, LogOut, ArrowLeft, Star, Package, ShoppingBag, Tv, Mail, Activity, Briefcase, Shield, Gem, Award, MessageSquare, Bot, CalendarCheck, Tag, Layers, Flame } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Gavel, Wallet, Settings, Menu, X, LogOut, ArrowLeft, Star, Package, ShoppingBag, Tv, Mail, Activity, Briefcase, Shield, Gem, Award, MessageSquare, Bot, CalendarCheck, Tag, Layers, Flame, UserCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AdminLayout() {
@@ -135,6 +135,9 @@ export default function AdminLayout() {
 
             {isAdmin && (
               <>
+                <button onClick={() => handleNavigate('/admin/kyc-verifications')} className={navItemClass('/admin/kyc-verifications')}>
+                  <UserCheck size={16} /> 18+ KYC Verifications
+                </button>
                 <button onClick={() => handleNavigate('/admin/auctions')} className={navItemClass('/admin/auctions')}>
                   <Gavel size={16} /> Auctions Management
                 </button>

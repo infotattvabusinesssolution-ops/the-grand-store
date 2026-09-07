@@ -122,6 +122,7 @@ import AdminCigarEnquiryDetail from './features/admin/AdminCigarEnquiryDetail'
 import AdminAttributes from './features/admin/AdminAttributes'
 import AdminAdvertisementRequests from './features/admin/AdminAdvertisementRequests'
 import AdminAdvertisementRequestDetail from './features/admin/AdminAdvertisementRequestDetail'
+import AdminKycManagement from './features/admin/AdminKycManagement'
 import AdvertisementFormPage from './features/advertisement/AdvertisementFormPage'
 import AdvertisedProductDetail from './features/advertisement/AdvertisedProductDetail'
 import AccessoriesPage from './features/shop/AccessoriesPage'
@@ -788,6 +789,10 @@ function App() {
           <Route
             path="advertisement-requests/:id"
             element={<AdminAdvertisementRequestDetail />}
+          />
+          <Route
+            path="kyc-verifications"
+            element={<AdminKycManagement onNotify={showToast} />}
           />
           <Route
             path="auctions"
