@@ -4344,23 +4344,70 @@ Exempt where applicable
 Export transactions 
 Vendor VAT status 
 Future tax-rate changes 
-5. THEN SHOW DELIVERY OPTIONS
-After the customer enters the address, show:
-HOW WOULD YOU LIKE TO RECEIVE YOUR ORDER?
-🚚 HOME DELIVERY
-Courier delivery to your address
-R150
-Estimated:
-2–3 business days
-📦 POSTNET COLLECTION
-Collect from your selected PostNet branch
-R100
-Estimated:
-2–4 business days
-SELECT BRANCH
-The customer selects their preferred option.
-PostNet already provides a courier rate-calculation facility, so the developer should investigate the appropriate PostNet integration/rate mechanism rather than manually maintaining rates. 
-6. IMPORTANT — SHIPPING MUST BE CALCULATED AFTER THE ADDRESS
+5. THEN SHOW DELIVERY OPTIONS (POSTNET NATIVE INTEGRATION & INTERNATIONAL DHL)
+For an e-commerce platform such as The Grand Store, the PostNet & courier integration should feel like a simple delivery service built directly into checkout, not like a separate courier system.
+The key principle is:
+The customer chooses where they want the order delivered, sees the delivery cost and expected timing clearly, and logistics partners (PostNet for domestic South Africa, DHL Express for international cross-border) handle fulfillment in the background.
+
+RECOMMENDED 4-STEP CHECKOUT FLOW:
+CART → CHECKOUT (① Delivery Details → ② Delivery Method → ③ Payment → ④ Confirmation)
+
+Step 1: Delivery Details
+Where would you like your order delivered?
+• Full Name, Mobile Number, Email
+• Street Address, Suburb, City, Province, Postal Code, Country
+Choose your delivery location:
+📍 For South Africa:
+○ Deliver to my address (Home Delivery)
+○ Collect from a PostNet Store (PostNet-to-PostNet pickup)
+📍 For International Destinations (UK, USA, UAE, Europe, etc.):
+Locked to Door Delivery via International Courier (DHL Express).
+
+If Customer Chooses PostNet Collection:
+• Choose your preferred PostNet store
+• Search: 🔍 Search by suburb, city or postal code
+• Display nearby stores with distance (e.g., PostNet Sandton City, Sandton, Gauteng 📍 0.8 km away)
+• Customer taps: SELECT THIS STORE
+• Selected location banner appears: "Your collection point: PostNet Sandton City, Sandton, Gauteng [Change location]"
+
+Step 2: Delivery Method
+• If Domestic SA Home Delivery:
+  🚚 Delivery Options:
+  ● PostNet Standard Delivery — Estimated 2–5 business days (R120.00)
+  ○ PostNet Express Delivery — Estimated 1–2 business days (R180.00)
+• If Domestic SA PostNet Collection:
+  📦 PostNet Store Collection — Estimated 2–3 business days (R100.00)
+• If International Destination:
+  ✈️ DHL Express International Air Courier — Estimated 3–5 business days (Live API Quote / R1,800 base)
+
+🔒 The Confidence Section (Alcohol Compliance & Security):
+Immediately below delivery selection, display:
+🔒 Secure Delivery
+Your order will be securely processed and delivered through our trusted delivery network.
+✓ Trackable delivery
+✓ Delivery notifications
+✓ Secure handling
+✓ Delivery to your selected address or collection point
+🔞 18+ Alcohol Compliance Verification: Valid identification (National ID or Passport) must be presented upon courier delivery or PostNet branch collection.
+(For international shipments, also include the International Duties & Customs declaration).
+
+Step 3: Payment
+• Delivery information remains locked in, but customer is provided a "Change Delivery Method" shortcut link right up until payment.
+• Clean Order Summary (Products, Delivery, Super Coins discount, Total to pay).
+• Payment methods: PayFast Instant (Cards / Instant EFT) or Direct Bank Transfer (EFT).
+• Super Coins toggle (capped at 10% subtotal, protecting 15% platform margin).
+• Button: PAY RXX.XX (showing exact final amount).
+
+Step 4: Order Confirmation
+🎉 Order Confirmed — Order #GS...
+• Delivery: 🚚 PostNet Standard / 📦 PostNet Sandton City Collection / ✈️ DHL Express
+• Delivering to: Customer's address or collection point
+• Estimated delivery: 2–5 business days
+• Tracking number placeholder with [TRACK MY ORDER] button.
+
+Multi-Vendor Logistics Behind the Scenes:
+One master customer order is split transparently per vendor (Shipment A, Shipment B). Each shipment carries its own vendor origin, waybill, and tracking, but the customer experiences one unified luxury checkout.
+
 The system should not simply say:
 Shipping = R150
 The shipping engine should calculate the charge using:

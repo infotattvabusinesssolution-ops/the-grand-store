@@ -1768,6 +1768,32 @@ export default function CheckoutPage({
                   </button>
                 </div>
 
+                {/* Locked Delivery Summary with Change Delivery Method Shortcut */}
+                <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 rounded-xl bg-white/5 border border-white/10 text-[var(--color-gold)] shrink-0">
+                      {deliveryPreference === 'postnet' ? <Store size={18} /> : <Truck size={18} />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-widest text-[var(--color-gold)] font-semibold">
+                        {deliveryPreference === 'postnet' ? 'PostNet Collection Point' : 'Delivery Destination'}
+                      </p>
+                      <p className="text-xs text-white font-medium truncate">
+                        {deliveryPreference === 'postnet' && preferredPostnetStore
+                          ? `${preferredPostnetStore.name} — ${preferredPostnetStore.address}`
+                          : `${formData.address}, ${formData.city}, ${formData.country}`}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutStep(1)}
+                    className="self-start sm:self-auto text-xs text-[var(--color-gold)] hover:text-white uppercase font-bold tracking-wider underline shrink-0"
+                  >
+                    Change Delivery Method
+                  </button>
+                </div>
+
                 {/* ⭐ SUPER COINS REDEMPTION CARD */}
                 {quote?.superCoins && quote.superCoins.availableCoins > 0 && (
                   <div className="bg-gradient-to-br from-[#161309] to-[#0d0d0d] border border-[var(--color-gold)]/30 rounded-2xl p-5 md:p-6 shadow-xl space-y-3">

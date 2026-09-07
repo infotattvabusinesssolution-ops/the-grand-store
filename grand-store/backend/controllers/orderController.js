@@ -17,8 +17,11 @@ const addOrderItems = async (req, res) => {
       return res.status(400).json({ message: 'Valid quote with shipments is required' });
     }
 
-    if (quote.shipments.some((shp) => shp.selectedCourier?.courierName === 'PostNet' && !shp.selectedPickupStore)) {
-      return res.status(400).json({ message: 'A PostNet branch must be selected for every PostNet shipment' });
+    const isPostnetCollection = req.body.deliveryPreference === 'postnet' ||
+      quote.shipments.some((shp) => shp.selectedCourier?.deliveryType === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection'));
+
+    if (isPostnetCollection && quote.shipments.some((shp) => !shp.selectedPickupStore)) {
+      return res.status(400).json({ message: 'A PostNet branch must be selected for PostNet store collection' });
     }
     
     // Check expiration

@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const AuctionLot = require('../models/AuctionLot');
 const Booking = require('../models/Booking');
@@ -68,7 +69,13 @@ const getPayfastConfig = () => {
 exports.generateShopPayment = async (req, res) => {
   try {
     const { orderId } = req.body;
-    const order = await Order.findById(orderId).populate('user', 'name email');
+    let order = null;
+    if (orderId && mongoose.Types.ObjectId.isValid(orderId)) {
+      order = await Order.findById(orderId).populate('user', 'name email');
+    }
+    if (!order && orderId) {
+      order = await Order.findOne({ $or: [{ orderId: orderId }, { invoiceNumber: orderId }] }).populate('user', 'name email');
+    }
     
     if (!order) return res.status(404).json({ message: 'Order not found' });
     if (order.isPaid) return res.status(400).json({ message: 'Order already paid' });
