@@ -15,6 +15,23 @@ const orderSchema = new mongoose.Schema({
   },
   isAgeConfirmed: { type: Boolean, default: false },
   guestAccessToken: { type: String },
+  guestKyc: {
+    idType: { type: String, enum: ['national_id', 'passport', 'drivers_license', 'other', ''], default: '' },
+    idNumber: { type: String, default: '' },
+    dateOfBirth: { type: Date },
+    documentUrl: { type: String, default: '' },
+    documentType: { type: String, default: '' },
+    status: { type: String, enum: ['not_required', 'pending_review', 'verified', 'rejected'], default: 'not_required' },
+    submittedAt: { type: Date },
+    verifiedAt: { type: Date },
+    reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    rejectionReason: { type: String, default: '' }
+  },
+  ageVerification: {
+    isVerified: { type: Boolean, default: false },
+    verifiedVia: { type: String, enum: ['account_kyc', 'guest_document', 'self_declaration'], default: 'self_declaration' },
+    confirmedAt: { type: Date }
+  },
   // GS Reference IDs
   transactionId: { type: String, unique: true },
   orderId: { type: String, unique: true },

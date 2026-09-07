@@ -105,7 +105,7 @@ export default function ProfilePage() {
           Profile Settings
         </h1>
         <p className="text-[var(--color-ivory-muted)] text-md font-light">
-          Manage your personal information and security.
+          Manage your personal details, 18+ store purchase & auction compliance verification, and payment accounts.
         </p>
       </section>
 

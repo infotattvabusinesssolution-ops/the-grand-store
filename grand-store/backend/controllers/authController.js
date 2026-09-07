@@ -487,13 +487,21 @@ const googleAuth = async (req, res) => {
       } else {
         // Standard Google ID token
         try {
+          const allowedAudiences = [
+            process.env.GOOGLE_CLIENT_ID,
+            '153305069501-nrfrhnj4l2427g5dbnn1ubpajocf578a.apps.googleusercontent.com',
+            '153305069501-dq01kr7b6ingdl3f3qk5r9790hebvbv7.apps.googleusercontent.com'
+          ].filter(Boolean);
+
           const ticket = await client.verifyIdToken({
             idToken: token,
-            audience: process.env.GOOGLE_CLIENT_ID,
+            audience: allowedAudiences,
           });
           payload = ticket.getPayload();
         } catch (verifyErr) {
+          console.error('[GoogleAuth] Token verification error:', verifyErr.message);
           if (decoded && decoded.email) {
+            console.log('[GoogleAuth] Using decoded payload for:', decoded.email);
             payload = {
               sub: decoded.sub,
               email: decoded.email,
@@ -620,6 +628,7 @@ const getReferralSummary = async (req, res) => {
 
     let settings = await PlatformSettings.findOne();
     if (!settings) settings = await PlatformSettings.create({});
+    const ownPaidOrders = await Order.countDocuments({ user: user._id, isPaid: true });
     const isWelcomeEligible = Boolean(user.referredBy) && ownPaidOrders === 0 && Boolean(settings.referralWelcomeDiscountEnabled) && (settings.referralWelcomeDiscount > 0);
 
     res.json({

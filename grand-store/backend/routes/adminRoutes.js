@@ -25,6 +25,9 @@ router.put('/staff/:id', superAdmin, adminController.updateStaffCredentials);
 
 router.get('/finance', financeStaff, financeController.getAdminFinanceOverview);
 router.get('/bank-transfers', financeStaff, adminController.getPendingBankTransfers);
+router.get('/guest-verifications', adminController.getGuestVerifications);
+router.put('/orders/:orderId/guest-kyc/verify', adminController.verifyGuestKyc);
+router.put('/orders/:orderId/guest-kyc/reject', adminController.rejectGuestKyc);
 
 router.route('/testimonials')
   .get(superAdmin, testimonialController.getAdminTestimonials)

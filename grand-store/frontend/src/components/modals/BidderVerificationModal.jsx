@@ -600,12 +600,12 @@ export default function BidderVerificationModal({ isOpen, onClose, onSuccess, on
           </div>
           <div>
             <h3 className="text-2xl sm:text-3xl font-serif text-[var(--color-gold)]">
-              {isAlreadyVerified ? 'Upgrade to Premium VIP Bidding' : `${minAge}+ Bidder Legal Qualification & KYC`}
+              {isAlreadyVerified ? 'Upgrade to Premium VIP Bidding' : `${minAge}+ Legal Age & Identity Verification (KYC)`}
             </h3>
             <p className="text-xs sm:text-sm text-white/50 tracking-wider font-sans uppercase mt-0.5">
               {isAlreadyVerified 
                 ? `Unlock High-Value & Reserve Bidding (Up to R${premiumLimit.toLocaleString()})`
-                : `South African CPA & ${minAge}+ Liquor Compliance Verification`
+                : `Dual Compliance for Store Wine & Spirit Purchases and Live Auction Bidding`
               }
             </p>
           </div>
@@ -636,9 +636,9 @@ export default function BidderVerificationModal({ isOpen, onClose, onSuccess, on
               <div className="flex items-center justify-between border-b border-white/5 pb-2">
                 <h4 className="text-xs uppercase tracking-widest text-white/60 font-bold flex items-center gap-1.5">
                   <ShieldCheck size={14} className="text-[var(--color-gold)]" />
-                  <span>1. Mandatory {minAge}+ Legal Qualification (Configured by Admin)</span>
+                  <span>1. Mandatory {minAge}+ Legal Age & Identity Verification</span>
                 </h4>
-                <span className="text-[11px] text-white/40">Government ID & Age Check</span>
+                <span className="text-[11px] text-[var(--color-gold)] font-medium">Clears Store Purchases & Auction Bidding</span>
               </div>
 
               <div className="space-y-4">
@@ -976,7 +976,7 @@ export default function BidderVerificationModal({ isOpen, onClose, onSuccess, on
                   className="mt-1 w-4 h-4 rounded accent-[var(--color-gold)] cursor-pointer"
                 />
                 <span className="text-xs sm:text-sm text-white/70 leading-relaxed font-light">
-                  I warrant that I am at least {minAge} years of age and agree to the <strong className="text-[var(--color-gold)]">Grand Store Rules of Auction v1.0</strong>. Bids placed are legally binding under South African CPA regulations.
+                  I warrant that I am at least {minAge} years of age and agree to the <strong className="text-[var(--color-gold)]">Grand Store Terms & Rules of Auction v1.0</strong>. Verification provides legal clearance for wine/spirit store purchases and authorizes live auction bidding under South African CPA regulations.
                 </span>
               </label>
             </div>
@@ -996,7 +996,7 @@ export default function BidderVerificationModal({ isOpen, onClose, onSuccess, on
               ) : tier === 'premium' ? (
                 <>Submit Premium VIP Application (R{dynamicDepositAmount.toLocaleString()} Deposit) <ArrowRight size={18} /></>
               ) : (
-                <>Submit Standard {minAge}+ Verification (Free) <CheckCircle2 size={18} /></>
+                <>Submit {minAge}+ Verification (Store Orders & Auctions) <CheckCircle2 size={18} /></>
               )}
             </button>
           </div>

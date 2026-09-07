@@ -205,12 +205,41 @@ const orderConfirmationTemplate = (order) => {
     
     <div class="details-box">
       <h3 style="margin-top: 0;">Shipping Address</h3>
-      <p>${order.shippingAddress.address}</p>
-      <p>${order.shippingAddress.city}, ${order.shippingAddress.postalCode}</p>
-      <p>${order.shippingAddress.country}</p>
+      <p>${order.shippingAddress?.address || ''}</p>
+      <p>${order.shippingAddress?.city || ''}, ${order.shippingAddress?.postalCode || ''}</p>
+      <p>${order.shippingAddress?.country || ''}</p>
     </div>
+
+    <div class="details-box" style="border-left: 4px solid ${BRAND_COLOR_GOLD}; background: #14120c; margin-top: 15px;">
+      <h3 style="margin-top: 0; color: ${BRAND_COLOR_GOLD}; font-size: 15px;">📦 Live Tracking & Dispatch Notifications</h3>
+      <p style="margin-bottom: 6px; font-size: 13px; color: #ddd;">
+        Real-time courier waybill tracking links, SMS delivery PINs, and collection alerts will be automatically sent to:
+      </p>
+      <p style="margin: 4px 0; font-size: 13px;">
+        ✉️ <strong>Email:</strong> ${order.guestInfo?.email || order.shippingAddress?.email || (order.user?.email) || 'On file'}
+      </p>
+      <p style="margin: 4px 0; font-size: 13px;">
+        📱 <strong>Phone / SMS:</strong> ${order.guestInfo?.phone || order.shippingAddress?.phone || order.shippingAddress?.phoneNumber || (order.user?.phone) || 'On file'}
+      </p>
+    </div>
+
+    ${order.isGuest && order.guestKyc?.documentUrl ? `
+    <div class="details-box" style="border-left: 4px solid #10b981; background: #0c1813; margin-top: 15px;">
+      <h3 style="margin-top: 0; color: #10b981; font-size: 15px;">🛡️ 18+ Legal Age Verification Document Received</h3>
+      <p style="margin: 0; font-size: 13px; color: #d1fae5; line-height: 1.5;">
+        Your official identification document (${(order.guestKyc.idType || 'ID/Passport').toUpperCase()}) has been securely submitted to Grand Store Administration for compliance clearance. Your order is confirmed and will be dispatched once verified.
+      </p>
+    </div>
+    ` : `
+    <div class="details-box" style="border-left: 4px solid #3b82f6; background: #0c1420; margin-top: 15px;">
+      <h3 style="margin-top: 0; color: #60a5fa; font-size: 15px;">🛡️ 18+ Certified Order</h3>
+      <p style="margin: 0; font-size: 13px; color: #dbeafe; line-height: 1.5;">
+        This order has been verified under South African liquor compliance regulations. An adult signature (18+) is required upon parcel handover.
+      </p>
+    </div>
+    `}
     
-    <p>We will notify you once your order has been dispatched.</p>
+    <p style="margin-top: 20px;">We will notify you with the tracking waybill as soon as your parcel leaves our temperature-controlled holding.</p>
   `;
   return generateEmailTemplate(`Payment Receipt #${orderReference}`, content);
 };

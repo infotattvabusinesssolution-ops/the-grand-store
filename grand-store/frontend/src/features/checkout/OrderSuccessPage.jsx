@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { CheckCircle2, ChevronLeft, Download, Loader2, Truck, MapPin, Coins, ShieldCheck, ArrowRight, Clock, AlertTriangle, Package } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Download, Loader2, Truck, MapPin, Coins, ShieldCheck, ArrowRight, Clock, AlertTriangle, Package, FileCheck } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useCurrency } from "../../context/CurrencyContext";
 import Price from "../../components/ui/Price";
@@ -348,6 +348,80 @@ export default function OrderSuccessPage({ onClearCart }) {
               Thank you for your purchase. Your order is being processed.
             </p>
           )}
+        </div>
+
+        {/* Guest Tracking & 18+ Verification Document Compliance Notification */}
+        <div className="bg-gradient-to-br from-[#17140e] via-[#100f0a] to-[#090805] border-2 border-[var(--color-gold)]/50 rounded-3xl p-6 md:p-8 mb-10 shadow-[0_0_40px_rgba(212,175,55,0.15)] relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-[var(--color-gold)]/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[var(--color-gold)]/20">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-[var(--color-gold)] text-black rounded-2xl shadow-lg">
+                  <ShieldCheck size={26} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-serif text-white font-bold">
+                      Order Confirmed & 18+ Compliance Clearance
+                    </h2>
+                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                    Order Ref: #{order.orderId || order.invoiceNumber || order._id}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Notification Destination Alert */}
+              <div className="p-4 rounded-2xl bg-black/50 border border-white/10 space-y-2">
+                <div className="flex items-center gap-2 text-[var(--color-gold)] text-sm font-semibold">
+                  <span>📱</span>
+                  <span>Live Tracking & Status Updates</span>
+                </div>
+                <p className="text-xs text-white/80 leading-relaxed">
+                  Real-time courier waybill tracking links, dispatch notices, and delivery PINs will be sent directly to your channels:
+                </p>
+                <div className="space-y-1 pt-1 text-xs">
+                  <div className="flex items-center gap-2 text-white/90">
+                    <span className="text-white/40">Email:</span>
+                    <strong className="font-mono text-[var(--color-gold)]">
+                      {order.guestInfo?.email || order.shippingAddress?.email || (order.user?.email) || "On record"}
+                    </strong>
+                  </div>
+                  <div className="flex items-center gap-2 text-white/90">
+                    <span className="text-white/40">SMS / Phone:</span>
+                    <strong className="font-mono text-[var(--color-gold)]">
+                      {order.guestInfo?.phone || order.shippingAddress?.phone || order.shippingAddress?.phoneNumber || (order.user?.phone) || "On record"}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* 18+ Document Verification Status */}
+              <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
+                <div className="flex items-center gap-2 text-emerald-400 text-sm font-semibold">
+                  <FileCheck size={16} />
+                  <span>18+ Document Under Admin Review</span>
+                </div>
+                <p className="text-xs text-emerald-200/80 leading-relaxed">
+                  {order.isGuest && order.guestKyc?.documentUrl ? (
+                    <>Your official identification document (<strong>{(order.guestKyc.idType || "ID/Passport").toUpperCase()}</strong>) has been securely transmitted to Grand Store Administration. Your order and payment are confirmed, and dispatch will commence once verified.</>
+                  ) : (
+                    <>This order is registered under Grand Store 18+ legal compliance standards. Official adult identification will be requested upon courier handover.</>
+                  )}
+                </p>
+                <div className="text-[11px] text-emerald-400/70 pt-1 flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Administrative verification in progress • No further action required</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Section 8: PostNet Delivery & Super Coins Loyalty Cards */}

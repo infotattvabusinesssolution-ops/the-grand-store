@@ -48,12 +48,12 @@ const addOrderItems = async (req, res) => {
     const gatewayFeePct = settings.gatewayFeePct || 2.5;
 
     // === RECONSTRUCT ACCOUNTING FROM QUOTE ===
-    const subTotal = quote.globalSubtotal;
-    const shippingCost = quote.aggregatedTotals.shipping;
-    const vatAmount = quote.aggregatedTotals.vat;
-    const importDuties = quote.aggregatedTotals.estimatedImportDuties;
-    const importTaxes = quote.aggregatedTotals.estimatedImportTaxes;
-    const customsFees = quote.aggregatedTotals.estimatedCustomsFees;
+    const subTotal = Number(quote.globalSubtotal || quote.subTotal || 0);
+    const shippingCost = Number(quote.aggregatedTotals?.shipping || quote.shippingCost || 0);
+    const vatAmount = Number(quote.aggregatedTotals?.vat || quote.vatAmount || 0);
+    const importDuties = Number(quote.aggregatedTotals?.estimatedImportDuties || quote.importDuties || 0);
+    const importTaxes = Number(quote.aggregatedTotals?.estimatedImportTaxes || quote.importTaxes || 0);
+    const customsFees = Number(quote.aggregatedTotals?.estimatedCustomsFees || quote.customsFees || 0);
     
     const calculatedTotal = parseFloat((subTotal + shippingCost).toFixed(2));
     const commissionAmount = parseFloat(((subTotal * commissionPct) / 100).toFixed(2));
@@ -67,10 +67,63 @@ const addOrderItems = async (req, res) => {
     const guestPhone = (req.body.guestPhone || shippingAddress?.phone || shippingAddress?.phoneNumber || '').trim();
     const guestAccessToken = isGuest ? crypto.randomBytes(24).toString('hex') : null;
     const isAgeConfirmed = Boolean(req.body.isAgeConfirmed);
+    if (!isAgeConfirmed) {
+      return res.status(400).json({ message: '18+ age verification is legally required to purchase alcoholic products.' });
+    }
+
+    // Guest 18+ KYC and Document Verification
+    const guestKycData = req.body.guestKyc || {};
+    const guestDob = guestKycData.dateOfBirth || guestKycData.dob || req.body.dateOfBirth || req.body.dob;
+    const guestIdNumber = (guestKycData.idNumber || req.body.idNumber || '').trim();
+    const guestIdType = guestKycData.idType || req.body.idType || 'national_id';
+    const guestDocUrl = (guestKycData.documentUrl || req.body.documentUrl || req.body.idDocumentUrl || '').trim();
+
+    let guestBirthDate = null;
+    if (isGuest) {
+      if (!guestDocUrl) {
+        return res.status(400).json({
+          message: 'Legal identification document upload (National ID, Passport, or Driver\'s License) is required for guest checkout.'
+        });
+      }
+
+      if (!guestDob) {
+        return res.status(400).json({
+          message: 'Date of birth is required for 18+ age verification.'
+        });
+      }
+
+      guestBirthDate = new Date(guestDob);
+      if (isNaN(guestBirthDate.getTime())) {
+        return res.status(400).json({ message: 'Valid date of birth is required for 18+ age verification.' });
+      }
+
+      const today = new Date();
+      let age = today.getFullYear() - guestBirthDate.getFullYear();
+      const m = today.getMonth() - guestBirthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < guestBirthDate.getDate())) {
+        age--;
+      }
+
+      if (age < 18) {
+        return res.status(403).json({
+          message: 'You must be at least 18 years of age to purchase products on The Grand Store.'
+        });
+      }
+    }
 
     const User = require('../models/User');
     const user = req.user ? await User.findById(req.user._id) : null;
     const previousOrders = user ? await Order.countDocuments({ user: user._id }) : 0;
+
+    // If authenticated user also attached KYC document during checkout, update profile
+    if (user && (guestDocUrl || req.body.idDocumentUrl)) {
+      user.idDocumentUrl = guestDocUrl || req.body.idDocumentUrl;
+      if (guestIdType) user.idType = guestIdType;
+      if (guestIdNumber) user.idNumber = guestIdNumber;
+      if (guestDob) user.dateOfBirth = guestBirthDate || new Date(guestDob);
+      user.bidderApprovalStatus = 'pending_approval';
+      await user.save().catch(err => console.warn('Error saving user KYC from checkout:', err.message));
+    }
 
     let appliedWelcomeDiscount = 0;
     // Refer & earn rewards the referrer who shared the link unless welcome discount is explicitly enabled
@@ -143,6 +196,22 @@ const addOrderItems = async (req, res) => {
       guestInfo: isGuest ? { name: guestName, email: guestEmail, phone: guestPhone } : undefined,
       guestAccessToken: isGuest ? guestAccessToken : undefined,
       isAgeConfirmed: isAgeConfirmed,
+      guestKyc: isGuest ? {
+        idType: guestIdType,
+        idNumber: guestIdNumber,
+        dateOfBirth: guestBirthDate,
+        documentUrl: guestDocUrl,
+        documentType: guestKycData.documentType || '',
+        status: 'pending_review',
+        submittedAt: new Date()
+      } : {
+        status: 'not_required'
+      },
+      ageVerification: {
+        isVerified: true,
+        verifiedVia: isGuest ? 'guest_document' : (user?.kycVerified ? 'account_kyc' : (guestDocUrl ? 'guest_document' : 'self_declaration')),
+        confirmedAt: new Date()
+      },
       shippingAddress,
       deliveryPreference,
       selectedPostnetStore: selectedPickupStore,
@@ -321,6 +390,27 @@ const addOrderItems = async (req, res) => {
         totalPrice: calculatedTotal
       }
     }, actorId);
+
+    // Send admin notification for guest 18+ verification document review
+    if (isGuest && createdOrder.guestKyc?.documentUrl) {
+      try {
+        const { createInAppNotification } = require('./notificationController');
+        const admins = await User.find({ role: { $in: ['admin', 'super_admin'] } }).select('_id');
+        for (const adm of admins) {
+          await createInAppNotification({
+            recipient: adm._id,
+            recipientType: 'admin',
+            title: '🛡️ Guest 18+ ID Document Submitted',
+            message: `Guest ${guestName} submitted 18+ identification document for Order #${createdOrder.orderId || createdOrder.invoiceNumber || createdOrder._id}. Compliance clearance pending.`,
+            type: 'order',
+            link: '/admin/orders',
+            metadata: { orderId: createdOrder._id, documentUrl: createdOrder.guestKyc.documentUrl }
+          });
+        }
+      } catch (notifErr) {
+        console.warn('Failed to notify admins of guest KYC document:', notifErr.message);
+      }
+    }
 
     // Send emails based on payment method
     try {

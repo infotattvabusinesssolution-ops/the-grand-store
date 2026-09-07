@@ -429,6 +429,128 @@ const updateVendorPaymentStatus = async (req, res) => {
   }
 };
 
+// @desc    Get all guest orders with uploaded 18+ verification documents
+// @route   GET /api/admin/guest-verifications
+// @access  Private (Admin / Staff)
+const getGuestVerifications = async (req, res) => {
+  try {
+    const { status } = req.query;
+    const query = {
+      isGuest: true,
+      'guestKyc.documentUrl': { $exists: true, $ne: '' }
+    };
+
+    if (status && status !== 'all') {
+      query['guestKyc.status'] = status;
+    }
+
+    const orders = await Order.find(query)
+      .sort({ createdAt: -1 })
+      .select('orderId invoiceNumber transactionId guestInfo guestKyc shippingAddress totalPrice paymentMethod paymentStatus isPaid createdAt shipments')
+      .lean();
+
+    res.json({
+      count: orders.length,
+      verifications: orders
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error fetching guest verifications', error: error.message });
+  }
+};
+
+// @desc    Verify and approve guest 18+ KYC document
+// @route   PUT /api/admin/orders/:orderId/guest-kyc/verify
+// @access  Private (Admin / Staff)
+const verifyGuestKyc = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    if (!order.guestKyc) {
+      order.guestKyc = {};
+    }
+
+    order.guestKyc.status = 'verified';
+    order.guestKyc.verifiedAt = new Date();
+    order.guestKyc.reviewedBy = req.user ? req.user._id : null;
+    order.guestKyc.rejectionReason = '';
+
+    await order.save();
+
+    // Send confirmation email to guest
+    const recipientEmail = order.guestInfo?.email || order.shippingAddress?.email;
+    if (recipientEmail) {
+      try {
+        const { sendEmail } = require('../utils/emailService');
+        await sendEmail({
+          to: recipientEmail,
+          subject: `18+ Verification Approved - Order #${order.orderId || order.invoiceNumber}`,
+          html: `
+            <h3>18+ Legal Age Verification Approved</h3>
+            <p>Dear ${order.guestInfo?.name || 'Customer'},</p>
+            <p>Your identification document for Order <strong>#${order.orderId || order.invoiceNumber}</strong> has been successfully verified and approved by Grand Store Administration.</p>
+            <p>Your order will now proceed to dispatch. You will receive courier waybill tracking updates via email and SMS.</p>
+          `
+        });
+      } catch (emailErr) {
+        console.warn('Failed to send guest verification approval email:', emailErr.message);
+      }
+    }
+
+    res.json({ message: 'Guest 18+ verification approved successfully', order });
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error verifying guest document', error: error.message });
+  }
+};
+
+// @desc    Reject guest 18+ KYC document with reason
+// @route   PUT /api/admin/orders/:orderId/guest-kyc/reject
+// @access  Private (Admin / Staff)
+const rejectGuestKyc = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason } = req.body;
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    if (!order.guestKyc) {
+      order.guestKyc = {};
+    }
+
+    order.guestKyc.status = 'rejected';
+    order.guestKyc.rejectionReason = reason || 'Identification document was unreadable or could not be verified.';
+    order.guestKyc.reviewedBy = req.user ? req.user._id : null;
+
+    await order.save();
+
+    // Send notification email to guest
+    const recipientEmail = order.guestInfo?.email || order.shippingAddress?.email;
+    if (recipientEmail) {
+      try {
+        const { sendEmail } = require('../utils/emailService');
+        await sendEmail({
+          to: recipientEmail,
+          subject: `Action Required: 18+ Document Verification for Order #${order.orderId || order.invoiceNumber}`,
+          html: `
+            <h3>Action Required: 18+ ID Document Verification</h3>
+            <p>Dear ${order.guestInfo?.name || 'Customer'},</p>
+            <p>Your identification document submitted for Order <strong>#${order.orderId || order.invoiceNumber}</strong> could not be verified.</p>
+            <p><strong>Reason:</strong> ${order.guestKyc.rejectionReason}</p>
+            <p>Please contact support at info@grandstoreglobal.com with a clear photo or scan of your official ID or passport so your parcel can be cleared for dispatch.</p>
+          `
+        });
+      } catch (emailErr) {
+        console.warn('Failed to send guest verification rejection email:', emailErr.message);
+      }
+    }
+
+    res.json({ message: 'Guest 18+ verification rejected', order });
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error rejecting guest document', error: error.message });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getAllUsers,
@@ -441,4 +563,8 @@ module.exports = {
   updateStaffCredentials,
   createStaffAccount,
   updateVendorPaymentStatus,
+  getGuestVerifications,
+  verifyGuestKyc,
+  rejectGuestKyc,
 };
+

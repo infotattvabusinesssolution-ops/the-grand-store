@@ -235,6 +235,62 @@ const generateQuote = async (req, res) => {
   }
 };
 
-module.exports = {
-  generateQuote
+// @desc    Upload Guest 18+ Verification Document (ID, Passport, Driver's License)
+// @route   POST /api/checkout/upload-guest-document
+// @access  Public / OptionalAuth
+const uploadGuestDocument = async (req, res) => {
+  try {
+    // 1. Direct Multer File Upload
+    if (req.file) {
+      return res.status(200).json({
+        success: true,
+        url: req.file.path || req.file.secure_url || req.file.url,
+        originalName: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      });
+    }
+
+    // 2. Base64 Upload (Useful for React Native or Canvas)
+    const base64Data = req.body?.documentBase64 || req.body?.base64 || req.body?.image;
+    if (base64Data && typeof base64Data === 'string') {
+      const { cloudinary } = require('../config/cloudinary');
+      const uploadRes = await cloudinary.uploader.upload(base64Data, {
+        folder: 'grandstore-uploads/guest-kyc',
+        resource_type: 'auto'
+      });
+      return res.status(200).json({
+        success: true,
+        url: uploadRes.secure_url,
+        publicId: uploadRes.public_id,
+        format: uploadRes.format,
+        size: uploadRes.bytes
+      });
+    }
+
+    // 3. Fallback direct URL reference
+    if (req.body?.documentUrl && typeof req.body.documentUrl === 'string') {
+      return res.status(200).json({
+        success: true,
+        url: req.body.documentUrl.trim(),
+        originalName: 'provided_document_url'
+      });
+    }
+
+    return res.status(400).json({
+      message: 'No document file uploaded. Please select an image or PDF of your official ID or passport.'
+    });
+  } catch (error) {
+    console.error('Guest document upload error:', error);
+    return res.status(500).json({
+      message: 'Failed to upload verification document',
+      error: error.message
+    });
+  }
 };
+
+module.exports = {
+  generateQuote,
+  uploadGuestDocument
+};
+
