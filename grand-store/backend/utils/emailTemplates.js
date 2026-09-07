@@ -404,22 +404,140 @@ const auctionReminderTemplate = (name, auctionTitle, startDate, lotNumber) => {
   return generateEmailTemplate(`Reminder: Auction for ${auctionTitle} is starting soon`, content);
 };
 
-const auctionWinTemplate = (name, auctionTitle, lotNumber, winningBid, checkoutUrl) => {
+const auctionWinTemplate = (name, auctionTitle, lotNumber, winningBid, checkoutUrl, options = {}) => {
+  const certRef = options.gsReference || `GS-AUC-LOT${lotNumber}-${Date.now().toString().slice(-6)}`;
+  const certDownloadUrl = options.certDownloadUrl || `${checkoutUrl}`;
+  const hammerPriceFormatted = Number(winningBid).toLocaleString('en-ZA', { minimumFractionDigits: 2 });
+  const currentDate = new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+
   const content = `
-    <h1>Congratulations! You Won an Auction!</h1>
-    <p>Dear ${name},</p>
-    <p>We are thrilled to inform you that you have won the auction for <strong>${auctionTitle}</strong>!</p>
-    
-    <div class="details-box">
-      <h3 style="margin-top: 0;">Winning Details</h3>
-      <p><strong>Lot Number:</strong> ${lotNumber}</p>
-      <p><strong>Winning Bid:</strong> R${Number(winningBid).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+    <!-- Top Imperial Congratulations Banner -->
+    <div style="text-align: center; margin-bottom: 25px;">
+      <span style="font-size: 32px; display: block; margin-bottom: 8px;">🏆 ✦ 📜</span>
+      <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 4px; color: #c9a35b; font-weight: bold; display: block; margin-bottom: 6px;">
+        Imperial Acquisition Award • The Grand Store
+      </span>
+      <h1 style="color: #ffffff; font-size: 26px; font-family: 'Times New Roman', serif; margin: 0 0 10px 0; letter-spacing: 1px;">
+        Auction Gavel Won: Certificate Awarded
+      </h1>
+      <p style="color: #a39c91; font-size: 14px; margin: 0; line-height: 1.6;">
+        Distinguished Patron <strong>${name || 'Collector'}</strong>, the auction hammer has officially fallen in your favor. Full title and ownership registry have been awarded to your account.
+      </p>
     </div>
-    
-    <p>To complete your purchase and arrange shipping, please proceed to checkout below.</p>
-    <a href="${checkoutUrl}" class="btn">Proceed to Checkout</a>
+
+    <!-- Official Certificate of Acquisition Box -->
+    <div style="margin: 25px 0; padding: 25px 20px; background-color: #0b0a08; border: 2px solid #c9a35b; border-radius: 12px; position: relative; box-shadow: 0 15px 45px rgba(0,0,0,0.8);">
+      
+      <!-- Watermark Background Simulation -->
+      <div style="text-align: center; padding-bottom: 15px; border-bottom: 1px solid rgba(201, 163, 91, 0.25);">
+        <div style="font-family: 'Times New Roman', serif; font-size: 28px; font-weight: bold; color: rgba(201, 163, 91, 0.18); letter-spacing: 6px; text-transform: uppercase;">
+          THE GRAND STORE
+        </div>
+        <div style="font-size: 9px; letter-spacing: 3px; color: rgba(201, 163, 91, 0.22); text-transform: uppercase; margin-top: 2px;">
+          • OFFICIAL VAULT ARCHIVE • CERTIFIED AUTHENTIC PROVENANCE •
+        </div>
+      </div>
+
+      <!-- Seal and Certificate Heading -->
+      <div style="text-align: center; margin: 20px 0 15px 0;">
+        <div style="display: inline-block; padding: 5px 16px; border: 1px solid #c9a35b; border-radius: 20px; background: rgba(201, 163, 91, 0.12); color: #f5d77f; font-size: 10px; font-weight: bold; letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 10px;">
+          ✦ OFFICIAL CERTIFICATE OF ACQUISITION ✦
+        </div>
+        <h2 style="font-family: 'Times New Roman', serif; font-size: 22px; color: #f5d77f; margin: 5px 0; font-weight: normal; letter-spacing: 1px;">
+          Certificate of Provenance & Transfer
+        </h2>
+        <div style="font-family: monospace; font-size: 11px; color: #8c827a; letter-spacing: 1px;">
+          REGISTRY REF: ${certRef}
+        </div>
+      </div>
+
+      <!-- Proclamation Text -->
+      <p style="font-family: 'Times New Roman', serif; font-style: italic; text-align: center; color: #ded8ce; font-size: 14px; line-height: 1.6; margin: 15px auto; max-width: 480px;">
+        "This instrument certifies that legal title to the singular masterpiece described herein has been transferred to the verified winning patron under South African CPA Section 45 Escrow Trust provisions."
+      </p>
+
+      <!-- Specifications Grid -->
+      <div style="background-color: #12100d; border: 1px solid #2a251b; border-radius: 8px; padding: 18px; margin: 20px 0;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr>
+            <td style="padding: 6px 0; color: #8c827a; width: 40%; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Catalogue Lot:</td>
+            <td style="padding: 6px 0; color: #f5d77f; font-weight: bold; font-family: monospace;">LOT #${lotNumber}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #8c827a; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Masterpiece Title:</td>
+            <td style="padding: 6px 0; color: #ffffff; font-weight: bold;">${auctionTitle}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #8c827a; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Winning Hammer Bid:</td>
+            <td style="padding: 6px 0; color: #c9a35b; font-weight: bold; font-size: 16px;">R ${hammerPriceFormatted}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #8c827a; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Recorded Patron:</td>
+            <td style="padding: 6px 0; color: #ded8ce; font-weight: bold;">${name}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #8c827a; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Date of Hammer Fall:</td>
+            <td style="padding: 6px 0; color: #ded8ce;">${currentDate}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #8c827a; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Statutory Escrow:</td>
+            <td style="padding: 6px 0; color: #10b981; font-size: 12px;">✓ 100% CPA Section 45 Protected</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Signatures Representation -->
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px; text-align: center; border-top: 1px solid #222; padding-top: 15px;">
+        <tr>
+          <td style="width: 50%; padding: 12px 10px; vertical-align: top;">
+            <div style="font-family: 'Times New Roman', serif; font-style: italic; color: #ded8ce; font-size: 15px; margin-bottom: 4px;">
+              Julian Vance-Montgomery
+            </div>
+            <div style="height: 1px; width: 80%; background-color: #c9a35b; margin: 0 auto 4px auto;"></div>
+            <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #c9a35b; font-weight: bold;">
+              Curator of Acquisitions
+            </div>
+            <div style="font-size: 9px; color: #777;">Grand Store Vaults</div>
+          </td>
+          <td style="width: 50%; padding: 12px 10px; vertical-align: top;">
+            <div style="font-family: 'Times New Roman', serif; font-style: italic; color: #ded8ce; font-size: 15px; margin-bottom: 4px;">
+              Eleanor St. Claire
+            </div>
+            <div style="height: 1px; width: 80%; background-color: #c9a35b; margin: 0 auto 4px auto;"></div>
+            <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #c9a35b; font-weight: bold;">
+              Chief Escrow Registrar
+            </div>
+            <div style="font-size: 9px; color: #777;">CPA Section 45 Division</div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Attachment Notice Badge -->
+      <div style="margin-top: 18px; padding: 10px; background-color: rgba(16, 185, 129, 0.08); border: 1px dashed rgba(16, 185, 129, 0.35); border-radius: 6px; text-align: center;">
+        <span style="font-size: 12px; color: #6ee7b7;">
+          📎 <strong>Official PDF Attached:</strong> Your high-resolution, print-ready Certificate of Acquisition is attached to this email.
+        </span>
+      </div>
+
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="margin: 30px 0 20px 0; text-align: center;">
+      <a href="${checkoutUrl}" style="display: inline-block; background: linear-gradient(135deg, #ffd700 0%, #d4af37 100%); color: #0a0a0a; font-weight: bold; text-decoration: none; padding: 15px 32px; border-radius: 8px; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; box-shadow: 0 6px 25px rgba(212, 175, 55, 0.4); margin: 6px 4px;">
+        Complete Vault Settlement & Checkout &rarr;
+      </a>
+      ${certDownloadUrl ? `
+      <a href="${certDownloadUrl}" style="display: inline-block; background-color: #1a1712; color: #f5d77f; border: 1px solid #c9a35b; font-weight: bold; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; margin: 6px 4px;">
+        📜 Download PDF Certificate
+      </a>
+      ` : ''}
+    </div>
+
+    <p style="font-size: 12px; color: #777; text-align: center; margin-top: 25px; line-height: 1.5;">
+      In compliance with the South African Consumer Protection Act, all auction acquisitions must be settled within the statutory window. For white-glove logistics assistance, contact curatorial@grandstoreglobal.com.
+    </p>
   `;
-  return generateEmailTemplate(`Congratulations! You won the auction for ${auctionTitle}`, content);
+  return generateEmailTemplate(`Official Certificate of Acquisition: ${auctionTitle}`, content);
 };
 
 const bulkNewsletterTemplate = (subject, htmlContent) => {
@@ -486,6 +604,80 @@ const birthdayCelebrationEmailTemplate = ({
   return generateEmailTemplate(`Happy Birthday from The Grand Store! 🥂`, content);
 };
 
+const eventTicketConfirmationTemplate = ({ booking, event, user, qrCodeDataUrl }) => {
+  const eventDateFormatted = new Date(event.date).toLocaleDateString('en-ZA', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  const content = `
+    <div style="text-align: center; margin-bottom: 30px;">
+      <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: #c9a35b; font-weight: bold; display: block; margin-bottom: 6px;">Official Access Pass</span>
+      <h1 style="color: #c9a35b; font-size: 26px; font-family: 'Times New Roman', serif; margin: 0 0 10px 0; letter-spacing: 1px;">VIP EVENT TICKET CONFIRMED</h1>
+      <p style="color: #a0998f; font-size: 14px; margin: 0;">Dear ${user?.name || 'Grand Member'}, your reservation is active and secured with The Grand Store Vault.</p>
+    </div>
+
+    <!-- TICKET PASS CARD -->
+    <div style="background: linear-gradient(145deg, #14120e 0%, #0d0c0a 100%); border: 2px solid #c9a35b; border-radius: 12px; padding: 25px; margin: 25px 0; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+      <div style="border-bottom: 1px dashed rgba(201, 163, 91, 0.4); padding-bottom: 18px; margin-bottom: 20px; text-align: center;">
+        <span style="font-size: 10px; color: #c9a35b; text-transform: uppercase; letter-spacing: 2px; font-weight: bold;">Grand Store Private Reserve Experience</span>
+        <h2 style="color: #ffffff; font-size: 22px; font-family: 'Times New Roman', serif; margin: 8px 0 0 0;">${event.title}</h2>
+      </div>
+
+      <!-- EVENT METRICS -->
+      <table style="width: 100%; margin-bottom: 20px; font-size: 14px; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; color: #888; width: 35%;">DATE:</td>
+          <td style="padding: 8px 0; color: #ffffff; font-weight: bold;">${eventDateFormatted}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #888;">TIME:</td>
+          <td style="padding: 8px 0; color: #ffffff; font-weight: bold;">${event.startTime || '18:00 Doors Open'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #888;">VENUE:</td>
+          <td style="padding: 8px 0; color: #ffffff; font-weight: bold;">${event.location || 'The Grand Store Private Cellars'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #888;">PASS TIER:</td>
+          <td style="padding: 8px 0; color: #f5d77f; font-weight: bold;">${booking.ticketType} &times; ${booking.quantity}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #888;">TICKET ID:</td>
+          <td style="padding: 8px 0; color: #f5d77f; font-family: monospace; font-size: 15px; font-weight: bold;">${booking.ticketId}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #888;">TOTAL PAID:</td>
+          <td style="padding: 8px 0; color: #4ade80; font-weight: bold; font-size: 16px;">R ${Number(booking.totalPrice || 0).toLocaleString('en-ZA')}</td>
+        </tr>
+      </table>
+
+      <!-- REAL QR CODE CONTAINER -->
+      <div style="background-color: #050505; border: 1px solid rgba(201,163,91,0.3); border-radius: 8px; padding: 20px; text-align: center; margin-top: 15px;">
+        <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #c9a35b; margin: 0 0 14px 0; font-weight: bold;">Official Cellar Admission QR</p>
+        ${qrCodeDataUrl ? `
+          <img src="${qrCodeDataUrl}" alt="VIP Ticket QR Code" style="width: 180px; height: 180px; border-radius: 8px; border: 3px solid #c9a35b; padding: 6px; background-color: #ffffff; display: inline-block;" />
+        ` : ''}
+        <p style="font-size: 12px; color: #aaa; margin: 12px 0 0 0;">Present this QR code on arrival for instant white-glove verification.</p>
+        <p style="font-size: 11px; color: #777; margin: 4px 0 0 0;">An official PDF Pass attachment is also included with this email.</p>
+      </div>
+    </div>
+
+    <!-- NOTICE -->
+    <div style="background-color: #12100d; border-left: 3px solid #c9a35b; padding: 16px; margin: 25px 0; font-size: 13px; color: #c2bbb0; line-height: 1.6;">
+      <strong>Cellar Protocol:</strong> Tasting experiences commence promptly. Strictly 18+ for entry. Smart elegant attire recommended.
+    </div>
+
+    <div style="text-align: center; margin-top: 30px;">
+      <p style="font-size: 12px; color: #666; margin: 0;">The Grand Store • South Africa's Premier Fine Wine, Spirits & Tobacco Merchant</p>
+    </div>
+  `;
+
+  return generateEmailTemplate(`Your VIP Event Ticket Pass - ${event.title}`, content);
+};
+
 module.exports = {
   welcomeEmailTemplate,
   verificationEmailTemplate,
@@ -503,4 +695,6 @@ module.exports = {
   bulkNewsletterTemplate,
   genericNotificationTemplate,
   birthdayCelebrationEmailTemplate,
+  eventTicketConfirmationTemplate,
 };
+

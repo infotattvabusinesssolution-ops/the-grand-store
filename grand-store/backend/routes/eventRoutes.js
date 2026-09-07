@@ -15,7 +15,8 @@ const {
   rejectEvent,
   uploadEventBankTransferProof,
   approveEventBankTransfer,
-  rejectEventBankTransfer
+  rejectEventBankTransfer,
+  downloadTicketPdf
 } = require('../controllers/eventControllerV2');
 
 const { protect, superAdmin, financeStaff } = require('../middleware/authMiddleware');
@@ -29,6 +30,9 @@ router.route('/')
 
 router.route('/bookings/my-tickets')
   .get(protect, getUserBookings);
+
+router.route('/bookings/:bookingId/ticket-pdf')
+  .get(downloadTicketPdf);
 
 router.route('/bookings/:bookingId/bank-transfer/upload')
   .post(protect, uploadEventBankTransferProof);

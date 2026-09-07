@@ -5,7 +5,8 @@ import api from '../../api';
 import { 
   ChevronLeft, ShieldCheck, Clock, History, AlertCircle, ArrowRight, 
   Play, Video, Film, Image as ImageIcon, Crown, ChevronDown, Check, 
-  Award, Trophy, Sparkles, Gem, Shield, CheckCircle2, Gavel 
+  Award, Trophy, Sparkles, Gem, Shield, CheckCircle2, Gavel,
+  Download, Printer, FileCheck
 } from 'lucide-react';
 import AuctionCountdown from './AuctionCountdown';
 import BidConfirmationModal from '../../components/modals/BidConfirmationModal';
@@ -59,6 +60,7 @@ export default function AuctionLotDetail({ onNotify }) {
   const [showMagicalBid, setShowMagicalBid] = useState(false);
   const [lastBidAmount, setLastBidAmount] = useState(0);
   const [showCelebrationModal, setShowCelebrationModal] = useState(false);
+  const [downloadingCert, setDownloadingCert] = useState(false);
   const shouldCelebrate = searchParams.get('celebrate') === 'true';
 
   const { currency, rates, changeCurrency, availableCurrencies } = useCurrency();
@@ -266,6 +268,43 @@ export default function AuctionLotDetail({ onNotify }) {
       setSubmitting(false);
     }
   };
+
+  const handleDownloadCertificate = async () => {
+    if (!lot?._id) return;
+    setDownloadingCert(true);
+    try {
+      const res = await api.get(`/auction/${lot._id}/certificate`, {
+        responseType: 'blob'
+      });
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      const safeLotNum = lot.lotNumber || lot._id.slice(-6).toUpperCase();
+      link.download = `TheGrandStore_Certificate_Lot_${safeLotNum}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error('Failed to download certificate PDF:', err);
+      // Direct link fallback
+      window.open(`/api/auction/${lot._id}/certificate`, '_blank');
+    } finally {
+      setDownloadingCert(false);
+    }
+  };
+
+  const handlePrintCertificate = () => {
+    window.print();
+  };
+
+  // Auto trigger download if ?certificate=download query param is present
+  useEffect(() => {
+    if (searchParams.get('certificate') === 'download' && lot?._id && isWinner) {
+      handleDownloadCertificate();
+    }
+  }, [searchParams, lot?._id, isWinner]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-white font-serif">Loading Luxury Lot...</div>;
   if (!lot) return <div className="min-h-screen flex items-center justify-center text-white font-serif">Lot not found</div>;
@@ -711,67 +750,110 @@ export default function AuctionLotDetail({ onNotify }) {
                ) : (
                   <div className="flex flex-col gap-6">
                     {lot.status === 'sold' && isWinner ? (
-                      <div id="acquisition-certificate" className="relative overflow-hidden rounded-2xl border border-[var(--color-gold)]/60 bg-gradient-to-b from-[#181308] via-[#0d0d0d] to-[#080808] p-6 sm:p-8 shadow-[0_0_50px_rgba(212,175,55,0.22)]">
-                        {/* Regal Background Ambient Aura */}
-                        <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-[var(--color-gold)]/10 blur-3xl pointer-events-none" />
-                        <div className="absolute -left-12 -bottom-12 w-48 h-48 rounded-full bg-[var(--color-gold)]/10 blur-3xl pointer-events-none" />
+                      <div id="acquisition-certificate" className="relative overflow-hidden rounded-3xl border-2 border-[var(--color-gold)] bg-gradient-to-b from-[#181308] via-[#0d0c08] to-[#060606] p-6 sm:p-9 shadow-[0_0_60px_rgba(212,175,55,0.28)]">
+                        
+                        {/* 1. Grand Store Watermark Background Layer */}
+                        <div className="absolute inset-0 pointer-events-none select-none overflow-hidden flex flex-col items-center justify-center opacity-[0.05]">
+                          <div className="font-serif text-[70px] sm:text-[90px] font-black tracking-[0.25em] text-[#ffd700] uppercase text-center leading-none">
+                            GRAND STORE
+                          </div>
+                          <div className="font-mono text-xs tracking-[0.4em] text-[#ffd700] uppercase mt-2">
+                            • OFFICIAL VAULT ARCHIVE • CERTIFIED AUTHENTIC PROVENANCE •
+                          </div>
+                          <div className="absolute inset-0 transform -rotate-12 scale-125 flex flex-col gap-12 opacity-60">
+                            {Array.from({ length: 7 }).map((_, i) => (
+                              <div key={i} className="whitespace-nowrap font-serif text-xs tracking-[0.35em] text-[#ffd700]/70 text-center">
+                                THE GRAND STORE • IMPERIAL ACQUISITION REGISTRY • CPA SECTION 45 TRUST • AUTHENTIC RECORD
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Ornate Corner Embellishments */}
+                        <div className="absolute top-3 left-3 text-[var(--color-gold)]/60 text-sm select-none">✦</div>
+                        <div className="absolute top-3 right-3 text-[var(--color-gold)]/60 text-sm select-none">✦</div>
+                        <div className="absolute bottom-3 left-3 text-[var(--color-gold)]/60 text-sm select-none">✦</div>
+                        <div className="absolute bottom-3 right-3 text-[var(--color-gold)]/60 text-sm select-none">✦</div>
 
                         {/* Certificate Header Banner */}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[var(--color-gold)]/20">
+                        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[var(--color-gold)]/25">
                           <div className="flex items-center gap-4">
-                            <div className="relative w-13 h-13 rounded-2xl bg-gradient-to-br from-[#f9e295] via-[#d4af37] to-[#8a6d1c] p-0.5 shadow-[0_0_25px_rgba(212,175,55,0.45)] shrink-0">
+                            <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-[#ffd700] via-[#d4af37] to-[#8a6d1c] p-0.5 shadow-[0_0_30px_rgba(212,175,55,0.5)] shrink-0">
                               <div className="w-full h-full rounded-2xl bg-black flex items-center justify-center">
-                                <Award className="text-[#f9e295] animate-pulse" size={26} />
+                                <Award className="text-[#ffd700] animate-pulse" size={28} />
                               </div>
                             </div>
                             <div>
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-[10px] font-mono tracking-widest uppercase text-[#f9e295] bg-[#d4af37]/15 px-2 py-0.5 rounded border border-[#d4af37]/30">
+                                <span className="text-[10px] font-mono tracking-widest uppercase text-[#f9e295] bg-[#d4af37]/20 px-2.5 py-0.5 rounded border border-[#d4af37]/40 font-bold">
                                   Official Imperial Award
                                 </span>
-                                <span className="text-[10px] font-mono tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1">
-                                  <Shield size={10} /> Verified Winner
+                                <span className="text-[10px] font-mono tracking-wider text-emerald-400 bg-emerald-500/15 px-2.5 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1 font-bold">
+                                  <Shield size={11} /> 100% Verified Winner
                                 </span>
                               </div>
-                              <h3 className="text-xl sm:text-2xl font-serif text-transparent bg-clip-text bg-gradient-to-r from-[#fff4cc] via-[#f5d77f] to-[#d4af37] font-bold mt-1">
+                              <h3 className="text-xl sm:text-2xl font-serif text-transparent bg-clip-text bg-gradient-to-r from-[#ffffff] via-[#f5d77f] to-[#d4af37] font-bold mt-1 tracking-wide">
                                 Certificate of Acquisition
                               </h3>
+                              <p className="text-[11px] font-serif italic text-[var(--color-gold)]/80">
+                                Verified Authenticity & Legal Ownership Transfer Registry
+                              </p>
                             </div>
                           </div>
                           
-                          <div className="text-left sm:text-right shrink-0">
-                            <span className="text-[10px] uppercase font-mono tracking-widest text-[var(--color-ivory-muted)] block">
-                              Registry Ref
+                          <div className="text-left sm:text-right shrink-0 bg-black/50 p-2.5 rounded-xl border border-[var(--color-gold)]/25">
+                            <span className="text-[9px] uppercase font-mono tracking-widest text-[var(--color-ivory-muted)] block">
+                              Registry Archive Ref
                             </span>
                             <span className="font-mono text-xs text-[#f9e295] font-bold">
                               LOT #{lot.lotNumber || lot._id.slice(-6).toUpperCase()}
                             </span>
+                            <span className="font-mono text-[10px] text-white/40 block mt-0.5">
+                              {lot.gsReference || `GSC-${lot._id.slice(-6).toUpperCase()}`}
+                            </span>
                           </div>
                         </div>
 
-                        {/* Distinguished Patron Greeting */}
-                        <div className="py-4">
-                          <p className="text-xs sm:text-sm font-light text-[#e7ddcb] leading-relaxed">
-                            Distinguished Patron, the auction gavel has officially fallen in your favor. Ownership of this singular piece has been awarded to your registered vault account.
+                        {/* Proclamation of Ownership */}
+                        <div className="relative z-10 py-5 text-center">
+                          <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-gold)] font-mono font-bold mb-1">
+                            Legal Ownership Proclamation
                           </p>
+                          <p className="text-sm sm:text-base font-serif font-light text-[#f0e6d6] leading-relaxed max-w-xl mx-auto">
+                            Be it officially recorded in the Grand Store Vault Ledger that at the fall of the auction gavel, full legal title and ownership of this singular masterpiece was formally awarded to:
+                          </p>
+                          <div className="mt-3 inline-block px-6 py-2 rounded-xl bg-gradient-to-r from-transparent via-[var(--color-gold)]/15 to-transparent border-y border-[var(--color-gold)]/40">
+                            <span className="text-lg sm:text-xl font-serif font-bold text-white tracking-wider">
+                              {user?.name || user?.legalFullName || 'Distinguished Patron'}
+                            </span>
+                            <span className="block text-[10px] font-mono text-[var(--color-gold)] mt-0.5">
+                              Registered Vault Patron • Account #{bidderProfile?.bidderNumber || (user?._id || 'PATRON').slice(-6).toUpperCase()}
+                            </span>
+                          </div>
                         </div>
 
-                        {/* Christie's / Sotheby's style Official Settlement Ledger */}
-                        <div className="rounded-xl bg-black/60 border border-white/10 p-5 space-y-2.5 font-mono text-xs text-[var(--color-ivory-muted)] mb-6">
-                          <div className="flex justify-between items-center text-white/80 pb-2 border-b border-white/5">
-                            <span className="uppercase tracking-wider text-[11px] text-[#f9e295] font-sans font-bold">Settlement Statement</span>
-                            <span className="text-[10px] text-white/40">ZAR CURRENCY VAULT</span>
+                        {/* Official Acquisition Particulars Ledger */}
+                        <div className="relative z-10 rounded-2xl bg-black/75 border border-[var(--color-gold)]/30 p-5 sm:p-6 space-y-3 font-mono text-xs text-[var(--color-ivory-muted)] mb-6 shadow-inner">
+                          <div className="flex justify-between items-center text-white/80 pb-2.5 border-b border-white/10">
+                            <div className="flex items-center gap-2">
+                              <Sparkles size={14} className="text-[#f9e295]" />
+                              <span className="uppercase tracking-wider text-[11px] text-[#f9e295] font-sans font-bold">Official Acquisition Particulars</span>
+                            </div>
+                            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-bold">
+                              CPA SECTION 45 TRUST SECURED
+                            </span>
                           </div>
+                          
                           <div className="flex justify-between items-center pt-1">
                             <span className="text-[var(--color-ivory)]">Winning Hammer Bid</span>
-                            <span className="text-white font-bold"><Price amount={lot.winningBid} /></span>
+                            <span className="text-white font-bold text-sm"><Price amount={lot.winningBid} /></span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span>Buyer's Premium</span>
+                            <span>Buyer's Premium (5%)</span>
                             <span><Price amount={lot.buyerPremiumAmount} /></span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span>B.A.R. Vault Surcharge</span>
+                            <span>B.A.R. Vault Surcharge (2%)</span>
                             <span><Price amount={lot.barChargeAmount} /></span>
                           </div>
                           <div className="flex justify-between items-center">
@@ -782,10 +864,10 @@ export default function AuctionLotDetail({ onNotify }) {
                             <span>White-Glove Courier Logistics</span>
                             <span className="text-[#f9e295]">{lot.shippingCost ? <Price amount={lot.shippingCost} /> : 'Calculated at Checkout'}</span>
                           </div>
-                          <div className="pt-3 border-t border-[var(--color-gold)]/20 flex justify-between items-baseline text-[var(--color-ivory)]">
+                          <div className="pt-3 border-t border-[var(--color-gold)]/30 flex justify-between items-baseline text-[var(--color-ivory)]">
                             <div className="flex flex-col">
                               <span className="text-[11px] uppercase tracking-widest font-bold text-[#f9e295]">Net Acquisition Sum</span>
-                              <span className="text-[10px] text-white/40 font-sans">Full taxes & premium included</span>
+                              <span className="text-[10px] text-white/40 font-sans">Full taxes, insurance & official certificate included</span>
                             </div>
                             <span className="text-2xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#ffffff] via-[#f5d77f] to-[#d4af37]">
                               <Price amount={lot.totalPaidByBuyer} />
@@ -793,30 +875,71 @@ export default function AuctionLotDetail({ onNotify }) {
                           </div>
                         </div>
 
-                        {/* Action CTA */}
-                        {lot.paymentStatus === 'Paid' || lot.isPaid ? (
-                          <div className="w-full bg-emerald-500/15 text-emerald-400 font-bold uppercase tracking-widest text-xs py-4 px-6 rounded-xl text-center border border-emerald-500/40 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
-                            <CheckCircle2 size={18} /> Acquisition Settled • Logistics In Preparation
+                        {/* Curatorial Dual Signatures Block */}
+                        <div className="relative z-10 grid grid-cols-2 gap-4 pb-6 pt-2 border-b border-[var(--color-gold)]/20 text-center font-serif">
+                          <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                            <p className="italic text-[#f5d77f] text-sm">Julian Vance-Montgomery</p>
+                            <div className="w-3/4 h-px bg-[var(--color-gold)]/40 mx-auto my-1.5" />
+                            <p className="text-[10px] font-sans font-bold uppercase tracking-wider text-white/80">Director of Curatorial Acquisitions</p>
+                            <p className="text-[9px] font-sans text-white/40">The Grand Store Vault Archives</p>
                           </div>
-                        ) : (lot.paymentStatus === 'Awaiting_Approval' || Boolean(lot.proofUrl)) ? (
-                          <Link 
-                            to={`/auction/checkout/${lot._id}`} 
-                            className="group flex items-center justify-center gap-3 w-full bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-bold uppercase tracking-widest text-xs py-4 px-6 rounded-xl border border-amber-500/30 transition-all shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+                          <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                            <p className="italic text-[#f5d77f] text-sm">Eleanor St. Claire</p>
+                            <div className="w-3/4 h-px bg-[var(--color-gold)]/40 mx-auto my-1.5" />
+                            <p className="text-[10px] font-sans font-bold uppercase tracking-wider text-white/80">Chief Registrar & Escrow Trustee</p>
+                            <p className="text-[9px] font-sans text-white/40">South African CPA Section 45 Division</p>
+                          </div>
+                        </div>
+
+                        {/* Download & Actions Toolbar */}
+                        <div className="relative z-10 pt-6 flex flex-col sm:flex-row items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={handleDownloadCertificate}
+                            disabled={downloadingCert}
+                            className="w-full sm:w-1/2 flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-[#1f1a10] hover:bg-[#2a2215] text-[#ffd700] border border-[#ffd700]/40 font-sans font-bold uppercase tracking-widest text-xs transition-all shadow-[0_0_20px_rgba(212,175,55,0.15)] hover:shadow-[0_0_30px_rgba(212,175,55,0.3)] cursor-pointer disabled:opacity-50"
                           >
-                            <Clock size={16} className="text-amber-400" />
-                            <span>EFT Proof Submitted • Awaiting Admin Verification</span>
-                            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform text-amber-400" />
-                          </Link>
-                        ) : (
-                          <Link 
-                            to={`/auction/checkout/${lot._id}`} 
-                            className="group relative flex items-center justify-center gap-3 w-full bg-gradient-to-r from-[#ffd700] via-[#f5d77f] to-[#d4af37] text-black font-black uppercase tracking-widest text-xs py-4 px-6 rounded-xl hover:shadow-[0_0_35px_rgba(212,175,55,0.6)] hover:scale-[1.01] transition-all cursor-pointer"
+                            <Download size={16} className={downloadingCert ? "animate-bounce" : ""} />
+                            <span>{downloadingCert ? "Generating PDF..." : "Download Official PDF Certificate"}</span>
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={handlePrintCertificate}
+                            className="w-full sm:w-1/2 flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white border border-white/10 font-sans font-bold uppercase tracking-widest text-xs transition-all cursor-pointer"
                           >
-                            <Sparkles size={16} className="text-black/80" />
-                            <span>Claim Lot & Complete Settlement</span>
-                            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform text-black/80" />
-                          </Link>
-                        )}
+                            <Printer size={16} />
+                            <span>Print Certificate</span>
+                          </button>
+                        </div>
+
+                        {/* Payment Settlement Status CTA */}
+                        <div className="relative z-10 pt-4">
+                          {lot.paymentStatus === 'Paid' || lot.isPaid ? (
+                            <div className="w-full bg-emerald-500/15 text-emerald-400 font-bold uppercase tracking-widest text-xs py-4 px-6 rounded-xl text-center border border-emerald-500/40 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+                              <CheckCircle2 size={18} /> Acquisition Settled • Logistics In Preparation
+                            </div>
+                          ) : (lot.paymentStatus === 'Awaiting_Approval' || Boolean(lot.proofUrl)) ? (
+                            <Link 
+                              to={`/auction/checkout/${lot._id}`} 
+                              className="group flex items-center justify-center gap-3 w-full bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-bold uppercase tracking-widest text-xs py-4 px-6 rounded-xl border border-amber-500/30 transition-all shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+                            >
+                              <Clock size={16} className="text-amber-400" />
+                              <span>EFT Proof Submitted • Awaiting Admin Verification</span>
+                              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform text-amber-400" />
+                            </Link>
+                          ) : (
+                            <Link 
+                              to={`/auction/checkout/${lot._id}`} 
+                              className="group relative flex items-center justify-center gap-3 w-full bg-gradient-to-r from-[#ffd700] via-[#f5d77f] to-[#d4af37] text-black font-black uppercase tracking-widest text-xs py-4 px-6 rounded-xl hover:shadow-[0_0_35px_rgba(212,175,55,0.6)] hover:scale-[1.01] transition-all cursor-pointer"
+                            >
+                              <Sparkles size={16} className="text-black/80" />
+                              <span>Claim Lot & Complete Settlement</span>
+                              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform text-black/80" />
+                            </Link>
+                          )}
+                        </div>
+
                       </div>
                     ) : lot.status === 'sold' && (isAdmin || isVendor) ? (
                       <div className="border border-white/10 p-8 bg-black/40">

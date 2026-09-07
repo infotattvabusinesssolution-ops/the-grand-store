@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Crown, Sparkles, CheckCircle2, ArrowRight, X, ShieldCheck } from 'lucide-react';
+import { Trophy, Crown, Sparkles, CheckCircle2, ArrowRight, X, ShieldCheck, Download } from 'lucide-react';
 import Price from '../../../components/ui/Price';
 
 /**
@@ -126,6 +126,11 @@ export default function AuctionWinnerCelebrationModal({
     navigate(`/auction/checkout/${lot._id}`);
   };
 
+  const handleDownloadCertificate = () => {
+    if (!lot?._id) return;
+    window.open(`/api/auction/${lot._id}/certificate`, '_blank');
+  };
+
   const handleViewCertificate = () => {
     onClose?.();
     const el = document.getElementById('acquisition-certificate');
@@ -161,71 +166,62 @@ export default function AuctionWinnerCelebrationModal({
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-            title="Close"
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-colors border border-white/10 cursor-pointer"
+            aria-label="Close"
           >
             <X size={18} />
           </button>
 
-          {/* Golden Trophy Emblem */}
-          <div className="relative mx-auto mb-6 w-24 h-24 flex items-center justify-center">
-            {/* Pulsing Aura Rings */}
-            <div className="absolute inset-0 rounded-full bg-[#d4af37]/20 animate-ping opacity-75" />
-            <div className="absolute -inset-3 rounded-full bg-gradient-to-tr from-[#ffd700]/30 to-transparent blur-xl" />
-
-            <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#ffd700] via-[#f5d77f] to-[#b38e2e] p-0.5 shadow-[0_0_40px_rgba(255,215,0,0.6)]">
-              <div className="w-full h-full rounded-2xl bg-black flex items-center justify-center">
-                <Trophy size={42} className="text-[#ffd700] drop-shadow-[0_0_12px_rgba(255,215,0,0.8)]" />
-              </div>
+          {/* Golden Badge Icon */}
+          <div className="relative mx-auto mb-5 w-20 h-20 rounded-3xl bg-gradient-to-br from-[#ffd700] via-[#d4af37] to-[#8a6d1c] p-0.5 shadow-[0_0_40px_rgba(212,175,55,0.6)]">
+            <div className="w-full h-full rounded-3xl bg-black flex items-center justify-center">
+              <Crown className="text-[#ffd700]" size={38} />
+            </div>
+            <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-emerald-500 text-black flex items-center justify-center font-bold text-xs shadow-lg border-2 border-black">
+              ✓
             </div>
           </div>
 
-          {/* Header Texts */}
-          <div className="mb-6">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-mono font-bold uppercase tracking-widest bg-[#d4af37]/15 text-[#ffd700] border border-[#d4af37]/40 mb-3 shadow-sm">
-              <Crown size={13} /> Official Auction Victory
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#ffffff] via-[#f5d77f] to-[#d4af37] tracking-tight mb-2">
-              Congratulations{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
-            </h2>
-            <p className="text-sm font-light text-[var(--color-ivory-muted)] max-w-md mx-auto leading-relaxed">
-              The gavel has officially fallen. You emerged as the winning bidder for this singular reserve piece.
-            </p>
-          </div>
+          {/* Heading Proclamation */}
+          <span className="inline-block px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest bg-[var(--color-gold)]/15 text-[#ffd700] border border-[var(--color-gold)]/30 mb-2">
+            Lot Hammer Won • Official Winner
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-serif font-bold text-white tracking-wide">
+            Congratulations, You Won!
+          </h2>
+          <p className="text-xs sm:text-sm text-white/70 mt-1 max-w-md mx-auto font-light">
+            You placed the definitive winning bid on <strong className="text-white font-medium">"{lot.title}"</strong>.
+          </p>
 
-          {/* Lot Summary Box */}
-          <div className="rounded-2xl bg-black/60 border border-white/10 p-5 mb-6 text-left flex items-center gap-4">
-            {lotImage && (
-              <div className="w-16 h-20 rounded-xl bg-white/[0.03] border border-white/10 p-1 flex items-center justify-center shrink-0 overflow-hidden">
-                <img
-                  src={lotImage}
-                  alt={lot.title}
-                  className="w-full h-full object-contain drop-shadow"
-                />
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[#d4af37] font-bold block mb-1">
-                LOT #{lotNumber}
-              </span>
-              <h3 className="text-sm font-serif font-bold text-white truncate mb-2">
-                {lot.title}
-              </h3>
-              <div className="flex items-baseline justify-between border-t border-white/5 pt-2">
-                <span className="text-xs font-mono text-white/50">Winning Hammer:</span>
-                <span className="text-lg font-serif font-bold text-[#f5d77f]">
+          {/* Certificate & Price Snapshot */}
+          <div className="my-6 p-4 rounded-2xl bg-black/60 border border-[var(--color-gold)]/30 text-left">
+            <div className="flex items-center justify-between text-xs font-mono text-white/50 border-b border-white/10 pb-2 mb-3">
+              <span>CATALOGUE LOT #{lotNumber}</span>
+              <span className="text-emerald-400 font-bold">ACQUISITION RESERVED</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-mono text-white/40 block uppercase">Final Hammer Fall</span>
+                <span className="text-2xl sm:text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-[#f5d77f] to-[#d4af37]">
                   <Price amount={hammerPrice} />
                 </span>
               </div>
+              {lotImage && (
+                <img
+                  src={lotImage}
+                  alt={lot.title}
+                  className="w-16 h-16 rounded-xl object-cover border border-white/10 shadow-lg"
+                />
+              )}
             </div>
           </div>
 
-          {/* Action CTAs */}
+          {/* CTAs */}
           <div className="space-y-3">
             <button
               type="button"
               onClick={handleProceedToCheckout}
-              className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-[#ffd700] via-[#f5d77f] to-[#d4af37] text-black font-black uppercase tracking-widest text-xs shadow-[0_0_35px_rgba(212,175,55,0.5)] hover:shadow-[0_0_45px_rgba(212,175,55,0.8)] hover:scale-[1.02] transition-all flex items-center justify-center gap-3 cursor-pointer"
+              className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-[#ffd700] via-[#f5d77f] to-[#d4af37] text-black font-black uppercase tracking-widest text-xs shadow-[0_0_35px_rgba(212,175,55,0.6)] hover:brightness-110 hover:scale-[1.01] transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Sparkles size={16} className="text-black/80" />
               <span>
@@ -238,14 +234,25 @@ export default function AuctionWinnerCelebrationModal({
               <ArrowRight size={16} className="text-black/80" />
             </button>
 
-            <button
-              type="button"
-              onClick={handleViewCertificate}
-              className="w-full py-3 px-6 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-mono uppercase tracking-widest text-[11px] border border-white/10 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <ShieldCheck size={14} className="text-[#ffd700]" />
-              <span>Review Certificate of Acquisition</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadCertificate}
+                className="w-1/2 py-3 px-4 rounded-xl bg-[#1f1a10] hover:bg-[#2a2215] text-[#ffd700] font-mono uppercase tracking-widest text-[11px] border border-[var(--color-gold)]/40 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
+              >
+                <Download size={14} className="text-[#ffd700]" />
+                <span>Download PDF</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleViewCertificate}
+                className="w-1/2 py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-mono uppercase tracking-widest text-[11px] border border-white/10 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ShieldCheck size={14} className="text-[#ffd700]" />
+                <span>View Certificate</span>
+              </button>
+            </div>
           </div>
 
           {/* Footer note */}

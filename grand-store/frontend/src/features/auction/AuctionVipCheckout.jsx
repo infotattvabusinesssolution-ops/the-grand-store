@@ -115,6 +115,8 @@ export default function AuctionVipCheckout({ onNotify }) {
     ? `DEP-VIP-${profile.bidderNumber}` 
     : `DEP-VIP-${(storedUser?._id || 'PATRON').slice(-6).toUpperCase()}`;
 
+  const depositReference = refQuery || submittedDeposit?.paymentReference || dynamicRef;
+
   const handleBankChange = (field, value) => {
     setBankDetails(prev => ({ ...prev, [field]: value }));
   };
@@ -182,7 +184,7 @@ export default function AuctionVipCheckout({ onNotify }) {
 
       const depositData = res.data?.deposit || {
         amount: depositAmount,
-        paymentReference: res.data?.depositReference || dynamicRef
+        paymentReference: res.data?.depositReference || depositReference
       };
 
       setSubmittedDeposit(depositData);
@@ -312,7 +314,7 @@ export default function AuctionVipCheckout({ onNotify }) {
           </span>
           <h1 className="text-3xl font-serif text-white">Deposit Submitted for Verification</h1>
           <p className="text-sm text-[var(--color-ivory-muted)] font-light leading-relaxed max-w-lg mx-auto">
-            Your VIP bidding deposit of <strong className="text-[var(--color-gold)] font-mono">R{depositAmount.toLocaleString()}</strong> has been recorded with reference <strong className="text-white font-mono">{submittedDeposit?.paymentReference || dynamicRef}</strong>. 
+            Your VIP bidding deposit of <strong className="text-[var(--color-gold)] font-mono">R{depositAmount.toLocaleString()}</strong> has been recorded with reference <strong className="text-white font-mono">{depositReference}</strong>. 
             Our compliance desk will verify the funds and upgrade your limit to <strong className="text-white font-mono">R{premiumLimit.toLocaleString()}</strong> shortly.
           </p>
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -545,7 +547,7 @@ export default function AuctionVipCheckout({ onNotify }) {
                 {paymentMethod === 'eft' && (
                   <div className="space-y-4 pt-3 border-t border-white/10">
                     <StoreBankDetailsCard
-                      reference={dynamicRef}
+                      reference={depositReference}
                       referenceLabel="Payment Reference"
                       title="Grand Store VIP Escrow Account"
                       subtitle="Official institutional South African EFT settlement account"

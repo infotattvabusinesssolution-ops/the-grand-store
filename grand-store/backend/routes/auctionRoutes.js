@@ -66,6 +66,7 @@ router.get('/admin/ledger', protect, auctionController.getAuctionLedger);
 
 // 6. Lot-Specific Parametrized Routes
 router.get('/:id', auctionController.getLotDetails);
+router.get('/:id/certificate', auctionController.getAuctionLotCertificate);
 router.post('/:id/bid', protect, auctionController.placeBid);
 router.post('/:id/watchlist', protect, auctionController.toggleWatchlist);
 router.post('/:id/pay', protect, auctionController.payAuction);

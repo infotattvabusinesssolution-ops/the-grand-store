@@ -68,7 +68,7 @@ const getPayfastConfig = () => {
 // @access  Private
 exports.generateShopPayment = async (req, res) => {
   try {
-    const { orderId } = req.body;
+    const { orderId, isMobile } = req.body;
     let order = null;
     if (orderId && mongoose.Types.ObjectId.isValid(orderId)) {
       order = await Order.findById(orderId).populate('user', 'name email');
@@ -87,12 +87,18 @@ exports.generateShopPayment = async (req, res) => {
     const customerName = order.user?.name || order.guestInfo?.name || order.shippingAddress?.name || order.shippingAddress?.fullName || 'Guest Customer';
     const customerEmail = order.user?.email || order.guestInfo?.email || order.shippingAddress?.email || 'customer@grandstore.co.za';
     const nameParts = customerName.trim().split(/\s+/);
-    const returnUrl = order.isGuest 
+
+    let returnUrl = order.isGuest 
       ? `${frontendUrl}/order-success/${order._id}?payment=success&guest=true`
       : `${frontendUrl}/customer/order/${order._id}?payment=success`;
-    const cancelUrl = order.isGuest
+    let cancelUrl = order.isGuest
       ? `${frontendUrl}/order-success/${order._id}?payment=cancel&guest=true`
       : `${frontendUrl}/customer/order/${order._id}?payment=cancel`;
+
+    if (isMobile) {
+      returnUrl = `${backendUrl}/api/payfast/mobile-return?type=shop&orderId=${order._id}&status=success`;
+      cancelUrl = `${backendUrl}/api/payfast/mobile-return?type=shop&orderId=${order._id}&status=cancel`;
+    }
     
     const data = {
       merchant_id: config.merchant_id,
@@ -123,7 +129,7 @@ exports.generateShopPayment = async (req, res) => {
 // @access  Private
 exports.generateAuctionPayment = async (req, res) => {
   try {
-    const { auctionId } = req.body;
+    const { auctionId, isMobile, shippingCost } = req.body;
     const lot = await AuctionLot.findById(auctionId).populate('winner', 'name email');
     
     if (!lot) return res.status(404).json({ message: 'Lot not found' });
@@ -141,13 +147,27 @@ exports.generateAuctionPayment = async (req, res) => {
     const fullName = (lot.winner && lot.winner.name) || req.user.name || 'Grand Customer';
     const email = (lot.winner && lot.winner.email) || req.user.email || '';
     const nameParts = fullName.trim().split(/\s+/);
-    const totalAmount = Number(lot.totalPaidByBuyer || lot.winningBid || 0).toFixed(2);
+    
+    const hammer = Number(lot.winningBid || lot.currentBid || 0);
+    const buyerPremium = lot.buyerPremiumAmount || Math.round(hammer * 0.05);
+    const barCharge = lot.barChargeAmount || Math.round(hammer * 0.02);
+    const vat = lot.vatAmount || Math.round(hammer * 0.15);
+    const shipping = Number(shippingCost || 0);
+    const computedTotal = hammer + buyerPremium + barCharge + vat + shipping;
+    const totalAmount = Number(lot.totalPaidByBuyer || computedTotal || hammer).toFixed(2);
+
+    let returnUrl = `${frontendUrl}/auction/${lot._id}?payment=success`;
+    let cancelUrl = `${frontendUrl}/auction/${lot._id}?payment=cancel`;
+    if (isMobile) {
+      returnUrl = `${backendUrl}/api/payfast/mobile-return?type=auction&auctionId=${lot._id}&status=success`;
+      cancelUrl = `${backendUrl}/api/payfast/mobile-return?type=auction&auctionId=${lot._id}&status=cancel`;
+    }
 
     const data = {
       merchant_id: config.merchant_id,
       merchant_key: config.merchant_key,
-      return_url: `${frontendUrl}/auction/${lot._id}?payment=success`,
-      cancel_url: `${frontendUrl}/auction/${lot._id}?payment=cancel`,
+      return_url: returnUrl,
+      cancel_url: cancelUrl,
       notify_url: `${backendUrl}/api/payfast/itn`,
       name_first: nameParts[0] || 'Customer',
       name_last: nameParts.slice(1).join(' ') || 'Winner',
@@ -172,7 +192,7 @@ exports.generateAuctionPayment = async (req, res) => {
 // @access  Private
 exports.generateEventPayment = async (req, res) => {
   try {
-    const { bookingId } = req.body;
+    const { bookingId, isMobile } = req.body;
     const booking = await Booking.findById(bookingId).populate('user', 'name email').populate('event', 'title');
     
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
@@ -191,11 +211,18 @@ exports.generateEventPayment = async (req, res) => {
     const frontendUrl = getFrontendUrl(req);
     const backendUrl = getBackendUrl(req);
     
+    let returnUrl = `${frontendUrl}/customer/event-order/${booking._id}?payment=success`;
+    let cancelUrl = `${frontendUrl}/customer/event-order/${booking._id}?payment=cancel`;
+    if (isMobile) {
+      returnUrl = `${backendUrl}/api/payfast/mobile-return?type=event&bookingId=${booking._id}&status=success`;
+      cancelUrl = `${backendUrl}/api/payfast/mobile-return?type=event&bookingId=${booking._id}&status=cancel`;
+    }
+
     const data = {
       merchant_id: config.merchant_id,
       merchant_key: config.merchant_key,
-      return_url: `${frontendUrl}/customer/event-order/${booking._id}?payment=success`,
-      cancel_url: `${frontendUrl}/customer/event-order/${booking._id}?payment=cancel`,
+      return_url: returnUrl,
+      cancel_url: cancelUrl,
       notify_url: `${backendUrl}/api/payfast/itn`,
       name_first: booking.user.name.split(' ')[0],
       name_last: booking.user.name.split(' ').slice(1).join(' ') || 'Customer',
@@ -468,6 +495,122 @@ exports.confirmOrderPayment = async (req, res) => {
   } catch (error) {
     console.error('Error confirming PayFast order:', error);
     return res.status(500).json({ message: 'Error confirming PayFast order', error: error.message });
+  }
+};
+
+// @desc    Mobile Return Callback Endpoint for In-App WebView
+// @route   GET /api/payfast/mobile-return
+// @access  Public
+exports.mobileReturnHandler = async (req, res) => {
+  try {
+    const { type, status, orderId, auctionId, bookingId } = req.query;
+    const isSuccess = status === 'success';
+
+    if (isSuccess) {
+      if (type === 'shop' && orderId) {
+        try {
+          await processOrderPayment(orderId, 'PayFast', req.query);
+        } catch (e) {
+          console.error('Error in mobileReturnHandler processOrderPayment:', e);
+        }
+      } else if (type === 'auction' && auctionId) {
+        try {
+          await processAuctionPayment(auctionId, 'PayFast', req.query);
+        } catch (e) {
+          console.error('Error in mobileReturnHandler processAuctionPayment:', e);
+        }
+      } else if (type === 'event' && bookingId) {
+        try {
+          await processEventPayment(bookingId, req.query);
+        } catch (e) {
+          console.error('Error in mobileReturnHandler processEventPayment:', e);
+        }
+      }
+    }
+
+    const payload = JSON.stringify({
+      type: isSuccess ? 'PAYFAST_SUCCESS' : 'PAYFAST_CANCEL',
+      status: isSuccess ? 'success' : 'cancel',
+      itemType: type || 'shop',
+      orderId: orderId || null,
+      auctionId: auctionId || null,
+      bookingId: bookingId || null,
+    });
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment ${isSuccess ? 'Confirmed' : 'Cancelled'} • The Grand Store</title>
+  <style>
+    body {
+      background-color: #0c0b0a;
+      color: #f5c242;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    .badge {
+      width: 64px;
+      height: 64px;
+      border-radius: 32px;
+      background: rgba(245, 194, 66, 0.15);
+      border: 2px solid #f5c242;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin: 0 0 10px;
+      color: ${isSuccess ? '#f5c242' : '#e74c3c'};
+    }
+    p {
+      font-size: 14px;
+      color: #aaa;
+      margin: 0 0 20px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="badge">${isSuccess ? '✓' : '✕'}</div>
+  <h2>${isSuccess ? 'Payment Successful' : 'Payment Cancelled'}</h2>
+  <p>${isSuccess ? 'Returning securely to The Grand Store application...' : 'Returning to checkout...'}</p>
+  <script>
+    (function() {
+      var messageData = ${payload};
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        window.ReactNativeWebView.postMessage(JSON.stringify(messageData));
+      }
+      setTimeout(function() {
+        if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+          window.ReactNativeWebView.postMessage(JSON.stringify(messageData));
+        }
+      }, 300);
+    })();
+  </script>
+</body>
+</html>`;
+
+    res.set('Content-Type', 'text/html');
+    res.send(html);
+  } catch (err) {
+    console.error('Error in mobileReturnHandler:', err);
+    res.status(500).send('Internal Server Error');
   }
 };
 

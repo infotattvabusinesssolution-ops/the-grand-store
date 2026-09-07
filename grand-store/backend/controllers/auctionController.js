@@ -11,6 +11,7 @@ const Wallet = require('../models/Wallet');
 const { getNextSequence } = require('../utils/sequenceGenerator');
 const { sendEmail } = require('../utils/emailService');
 const { auctionWinTemplate } = require('../utils/emailTemplates');
+const { generateAuctionCertificateBuffer } = require('../utils/pdfService');
 const { evaluateBidIntegrity, logAuctionEvent } = require('../services/auctionFraudService');
 const { createInAppNotification } = require('./notificationController');
 
@@ -953,21 +954,45 @@ const closeAuctionInternal = async (lotId) => {
     console.error('Error recording auction ledger entry:', ledgerErr);
   }
 
-  // Send email to winner
+  // Send email to winner with attached official PDF certificate
   try {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const checkoutUrl = `${frontendUrl}/checkout?orderId=${order._id}`;
-    
+    const frontendUrl = process.env.FRONTEND_URL || 'https://grandstoreglobal.com';
+    const checkoutUrl = `${frontendUrl}/auction/checkout/${lot._id}`;
+    const certDownloadUrl = `${process.env.PUBLIC_SITE_URL || frontendUrl}/api/auction/${lot._id}/certificate`;
+
+    let certAttachment = null;
+    try {
+      const certBuffer = await generateAuctionCertificateBuffer(lot, winningBidDoc.user, order);
+      if (certBuffer && certBuffer.length > 0) {
+        certAttachment = {
+          filename: `TheGrandStore_Certificate_of_Acquisition_Lot_${lot.lotNumber || 'Award'}.pdf`,
+          content: certBuffer,
+          contentType: 'application/pdf'
+        };
+      }
+    } catch (certErr) {
+      console.error('Failed to generate PDF certificate attachment for winner email:', certErr);
+    }
+
     sendEmail({
       to: winningBidDoc.user.email,
-      subject: `Congratulations! You won the auction for ${lot.title}`,
+      subject: `🏆 Official Certificate of Acquisition Awarded: ${lot.title} (Lot #${lot.lotNumber || ''})`,
       html: auctionWinTemplate(
         winningBidDoc.user.name,
         lot.title,
         lot.lotNumber || 'N/A',
         winningBid,
-        checkoutUrl
-      )
+        checkoutUrl,
+        {
+          lotId: lot._id,
+          certDownloadUrl,
+          gsReference: lot.gsReference || order.transactionId,
+          category: lot.category
+        }
+      ),
+      attachments: certAttachment ? [certAttachment] : []
+    }).then(() => {
+      console.log(`[Auction Close] Certificate email successfully dispatched to winner: ${winningBidDoc.user.email}`);
     }).catch(err => console.error('Failed to send auction win email:', err));
   } catch (err) {
     console.error('Error preparing auction win email:', err);
@@ -989,6 +1014,37 @@ exports.closeAuction = async (req, res) => {
     res.json({ message: 'Auction closed and accounting calculated', lot });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// PUBLIC / USER / ADMIN: Download official PDF Certificate of Acquisition for a sold lot
+exports.getAuctionLotCertificate = async (req, res) => {
+  try {
+    const lot = await AuctionLot.findById(req.params.id)
+      .populate('winner', 'name legalFullName email bidderNumber')
+      .populate('vendor', 'name storeName');
+
+    if (!lot) {
+      return res.status(404).json({ message: 'Auction lot not found' });
+    }
+
+    if (lot.status !== 'sold' || !lot.winner) {
+      return res.status(400).json({ message: 'Certificate of Acquisition is only available for awarded sold lots.' });
+    }
+
+    const order = await Order.findOne({ 'orderItems.product': lot._id.toString() }).lean();
+
+    const certBuffer = await generateAuctionCertificateBuffer(lot, lot.winner, order);
+    const lotNum = lot.lotNumber || String(lot._id).slice(-6).toUpperCase();
+    const filename = `TheGrandStore_Certificate_Lot_${lotNum}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', certBuffer.length);
+    return res.send(certBuffer);
+  } catch (error) {
+    console.error('Error generating auction lot certificate download:', error);
+    res.status(500).json({ message: 'Failed to generate Certificate of Acquisition', error: error.message });
   }
 };
 

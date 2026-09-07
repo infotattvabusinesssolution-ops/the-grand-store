@@ -54,10 +54,10 @@ const bookingSchema = new mongoose.Schema({
   paymentProcessedAt: { type: Date },
   gatewayTransactionId: { type: String },
   ticketId: { type: String, required: true, unique: true },
+  qrCodeData: { type: String }, // Base64 data URL for QR pass
   bookingDate: { type: Date, default: Date.now }
 });
 
 bookingSchema.index({ event: 1, paymentStatus: 1 });
 
 module.exports = mongoose.model('Booking', bookingSchema);
-
