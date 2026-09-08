@@ -490,65 +490,31 @@ export default function CheckoutPage({
       return;
     }
 
+    /*
+    ========================================================================================
+    [COMMENTED OUT FOR NOW - 18+ DOCUMENT VERIFICATION IS ONLY REQUIRED FOR AUCTIONS, NOT NORMAL CHECKOUT]
+    ========================================================================================
     if (!isAgeConfirmed) {
       onNotify('You must certify that you are 18 years of age or older to purchase alcoholic beverages.');
       return;
     }
 
-    // Guest 18+ Verification & Document Upload Validation
     if (!user) {
       if (!guestIdNumber.trim()) {
         onNotify("Please provide your official ID, Passport, or Driver's License number.");
-        const el = document.getElementById('guestIdNumberInput');
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          el.focus();
-        }
         return;
       }
       if (!guestDob) {
         onNotify('Please select your Date of Birth for mandatory 18+ age verification.');
-        const el = document.getElementById('guestDobInput');
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          el.focus();
-        }
-        return;
-      }
-      const birthDate = new Date(guestDob);
-      if (isNaN(birthDate.getTime())) {
-        onNotify('Please enter a valid date of birth (YYYY-MM-DD).');
-        const el = document.getElementById('guestDobInput');
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          el.focus();
-        }
-        return;
-      }
-      const today = new Date();
-      let age = today.getFullYear() - birthDate.getFullYear();
-      const m = today.getMonth() - birthDate.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-      }
-      if (age < 18) {
-        onNotify('You must be 18 years of age or older to purchase alcoholic beverages.');
-        const el = document.getElementById('guestDobInput');
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          el.focus();
-        }
         return;
       }
       if (!guestDocumentUrl) {
         onNotify('Please upload a photo or scan of your official ID document to proceed.');
-        const el = document.getElementById('guestDocUploadArea');
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
         return;
       }
     }
+    ========================================================================================
+    */
 
     if (deliveryPreference === 'home' && (!formData.address || !formData.city || !formData.postalCode)) {
       onNotify('Please provide your complete street address, city, and postal code for door delivery.');
@@ -606,10 +572,12 @@ export default function CheckoutPage({
       return;
     }
 
+    /*
     if (!isAgeConfirmed) {
       onNotify('You must confirm that you are 18 years of age or older to purchase alcoholic beverages.');
       return;
     }
+    */
 
     setLoading(true);
 
@@ -930,6 +898,16 @@ export default function CheckoutPage({
                     <div className="flex justify-between items-center text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded-lg border border-emerald-500/20">
                       <span>Referral Credits</span>
                       <span>-<Price amount={referralRewardDiscount} /></span>
+                    </div>
+                  )}
+
+                  {/* Gift Packaging & Note Tag */}
+                  {isGift && (
+                    <div className="flex justify-between items-center text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2.5 py-1.5 rounded-lg border border-[var(--color-gold)]/20">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <Gift size={12} /> Gift Packaging & Note
+                      </span>
+                      <span className="text-[10px] uppercase font-bold text-emerald-400">Complimentary</span>
                     </div>
                   )}
                 </div>
@@ -1361,6 +1339,17 @@ export default function CheckoutPage({
                           </div>
                         ) : postnetPreview.stores.length > 0 ? (
                           <div className="space-y-3">
+                            {postnetPreview.usingNearestCity && (
+                              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5 flex items-start gap-3">
+                                <span className="text-base shrink-0 mt-0.5">📍</span>
+                                <div>
+                                  <p className="text-xs font-bold text-amber-400">Nearest Regional Hub</p>
+                                  <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                                    No direct PostNet branch found in "{postnetPreview.searchedCity}". Showing nearest available branches in <strong className="text-white">{postnetPreview.stores[0]?.city || 'the nearest regional hub'}</strong>.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
                             <div className="grid grid-cols-1 gap-2.5">
                               {(showAllPostnetBranches ? postnetPreview.stores : postnetPreview.stores.slice(0, 3)).map((store) => (
                                 <div
@@ -1418,7 +1407,64 @@ export default function CheckoutPage({
                   </div>
                 )}
 
-                {/* 18+ Legal Age Verification & ID Document Upload Gate */}
+                {/* Send as Gift */}
+                <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isGift}
+                        onChange={(e) => setIsGift(e.target.checked)}
+                        className="w-5 h-5 accent-[var(--color-gold)] rounded bg-black border-white/10 cursor-pointer"
+                      />
+                      <div className="flex items-center gap-2">
+                        <Gift size={18} className="text-[var(--color-gold)]" />
+                        <span className="text-white font-medium text-sm">Send as a Gift</span>
+                      </div>
+                    </label>
+                    {isGift && (
+                      <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[var(--color-gold)]/10 text-[var(--color-gold)] border border-[var(--color-gold)]/30">
+                        Complimentary Gift Packaging & Card
+                      </span>
+                    )}
+                  </div>
+
+                  {isGift && (
+                    <div className="pt-3 border-t border-white/10 grid grid-cols-1 gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">
+                          Recipient Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={giftRecipientName}
+                          onChange={(e) => setGiftRecipientName(e.target.value)}
+                          required={isGift}
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors text-white placeholder:text-white/30"
+                          placeholder="e.g. Alexander Sterling"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">
+                          Personal Gift Message
+                        </label>
+                        <textarea
+                          value={giftMessage}
+                          onChange={(e) => setGiftMessage(e.target.value)}
+                          rows="3"
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors text-white placeholder:text-white/30"
+                          placeholder="Write your personalized message to be printed on the luxury card..."
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/*
+                ========================================================================================
+                [COMMENTED OUT FOR NOW - 18+ VERIFICATION & ID DOCUMENT UPLOAD IS ONLY FOR AUCTIONS]
+                ========================================================================================
+                 18+ Legal Age Verification & ID Document Upload Gate 
                 <div className="bg-gradient-to-br from-[#12100b] to-[#0a0a0a] border border-amber-500/30 rounded-2xl p-5 md:p-6 shadow-xl space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 shrink-0">
@@ -1567,7 +1613,7 @@ export default function CheckoutPage({
                     </div>
                   )}
 
-                  {/* 18+ Legal Declaration Checkbox */}
+                   18+ Legal Declaration Checkbox 
                   <div className="pt-3 border-t border-white/10 flex items-start gap-3">
                     <input
                       type="checkbox"
@@ -1584,7 +1630,11 @@ export default function CheckoutPage({
                   </div>
                 </div>
 
-                {/* Continue to Step 2 Button */}
+
+                ========================================================================================
+                */}
+
+                                {/* Continue to Step 2 Button */}
                 <button
                   type="button"
                   onClick={handleProceedToDeliveryMethod}
@@ -1705,7 +1755,8 @@ export default function CheckoutPage({
                     <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-400" /> Direct handover</span>
                   </div>
 
-                  {/* 18+ Legal Drinking Age Notice */}
+                  {/*
+                  [COMMENTED OUT FOR NOW - 18+ Alcohol Compliance Verification Notice (Retained for auctions)]
                   <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200/90 flex items-start gap-2.5">
                     <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
                     <div>
@@ -1715,6 +1766,7 @@ export default function CheckoutPage({
                       </p>
                     </div>
                   </div>
+                  */}
                 </div>
 
                 {/* International Duties Notice if applicable */}

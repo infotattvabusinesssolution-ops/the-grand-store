@@ -69,50 +69,51 @@ const addOrderItems = async (req, res) => {
     const guestName = (req.body.guestName || shippingAddress?.name || shippingAddress?.fullName || 'Guest Customer').trim();
     const guestPhone = (req.body.guestPhone || shippingAddress?.phone || shippingAddress?.phoneNumber || '').trim();
     const guestAccessToken = isGuest ? crypto.randomBytes(24).toString('hex') : null;
-    const isAgeConfirmed = Boolean(req.body.isAgeConfirmed);
-    if (!isAgeConfirmed) {
-      return res.status(400).json({ message: '18+ age verification is legally required to purchase alcoholic products.' });
-    }
-
-    // Guest 18+ KYC and Document Verification
+    const isAgeConfirmed = req.body.isAgeConfirmed !== undefined ? Boolean(req.body.isAgeConfirmed) : true;
+    // Guest 18+ KYC and Document Verification (Optional / Preserved if provided)
     const guestKycData = req.body.guestKyc || {};
     const guestDob = guestKycData.dateOfBirth || guestKycData.dob || req.body.dateOfBirth || req.body.dob;
     const guestIdNumber = (guestKycData.idNumber || req.body.idNumber || '').trim();
     const guestIdType = guestKycData.idType || req.body.idType || 'national_id';
     const guestDocUrl = (guestKycData.documentUrl || req.body.documentUrl || req.body.idDocumentUrl || '').trim();
+    let guestBirthDate = guestDob ? new Date(guestDob) : null;
 
-    let guestBirthDate = null;
+    /*
+    ========================================================================================
+    [COMMENTED OUT FOR NOW - 18+ DOCUMENT VERIFICATION IS ONLY REQUIRED FOR AUCTIONS, NOT NORMAL CHECKOUT]
+    ========================================================================================
+    if (!isAgeConfirmed) {
+      return res.status(400).json({ message: '18+ age verification is legally required to purchase alcoholic products.' });
+    }
     if (isGuest) {
       if (!guestDocUrl) {
         return res.status(400).json({
           message: 'Legal identification document upload (National ID, Passport, or Driver\'s License) is required for guest checkout.'
         });
       }
-
       if (!guestDob) {
         return res.status(400).json({
           message: 'Date of birth is required for 18+ age verification.'
         });
       }
-
       guestBirthDate = new Date(guestDob);
       if (isNaN(guestBirthDate.getTime())) {
         return res.status(400).json({ message: 'Valid date of birth is required for 18+ age verification.' });
       }
-
       const today = new Date();
       let age = today.getFullYear() - guestBirthDate.getFullYear();
       const m = today.getMonth() - guestBirthDate.getMonth();
       if (m < 0 || (m === 0 && today.getDate() < guestBirthDate.getDate())) {
         age--;
       }
-
       if (age < 18) {
         return res.status(403).json({
           message: 'You must be at least 18 years of age to purchase products on The Grand Store.'
         });
       }
     }
+    ========================================================================================
+    */
 
     const User = require('../models/User');
     const user = req.user ? await User.findById(req.user._id) : null;
@@ -420,6 +421,47 @@ const addOrderItems = async (req, res) => {
       }
     }
 
+    // Send admin notification and email alert if order is marked as a gift
+    if (createdOrder.isGift) {
+      try {
+        const { createInAppNotification } = require('./notificationController');
+        const admins = await User.find({ role: { $in: ['admin', 'super_admin'] } }).select('_id');
+        for (const adm of admins) {
+          await createInAppNotification({
+            recipient: adm._id,
+            recipientType: 'admin',
+            title: `🎁 Gift Order #${createdOrder.orderId || createdOrder.invoiceNumber || createdOrder._id}`,
+            message: `Special gift delivery requested for "${createdOrder.giftRecipientName || 'Recipient'}". Message: "${createdOrder.giftMessage || 'No personal message'}". Please prepare luxury packaging & card.`,
+            type: 'order',
+            link: '/admin/orders',
+            metadata: {
+              orderId: createdOrder._id,
+              isGift: true,
+              giftRecipientName: createdOrder.giftRecipientName,
+              giftMessage: createdOrder.giftMessage
+            }
+          });
+        }
+      } catch (notifErr) {
+        console.warn('Failed to notify admins of gift order:', notifErr.message);
+      }
+
+      try {
+        const { sendEmail } = require('../utils/emailService');
+        const { giftOrderAdminNotificationTemplate } = require('../utils/emailTemplates');
+        const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
+        if (adminEmail) {
+          await sendEmail({
+            to: adminEmail,
+            subject: `🎁 [ADMIN ALERT] New Gift Order #${createdOrder.orderId || createdOrder.invoiceNumber || createdOrder._id} for ${createdOrder.giftRecipientName || 'Recipient'}`,
+            html: giftOrderAdminNotificationTemplate(createdOrder)
+          });
+        }
+      } catch (adminEmailErr) {
+        console.warn('Failed to send admin gift order email:', adminEmailErr.message);
+      }
+    }
+
     // Send emails based on payment method
     try {
       const { sendEmail } = require('../utils/emailService');
@@ -580,6 +622,30 @@ const processOrderPayment = async (orderId) => {
           }
         ]
       });
+
+      // Send admin gift packaging alert if this order is a gift
+      if (order.isGift) {
+        try {
+          const { giftOrderAdminNotificationTemplate } = require('../utils/emailTemplates');
+          const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
+          if (adminEmail) {
+            await sendEmail({
+              to: adminEmail,
+              subject: `🎁 [GIFT DISPATCH READY] Order #${order.invoiceNumber || order.orderId || order._id} Paid - Prepare Gift Packaging`,
+              html: giftOrderAdminNotificationTemplate(order),
+              attachments: [
+                {
+                  filename: `Receipt-${order.invoiceNumber || order._id}.pdf`,
+                  content: pdfBuffer,
+                  contentType: 'application/pdf'
+                }
+              ]
+            });
+          }
+        } catch (adminGiftErr) {
+          console.warn('Failed to send paid gift alert to admin:', adminGiftErr.message);
+        }
+      }
     }
   } catch (err) {
     console.error('Failed to send order confirmation email:', err);
@@ -922,6 +988,215 @@ const markOrderAsPaid = async (req, res) => {
   }
 };
 
+
+// @desc    Get all orders for Admin with breakdown by retail and vendor products
+// @route   GET /api/orders/admin/all?tab=all|retail|vendor&search=...
+// @access  Private (Admin / Super Admin / Product Manager)
+const getAdminOrders = async (req, res) => {
+  try {
+    const { tab = 'all', search = '', limit = 100 } = req.query;
+    const Order = require('../models/Order');
+
+    let query = {};
+    if (search && search.trim()) {
+      const term = search.trim();
+      query.$or = [
+        { orderId: { $regex: term, $options: 'i' } },
+        { invoiceNumber: { $regex: term, $options: 'i' } },
+        { 'guestInfo.name': { $regex: term, $options: 'i' } },
+        { 'guestInfo.email': { $regex: term, $options: 'i' } },
+        { 'shippingAddress.fullName': { $regex: term, $options: 'i' } },
+        { 'shippingAddress.email': { $regex: term, $options: 'i' } },
+        { 'shippingAddress.city': { $regex: term, $options: 'i' } },
+        { 'orderItems.name': { $regex: term, $options: 'i' } }
+      ];
+    }
+
+    const rawOrders = await Order.find(query)
+      .sort({ createdAt: -1 })
+      .limit(Math.min(200, Number(limit) || 100))
+      .populate('user', 'name email phoneNumber')
+      .lean();
+
+    // Admin should only see store/retail orders and products (vendor things excluded)
+    const enriched = [];
+    for (const ord of rawOrders) {
+      const retailItems = (ord.orderItems || []).filter(item => !item.vendorId);
+      if (retailItems.length === 0) continue; // Exclude vendor-only orders
+
+      enriched.push({
+        ...ord,
+        orderItems: retailItems, // Only retail/store items exposed to admin
+        retailItemsCount: retailItems.length,
+        hasRetailItems: true,
+        hasVendorItems: false,
+        customerName: ord.guestInfo?.name || ord.shippingAddress?.fullName || ord.user?.name || 'Customer',
+        customerEmail: ord.guestInfo?.email || ord.shippingAddress?.email || ord.user?.email || '',
+        customerPhone: ord.guestInfo?.phone || ord.shippingAddress?.phone || ord.shippingAddress?.phoneNumber || ord.user?.phoneNumber || '',
+        retailTotal: retailItems.reduce((sum, it) => sum + (Number(it.price || 0) * Number(it.quantity || 1)), 0)
+      });
+    }
+
+    let filtered = enriched;
+    if (tab === 'paid') {
+      filtered = enriched.filter(ord => ord.isPaid || ord.paymentStatus === 'Paid');
+    } else if (tab === 'pending') {
+      filtered = enriched.filter(ord => !ord.isPaid && ord.paymentStatus !== 'Paid');
+    }
+
+    res.json(filtered);
+  } catch (error) {
+    console.error('Get Admin Orders Error:', error);
+    res.status(500).json({ message: 'Server error retrieving admin orders' });
+  }
+};
+
+// @desc    Get complete order details for Admin by ID
+// @route   GET /api/orders/admin/:id
+// @access  Private (Admin / Super Admin / Product Manager)
+const getAdminOrderById = async (req, res) => {
+  try {
+    const Order = require('../models/Order');
+    const { id } = req.params;
+
+    let order = null;
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      order = await Order.findById(id)
+        .populate('user', 'name email phoneNumber isAgeVerified bidderApprovalStatus')
+        .populate('orderItems.vendorId', 'name email storeName storeAddress storeContact')
+        .populate('adminMessages.sentBy', 'name email')
+        .lean();
+    }
+    if (!order) {
+      order = await Order.findOne({ $or: [{ orderId: id }, { invoiceNumber: id }] })
+        .populate('user', 'name email phoneNumber isAgeVerified bidderApprovalStatus')
+        .populate('orderItems.vendorId', 'name email storeName storeAddress storeContact')
+        .populate('adminMessages.sentBy', 'name email')
+        .lean();
+    }
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const retailItems = (order.orderItems || []).filter(item => !item.vendorId);
+    // Overwrite orderItems with only retail items (no vendor products visible to admin)
+    order.orderItems = retailItems;
+
+    res.json({
+      ...order,
+      orderItems: retailItems,
+      retailItems,
+      retailSubtotal: retailItems.reduce((acc, it) => acc + (Number(it.price || 0) * Number(it.quantity || 1)), 0),
+      customerName: order.guestInfo?.name || order.shippingAddress?.fullName || order.user?.name || 'Customer',
+      customerEmail: order.guestInfo?.email || order.shippingAddress?.email || order.user?.email || '',
+      customerPhone: order.guestInfo?.phone || order.shippingAddress?.phone || order.shippingAddress?.phoneNumber || order.user?.phoneNumber || ''
+    });
+  } catch (error) {
+    console.error('Get Admin Order By Id Error:', error);
+    res.status(500).json({ message: 'Server error retrieving order details' });
+  }
+};
+
+// @desc    Send custom / emergency message from Admin to customer for an order
+// @route   POST /api/orders/:id/admin-message
+// @access  Private (Admin / Super Admin / Product Manager)
+const sendAdminOrderMessage = async (req, res) => {
+  try {
+    const Order = require('../models/Order');
+    const { id } = req.params;
+    const { message, type = 'info' } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'Message content is required' });
+    }
+
+    let order = null;
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      order = await Order.findById(id).populate('user', 'name email');
+    }
+    if (!order) {
+      order = await Order.findOne({ $or: [{ orderId: id }, { invoiceNumber: id }] }).populate('user', 'name email');
+    }
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const senderName = req.user.name || 'The Grand Store Concierge';
+    const messageObj = {
+      message: message.trim(),
+      type: ['info', 'warning', 'emergency', 'stock_issue'].includes(type) ? type : 'info',
+      sentAt: new Date(),
+      sentBy: req.user._id,
+      sentByName: senderName
+    };
+
+    if (!Array.isArray(order.adminMessages)) {
+      order.adminMessages = [];
+    }
+    order.adminMessages.push(messageObj);
+    order.latestAdminMessage = messageObj;
+    await order.save();
+
+    // 1. If registered user, create in-app notification
+    if (order.user && order.user._id) {
+      try {
+        const Notification = require('../models/Notification');
+        await Notification.create({
+          recipient: order.user._id,
+          recipientType: 'customer',
+          title: `Order Advisory: #${order.invoiceNumber || order.orderId}`,
+          message: messageObj.message,
+          type: 'order',
+          link: '/customer/orders',
+          metadata: {
+            orderId: order._id,
+            orderReference: order.invoiceNumber || order.orderId,
+            type: messageObj.type
+          }
+        });
+      } catch (notifErr) {
+        console.error('Failed to create in-app notification:', notifErr.message);
+      }
+    }
+
+    // 2. In all cases (guest or registered user), dispatch branded email
+    const customerEmail = order.guestInfo?.email || order.shippingAddress?.email || (order.user && order.user.email);
+    const customerName = order.guestInfo?.name || order.shippingAddress?.fullName || (order.user && order.user.name) || 'Valued Customer';
+
+    if (customerEmail) {
+      try {
+        const { sendEmail } = require('../utils/emailService');
+        const { adminOrderMessageEmailTemplate } = require('../utils/emailTemplates');
+        await sendEmail({
+          to: customerEmail,
+          subject: `[Order #${order.invoiceNumber || order.orderId}] Notice from The Grand Store Concierge`,
+          html: adminOrderMessageEmailTemplate({
+            customerName,
+            orderReference: order.invoiceNumber || order.orderId || order._id,
+            message: messageObj.message,
+            type: messageObj.type,
+            storeUrl: process.env.FRONTEND_URL || 'https://grandstoreglobal.com'
+          })
+        });
+      } catch (emailErr) {
+        console.error('Failed to send admin order message email:', emailErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Notice sent to customer successfully',
+      adminMessage: messageObj,
+      order
+    });
+  } catch (error) {
+    console.error('Send Admin Order Message Error:', error);
+    res.status(500).json({ message: 'Server error sending message to customer' });
+  }
+};
+
 module.exports = {
   addOrderItems,
   getOrderById,
@@ -929,5 +1204,8 @@ module.exports = {
   updateShipmentStatus,
   getMyOrders,
   markOrderAsPaid,
-  processOrderPayment // Exported for ITN webhook
+  processOrderPayment, // Exported for ITN webhook
+  getAdminOrders,
+  getAdminOrderById,
+  sendAdminOrderMessage
 };

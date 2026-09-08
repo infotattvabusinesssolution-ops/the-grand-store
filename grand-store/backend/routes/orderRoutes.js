@@ -6,12 +6,33 @@ const {
   getVendorOrders,
   updateShipmentStatus,
   getMyOrders,
-  markOrderAsPaid
+  markOrderAsPaid,
+  getAdminOrders,
+  getAdminOrderById,
+  sendAdminOrderMessage
 } = require('../controllers/orderController');
 const { protect, optionalAuth, requireRoles, financeStaff } = require('../middleware/authMiddleware');
 
 router.route('/').post(optionalAuth, addOrderItems);
 router.route('/myorders').get(protect, getMyOrders);
+
+// Admin Master Order Management & Custom Customer Messaging
+router.route('/admin/all').get(
+  protect,
+  requireRoles('admin', 'super_admin', 'product_manager'),
+  getAdminOrders
+);
+router.route('/admin/:id').get(
+  protect,
+  requireRoles('admin', 'super_admin', 'product_manager'),
+  getAdminOrderById
+);
+router.route('/:id/admin-message').post(
+  protect,
+  requireRoles('admin', 'super_admin', 'product_manager'),
+  sendAdminOrderMessage
+);
+
 router.route('/:id/pay').put(optionalAuth, markOrderAsPaid).post(optionalAuth, markOrderAsPaid);
 router.route('/vendor/sales').get(
   protect,
@@ -23,6 +44,7 @@ router.route('/vendor/sales/:shipmentId/status').patch(
   requireRoles('vendor_active', 'admin', 'super_admin', 'product_manager'),
   updateShipmentStatus,
 );
+
 router.route('/:id').get(optionalAuth, getOrderById);
 
 // Bank Transfer Routes

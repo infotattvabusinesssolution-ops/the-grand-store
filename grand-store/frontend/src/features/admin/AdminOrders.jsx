@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -7,93 +8,79 @@ import {
   MapPin,
   Search,
   Truck,
+  User,
+  ShieldCheck,
+  AlertTriangle,
+  ArrowRight,
+  Send,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Gift,
 } from "lucide-react";
-import { formatCartPrice } from "../../data";
 import Price from '../../components/ui/Price';
-
-const SHIPMENT_STATUSES = [
-  'Order Confirmed',
-  'Preparing',
-  'Collected',
-  'In Transit',
-  'Out for Delivery',
-  'Delivered',
-  'Delayed',
-  'Failed',
-];
 
 export default function AdminOrders() {
   const { user } = useAuth();
-  const [shipments, setShipments] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [updatingId, setUpdatingId] = useState(null);
+  const [activeTab, setActiveTab] = useState("all"); // 'all' | 'retail' | 'vendor'
 
-  useEffect(() => {
-    const fetchSales = async () => {
-      try {
-        const res = await api.get(`/orders/vendor/sales`);
-        setShipments(res.data);
-      } catch (error) {
-        console.error("Failed to fetch retail orders", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (user) {
-      fetchSales();
-    }
-  }, [user]);
-
-  const updateStatus = async (shipmentId, status) => {
+  const fetchOrders = async () => {
     try {
-      setUpdatingId(shipmentId);
-      const res = await api.patch(`/orders/vendor/sales/${shipmentId}/status`, { status });
-      const data = res.data;
-      setShipments((current) => current.map((shipment) => (
-        shipment._id === shipmentId ? { ...shipment, status: data.status } : shipment
-      )));
+      setLoading(true);
+      const res = await api.get(`/orders/admin/all?tab=${activeTab}`);
+      setOrders(res.data);
     } catch (error) {
-      console.error(error);
-      const msg = error.response?.data?.message || 'Failed to update shipment';
-      alert(msg);
+      console.error("Failed to fetch admin orders", error);
     } finally {
-      setUpdatingId(null);
+      setLoading(false);
     }
   };
 
-  const goldTextClass =
-    "text-[#c9a35b] ";
-  const filteredShipments = shipments.filter(
-    (shp) =>
-      (shp.shipmentId || shp._id)
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (shp.customerName || "").toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  useEffect(() => {
+    if (user) {
+      fetchOrders();
+    }
+  }, [user, activeTab]);
+
+  const filteredOrders = orders.filter((ord) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    const ref = String(ord.invoiceNumber || ord.orderId || ord._id).toLowerCase();
+    const name = String(ord.customerName || ord.guestInfo?.name || "").toLowerCase();
+    const email = String(ord.customerEmail || ord.guestInfo?.email || "").toLowerCase();
+    const phone = String(ord.customerPhone || ord.guestInfo?.phone || "").toLowerCase();
+    const city = String(ord.shippingAddress?.city || ord.selectedPostnetStore?.city || "").toLowerCase();
+    const itemsMatch = (ord.orderItems || []).some((item) =>
+      String(item.name || "").toLowerCase().includes(term)
+    );
+    return ref.includes(term) || name.includes(term) || email.includes(term) || phone.includes(term) || city.includes(term) || itemsMatch;
+  });
 
   return (
     <div className="flex flex-col gap-8 w-full max-w-7xl mx-auto pb-10">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/10 pb-6">
         <div>
-          <h1 className="text-[var(--color-ivory)] font-serif text-4xl mb-2 flex items-center gap-4">
-            <div className="p-3 bg-[var(--color-gold)]/10 text-[#e1bd70] rounded-xl border border-[var(--color-gold)]/20 ">
+          <h1 className="text-[var(--color-ivory)] font-serif text-3xl md:text-4xl mb-2 flex items-center gap-4">
+            <div className="p-3 bg-[var(--color-gold)]/10 text-[#e1bd70] rounded-xl border border-[var(--color-gold)]/20 shadow-sm">
               <ShoppingBag size={28} />
             </div>
-            Retail{" "}
-            <span className={`${goldTextClass} ml-2`}>Order History</span>
+            Customer{" "}
+            <span className="text-[#c9a35b] ml-2">Order Management</span>
           </h1>
           <p className="text-[var(--color-ivory-muted)] text-sm max-w-2xl font-light">
-            Review Grand Store retail shipments and update their fulfilment status.
+            Monitor incoming customer orders, review checkout KYC documents, manage PostNet & courier fulfillment, and send emergency advisories.
           </p>
         </div>
 
         {/* Search */}
-        <div className="relative w-full md:w-64">
+        <div className="relative w-full md:w-72">
           <input
             type="text"
-            placeholder="Search by Shipment ID or Customer..."
+            placeholder="Search by Order ID, Customer, Phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-[#0a0a0a] border border-white/10 rounded-full py-3 px-5 pl-10 text-sm text-[var(--color-ivory)] placeholder:text-[var(--color-ivory-muted)]/50 focus:outline-none focus:border-[var(--color-gold)]/50 transition-colors"
@@ -105,169 +92,245 @@ export default function AdminOrders() {
         </div>
       </div>
 
+      {/* Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-white/5 pb-4">
+        {[
+          { id: 'all', label: 'All Customer Orders' },
+          { id: 'paid', label: '✓ Paid Orders' },
+          { id: 'pending', label: '⏳ Pending Payment' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+              activeTab === tab.id
+                ? 'bg-gradient-to-r from-[#f5c242] to-[#c99742] text-black shadow-md'
+                : 'bg-white/5 hover:bg-white/10 text-white/70 border border-white/10'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
-        <div className="text-[#e1bd70] p-10 text-center">
-          Loading your shipments...
+        <div className="text-[#e1bd70] p-16 text-center font-serif text-lg flex flex-col items-center justify-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#c99742]"></div>
+          Loading orders...
         </div>
-      ) : filteredShipments.length === 0 ? (
+      ) : filteredOrders.length === 0 ? (
         <div className="text-center py-20 border border-white/5 rounded-3xl bg-white/[0.01]">
           <Truck
             size={48}
             className="mx-auto mb-4 text-[var(--color-ivory-muted)] opacity-20"
           />
           <p className="text-[var(--color-ivory-muted)] text-lg">
-            No shipments found.
+            No orders found for the selected filter.
           </p>
         </div>
       ) : (
-        <div className="space-y-10">
-          <div className="space-y-6">
-            {filteredShipments.map((shp) => (
+        <div className="space-y-6">
+          {filteredOrders.map((ord) => {
+            const orderRef = ord.invoiceNumber || ord.orderId || ord._id;
+            const isPostNet = ord.deliveryPreference === "postnet" || Boolean(ord.selectedPostnetStore?.name);
+            const totalItems = (ord.orderItems || []).length;
+            const retailCount = ord.retailItemsCount || (ord.orderItems || []).filter(i => !i.vendorId).length;
+
+            return (
               <div
-                key={shp._id}
-                className="bg-white/[0.02] border border-white/5 hover:border-white/10 rounded-2xl overflow-hidden transition-all"
+                key={ord._id}
+                className="bg-white/[0.02] border border-white/10 hover:border-[#c99742]/40 rounded-2xl overflow-hidden transition-all shadow-lg"
               >
-                {/* Shipment Header */}
-                <div className="bg-black/40 px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/5 gap-4">
-                  <div className="flex flex-col md:flex-row gap-2 md:gap-8">
+                {/* Order Top Bar */}
+                <div className="bg-black/50 px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/5 gap-4">
+                  <div className="flex flex-wrap items-center gap-4 md:gap-8">
                     <div>
-                      <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">
-                        Shipment ID
+                      <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-0.5">
+                        Order Reference
                       </div>
-                      <div className="text-sm text-[#e1bd70] font-bold">
-                        {shp.shipmentId || shp._id}
+                      <div className="text-sm font-bold text-[#e1bd70] font-mono">
+                        #{orderRef}
                       </div>
                     </div>
+
                     <div>
-                      <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">
+                      <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-0.5">
                         Date
                       </div>
-                      <div className="text-sm text-[var(--color-ivory)] font-serif">
-                        {new Date(shp.createdAt).toLocaleDateString("en-US", {
+                      <div className="text-xs text-white">
+                        {new Date(ord.createdAt).toLocaleDateString("en-ZA", {
                           year: "numeric",
-                          month: "long",
+                          month: "short",
                           day: "numeric",
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
                       </div>
                     </div>
+
                     <div>
-                      <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">
-                        Status
+                      <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-0.5">
+                        Payment Status
                       </div>
-                      <select
-                        value={shp.status}
-                        disabled={updatingId === shp._id}
-                        onChange={(event) => updateStatus(shp._id, event.target.value)}
-                        className="text-xs text-[var(--color-ivory)] bg-[#15130f] px-3 py-2 rounded border border-[var(--color-gold)]/25 outline-none disabled:opacity-50"
-                        aria-label={`Shipment status for ${shp.shipmentId}`}
-                      >
-                        {SHIPMENT_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
-                      </select>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        ord.isPaid || ord.paymentStatus === "Paid"
+                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                          : ord.paymentStatus === "Awaiting_Approval"
+                          ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                          : "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+                      }`}>
+                        {ord.isPaid || ord.paymentStatus === "Paid" ? "✓ Paid" : ord.paymentStatus || "Pending"}
+                      </span>
                     </div>
+
+                    <div>
+                      <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-0.5">
+                        Delivery Method
+                      </div>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        isPostNet
+                          ? "bg-amber-500/10 text-amber-300 border border-amber-500/30"
+                          : "bg-blue-500/10 text-blue-300 border border-blue-500/30"
+                      }`}>
+                        {isPostNet ? "📍 PostNet Collection" : "🚚 Door Delivery"}
+                      </span>
+                    </div>
+
+                    {ord.isGift && (
+                      <div>
+                        <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">
+                          Gift Packaging
+                        </div>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/40">
+                          <Gift size={11} /> Gift Order
+                        </span>
+                      </div>
+                    )}
                   </div>
+
                   <div className="text-left md:text-right">
-                    <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">
-                      Products Total
+                    <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-0.5">
+                      Total Paid (Incl. VAT)
                     </div>
-                    <div className="text-xl font-serif text-[#e1bd70]">
-                      <Price amount={shp.vendorTotal} />
+                    <div className="text-lg font-serif text-[#e1bd70] font-bold">
+                      <Price amount={ord.totalPrice} />
                     </div>
                   </div>
                 </div>
 
-                {/* Order Details Body */}
-                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
-                  {/* Customer Info */}
-                  <div className="col-span-1 border-r border-white/5 pr-4">
-                    <h4 className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-4 flex items-center gap-2">
-                      <MapPin size={14} className="text-[#e1bd70]" />{" "}
-                      Shipping Details
-                    </h4>
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold text-[var(--color-ivory)]">
-                        {shp.customerName}
-                      </p>
-                      <p className="text-xs text-[var(--color-ivory-muted)]">
-                        Courier: {shp.courierName}
-                      </p>
+                {/* Card Content Grid */}
+                <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Customer Information Column */}
+                  <div className="border-r border-white/5 pr-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs uppercase tracking-widest text-[#c99742] font-bold flex items-center gap-1.5">
+                        <User size={13} /> Customer Details
+                      </h4>
+                      <span className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${
+                        ord.isGuest ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                      }`}>
+                        {ord.isGuest ? "Guest Checkout" : "VIP Member"}
+                      </span>
                     </div>
 
-                    {shp.deliveryAddress ? (
-                      <div className="mt-4 text-sm text-[var(--color-ivory-muted)] leading-relaxed">
-                        {shp.deliveryAddress.address}
-                        <br />
-                        {shp.deliveryAddress.city},{" "}
-                        {shp.deliveryAddress.postalCode}
-                        <br />
-                        {shp.deliveryAddress.country}
-                      </div>
-                    ) : (
-                      <div className="mt-4 text-xs italic text-[var(--color-ivory-muted)] opacity-50">
-                        No shipping address provided
-                      </div>
-                    )}
+                    <div>
+                      <p className="text-sm font-bold text-white">{ord.customerName}</p>
+                      {ord.customerEmail && (
+                        <p className="text-xs text-white/70 mt-0.5">{ord.customerEmail}</p>
+                      )}
+                      {ord.customerPhone && (
+                        <p className="text-xs text-white/50 mt-0.5">📞 {ord.customerPhone}</p>
+                      )}
+                    </div>
 
-                    {shp.trackingNumber && (
-                      <div className="mt-4 p-3 bg-white/5 rounded border border-white/10">
-                        <p className="text-xs text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">
-                          Tracking Number
+                    {/* Destination Preview */}
+                    <div className="pt-2 border-t border-white/5">
+                      <p className="text-[11px] text-white/40 uppercase tracking-wider mb-1">
+                        {isPostNet ? "Collection Branch" : "Shipping Address"}
+                      </p>
+                      {isPostNet ? (
+                        <p className="text-xs text-white font-medium">
+                          {ord.selectedPostnetStore?.name || "PostNet Branch"} • {ord.selectedPostnetStore?.city || ord.shippingAddress?.city}
                         </p>
-                        <p className="text-sm text-gold font-mono">
-                          {shp.trackingNumber}
+                      ) : (
+                        <p className="text-xs text-white font-medium leading-tight">
+                          {ord.shippingAddress?.address}, {ord.shippingAddress?.city}
                         </p>
+                      )}
+                    </div>
+
+                    {ord.isGift && (
+                      <div className="pt-2 border-t border-white/5 space-y-1">
+                        <div className="text-[11px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                          <Gift size={12} /> Gift For: <span className="text-white">{ord.giftRecipientName || 'Recipient'}</span>
+                        </div>
+                        {ord.giftMessage && (
+                          <p className="text-xs text-white/80 italic bg-black/40 p-2 rounded-lg border border-white/5">
+                            "{ord.giftMessage}"
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
 
-                  {/* Items List */}
-                  <div className="col-span-1 md:col-span-2">
-                    <h4 className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-4 flex items-center gap-2">
-                      <Package size={14} className="text-[#e1bd70]" />{" "}
-                      Products to Pack
+                  {/* Items Composition Column */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs uppercase tracking-widest text-[#c99742] font-bold flex items-center gap-1.5">
+                      <Package size={13} /> Order Items ({retailCount || totalItems} items)
                     </h4>
-                    <div className="space-y-4">
-                      {shp.items.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="flex justify-between items-center py-3 border-b border-white/5 last:border-0 last:pb-0"
-                        >
-                          <div className="flex gap-4 items-center">
-                            {item.image && (
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="w-12 h-12 object-contain bg-black rounded border border-white/10 p-1"
-                              />
-                            )}
-                            <div>
-                              <p className="text-sm font-serif text-[var(--color-ivory)]">
-                                {item.name}
-                              </p>
-                              {item.option && (
-                                <p className="text-xs text-[var(--color-ivory-muted)] mt-1">
-                                  {item.option}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm text-[var(--color-ivory)]">
-                              {item.quantity} × <Price amount={item.price} />
-                            </div>
-                            <div className="text-xs font-bold text-[#e1bd70] mt-1">
-                              <Price amount={item.price * item.quantity} />
-                            </div>
-                          </div>
+
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <span className="px-3 py-1 rounded-lg bg-[#c99742]/10 border border-[#c99742]/30 text-xs font-semibold text-[#c99742] flex items-center gap-1.5">
+                        <ShoppingBag size={12} /> {retailCount || totalItems} Store {retailCount === 1 ? "Product" : "Products"}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-white/70 space-y-1 pt-2">
+                      {(ord.orderItems || []).slice(0, 2).map((item, idx) => (
+                        <div key={idx} className="truncate">
+                          • {item.quantity}x {item.name}
                         </div>
                       ))}
+                      {totalItems > 2 && (
+                        <p className="text-[11px] text-white/40 italic">+{totalItems - 2} more items</p>
+                      )}
                     </div>
+                  </div>
+
+                  {/* Right Actions & Latest Advisory Notice */}
+                  <div className="flex flex-col justify-between gap-4 border-l border-white/5 pl-4">
+                    {ord.latestAdminMessage ? (
+                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+                          <Send size={11} /> Sent Advisory Notice
+                        </div>
+                        <p className="text-xs text-white/90 line-clamp-2 leading-tight">
+                          "{ord.latestAdminMessage.message}"
+                        </p>
+                        <span className="text-[10px] text-white/40 block">
+                          {new Date(ord.latestAdminMessage.sentAt).toLocaleDateString('en-ZA')}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 text-[11px] text-white/40 flex items-center gap-2">
+                        <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
+                        <span>Ready for processing & fulfillment.</span>
+                      </div>
+                    )}
+
+                    <Link
+                      to={`/admin/orders/${ord._id}`}
+                      className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#f5c242] to-[#c99742] hover:opacity-95 text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md mt-auto"
+                    >
+                      <span>View Order Details</span>
+                      <ArrowRight size={14} />
+                    </Link>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       )}
     </div>

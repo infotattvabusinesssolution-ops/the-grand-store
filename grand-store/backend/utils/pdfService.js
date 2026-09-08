@@ -150,6 +150,21 @@ const generateOrderReceiptBuffer = async (order, user) => {
       doc.text("Payment Method:", 14, finalY + 10);
       doc.text(order.paymentMethod || "N/A", 14, finalY + 15);
 
+      if (order.isGift) {
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
+        doc.text("Gift Order:", 14, finalY + 22);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(60);
+        if (order.giftRecipientName) {
+          doc.text(`Recipient: ${order.giftRecipientName}`, 14, finalY + 27);
+        }
+        if (order.giftMessage) {
+          const splitMsg = doc.splitTextToSize(`"${order.giftMessage}"`, 90);
+          doc.text(splitMsg, 14, finalY + (order.giftRecipientName ? 32 : 27));
+        }
+      }
+
       // --- TOTALS (Right) ---
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);

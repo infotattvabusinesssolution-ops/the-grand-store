@@ -4,7 +4,9 @@ const BRAND_COLOR_LIGHT = '#f5f5f5';
 
 const formatRand = (amount) => `R ${Number(amount || 0).toFixed(2)}`;
 
-const generateEmailTemplate = (title, content) => `
+const generateEmailTemplate = (title, content) => {
+  const logoUrl = `${process.env.PUBLIC_SITE_URL || process.env.FRONTEND_URL || 'https://grandstoreglobal.com'}/grandstore-emblem.png`;
+  return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -27,14 +29,14 @@ const generateEmailTemplate = (title, content) => `
       border: 1px solid #222;
     }
     .header {
-      padding: 40px 20px;
+      padding: 32px 20px;
       text-align: center;
       background-color: ${BRAND_COLOR_DARK};
       border-bottom: 2px solid ${BRAND_COLOR_GOLD};
     }
     .logo {
       font-family: 'Times New Roman', Times, serif;
-      font-size: 28px;
+      font-size: 24px;
       font-weight: bold;
       color: ${BRAND_COLOR_LIGHT};
       text-transform: uppercase;
@@ -45,9 +47,9 @@ const generateEmailTemplate = (title, content) => `
       color: ${BRAND_COLOR_GOLD};
     }
     .content {
-      padding: 40px 30px;
+      padding: 35px 25px;
       line-height: 1.6;
-      font-size: 16px;
+      font-size: 15px;
       color: #e0e0e0;
     }
     h1, h2, h3 {
@@ -86,14 +88,14 @@ const generateEmailTemplate = (title, content) => `
     .divider {
       height: 1px;
       background-color: #222;
-      margin: 30px 0;
+      margin: 25px 0;
     }
     .details-box {
       background-color: #111;
       border: 1px solid #333;
       padding: 20px;
       margin: 20px 0;
-      border-radius: 4px;
+      border-radius: 6px;
     }
     .details-box p {
       margin: 5px 0;
@@ -107,7 +109,18 @@ const generateEmailTemplate = (title, content) => `
 <body>
   <div class="email-container">
     <div class="header">
-      <div class="logo">The <span class="logo-gold">Grand</span> Store</div>
+      <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto; text-align: center;">
+        <tr>
+          <td align="center" valign="middle" style="padding-right: 14px;">
+            <img src="${logoUrl}" alt="The Grand Store" width="46" height="38" style="display: inline-block; vertical-align: middle; border: 0;" />
+          </td>
+          <td align="left" valign="middle">
+            <span class="logo" style="font-family: 'Times New Roman', Times, serif; font-size: 24px; font-weight: bold; color: ${BRAND_COLOR_LIGHT}; text-transform: uppercase; letter-spacing: 4px; display: inline-block; vertical-align: middle;">
+              The <span class="logo-gold" style="color: ${BRAND_COLOR_GOLD};">Grand</span> Store
+            </span>
+          </td>
+        </tr>
+      </table>
     </div>
     <div class="content">
       ${content}
@@ -117,12 +130,13 @@ const generateEmailTemplate = (title, content) => `
     </div>
     <div class="footer">
       <p>&copy; ${new Date().getFullYear()} The Grand Store. All rights reserved.</p>
-      <p>If you have any questions, please contact our support team.</p>
+      <p>If you have any questions, please contact our concierge team at support@grandstoreglobal.com.</p>
     </div>
   </div>
 </body>
 </html>
-`;
+  `;
+};
 
 const welcomeEmailTemplate = (name) => {
   const content = `
@@ -170,77 +184,198 @@ const newsletterWelcomeTemplate = () => {
 };
 
 const orderConfirmationTemplate = (order) => {
-  let itemsHtml = order.orderItems.map(item => `
-    <tr>
-      <td style="padding: 10px 0; border-bottom: 1px solid #333;">${item.name} (x${item.quantity || item.qty || 1})</td>
-      <td style="padding: 10px 0; border-bottom: 1px solid #333; text-align: right;">${formatRand(item.price * (item.quantity || item.qty || 1))}</td>
-    </tr>
-  `).join('');
-
   const orderReference = order.invoiceNumber || order.orderId || order._id;
+  const isPostNet = order.deliveryPreference === 'postnet' || Boolean(order.selectedPostnetStore?.name);
+  const courierName = isPostNet
+    ? `PostNet Store Collection (${order.selectedPostnetStore?.name || 'Local Branch'})`
+    : (order.shipments?.[0]?.selectedCourier?.serviceLevel || order.shipments?.[0]?.selectedCourier?.courierName || 'Door Delivery (Courier Guy / PostNet)');
+
+  const subTotal = Number(order.subTotal || order.subtotal || 0);
+  const shippingCost = Number(order.shippingCost || order.shippingFee || 0);
+  const totalPrice = Number(order.totalPrice || order.total || 0);
+
+  // 15% South African VAT calculation (Inclusive)
+  const vatAmount = Number(order.vatAmount !== undefined && order.vatAmount > 0 
+    ? order.vatAmount 
+    : (subTotal > 0 ? (subTotal * (15 / 115)).toFixed(2) : 0));
+  const subTotalExclVat = Math.max(0, Number((subTotal - vatAmount).toFixed(2)));
+
+  const itemsList = order.orderItems || order.items || [];
+  const itemsHtml = itemsList.map(item => {
+    const qty = Number(item.quantity || item.qty || 1);
+    const unitPrice = Number(item.price || 0);
+    const lineTotal = unitPrice * qty;
+    const itemImg = item.image 
+      ? `<img src="${item.image}" alt="${item.name}" width="48" height="48" style="width: 48px; height: 48px; object-fit: cover; border-radius: 4px; border: 1px solid #333; margin-right: 12px; vertical-align: middle;" />`
+      : '';
+
+    return `
+      <tr style="border-bottom: 1px solid #222;">
+        <td style="padding: 12px 8px 12px 0; vertical-align: middle;">
+          <table border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              ${itemImg ? `<td style="vertical-align: middle; padding-right: 10px;">${itemImg}</td>` : ''}
+              <td style="vertical-align: middle;">
+                <div style="font-weight: bold; color: #fff; font-size: 14px;">${item.name}</div>
+                ${item.option ? `<div style="font-size: 12px; color: #999; margin-top: 2px;">Option: ${item.option}</div>` : ''}
+                ${item.category ? `<div style="font-size: 11px; color: ${BRAND_COLOR_GOLD}; margin-top: 2px;">${item.category}</div>` : ''}
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td style="padding: 12px 8px; text-align: center; color: #ccc; vertical-align: middle; font-size: 13px;">${qty}</td>
+        <td style="padding: 12px 8px; text-align: right; color: #ccc; vertical-align: middle; font-size: 13px;">${formatRand(unitPrice)}</td>
+        <td style="padding: 12px 0 12px 8px; text-align: right; font-weight: bold; color: #fff; vertical-align: middle; font-size: 14px;">${formatRand(lineTotal)}</td>
+      </tr>
+    `;
+  }).join('');
 
   const content = `
-    <h1>Order Confirmation</h1>
-    <p>Dear Customer,</p>
-    <p>Thank you for your purchase from The Grand Store. Your payment for order <strong>#${orderReference}</strong> was successful. Your PDF receipt is attached to this email.</p>
-    
+    <div style="text-align: center; margin-bottom: 25px;">
+      <h1 style="margin-bottom: 6px;">Order & Payment Confirmation</h1>
+      <p style="margin: 0; font-size: 14px; color: #a0a0a0;">Official Tax Invoice & Purchase Receipt</p>
+      <div style="display: inline-block; margin-top: 10px; padding: 5px 16px; border-radius: 20px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; font-size: 12px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">
+        ✓ Payment Verified & Confirmed
+      </div>
+    </div>
+
+    <p>Dear ${order.guestInfo?.name || order.shippingAddress?.recipientName || 'Valued Customer'},</p>
+    <p>Thank you for choosing The Grand Store. We are pleased to confirm that your payment for order <strong>#${orderReference}</strong> has been successfully processed. Your order receipt is itemized below, and an official PDF Tax Invoice is attached to this email.</p>
+
+    <!-- INVOICE METADATA TABLE -->
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #0e0e0e; border: 1px solid #222; border-radius: 6px; font-size: 13px;">
+      <tr>
+        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #888; width: 40%;">Invoice Reference:</td>
+        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: ${BRAND_COLOR_GOLD}; font-weight: bold; font-family: monospace; font-size: 14px;">${orderReference}</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #888;">Order Date:</td>
+        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #eee;">${new Date(order.createdAt || Date.now()).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #888;">Payment Method:</td>
+        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #eee;">${order.paymentMethod || 'Instant EFT / Card (PayFast)'}</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 14px; color: #888;">Delivery Method:</td>
+        <td style="padding: 10px 14px; color: #eee; font-weight: 500;">${courierName}</td>
+      </tr>
+    </table>
+
+    <!-- PRODUCT RECEIPT TABLE -->
     <div class="details-box">
-      <h3 style="margin-top: 0;">Order Summary</h3>
-      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-        ${itemsHtml}
+      <h3 style="margin-top: 0; font-size: 16px; border-bottom: 1px solid #222; padding-bottom: 10px;">Itemized Products</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <thead>
+          <tr style="border-bottom: 2px solid #333; color: ${BRAND_COLOR_GOLD}; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
+            <th style="padding: 8px 8px 8px 0; text-align: left;">Product</th>
+            <th style="padding: 8px; text-align: center;">Qty</th>
+            <th style="padding: 8px; text-align: right;">Price</th>
+            <th style="padding: 8px 0 8px 8px; text-align: right;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+      </table>
+
+      <!-- FINANCIAL SUMMARY & TAX BREAKDOWN -->
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 15px; border-top: 1px solid #333;">
         <tr>
-          <td style="padding: 15px 0 5px; font-weight: bold;">Subtotal</td>
-          <td style="padding: 15px 0 5px; text-align: right;">${formatRand(order.subTotal)}</td>
+          <td style="padding: 10px 0 4px; color: #aaa;">Products Subtotal (Excl. VAT):</td>
+          <td style="padding: 10px 0 4px; text-align: right; color: #ddd;">${formatRand(subTotalExclVat)}</td>
         </tr>
         <tr>
-          <td style="padding: 5px 0;">Shipping</td>
-          <td style="padding: 5px 0; text-align: right;">${formatRand(order.shippingCost)}</td>
+          <td style="padding: 4px 0; color: #aaa;">South African VAT (15% Included):</td>
+          <td style="padding: 4px 0; text-align: right; color: ${BRAND_COLOR_GOLD};">${formatRand(vatAmount)}</td>
         </tr>
         <tr>
-          <td style="padding: 5px 0; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 16px;">Total</td>
-          <td style="padding: 5px 0; text-align: right; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 16px;">${formatRand(order.totalPrice)}</td>
+          <td style="padding: 4px 0; color: #aaa; font-weight: 500;">Products Subtotal (Incl. VAT):</td>
+          <td style="padding: 4px 0; text-align: right; color: #fff; font-weight: 500;">${formatRand(subTotal)}</td>
+        </tr>
+        <tr>
+          <td style="padding: 4px 0; color: #aaa;">Shipping & Logistics (${order.deliveryPreference === 'postnet' ? 'PostNet Branch' : 'Courier Door'}):</td>
+          <td style="padding: 4px 0; text-align: right; color: #ddd;">${shippingCost > 0 ? formatRand(shippingCost) : '<span style="color: #34d399; font-weight: bold;">FREE</span>'}</td>
+        </tr>
+        ${order.appliedWelcomeDiscount > 0 ? `
+        <tr>
+          <td style="padding: 4px 0; color: #34d399;">Welcome Promotion Discount:</td>
+          <td style="padding: 4px 0; text-align: right; color: #34d399;">- ${formatRand(order.appliedWelcomeDiscount)}</td>
+        </tr>
+        ` : ''}
+        ${order.superCoinsDiscount > 0 ? `
+        <tr>
+          <td style="padding: 4px 0; color: #fbbf24;">Super Coins Redeemed (${order.superCoinsUsed || 0} Coins):</td>
+          <td style="padding: 4px 0; text-align: right; color: #fbbf24;">- ${formatRand(order.superCoinsDiscount)}</td>
+        </tr>
+        ` : ''}
+        ${order.importDuties > 0 ? `
+        <tr>
+          <td style="padding: 4px 0; color: #aaa;">Estimated Import Duties & Customs:</td>
+          <td style="padding: 4px 0; text-align: right; color: #ddd;">${formatRand(order.importDuties + (order.customsFees || 0))}</td>
+        </tr>
+        ` : ''}
+        <tr style="border-top: 2px solid ${BRAND_COLOR_GOLD};">
+          <td style="padding: 14px 0 4px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 16px;">
+            Grand Total Paid:
+            <div style="font-size: 11px; color: #888; font-weight: normal; margin-top: 2px;">Inclusive of all 15% VAT, duties & taxes</div>
+          </td>
+          <td style="padding: 14px 0 4px; text-align: right; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 20px;">
+            ${formatRand(totalPrice)}
+          </td>
         </tr>
       </table>
     </div>
-    
+
+    <!-- DELIVERY / COLLECTION DESTINATION CARD -->
     <div class="details-box">
-      <h3 style="margin-top: 0;">Shipping Address</h3>
-      <p>${order.shippingAddress?.address || ''}</p>
-      <p>${order.shippingAddress?.city || ''}, ${order.shippingAddress?.postalCode || ''}</p>
-      <p>${order.shippingAddress?.country || ''}</p>
+      <h3 style="margin-top: 0; font-size: 15px; color: ${BRAND_COLOR_GOLD};">
+        ${isPostNet ? '🏬 PostNet Collection Point' : '📍 Delivery Address'}
+      </h3>
+      ${isPostNet && order.selectedPostnetStore ? `
+        <p style="font-size: 14px; font-weight: bold; color: #fff; margin: 4px 0;">${order.selectedPostnetStore.name}</p>
+        <p style="font-size: 13px; color: #bbb; margin: 2px 0;">${order.selectedPostnetStore.address}</p>
+        <p style="font-size: 13px; color: #bbb; margin: 2px 0;">${order.selectedPostnetStore.city || ''} ${order.selectedPostnetStore.postalCode || ''}</p>
+        ${order.selectedPostnetStore.telephone ? `<p style="font-size: 12px; color: #888; margin: 4px 0;">Branch Tel: ${order.selectedPostnetStore.telephone}</p>` : ''}
+      ` : `
+        <p style="font-size: 14px; color: #fff; margin: 4px 0;">${order.shippingAddress?.address || ''}</p>
+        <p style="font-size: 13px; color: #bbb; margin: 2px 0;">${order.shippingAddress?.city || ''}, ${order.shippingAddress?.postalCode || ''}</p>
+        <p style="font-size: 13px; color: #bbb; margin: 2px 0;">${order.shippingAddress?.country || 'South Africa'}</p>
+      `}
     </div>
 
+    ${order.isGift ? `
+    <!-- GIFT DELIVERY CARD -->
+    <div class="details-box" style="border-left: 4px solid ${BRAND_COLOR_GOLD}; background: #161208; margin-top: 15px;">
+      <h3 style="margin-top: 0; color: ${BRAND_COLOR_GOLD}; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
+        🎁 Complimentary Gift Delivery
+      </h3>
+      ${order.giftRecipientName ? `<p style="margin: 4px 0; font-size: 13px; color: #fff;"><strong>Recipient:</strong> ${order.giftRecipientName}</p>` : ''}
+      ${order.giftMessage ? `<p style="margin: 8px 0 2px 0; font-size: 13px; color: #ddd; font-style: italic; background: #0c0a06; padding: 10px; border-radius: 6px; border: 1px dashed rgba(201, 163, 91, 0.3);">"${order.giftMessage}"</p>` : ''}
+    </div>
+    ` : ''}
+
+    <!-- NOTIFICATIONS & PIN BOX -->
     <div class="details-box" style="border-left: 4px solid ${BRAND_COLOR_GOLD}; background: #14120c; margin-top: 15px;">
-      <h3 style="margin-top: 0; color: ${BRAND_COLOR_GOLD}; font-size: 15px;">📦 Live Tracking & Dispatch Notifications</h3>
-      <p style="margin-bottom: 6px; font-size: 13px; color: #ddd;">
-        Real-time courier waybill tracking links, SMS delivery PINs, and collection alerts will be automatically sent to:
+      <h3 style="margin-top: 0; color: ${BRAND_COLOR_GOLD}; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
+        📦 Waybill Tracking & Collection Alerts
+      </h3>
+      <p style="margin-bottom: 8px; font-size: 13px; color: #ccc;">
+        Real-time dispatch tracking, SMS delivery PINs, and courier status updates are registered to:
       </p>
-      <p style="margin: 4px 0; font-size: 13px;">
+      <p style="margin: 3px 0; font-size: 13px;">
         ✉️ <strong>Email:</strong> ${order.guestInfo?.email || order.shippingAddress?.email || (order.user?.email) || 'On file'}
       </p>
-      <p style="margin: 4px 0; font-size: 13px;">
+      <p style="margin: 3px 0; font-size: 13px;">
         📱 <strong>Phone / SMS:</strong> ${order.guestInfo?.phone || order.shippingAddress?.phone || order.shippingAddress?.phoneNumber || (order.user?.phone) || 'On file'}
       </p>
     </div>
 
-    ${order.isGuest && order.guestKyc?.documentUrl ? `
-    <div class="details-box" style="border-left: 4px solid #10b981; background: #0c1813; margin-top: 15px;">
-      <h3 style="margin-top: 0; color: #10b981; font-size: 15px;">🛡️ 18+ Legal Age Verification Document Received</h3>
-      <p style="margin: 0; font-size: 13px; color: #d1fae5; line-height: 1.5;">
-        Your official identification document (${(order.guestKyc.idType || 'ID/Passport').toUpperCase()}) has been securely submitted to Grand Store Administration for compliance clearance. Your order is confirmed and will be dispatched once verified.
-      </p>
+    <div style="background-color: #0d131a; border: 1px solid #1e293b; border-radius: 6px; padding: 14px; margin-top: 20px; font-size: 12px; color: #94a3b8; line-height: 1.5;">
+      📄 <strong>Tax Invoice PDF Attached:</strong> Your formal South African tax invoice (VAT compliant) is attached to this email. You can retain or print it for accounting and proof of purchase.
     </div>
-    ` : `
-    <div class="details-box" style="border-left: 4px solid #3b82f6; background: #0c1420; margin-top: 15px;">
-      <h3 style="margin-top: 0; color: #60a5fa; font-size: 15px;">🛡️ 18+ Certified Order</h3>
-      <p style="margin: 0; font-size: 13px; color: #dbeafe; line-height: 1.5;">
-        This order has been verified under South African liquor compliance regulations. An adult signature (18+) is required upon parcel handover.
-      </p>
-    </div>
-    `}
-    
-    <p style="margin-top: 20px;">We will notify you with the tracking waybill as soon as your parcel leaves our temperature-controlled holding.</p>
   `;
+
   return generateEmailTemplate(`Payment Receipt #${orderReference}`, content);
 };
 
@@ -680,7 +815,134 @@ const eventTicketConfirmationTemplate = ({ booking, event, user, qrCodeDataUrl, 
   return generateEmailTemplate(`Your VIP Event Ticket Pass - ${event.title}`, content);
 };
 
+
+const adminOrderMessageEmailTemplate = ({
+  customerName,
+  orderReference,
+  message,
+  type = 'info',
+  storeUrl = 'https://grandstoreglobal.com'
+}) => {
+  const badgeConfig = {
+    emergency: { text: '🚨 Critical Priority Notice', bg: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.4)', color: '#f87171' },
+    stock_issue: { text: '📦 Stock & Fulfilment Advisory', bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' },
+    warning: { text: '⚠️ Delivery Notice', bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' },
+    info: { text: '✨ Concierge Update', bg: 'rgba(201, 151, 66, 0.15)', border: 'rgba(201, 151, 66, 0.4)', color: '#f5c242' }
+  };
+  const badge = badgeConfig[type] || badgeConfig.info;
+
+  const content = `
+    <div style="text-align: center; margin-bottom: 25px;">
+      <h1 style="margin-bottom: 6px;">Order Advisory Notice</h1>
+      <p style="margin: 0; font-size: 14px; color: #a0a0a0;">Regarding your order #${orderReference}</p>
+      <div style="display: inline-block; margin-top: 10px; padding: 5px 16px; border-radius: 20px; background: ${badge.bg}; border: 1px solid ${badge.border}; color: ${badge.color}; font-size: 12px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">
+        ${badge.text}
+      </div>
+    </div>
+
+    <p>Dear ${customerName || 'Valued Customer'},</p>
+    <p>Our concierge team has an important message regarding your purchase of order <strong>#${orderReference}</strong>:</p>
+
+    <div style="background-color: #12100e; border: 1px solid ${BRAND_COLOR_GOLD}55; border-left: 4px solid ${badge.color}; padding: 20px; margin: 25px 0; border-radius: 6px;">
+      <p style="font-size: 15px; line-height: 1.6; color: #fff; margin: 0; white-space: pre-line;">${message}</p>
+    </div>
+
+    <p style="font-size: 14px; color: #aaa;">You can also view this live update and track your order anytime directly inside your <a href="${storeUrl}/customer/orders" style="color: ${BRAND_COLOR_GOLD}; font-weight: bold;">My Orders</a> dashboard.</p>
+    <div style="text-align: center; margin-top: 25px;">
+      <a href="${storeUrl}/customer/orders" class="btn">View My Orders</a>
+    </div>
+  `;
+
+  return generateEmailTemplate(`Important Update regarding Order #${orderReference}`, content);
+};
+
+const giftOrderAdminNotificationTemplate = (order) => {
+  const orderRef = order.invoiceNumber || order.orderId || order._id;
+  const buyerName = order.guestInfo?.name || order.shippingAddress?.name || (order.user && order.user.name) || 'Customer';
+  const buyerEmail = order.guestInfo?.email || order.shippingAddress?.email || (order.user && order.user.email) || 'N/A';
+  const buyerPhone = order.guestInfo?.phone || order.shippingAddress?.phone || order.shippingAddress?.phoneNumber || (order.user && order.user.phone) || 'N/A';
+  const recipientName = order.giftRecipientName || 'Not Specified';
+  const giftMessage = order.giftMessage || 'No personal message provided';
+  const isPostNet = order.deliveryPreference === 'postnet' || Boolean(order.selectedPostnetStore);
+  const items = order.orderItems || order.items || [];
+
+  const itemsList = items.map(it => `
+    <li style="margin-bottom: 6px; color: #ddd;">
+      <strong>${Number(it.quantity || it.qty || 1)}x</strong> ${it.name} ${it.option ? `(${it.option})` : ''} - ${formatRand(it.price || 0)}
+    </li>
+  `).join('');
+
+  const destinationHtml = isPostNet && order.selectedPostnetStore ? `
+    <p style="margin: 3px 0; color: #fff;"><strong>PostNet Branch:</strong> ${order.selectedPostnetStore.name}</p>
+    <p style="margin: 3px 0; color: #bbb;">${order.selectedPostnetStore.address}</p>
+    <p style="margin: 3px 0; color: #bbb;">${order.selectedPostnetStore.city || ''} ${order.selectedPostnetStore.postalCode || ''}</p>
+  ` : `
+    <p style="margin: 3px 0; color: #fff;">${order.shippingAddress?.address || 'Address on file'}</p>
+    <p style="margin: 3px 0; color: #bbb;">${order.shippingAddress?.city || ''}, ${order.shippingAddress?.postalCode || ''}</p>
+    <p style="margin: 3px 0; color: #bbb;">${order.shippingAddress?.country || 'South Africa'}</p>
+  `;
+
+  const content = `
+    <div style="text-align: center; margin-bottom: 20px;">
+      <h1 style="color: ${BRAND_COLOR_GOLD}; margin-bottom: 4px;">🎁 Special Gift Order Alert</h1>
+      <p style="color: #bbb; font-size: 14px; margin: 0;">Order #${orderRef} requires luxury gift wrapping and card enclosure</p>
+    </div>
+
+    <div class="details-box" style="border-left: 4px solid #f59e0b; background: #18140c; margin-bottom: 20px;">
+      <h3 style="margin-top: 0; color: ${BRAND_COLOR_GOLD}; font-size: 15px; text-transform: uppercase; letter-spacing: 1px;">
+        🎁 Gift Recipient & Message Card
+      </h3>
+      <p style="font-size: 14px; margin: 6px 0; color: #fff;">
+        <strong>Recipient Name:</strong> <span style="color: #fcd34d; font-weight: bold; font-size: 15px;">${recipientName}</span>
+      </p>
+      <div style="margin-top: 10px; background: #0c0a06; padding: 14px; border-radius: 6px; border: 1px dashed rgba(201, 163, 91, 0.4);">
+        <div style="font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px; margin-bottom: 5px;">Personalized Card Message to Print / Handwrite:</div>
+        <div style="font-size: 14px; color: #fff; font-style: italic; line-height: 1.5;">"${giftMessage}"</div>
+      </div>
+    </div>
+
+    <div class="details-box" style="margin-bottom: 20px;">
+      <h3 style="margin-top: 0; font-size: 14px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">
+        Buyer / Billing Customer
+      </h3>
+      <p style="margin: 3px 0; color: #eee;"><strong>Name:</strong> ${buyerName}</p>
+      <p style="margin: 3px 0; color: #eee;"><strong>Email:</strong> ${buyerEmail}</p>
+      <p style="margin: 3px 0; color: #eee;"><strong>Phone:</strong> ${buyerPhone}</p>
+      <p style="margin: 3px 0; color: #eee;"><strong>Payment Method:</strong> ${order.paymentMethod || 'Instant Card / EFT'}</p>
+      <p style="margin: 3px 0; color: #eee;"><strong>Payment Status:</strong> <span style="color: ${order.isPaid ? '#10b981' : '#f59e0b'}; font-weight: bold;">${order.isPaid ? 'PAID' : 'PENDING'}</span></p>
+    </div>
+
+    <div class="details-box" style="margin-bottom: 20px;">
+      <h3 style="margin-top: 0; font-size: 14px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">
+        Delivery Destination
+      </h3>
+      ${destinationHtml}
+    </div>
+
+    <div class="details-box" style="margin-bottom: 25px;">
+      <h3 style="margin-top: 0; font-size: 14px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">
+        Items in this Gift Parcel
+      </h3>
+      <ul style="padding-left: 20px; margin: 5px 0;">
+        ${itemsList}
+      </ul>
+      <p style="margin-top: 10px; font-size: 14px; color: ${BRAND_COLOR_GOLD}; font-weight: bold;">
+        Order Total: ${formatRand(order.totalPrice || order.total || 0)}
+      </p>
+    </div>
+
+    <div style="text-align: center;">
+      <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin/orders/${order._id}" class="btn" style="background: linear-gradient(135deg, #c9a35b 0%, #b58b38 100%); color: #000; font-weight: bold;">
+        Open Order in Admin Portal
+      </a>
+    </div>
+  `;
+
+  return generateEmailTemplate(`Gift Order Alert #${orderRef}`, content);
+};
+
 module.exports = {
+  generateEmailTemplate,
   welcomeEmailTemplate,
   verificationEmailTemplate,
   passwordResetTemplate,
@@ -698,5 +960,6 @@ module.exports = {
   genericNotificationTemplate,
   birthdayCelebrationEmailTemplate,
   eventTicketConfirmationTemplate,
+  adminOrderMessageEmailTemplate,
+  giftOrderAdminNotificationTemplate,
 };
-

@@ -1317,24 +1317,21 @@ const sendMagicLink = async (req, res) => {
       await sendEmail({
         to: cleanEmail,
         subject: 'Your Secure Sign-In Link - Grand Store',
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #080808; color: #f5f5f5; padding: 40px 24px; border-radius: 12px; max-width: 540px; margin: 0 auto; border: 1px solid rgba(255,255,255,0.1);">
-            <h1 style="color: #c9a35b; font-size: 24px; font-weight: 500; margin-bottom: 12px;">Grand Store</h1>
+        html: require('../utils/emailTemplates').generateEmailTemplate('Your Secure Sign-In Link - Grand Store', `
             <h2 style="color: #ffffff; font-size: 18px; font-weight: 400; margin-bottom: 20px;">Secure One-Click Sign In</h2>
             <p style="font-size: 14px; line-height: 1.6; color: #a0a0a0; margin-bottom: 28px;">
               Click the button below to sign in instantly without needing a password. This secure link is valid for 15 minutes.
             </p>
             <div style="margin-bottom: 32px;">
-              <a href="${magicLinkUrl}" style="background: #c9a35b; color: #000000; padding: 14px 32px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block; letter-spacing: 0.5px;">
+              <a href="${magicLinkUrl}" class="btn" style="background: #c9a35b; color: #000000; padding: 14px 32px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block; letter-spacing: 0.5px;">
                 Sign In to Grand Store
               </a>
             </div>
-            <p style="font-size: 12px; color: #666666; line-height: 1.5; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px;">
+            <p style="font-size: 12px; color: #888888; line-height: 1.5; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px;">
               If you did not request this link, you can safely ignore this email.<br/>
               Grand Store Liquor & Fine Whisky Collection.
             </p>
-          </div>
-        `
+          `)
       });
     } catch (mailErr) {
       console.warn('[AUTH MAGIC LINK] Email dispatch warning (fallback active):', mailErr.message);

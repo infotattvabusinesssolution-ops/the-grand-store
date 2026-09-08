@@ -136,7 +136,7 @@ export default function AdminLayout() {
             {isAdmin && (
               <>
                 <button onClick={() => handleNavigate('/admin/kyc-verifications')} className={navItemClass('/admin/kyc-verifications')}>
-                  <UserCheck size={16} /> 18+ KYC Verifications
+                  <UserCheck size={16} /> Bidder KYC Verifications
                 </button>
                 <button onClick={() => handleNavigate('/admin/auctions')} className={navItemClass('/admin/auctions')}>
                   <Gavel size={16} /> Auctions Management

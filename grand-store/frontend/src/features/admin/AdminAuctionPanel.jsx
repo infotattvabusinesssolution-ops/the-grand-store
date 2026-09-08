@@ -299,7 +299,7 @@ export default function AdminAuctionPanel({ onNotify }) {
             className="text-xs uppercase tracking-widest font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 text-amber-400 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 shadow-sm"
           >
             <UserCheck size={15} />
-            Dedicated 18+ KYC Portal →
+            Dedicated Bidder KYC Portal →
           </button>
           <button 
             onClick={() => { setActiveTab('bidders'); fetchBidders(); fetchDeposits(); }}

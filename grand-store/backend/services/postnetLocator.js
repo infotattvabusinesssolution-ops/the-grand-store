@@ -137,7 +137,7 @@ const getNetworkStores = async () => {
   return stores;
 };
 
-const resolveCoordinates = async ({ address, lat, lng }) => {
+const resolveCoordinates = async ({ address, lat, lng, city }) => {
   const numericLat = Number(lat);
   const numericLng = Number(lng);
   const hasCoordinates = lat !== null && lat !== undefined && lat !== ''
@@ -147,7 +147,8 @@ const resolveCoordinates = async ({ address, lat, lng }) => {
     return { lat: numericLat, lng: numericLng };
   }
 
-  if (!cleanText(address)) {
+  const query = cleanText(address || city);
+  if (!query) {
     const error = new Error('Address or coordinates are required');
     error.statusCode = 400;
     throw error;
@@ -155,7 +156,7 @@ const resolveCoordinates = async ({ address, lat, lng }) => {
 
   const response = await axios.get(NOMINATIM_SEARCH_URL, {
     params: {
-      q: address,
+      q: query,
       format: 'json',
       limit: 1,
       countrycodes: 'za'
@@ -173,7 +174,7 @@ const resolveCoordinates = async ({ address, lat, lng }) => {
 };
 
 const findNearestPostnetStores = async ({ address, lat, lng, city, limit = 6 }) => {
-  const coordinates = await resolveCoordinates({ address, lat, lng });
+  const coordinates = await resolveCoordinates({ address, lat, lng, city });
   let rawStores = [];
 
   try {

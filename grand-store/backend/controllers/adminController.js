@@ -391,13 +391,13 @@ const remindVendorPayment = async (req, res) => {
       await sendEmail({
         to: vendor.userId.email,
         subject: 'Action Required: Pay Registration Fee to Activate Store',
-        html: `
+        html: generateEmailTemplate('Action Required: Store Activation Pending', `
           <h3>Action Required: Store Activation Pending</h3>
           <p>Hi ${vendor.userId.name || 'Vendor'},</p>
           <p>Your application to become a vendor on The Grand Store was approved!</p>
           <p>To activate your store and start listing products, you need to pay the registration fee of R${fee}.</p>
           <p>Please log in to your dashboard and complete the payment to activate your account.</p>
-        `
+        `)
       });
     } catch (emailErr) {
       console.error('Failed to send reminder email to vendor:', emailErr);
@@ -486,12 +486,12 @@ const verifyGuestKyc = async (req, res) => {
         await sendEmail({
           to: recipientEmail,
           subject: `18+ Verification Approved - Order #${order.orderId || order.invoiceNumber}`,
-          html: `
+          html: generateEmailTemplate('18+ Legal Age Verification Approved', `
             <h3>18+ Legal Age Verification Approved</h3>
             <p>Dear ${order.guestInfo?.name || 'Customer'},</p>
             <p>Your identification document for Order <strong>#${order.orderId || order.invoiceNumber}</strong> has been successfully verified and approved by Grand Store Administration.</p>
             <p>Your order will now proceed to dispatch. You will receive courier waybill tracking updates via email and SMS.</p>
-          `
+          `)
         });
       } catch (emailErr) {
         console.warn('Failed to send guest verification approval email:', emailErr.message);
@@ -532,13 +532,13 @@ const rejectGuestKyc = async (req, res) => {
         await sendEmail({
           to: recipientEmail,
           subject: `Action Required: 18+ Document Verification for Order #${order.orderId || order.invoiceNumber}`,
-          html: `
+          html: generateEmailTemplate('Action Required: 18+ ID Document Verification', `
             <h3>Action Required: 18+ ID Document Verification</h3>
             <p>Dear ${order.guestInfo?.name || 'Customer'},</p>
             <p>Your identification document submitted for Order <strong>#${order.orderId || order.invoiceNumber}</strong> could not be verified.</p>
             <p><strong>Reason:</strong> ${order.guestKyc.rejectionReason}</p>
             <p>Please contact support at info@grandstoreglobal.com with a clear photo or scan of your official ID or passport so your parcel can be cleared for dispatch.</p>
-          `
+          `)
         });
       } catch (emailErr) {
         console.warn('Failed to send guest verification rejection email:', emailErr.message);

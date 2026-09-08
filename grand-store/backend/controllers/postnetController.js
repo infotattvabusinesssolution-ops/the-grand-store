@@ -5,18 +5,19 @@ const { findNearestPostnetStores } = require('../services/postnetLocator');
 // @access  Private
 const getNearestStores = async (req, res) => {
   try {
-    const { address, lat, lng, city } = req.query;
+    const { address, lat, lng, city, limit } = req.query;
+    const searchTarget = (address || city || '').trim();
 
-    if (!address && (!lat || !lng)) {
-      return res.status(400).json({ message: 'Address or coordinates are required' });
+    if (!searchTarget && (!lat || !lng)) {
+      return res.status(400).json({ message: 'Address, city, or coordinates are required' });
     }
 
     const result = await findNearestPostnetStores({
-      address,
+      address: searchTarget,
       lat,
       lng,
       city,
-      limit: 6
+      limit: Math.max(1, Math.min(20, Number(limit) || 10))
     });
     res.json(result);
   } catch (error) {

@@ -20,6 +20,10 @@ import {
   MapPin,
   Coins,
   ShieldCheck,
+  AlertTriangle,
+  MessageSquare,
+  Bell,
+  Gift,
 } from "lucide-react";
 import Price from "../../components/ui/Price";
 
@@ -245,132 +249,112 @@ export default function CustomerOrdersPage() {
                 </div>
               </div>
 
-              {/* PostNet 7-Stage Milestone Progression & Service Summary */}
+              {/* Order Status Banner & Concierge Advisory */}
               {(() => {
                 const isPickup = order.deliveryPreference === 'pickup' || Boolean(order.selectedPostnetStore);
-                const currentStage = (() => {
-                  if (order.isDelivered || order.deliveryStatus === 'Delivered') return 7;
-                  if (order.deliveryStatus === 'At Collection Point' || order.deliveryStatus === 'Out for Delivery') return 6;
-                  if (order.deliveryStatus === 'In Transit') return 5;
-                  if (order.deliveryStatus === 'Collected' || order.deliveryStatus === 'Dispatched') return 4;
-                  if (order.deliveryStatus === 'Processing' || order.orderStatus === 'Processing') return 3;
-                  if (order.isPaid || order.paymentStatus === 'Paid') return 2;
-                  return 1;
-                })();
-
-                const stages = [
-                  { step: 1, name: "Payment Confirmed" },
-                  { step: 2, name: "Order Confirmed" },
-                  { step: 3, name: "Vendor Preparing" },
-                  { step: 4, name: "Collected" },
-                  { step: 5, name: "In Transit" },
-                  { step: 6, name: isPickup ? "At Collection Point" : "Out for Delivery" },
-                  { step: 7, name: isPickup ? "Collected" : "Delivered" },
-                ];
+                // Mongoose supplies a default notice object even when no message was sent.
+                const latestMsg = [
+                  order.latestAdminMessage,
+                  ...(Array.isArray(order.adminMessages) ? [...order.adminMessages].reverse() : []),
+                ].find((notice) => typeof notice?.message === 'string' && notice.message.trim());
 
                 return (
                   <div className="px-4 sm:px-6 md:px-8 py-5 bg-white/[0.015] border-b border-white/[0.05] space-y-4">
-                    {/* Milestone Progress Bar */}
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="p-1.5 rounded-lg bg-[var(--color-gold)]/10 text-[var(--color-gold)] border border-[var(--color-gold)]/20">
-                            <Truck size={14} />
-                          </span>
-                          <span className="text-xs font-serif text-white">
-                            {isPickup ? 'PostNet Store Collection' : 'PostNet Door Delivery'}
-                          </span>
+                    {/* Primary Order Delivery Status Banner */}
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex items-start sm:items-center gap-3.5">
+                        <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 mt-0.5 sm:mt-0">
+                          {isPickup ? <MapPin size={20} /> : <Truck size={20} />}
                         </div>
-                        <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] text-[var(--color-gold)] border border-white/10">
-                          Milestone {currentStage} of 7: {stages[currentStage - 1]?.name}
-                        </span>
+                        <div>
+                          <div className="text-[11px] font-mono uppercase tracking-wider text-amber-400/90 font-semibold">
+                            Fulfillment Status
+                          </div>
+                          <h4 className="text-sm sm:text-base font-serif font-bold text-white mt-0.5">
+                            {isPickup
+                              ? "Your order has been received — Arriving at your PostNet collection branch"
+                              : "Your order has been received — Delivery Soon"}
+                          </h4>
+                          <p className="text-xs text-white/70 mt-1">
+                            {isPickup ? (
+                              order.selectedPostnetStore ? (
+                                <>
+                                  Collection Point: <span className="text-[var(--color-gold)] font-medium">{order.selectedPostnetStore.name}</span> ({order.selectedPostnetStore.address})
+                                </>
+                              ) : (
+                                "Your parcel will arrive at your designated PostNet counter. Real-time collection PIN will be dispatched via SMS & Email."
+                              )
+                            ) : (
+                              <>
+                                Deliver to: <span className="text-white/90 font-medium">{order.shippingAddress?.address ? `${order.shippingAddress.address}, ${order.shippingAddress.city || ''}` : 'Your delivery address on record'}</span>
+                              </>
+                            )}
+                          </p>
+                        </div>
                       </div>
 
-                      {/* Progression Steps */}
-                      <div className="relative pt-2 pb-1">
-                        <div className="hidden md:flex items-center justify-between relative">
-                          <div className="absolute top-3 left-3 right-3 h-0.5 bg-white/10 -z-0"></div>
-                          <div
-                            className="absolute top-3 left-3 h-0.5 bg-gradient-to-r from-[var(--color-gold)] to-emerald-400 -z-0 transition-all duration-500"
-                            style={{ width: `${Math.max(0, Math.min(100, ((currentStage - 1) / 6) * 100))}%` }}
-                          ></div>
-
-                          {stages.map((st) => {
-                            const isDone = st.step <= currentStage;
-                            const isCurrent = st.step === currentStage;
-                            return (
-                              <div key={st.step} className="flex flex-col items-center relative z-10 text-center w-24">
-                                <div
-                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-mono font-bold transition-all ${
-                                    isCurrent
-                                      ? "bg-[var(--color-gold)] text-black ring-4 ring-[var(--color-gold)]/20 shadow-[0_0_10px_rgba(212,175,55,0.5)]"
-                                      : isDone
-                                      ? "bg-emerald-500 text-black"
-                                      : "bg-[#161616] text-white/40 border border-white/10"
-                                  }`}
-                                >
-                                  {isDone && !isCurrent ? "✓" : st.step}
-                                </div>
-                                <span
-                                  className={`text-[10px] mt-1.5 leading-tight font-medium ${
-                                    isCurrent
-                                      ? "text-[var(--color-gold)] font-bold"
-                                      : isDone
-                                      ? "text-white/80"
-                                      : "text-white/30"
-                                  }`}
-                                >
-                                  {st.name}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Mobile Simplified Milestone Bar */}
-                        <div className="md:hidden flex flex-col gap-2">
-                          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-gold-gradient transition-all"
-                              style={{ width: `${(currentStage / 7) * 100}%` }}
-                            ></div>
-                          </div>
-                          <div className="flex justify-between text-[11px] text-white/60">
-                            <span>Stage {currentStage}/7</span>
-                            <span className="text-[var(--color-gold)] font-semibold">{stages[currentStage - 1]?.name}</span>
-                          </div>
-                        </div>
+                      <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          Order Received
+                        </span>
                       </div>
                     </div>
 
-                    {/* PostNet Pickup Store Card & Ready Alert */}
-                    {isPickup && order.selectedPostnetStore && (
-                      <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                        currentStage >= 6
-                          ? 'bg-[var(--color-gold)]/10 border-[var(--color-gold)]/40 shadow-[0_0_20px_rgba(212,175,55,0.15)]'
-                          : 'bg-white/[0.02] border-white/10'
+                    {/* Admin / Concierge Custom Advisory Notice (Out of Stock / Emergency Alerts) */}
+                    {latestMsg && (
+                      <div className={`p-4 rounded-2xl border flex flex-col gap-2.5 ${
+                        latestMsg.type === 'emergency' || latestMsg.type === 'stock_issue'
+                          ? 'bg-rose-950/20 border-rose-500/40 text-rose-200'
+                          : latestMsg.type === 'warning'
+                          ? 'bg-amber-950/20 border-amber-500/40 text-amber-200'
+                          : 'bg-blue-950/20 border-blue-500/40 text-blue-200'
                       }`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider font-mono">
+                            <AlertTriangle size={15} className="shrink-0" />
+                            <span>
+                              {latestMsg.type === 'stock_issue'
+                                ? '⚠️ Out of Stock / Fulfillment Notice'
+                                : latestMsg.type === 'emergency'
+                                ? '🚨 Urgent Order Advisory'
+                                : latestMsg.type === 'warning'
+                                ? '⚠️ Important Delivery Notice'
+                                : '💬 Concierge Message'}
+                            </span>
+                          </div>
+                          {latestMsg.sentAt && (
+                            <span className="text-[10px] font-mono opacity-60">
+                              {new Date(latestMsg.sentAt).toLocaleDateString()} {new Date(latestMsg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs sm:text-sm text-white/90 leading-relaxed font-sans pl-6 border-l-2 border-current/30">
+                          {latestMsg.message}
+                        </p>
+                        <div className="text-[11px] opacity-70 pl-6 flex items-center justify-between">
+                          <span>Sent by: {latestMsg.sentByName || 'The Grand Store Concierge'}</span>
+                          <span className="font-mono">Inquiry: concierge@grandstore.co.za</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* PostNet Store Details Card */}
+                    {isPickup && order.selectedPostnetStore && (
+                      <div className="p-3.5 rounded-xl border bg-white/[0.02] border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="space-y-1">
                           <div className="text-xs font-bold text-[var(--color-gold)] flex items-center gap-1.5">
                             <MapPin size={13} />
-                            {currentStage >= 6 ? 'Ready For Collection: ' : 'Designated Collection Point: '}
-                            {order.selectedPostnetStore.name}
+                            Designated Collection Point: {order.selectedPostnetStore.name}
                           </div>
                           <div className="text-xs text-white/70">
                             {order.selectedPostnetStore.address}
                             {order.selectedPostnetStore.hours && ` • ${order.selectedPostnetStore.hours}`}
                           </div>
                         </div>
-
-                        {currentStage >= 6 ? (
-                          <span className="text-xs font-bold font-mono px-3 py-1 rounded-lg bg-[var(--color-gold)] text-black shrink-0 self-start sm:self-auto flex items-center gap-1.5 shadow-[0_0_10px_rgba(212,175,55,0.4)]">
-                            <ShieldCheck size={14} /> PIN Sent (Bring ID)
-                          </span>
-                        ) : (
-                          <span className="text-[11px] font-mono text-white/50 shrink-0 self-start sm:self-auto">
-                            Est. 2–3 Business Days
-                          </span>
-                        )}
+                        <span className="text-[11px] font-mono text-white/50 shrink-0 self-start sm:self-auto">
+                          Est. 2–3 Business Days
+                        </span>
                       </div>
                     )}
 
@@ -389,6 +373,43 @@ export default function CustomerOrdersPage() {
                         )}
                       </div>
                     )}
+
+                    {/* Gift Order Badge */}
+                    {order.isGift && (
+                      <div className="p-3 rounded-xl border bg-[var(--color-gold)]/5 border-[var(--color-gold)]/20 space-y-1">
+                        <div className="text-xs font-bold text-[var(--color-gold)] flex items-center gap-1.5">
+                          <Gift size={13} />
+                          Gift Order {order.giftRecipientName ? `for ${order.giftRecipientName}` : ''}
+                        </div>
+                        {order.giftMessage && (
+                          <div className="text-xs text-white/70 italic bg-black/40 p-2 rounded-lg border border-white/5">
+                            "{order.giftMessage}"
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/*
+                    ========================================================================
+                    [COMMENTED OUT FOR NOW AS REQUESTED - 7-STAGE PROGRESSION TIMELINE]
+                    ========================================================================
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1.5 rounded-lg bg-[var(--color-gold)]/10 text-[var(--color-gold)] border border-[var(--color-gold)]/20">
+                            <Truck size={14} />
+                          </span>
+                          <span className="text-xs font-serif text-white">
+                            {isPickup ? 'PostNet Store Collection' : 'PostNet Door Delivery'}
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] text-[var(--color-gold)] border border-white/10">
+                          Milestone 7-Stage Tracking
+                        </span>
+                      </div>
+                    </div>
+                    ========================================================================
+                    */}
                   </div>
                 );
               })()}

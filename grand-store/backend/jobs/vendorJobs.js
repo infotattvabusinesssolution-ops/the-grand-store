@@ -2,6 +2,7 @@ const cron = require("node-cron");
 const Vendor = require("../models/Vendor");
 const User = require("../models/User");
 const { sendEmail } = require("../utils/emailService");
+const { generateEmailTemplate } = require("../utils/emailTemplates");
 
 
 const startVendorJobs = () => {
@@ -32,13 +33,13 @@ const startVendorJobs = () => {
             await sendEmail({
               to: user.email,
               subject: "Your Vendor Free Trial Has Expired",
-              html: `
+              html: generateEmailTemplate("Your Vendor Free Trial Has Expired", `
                 <h3>Your trial has expired</h3>
                 <p>Hi ${user.name},</p>
                 <p>Your free trial on The Grand Store has expired. Your products are now hidden and your dashboard access has been suspended.</p>
                 <p>Please log in and pay the registration fee to restore your active vendor status.</p>
-                <p><a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/vendor/payment">Pay Registration Fee</a></p>
-              `
+                <p><a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/vendor/payment" class="btn">Pay Registration Fee</a></p>
+              `)
             });
           } catch (emailErr) {
             console.error("Failed to send trial expiry email to", user.email, emailErr);
@@ -67,13 +68,13 @@ const startVendorJobs = () => {
             await sendEmail({
               to: user.email,
               subject: "Action Required: Your Free Trial is Expiring Soon",
-              html: `
+              html: generateEmailTemplate("Action Required: Your Free Trial is Expiring Soon", `
                 <h3>Your free trial expires in 7 days</h3>
                 <p>Hi ${user.name},</p>
                 <p>Your free trial on The Grand Store will expire on ${vendor.freeTrialExpiry.toLocaleDateString()}.</p>
                 <p>To avoid any interruption to your store and keep your products visible to customers, please pay the registration fee of R${fee}.</p>
-                <p><a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/vendor/payment">Pay Registration Fee</a></p>
-              `
+                <p><a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/vendor/payment" class="btn">Pay Registration Fee</a></p>
+              `)
             });
           } catch (emailErr) {
             console.error("Failed to send 7-day warning email to", user.email, emailErr);
@@ -146,13 +147,13 @@ const startVendorJobs = () => {
                 await sendEmail({
                   to: user.email,
                   subject: isOverdue ? "Overdue Notice: Monthly Vendor Maintenance Fee" : "Action Required: Monthly Vendor Maintenance Fee Due",
-                  html: `
+                  html: generateEmailTemplate("Monthly Vendor Maintenance Fee Notice", `
                     <h3>Monthly Maintenance Fee Notice</h3>
                     <p>Hi ${user.name},</p>
                     <p>Your monthly maintenance fee of <strong>R ${vendor.maintenanceFee.amount || configuredFee}</strong> is ${isOverdue ? 'currently overdue' : 'due today'}.</p>
                     <p>Please log in to your vendor dashboard to process your payment and maintain full access to product sales and services.</p>
-                    <p><a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/vendor/dashboard" style="display:inline-block;padding:10px 20px;background:#c9a35b;color:#000;text-decoration:none;border-radius:6px;font-weight:bold;">Pay Maintenance Fee</a></p>
-                  `
+                    <p><a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/vendor/dashboard" class="btn">Pay Maintenance Fee</a></p>
+                  `)
                 });
               } catch (e) {
                 console.error("Failed to email maintenance fee reminder to", user.email, e);

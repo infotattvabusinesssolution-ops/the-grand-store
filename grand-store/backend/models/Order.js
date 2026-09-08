@@ -127,6 +127,22 @@ const orderSchema = new mongoose.Schema({
   isDelivered: { type: Boolean, required: true, default: false },
   deliveredAt: { type: Date },
 
+  // Admin custom & emergency communications
+  adminMessages: [{
+    message: { type: String, required: true },
+    type: { type: String, enum: ['info', 'warning', 'emergency', 'stock_issue'], default: 'info' },
+    sentAt: { type: Date, default: Date.now },
+    sentBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    sentByName: { type: String, default: 'The Grand Store Concierge' }
+  }],
+  latestAdminMessage: {
+    message: { type: String },
+    type: { type: String, default: 'info' },
+    sentAt: { type: Date },
+    sentByName: { type: String, default: 'The Grand Store Concierge' }
+  },
+  deliveryStatusText: { type: String, default: '' },
+
   // Immutable Order Financial Snapshot (Costing GS Understanding Section 14 & 251)
   financialSnapshot: {
     subTotal: { type: Number },

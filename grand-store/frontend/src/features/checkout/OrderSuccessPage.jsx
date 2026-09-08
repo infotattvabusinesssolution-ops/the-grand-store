@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { CheckCircle2, ChevronLeft, Download, Loader2, Truck, MapPin, Coins, ShieldCheck, ArrowRight, Clock, AlertTriangle, Package, FileCheck } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Download, Loader2, Truck, MapPin, Coins, ShieldCheck, ArrowRight, Clock, AlertTriangle, Package, FileCheck, Gift } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useCurrency } from "../../context/CurrencyContext";
 import Price from "../../components/ui/Price";
@@ -402,27 +402,68 @@ export default function OrderSuccessPage({ onClearCart }) {
                 </div>
               </div>
 
-              {/* 18+ Document Verification Status */}
+              {/* Dispatch & Compliance Status */}
               <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
                 <div className="flex items-center gap-2 text-emerald-400 text-sm font-semibold">
                   <FileCheck size={16} />
-                  <span>18+ Document Under Admin Review</span>
+                  <span>{order.guestKyc?.documentUrl ? "18+ Document Under Review" : "Order Dispatch Clearance"}</span>
                 </div>
                 <p className="text-xs text-emerald-200/80 leading-relaxed">
-                  {order.isGuest && order.guestKyc?.documentUrl ? (
-                    <>Your official identification document (<strong>{(order.guestKyc.idType || "ID/Passport").toUpperCase()}</strong>) has been securely transmitted to Grand Store Administration. Your order and payment are confirmed, and dispatch will commence once verified.</>
+                  {order.guestKyc?.documentUrl ? (
+                    <>Your official identification document (<strong>{(order.guestKyc.idType || "ID/Passport").toUpperCase()}</strong>) has been securely transmitted to Grand Store Administration.</>
                   ) : (
-                    <>This order is registered under Grand Store 18+ legal compliance standards. Official adult identification will be requested upon courier handover.</>
+                    <>Your order and payment are confirmed. Standard fulfillment and courier dispatch preparation are underway without any document verification delays.</>
                   )}
                 </p>
                 <div className="text-[11px] text-emerald-400/70 pt-1 flex items-center gap-1.5">
                   <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Administrative verification in progress • No further action required</span>
+                  <span>Fulfillment in progress • No further customer action required</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Concierge Custom Advisory / Emergency Notice */}
+        {(order.latestAdminMessage || (order.adminMessages && order.adminMessages.length > 0)) && (() => {
+          const latestMsg = order.latestAdminMessage || order.adminMessages[order.adminMessages.length - 1];
+          return (
+            <div className={`p-6 rounded-2xl border mb-8 relative overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.4)] ${
+              latestMsg.type === 'emergency' || latestMsg.type === 'stock_issue'
+                ? 'bg-rose-950/25 border-rose-500/50 text-rose-200'
+                : latestMsg.type === 'warning'
+                ? 'bg-amber-950/25 border-amber-500/50 text-amber-200'
+                : 'bg-blue-950/25 border-blue-500/50 text-blue-200'
+            }`}>
+              <div className="flex items-center justify-between gap-3 mb-3 pb-3 border-b border-white/10">
+                <div className="flex items-center gap-2.5 text-sm font-bold uppercase tracking-wider font-mono">
+                  <AlertTriangle size={18} className="shrink-0" />
+                  <span>
+                    {latestMsg.type === 'stock_issue'
+                      ? '⚠️ Out of Stock / Fulfillment Notice'
+                      : latestMsg.type === 'emergency'
+                      ? '🚨 Urgent Order Advisory'
+                      : latestMsg.type === 'warning'
+                      ? '⚠️ Important Delivery Notice'
+                      : '💬 Store Concierge Message'}
+                  </span>
+                </div>
+                {latestMsg.sentAt && (
+                  <span className="text-xs font-mono opacity-60">
+                    {new Date(latestMsg.sentAt).toLocaleDateString()} {new Date(latestMsg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-white/95 leading-relaxed font-sans pl-4 border-l-2 border-current/40 mb-3">
+                {latestMsg.message}
+              </p>
+              <div className="text-xs opacity-75 pl-4 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <span>Sent by: {latestMsg.sentByName || 'The Grand Store Concierge'}</span>
+                <span className="font-mono">Direct Support: concierge@grandstore.co.za</span>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Section 8: PostNet Delivery & Super Coins Loyalty Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
@@ -435,10 +476,12 @@ export default function OrderSuccessPage({ onClearCart }) {
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-mono tracking-widest text-[var(--color-gold)] block">
-                    Courier Service
+                    Fulfillment Status
                   </span>
-                  <h3 className="text-white font-serif text-lg">
-                    {order.deliveryPreference === 'pickup' || order.selectedPostnetStore ? 'PostNet Store Collection' : 'PostNet Door Delivery'}
+                  <h3 className="text-white font-serif text-lg leading-snug">
+                    {order.deliveryPreference === 'pickup' || order.selectedPostnetStore
+                      ? "Your order has been received — Arriving at your PostNet collection branch"
+                      : "Your order has been received — Delivery Soon"}
                   </h3>
                 </div>
               </div>
@@ -489,6 +532,25 @@ export default function OrderSuccessPage({ onClearCart }) {
                     PostNet courier will contact you via phone before arrival. Valid 18+ adult signature is required upon delivery.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* Gift Delivery Details Card */}
+            {order.isGift && (
+              <div className="mt-3 p-3.5 bg-[var(--color-gold)]/10 rounded-xl border border-[var(--color-gold)]/30 space-y-1.5">
+                <div className="text-xs text-[var(--color-gold)] font-bold flex items-center gap-1.5">
+                  <Gift size={14} /> Special Gift Delivery
+                </div>
+                {order.giftRecipientName && (
+                  <div className="text-xs text-white">
+                    <span className="text-white/60">For:</span> <strong className="text-white">{order.giftRecipientName}</strong>
+                  </div>
+                )}
+                {order.giftMessage && (
+                  <div className="text-xs italic text-[var(--color-ivory-muted)] bg-black/40 p-2 rounded-lg border border-white/5">
+                    "{order.giftMessage}"
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -782,6 +844,25 @@ export default function OrderSuccessPage({ onClearCart }) {
                   </div>
                 </div>
               </div>
+
+              {/* Gift Note in Tax Invoice */}
+              {order.isGift && (
+                <div className="relative z-10 mb-8 p-4 bg-[var(--color-gold)]/5 rounded-xl border border-[var(--color-gold)]/20">
+                  <div className="text-xs font-bold text-[var(--color-gold)] uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                    <Gift size={14} /> Complimentary Gift Packaging & Personal Note
+                  </div>
+                  {order.giftRecipientName && (
+                    <div className="text-xs text-white mb-1">
+                      <strong>Recipient:</strong> {order.giftRecipientName}
+                    </div>
+                  )}
+                  {order.giftMessage && (
+                    <div className="text-xs text-white/80 italic">
+                      "{order.giftMessage}"
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="relative z-10 mb-8">
                 <table className="w-full text-left text-sm">

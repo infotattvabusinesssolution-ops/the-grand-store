@@ -30,6 +30,7 @@ import LuxuryBannerSection from './features/home/components/LuxuryBannerSection'
 import AuctionCampaign from './features/home/components/AuctionCampaign'
 import AdminProducts from './features/admin/AdminProducts'
 import AdminOrders from './features/admin/AdminOrders'
+import AdminOrderDetail from './features/admin/AdminOrderDetail'
 import LatestBlogs from './features/home/components/LatestBlogs'
 import AppPromoSection from './features/home/components/AppPromoSection'
 import DownloadAppRedirect from './pages/DownloadAppRedirect'
@@ -812,6 +813,7 @@ function App() {
           <Route path="products" element={<AdminProducts />} />
 
           <Route path="orders" element={<AdminOrders />} />
+          <Route path="orders/:id" element={<AdminOrderDetail onNotify={showToast} />} />
           <Route
             path="product-add"
             element={<AddProduct onNotify={showToast} />}

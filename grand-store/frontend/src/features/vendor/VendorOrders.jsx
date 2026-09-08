@@ -263,7 +263,30 @@ export default function VendorOrders() {
                       <p className="text-xs text-[var(--color-ivory-muted)]">
                         Courier: {shp.courierName}
                       </p>
+                      {shp.customerPhone && (
+                        <p className="text-xs text-[var(--color-ivory-muted)]">
+                          Phone: {shp.customerPhone}
+                        </p>
+                      )}
+                      {shp.customerEmail && (
+                        <p className="text-xs text-[var(--color-ivory-muted)]">
+                          Email: {shp.customerEmail}
+                        </p>
+                      )}
                     </div>
+
+                    {shp.deliveryPreference === 'postnet' && shp.selectedPostnetStore ? (
+                      <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/25 rounded-xl text-xs space-y-1">
+                        <div className="text-amber-400 font-bold flex items-center gap-1 uppercase tracking-wider text-[10px]">
+                          <MapPin size={12} /> PostNet Collection Point
+                        </div>
+                        <div className="text-white font-medium">{shp.selectedPostnetStore.name}</div>
+                        <div className="text-white/70">{shp.selectedPostnetStore.address}</div>
+                        {shp.selectedPostnetStore.telephone && (
+                          <div className="text-white/50">Tel: {shp.selectedPostnetStore.telephone}</div>
+                        )}
+                      </div>
+                    ) : null}
 
                     {shp.deliveryAddress ? (
                       <div className="mt-4 text-sm text-[var(--color-ivory-muted)] leading-relaxed">
