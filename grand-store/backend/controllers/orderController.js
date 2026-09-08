@@ -511,6 +511,40 @@ const processOrderPayment = async (orderId) => {
     console.error('Error rewarding referrer:', err);
   }
   
+  // Credit Super Coins immediately upon payment
+  try {
+    if (order.superCoinsEarned > 0 && order.user) {
+      const User = require('../models/User');
+      const user = await User.findById(order.user);
+      if (user) {
+        // Move from pending to balance
+        if ((user.pendingSuperCoins || 0) >= order.superCoinsEarned) {
+          user.pendingSuperCoins -= order.superCoinsEarned;
+        } else {
+          user.pendingSuperCoins = 0;
+        }
+        user.superCoinsBalance = (user.superCoinsBalance || 0) + order.superCoinsEarned;
+        await user.save();
+        console.log(`Credited ${order.superCoinsEarned} Super Coins to user ${user.email} after payment.`);
+        
+        // Ledger entry update
+        const SuperCoinLedger = require('../models/SuperCoinLedger');
+        await SuperCoinLedger.updateOne(
+          { orderId: order._id, type: 'earned', status: 'pending' },
+          { 
+            $set: { 
+              status: 'completed', 
+              description: `Earned ${order.superCoinsEarned} Super Coins on order #${order.invoiceNumber || order.orderId} (Payment Confirmed)`,
+              balanceSnapshot: user.superCoinsBalance
+            } 
+          }
+        );
+      }
+    }
+  } catch (err) {
+    console.error('Error crediting super coins on payment:', err);
+  }
+
   // === EVENT SOURCING: Append PaymentVerified Event ===
   const CheckoutEngine = require('../services/CheckoutEngine');
   await CheckoutEngine.appendEvent(order._id.toString(), 'PaymentVerified', {

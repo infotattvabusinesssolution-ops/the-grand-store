@@ -383,11 +383,9 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
       if (!tier) throw new Error("Ticket tier no longer exists");
 
       if (booking.inventoryStatus === "reserved") {
-        if ((tier.reserved || 0) < booking.quantity) throw new Error("Reserved ticket inventory is inconsistent");
+        tier.reserved = Math.max(0, (tier.reserved || 0) - booking.quantity);
+      } else if ((tier.reserved || 0) >= booking.quantity) {
         tier.reserved -= booking.quantity;
-      } else {
-        const available = tier.quantity - (tier.sold || 0) - (tier.reserved || 0);
-        if (available < booking.quantity) throw new Error("Ticket inventory is no longer available");
       }
       tier.sold = (tier.sold || 0) + booking.quantity;
       await event.save();

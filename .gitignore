@@ -143,3 +143,5 @@ grandsto_codedb.sql
 
 TheGrandStore/
 .playwright-mcp/
+output/
+tmp/

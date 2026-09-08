@@ -14,6 +14,7 @@ import BidderVerificationModal from '../../components/modals/BidderVerificationM
 import GoldenCelebrationShower from './GoldenCelebrationShower';
 import MagicalBidEffect from './MagicalBidEffect';
 import AuctionWinnerCelebrationModal from './components/AuctionWinnerCelebrationModal';
+import AuctionAcquisitionCertificate from './components/AuctionAcquisitionCertificate';
 import { useCurrency } from '../../context/CurrencyContext';
 
 const formatRelativeTime = (dateStr) => {
@@ -782,186 +783,16 @@ export default function AuctionLotDetail({ onNotify }) {
                ) : (
                   <div className="flex flex-col gap-6">
                     {lot.status === 'sold' && isWinner ? (
-                      <div id="acquisition-certificate" className="relative overflow-hidden rounded-3xl border-4 border-[#181818] bg-[#FAF9F5] text-black p-6 sm:p-10 shadow-[0_20px_70px_rgba(0,0,0,0.45)]">
-                        
-                        {/* 1. Inner Ornate Gold Border & Pinstripe */}
-                        <div className="absolute inset-3 border-2 border-[#c5a059] pointer-events-none rounded-2xl" />
-                        <div className="absolute inset-4 border border-[#e2cca1] pointer-events-none rounded-xl" />
-
-                        {/* 2. Corner Motto Ribbons (Top-Right & Bottom-Left) */}
-                        <div className="absolute top-3 right-3 z-20 bg-[#161616] text-[#e8c879] border border-[#c5a059] px-3 py-2 rounded-bl-xl text-right font-serif tracking-widest text-[9px] uppercase leading-tight shadow-md hidden sm:block">
-                          <span className="block font-bold">More Than A Drink</span>
-                          <span className="block text-[#f5d77f]">A Legacy</span>
-                        </div>
-                        <div className="absolute bottom-3 left-3 z-20 bg-[#161616] text-[#e8c879] border border-[#c5a059] px-3 py-2 rounded-tr-xl font-serif tracking-widest text-[9px] uppercase leading-tight shadow-md hidden sm:block">
-                          <span className="block font-bold">Collect • Invest</span>
-                          <span className="block text-[#f5d77f]">Celebrate</span>
-                        </div>
-
-                        {/* 3. Central Royal Lifestyle Watermark Layer */}
-                        <div className="absolute inset-0 pointer-events-none select-none flex flex-col items-center justify-center opacity-[0.04]">
-                          <span className="font-serif text-[75px] sm:text-[110px] font-black tracking-[0.25em] text-[#c5a059] uppercase text-center leading-none">
-                            ROYAL LIFESTYLE
-                          </span>
-                          <span className="font-mono text-xs tracking-[0.4em] text-[#1a1a1a] uppercase mt-2 font-bold">
-                            • THE GRAND STORE • VAULT ARCHIVE • CERTIFIED PROVENANCE •
-                          </span>
-                        </div>
-
-                        {/* 4. Top Header Row: Emblem, Brand & Curatorial Pillars */}
-                        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-5 border-b border-[#c5a059]/30">
-                          {/* Top-Left: True Royal Lifestyle Emblem + The Grand Store */}
-                          <div className="flex items-center gap-3">
-                            <div className="w-13 h-13 rounded-full bg-[#181818] border-2 border-[#c5a059] flex flex-col items-center justify-center p-1 text-center shrink-0 shadow">
-                              <span className="text-[7px] font-mono uppercase font-bold text-[#e0bd68] leading-none">Royal</span>
-                              <span className="text-xs">👑</span>
-                              <span className="text-[6px] font-mono uppercase tracking-tighter text-[#e0bd68] leading-none">Lifestyle</span>
-                              <span className="text-[6px] text-red-500 leading-none">★★★</span>
-                            </div>
-                            <div>
-                              <span className="font-serif font-black text-lg tracking-wider text-[#1a1a1a] block leading-tight">
-                                THE <span className="text-[#a87d26]">GRAND STORE</span>
-                              </span>
-                              <span className="font-serif italic text-[11px] text-[#7a6b52] block">
-                                Crafting Moments, Raising Spirits
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Top-Right: Curatorial Pillars */}
-                          <div className="text-right shrink-0">
-                            <div className="flex items-center gap-2 text-[10px] font-mono tracking-widest uppercase font-bold text-[#6b5a41]">
-                              <span>Fine Spirits</span>
-                              <span className="text-[#c5a059]">|</span>
-                              <span>Rare Collections</span>
-                              <span className="text-[#c5a059]">|</span>
-                              <span>Exclusive Auctions</span>
-                            </div>
-                            <span className="block text-[9px] font-mono text-[#8a7a63] mt-1">
-                              LOT #{lot.lotNumber || lot._id.slice(-6).toUpperCase()} • REF: {lot.gsReference || `GSC-${lot._id.slice(-6).toUpperCase()}`}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* 5. Main Certificate Title */}
-                        <div className="relative z-10 pt-6 pb-4 text-center">
-                          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-black tracking-tight text-[#141414] uppercase">
-                            CERTIFICATE
-                          </h2>
-                          <div className="flex items-center justify-center gap-3 mt-1.5">
-                            <div className="w-12 sm:w-20 h-px bg-[#c5a059]" />
-                            <span className="font-serif font-bold tracking-[0.25em] text-[#a87d26] text-xs sm:text-sm uppercase">
-                              OF ACQUISITION
-                            </span>
-                            <div className="w-12 sm:w-20 h-px bg-[#c5a059]" />
-                          </div>
-                        </div>
-
-                        {/* 6. Recipient Proclamation */}
-                        <div className="relative z-10 py-3 text-center">
-                          <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.25em] text-[#6b5a41] font-mono font-bold mb-2">
-                            THIS CERTIFICATE IS PROUDLY PRESENTED TO
-                          </p>
-                          <div className="inline-block px-8 py-2 border-b-2 border-[#c5a059]">
-                            <span className="text-xl sm:text-3xl font-serif font-bold text-[#141414] tracking-wide">
-                              {user?.name || user?.legalFullName || 'Distinguished Patron'}
-                            </span>
-                          </div>
-                          <p className="text-[10px] font-mono text-[#7a6b52] mt-1">
-                            Registered Vault Patron Account #{bidderProfile?.bidderNumber || (user?._id || 'PATRON').slice(-6).toUpperCase()}
-                          </p>
-                        </div>
-
-                        {/* 7. Official Proclamation Text matching user template */}
-                        <div className="relative z-10 py-3 text-center max-w-xl mx-auto space-y-1">
-                          <p className="text-xs sm:text-sm font-serif text-[#332e27] leading-relaxed">
-                            In recognition of your successful bid and acquisition in The Grand Store Auction.
-                          </p>
-                          <p className="text-xs sm:text-sm font-serif text-[#332e27] leading-relaxed">
-                            Your passion for exceptional spirits and rare collections is truly appreciated.
-                          </p>
-                          <p className="text-sm sm:text-base font-serif italic font-bold text-[#a87d26] pt-1">
-                            Cheers to Great Choices!
-                          </p>
-                        </div>
-
-                        {/* 8. Lot Particulars & Hammer Price Box */}
-                        <div className="relative z-10 rounded-2xl bg-[#F4F1E6] border border-[#c5a059]/40 p-4 sm:p-5 my-4 text-xs font-mono text-[#4a4237] shadow-sm">
-                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-[#c5a059]/25">
-                            <div>
-                              <span className="text-[9px] uppercase tracking-widest text-[#a87d26] font-bold block">Catalogue Lot Particulars</span>
-                              <span className="text-sm sm:text-base font-serif font-bold text-[#1a1a1a]">
-                                Lot #{lot.lotNumber || lot._id.slice(-6).toUpperCase()}: {lot.title}
-                              </span>
-                            </div>
-                            <div className="sm:text-right shrink-0">
-                              <span className="text-[9px] uppercase tracking-widest text-[#a87d26] font-bold block">Winning Hammer Bid</span>
-                              <span className="text-lg sm:text-xl font-serif font-bold text-[#1a1a1a]">
-                                <Price amount={lot.winningBid} />
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap justify-between items-center pt-2.5 text-[10px] text-[#6b5a41]">
-                            <span>Authentication: The Grand Store Private Vault Provenance</span>
-                            <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-                              ✓ CPA SECTION 45 TRUST SECURED
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* 9. Center Provenance Emblem & Bottom-Right Seal */}
-                        <div className="relative z-10 flex items-center justify-between pt-2 pb-4">
-                          {/* Bottom-Left: Date of Issue */}
-                          <div className="w-1/3">
-                            <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[#6b5a41] block">
-                              DATE OF ISSUE
-                            </span>
-                            <span className="font-serif font-bold text-sm text-[#1a1a1a] block border-b border-[#c5a059] pb-0.5 mt-0.5">
-                              {lot.endDate ? new Date(lot.endDate).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }) : new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })}
-                            </span>
-                          </div>
-
-                          {/* Center: Certified Provenance Laurel & Gavel */}
-                          <div className="text-center px-4">
-                            <div className="w-12 h-12 rounded-full border-2 border-[#c5a059] bg-[#FAF9F5] flex items-center justify-center mx-auto text-xl shadow-sm">
-                              ⚖️
-                            </div>
-                            <span className="block font-serif font-bold text-[10px] tracking-widest text-[#a87d26] uppercase mt-1">
-                              CERTIFIED PROVENANCE
-                            </span>
-                            <span className="block text-[8px] text-[#a87d26]">★ ★ ★</span>
-                          </div>
-
-                          {/* Bottom-Right: Gold Medallion Wax Seal */}
-                          <div className="w-1/3 flex flex-col items-end">
-                            <div className="w-18 h-18 rounded-full bg-gradient-to-br from-[#d4af37] via-[#f5d77f] to-[#aa8022] p-0.5 shadow-md">
-                              <div className="w-full h-full rounded-full bg-[#FAF9F5] border border-[#d4af37] flex flex-col items-center justify-center text-center p-1">
-                                <span className="text-[7px] text-[#aa8022]">★ ★ ★</span>
-                                <span className="text-[7px] font-mono font-black tracking-tighter text-[#5a4413] leading-none uppercase">Exceptional</span>
-                                <span className="text-[7px] font-serif font-bold text-[#141414] leading-none uppercase">People</span>
-                                <span className="text-[6.5px] font-mono font-black tracking-tighter text-[#5a4413] leading-none uppercase">Spirits</span>
-                                <span className="text-[8px] text-[#aa8022] leading-none">∞</span>
-                              </div>
-                            </div>
-                            <span className="text-[8px] font-mono text-[#8a7a63] mt-1 text-right">
-                              NO. {lot.gsReference || `GSC-${lot._id.slice(-6).toUpperCase()}`}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* 10. Bottom Registered Vault Footnote */}
-                        <div className="relative z-10 text-center pt-2 pb-4 border-t border-[#c5a059]/25 text-[9px] font-serif text-[#7a6b52] tracking-wider">
-                          THE GRAND STORE • VAULT ARCHIVE • CERTIFIED PROVENANCE
-                        </div>
+                      <div id="acquisition-certificate" className="gs-acquisition-shell">
+                        <AuctionAcquisitionCertificate lot={lot} user={user} bidderProfile={bidderProfile} />
 
                         {/* 11. Download, Share & Action Buttons */}
-                        <div className="relative z-10 pt-3 flex flex-col sm:flex-row items-center gap-3">
+                        <div className="relative z-10 pt-4 grid grid-cols-2 gap-2">
                           <button
                             type="button"
                             onClick={handleDownloadCertificate}
                             disabled={downloadingCert}
-                            className="w-full sm:w-1/2 flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-[#161616] hover:bg-black text-[#f5d77f] border border-[#c5a059] font-sans font-bold uppercase tracking-widest text-xs transition-all shadow-md hover:shadow-lg cursor-pointer disabled:opacity-50"
+                            className="w-full col-span-2 flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-[#161616] hover:bg-black text-[#f5d77f] border border-[#c5a059] font-sans font-bold uppercase tracking-widest text-xs transition-all shadow-md hover:shadow-lg cursor-pointer disabled:opacity-50"
                           >
                             <Download size={16} className={downloadingCert ? "animate-bounce" : ""} />
                             <span>{downloadingCert ? "Downloading PDF..." : "Download Official Certificate"}</span>
@@ -970,7 +801,7 @@ export default function AuctionLotDetail({ onNotify }) {
                           <button
                             type="button"
                             onClick={handleShareCertificate}
-                            className="w-full sm:w-1/4 flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-[#c5a059]/15 hover:bg-[#c5a059]/25 text-[#705214] border border-[#c5a059]/50 font-sans font-bold uppercase tracking-widest text-xs transition-all cursor-pointer shadow-sm"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-[#c5a059]/15 hover:bg-[#c5a059]/25 text-[#705214] border border-[#c5a059]/50 font-sans font-bold uppercase tracking-widest text-xs transition-all cursor-pointer shadow-sm"
                           >
                             <Share2 size={15} />
                             <span>Share</span>
@@ -979,7 +810,7 @@ export default function AuctionLotDetail({ onNotify }) {
                           <button
                             type="button"
                             onClick={handlePrintCertificate}
-                            className="w-full sm:w-1/4 flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-white hover:bg-stone-100 text-[#332e27] border border-stone-300 font-sans font-bold uppercase tracking-widest text-xs transition-all cursor-pointer shadow-sm"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-white hover:bg-stone-100 text-[#332e27] border border-stone-300 font-sans font-bold uppercase tracking-widest text-xs transition-all cursor-pointer shadow-sm"
                           >
                             <Printer size={15} />
                             <span>Print</span>
@@ -989,17 +820,17 @@ export default function AuctionLotDetail({ onNotify }) {
                         {/* Payment Settlement Status CTA */}
                         <div className="relative z-10 pt-4">
                           {lot.paymentStatus === 'Paid' || lot.isPaid ? (
-                            <div className="w-full bg-emerald-500/15 text-emerald-400 font-bold uppercase tracking-widest text-xs py-4 px-6 rounded-xl text-center border border-emerald-500/40 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+                            <div className="w-full bg-emerald-500/15 text-emerald-800 font-bold uppercase tracking-widest text-xs py-4 px-6 rounded-xl text-center border border-emerald-500/40 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
                               <CheckCircle2 size={18} /> Acquisition Settled • Logistics In Preparation
                             </div>
                           ) : (lot.paymentStatus === 'Awaiting_Approval' || Boolean(lot.proofUrl)) ? (
                             <Link 
                               to={`/auction/checkout/${lot._id}`} 
-                              className="group flex items-center justify-center gap-3 w-full bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-bold uppercase tracking-widest text-xs py-4 px-6 rounded-xl border border-amber-500/30 transition-all shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+                              className="group flex items-center justify-center gap-3 w-full bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 font-bold uppercase tracking-widest text-xs py-4 px-6 rounded-xl border border-amber-500/30 transition-all shadow-[0_0_15px_rgba(245,158,11,0.15)]"
                             >
-                              <Clock size={16} className="text-amber-400" />
+                              <Clock size={16} className="text-amber-700" />
                               <span>EFT Proof Submitted • Awaiting Admin Verification</span>
-                              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform text-amber-400" />
+                              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform text-amber-700" />
                             </Link>
                           ) : (
                             <Link 
