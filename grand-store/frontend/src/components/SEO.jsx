@@ -10,7 +10,7 @@ export default function SEO({
   url, 
   schema 
 }) {
-  const siteUrl = import.meta.env.VITE_FRONTEND_URL || 'https://grandstore.co.za';
+  const siteUrl = import.meta.env.VITE_FRONTEND_URL || 'https://grandstoreglobal.com';
   const currentUrl = url ? (url.startsWith('http') ? url : `${siteUrl}${url}`) : siteUrl;
   const canonicalUrl = currentUrl.split('?')[0];
 

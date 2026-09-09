@@ -144,6 +144,7 @@ import GlossaryPage from './pages/GlossaryPage'
 import OffersPage from './pages/OffersPage'
 import WinePairingTool from './features/tools/WinePairingTool'
 import WhiskyFinder from './features/tools/WhiskyFinder'
+import CollectionLandingPage from './features/shop/CollectionLandingPage'
 import AdminGlossary from './features/admin/AdminGlossary'
 import AdminNewsletter from './features/admin/AdminNewsletter'
 import AdminChatbot from './features/admin/AdminChatbot'
@@ -698,9 +699,14 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-        {/* Tools & Finders */}
+        {/* Tools & Finders - Base & Deep-Linked SEO Routes */}
         <Route path="/tools/wine-pairing" element={<WinePairingTool onAdd={addToCart} onWish={handleWishlist} onCompare={addToCompare} compareItems={compareItems} />} />
+        <Route path="/tools/wine-pairing/:mealType" element={<WinePairingTool onAdd={addToCart} onWish={handleWishlist} onCompare={addToCompare} compareItems={compareItems} />} />
         <Route path="/tools/whisky-finder" element={<WhiskyFinder onAdd={addToCart} onWish={handleWishlist} onCompare={addToCompare} compareItems={compareItems} />} />
+        <Route path="/tools/whisky-finder/:flavorProfile" element={<WhiskyFinder onAdd={addToCart} onWish={handleWishlist} onCompare={addToCompare} compareItems={compareItems} />} />
+
+        {/* Curated 'Best Of' Collections (Section 5 SEO) */}
+        <Route path="/collections/:slug" element={<CollectionLandingPage onAdd={addToCart} onWish={handleWishlist} onCompare={addToCompare} compareItems={compareItems} />} />
         
         {/* Global Wines */}
         <Route path="/global-wines" element={<GlobalWinesPage />} />

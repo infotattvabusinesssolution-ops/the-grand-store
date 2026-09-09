@@ -1,4 +1,37 @@
 User-agent: *
+# Allow public catalog and discovery pages
 Allow: /
+Allow: /shop
+Allow: /collections/
+Allow: /tools/
+Allow: /product/
+Allow: /global-wines
+Allow: /winefarm
+Allow: /events
+Allow: /auction
+Allow: /blogs
+Allow: /glossary
+Allow: /about
+Allow: /cocktail
 
-Sitemap: https://grandstore.co.za/sitemap.xml
+# Disallow private administration, vendor, and customer panels
+Disallow: /admin/
+Disallow: /admin-login
+Disallow: /vendor/
+Disallow: /vendor-portal
+Disallow: /customer/
+
+# Disallow transactional and auth flows (crawl budget preservation)
+Disallow: /checkout
+Disallow: /cart
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password/
+Disallow: /verify-email
+
+# Disallow internal backend APIs
+Disallow: /api/
+
+# Sitemap directive pointing to your official production domain
+Sitemap: https://grandstoreglobal.com/sitemap.xml

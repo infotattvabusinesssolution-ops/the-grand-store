@@ -8,7 +8,6 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const mongoSanitize = require("express-mongo-sanitize");
 const xssClean = require("xss-clean");
 const cookieParser = require("cookie-parser");
 const authRoutes = require("./routes/authRoutes");
@@ -86,10 +85,9 @@ app.use(helmet({
   crossOriginResourcePolicy: false,
 }));
 
-// Sanitize MongoDB data (prevent NoSQL injection)
-// NOTE: express-mongo-sanitize is currently disabled because it crashes on Express 5.x 
-// due to trying to mutate the read-only req.query getter.
-// app.use(mongoSanitize());
+// Sanitize MongoDB data (Express 5.x compatible NoSQL injection protection)
+const mongoSanitizeExpress5 = require("./middleware/mongoSanitizeExpress5");
+app.use(mongoSanitizeExpress5);
 
 // Global Rate Limiter
 const globalLimiter = rateLimit({
@@ -192,6 +190,11 @@ app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/advertisements", require("./routes/advertisementRoutes"));
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/notifications', require("./routes/notificationRoutes"));
+
+// Sitemap endpoints (Dynamic XML for Google and crawlers)
+const sitemapRoutes = require("./routes/sitemapRoutes");
+app.use("/", sitemapRoutes); // Serves /sitemap.xml at root
+app.use("/api/sitemap.xml", sitemapRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
