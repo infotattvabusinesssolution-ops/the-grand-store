@@ -1,5 +1,6 @@
 const EstateProfile = require('../models/EstateProfile');
 const Product = require('../models/Product');
+const mongoose = require('mongoose');
 
 // ─── Helper: build slug from estate name ─────────────────────────────────────
 const slugify = (text) =>
@@ -18,11 +19,19 @@ exports.listEstates = async (req, res) => {
   }
 };
 
-// ─── PUBLIC: Get single estate by slug ───────────────────────────────────────
+// ─── PUBLIC: Get single estate by slug or ID ─────────────────────────────────
 // GET /api/estates/:slug
 exports.getEstate = async (req, res) => {
   try {
-    const estate = await EstateProfile.findOne({ slug: req.params.slug, isPublished: true })
+    const slugOrId = req.params.slug;
+    let query = { slug: slugOrId, isPublished: true };
+    if (mongoose.Types.ObjectId.isValid(slugOrId)) {
+      query = {
+        $or: [{ slug: slugOrId }, { _id: slugOrId }],
+        isPublished: true,
+      };
+    }
+    const estate = await EstateProfile.findOne(query)
       .populate('vendorId', 'name email')
       .lean();
     if (!estate) return res.status(404).json({ message: 'Estate not found' });

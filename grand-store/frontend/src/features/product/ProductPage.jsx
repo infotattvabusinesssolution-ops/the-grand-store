@@ -205,37 +205,84 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   // Format price
   const formattedPrice = Number(product.price).toFixed(2);
 
-  // Define Product Schema for SEO
+  // Define Product & Breadcrumb Schema for SEO (@graph format)
+  const productCanonicalUrl = `https://grandstoreglobal.com/product/${product.slug || product._id}`;
+  const categoryCanonicalUrl = `https://grandstoreglobal.com/shop?category=${encodeURIComponent(categoryLabel)}`;
+
   const productSchema = {
     "@context": "https://schema.org",
-    "@type": "Product",
-    name: product.fullName || product.name,
-    image: resolveImageUrl(product.image),
-    description:
-      product.description || `Buy ${product.name} at The Grand Store.`,
-    sku: product.sku || product._id,
-    brand: {
-      "@type": "Brand",
-      name: product.brand || "The Grand Store",
-    },
-    offers: {
-      "@type": "Offer",
-      url: typeof window !== "undefined" ? window.location.href : "",
-      priceCurrency: "ZAR",
-      price: product.price,
-      availability:
-        product.stock === 0
-          ? "https://schema.org/OutOfStock"
-          : "https://schema.org/InStock",
-      itemCondition: "https://schema.org/NewCondition",
-    },
-    additionalProperty: identityItems
-      .filter((item) => item.value)
-      .map((item) => ({
-        "@type": "PropertyValue",
-        name: item.label,
-        value: item.value,
-      })),
+    "@graph": [
+      {
+        "@type": "Product",
+        "@id": `${productCanonicalUrl}#product`,
+        name: product.fullName || product.name,
+        image: resolveImageUrl(product.image),
+        description:
+          product.description || `Buy ${product.name} at The Grand Store.`,
+        sku: product.sku || product._id,
+        brand: {
+          "@type": "Brand",
+          name: product.brand || "The Grand Store",
+        },
+        offers: {
+          "@type": "Offer",
+          url: productCanonicalUrl,
+          priceCurrency: currency || "ZAR",
+          price: product.price,
+          priceValidUntil: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+          availability:
+            product.stock === 0
+              ? "https://schema.org/OutOfStock"
+              : "https://schema.org/InStock",
+          itemCondition: "https://schema.org/NewCondition",
+          seller: {
+            "@type": "Organization",
+            name: "The Grand Store",
+          },
+        },
+        ...(reviewSummary?.reviewCount > 0
+          ? {
+              aggregateRating: {
+                "@type": "AggregateRating",
+                ratingValue: Number(reviewSummary.averageRating).toFixed(1),
+                reviewCount: reviewSummary.reviewCount,
+                bestRating: "5",
+                worstRating: "1",
+              },
+            }
+          : {}),
+        additionalProperty: identityItems
+          .filter((item) => item.value)
+          .map((item) => ({
+            "@type": "PropertyValue",
+            name: item.label,
+            value: item.value,
+          })),
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: "https://grandstoreglobal.com",
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: categoryLabel,
+            item: categoryCanonicalUrl,
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: product.fullName || product.name,
+            item: productCanonicalUrl,
+          },
+        ],
+      },
+    ],
   };
 
   return (

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Filter, Search, X, Wine } from 'lucide-react';
 import { useProducts } from '../../context/ProductContext';
 import ProductCard from '../../components/ProductCard';
+import SEO from '../../components/SEO';
 
 const countryDetails = {
   france: {
@@ -162,8 +163,61 @@ export default function CountryPavilionPage({ onAdd, onWish, onCompare, compareI
     return () => clearTimeout(timer);
   }, [country]);
 
+  const countrySchema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        '@id': `https://grandstoreglobal.com/global-wines/${cleanCountryKey}#webpage`,
+        url: `https://grandstoreglobal.com/global-wines/${cleanCountryKey}`,
+        name: `Wines of ${details.name} | Fine Wine Pavilion | The Grand Store`,
+        description: details.desc,
+        mainEntity: {
+          '@type': 'ItemList',
+          itemListElement: displayedWines.slice(0, 12).map((wine, idx) => ({
+            '@type': 'ListItem',
+            position: idx + 1,
+            url: `https://grandstoreglobal.com/product/${wine.slug || wine._id || wine.id}`,
+            name: wine.name
+          }))
+        }
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: 'https://grandstoreglobal.com'
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Global Wine Pavilions',
+            item: 'https://grandstoreglobal.com/global-wines'
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: details.name,
+            item: `https://grandstoreglobal.com/global-wines/${cleanCountryKey}`
+          }
+        ]
+      }
+    ]
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0907] pb-20 relative overflow-hidden">
+      <SEO
+        title={`Wines of ${details.name} | Luxury Wine Pavilion | The Grand Store`}
+        description={details.desc}
+        canonical={`https://grandstoreglobal.com/global-wines/${cleanCountryKey}`}
+        ogType="website"
+        image={details.image}
+        schema={countrySchema}
+      />
       {/* Subtle golden glow background behind products */}
       <div className="absolute top-[60vh] left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#c9a35b]/5 via-[#0a0907]/0 to-[#0a0907]/0 pointer-events-none rounded-full blur-3xl opacity-80" />
 

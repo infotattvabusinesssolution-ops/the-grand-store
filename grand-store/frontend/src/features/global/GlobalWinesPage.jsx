@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Globe, ChevronRight, ArrowRight } from 'lucide-react';
+import SEO from '../../components/SEO';
 
 const countries = [
   { name: 'France', code: 'FR', image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=2073&auto=format&fit=crop', desc: 'Bordeaux, Burgundy, Rhône Valley, Sauternes' },
@@ -19,8 +20,54 @@ const countries = [
 ];
 
 export default function GlobalWinesPage() {
+  const globalWinesSchema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        '@id': 'https://grandstoreglobal.com/global-wines#webpage',
+        url: 'https://grandstoreglobal.com/global-wines',
+        name: 'Global Wine Pavilions | International Fine Wine & Terroirs | The Grand Store',
+        description: 'Explore the world\'s finest wine terroirs through curated pavilions: France, Italy, Spain, South Africa, Napa Valley, Australia, and beyond.',
+        mainEntity: {
+          '@type': 'ItemList',
+          itemListElement: countries.map((c, idx) => ({
+            '@type': 'ListItem',
+            position: idx + 1,
+            url: `https://grandstoreglobal.com/global-wines/${c.name.toLowerCase().replace(/\\s+/g, '-')}`,
+            name: `Wines of ${c.name}`
+          }))
+        }
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: 'https://grandstoreglobal.com'
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Global Wine Pavilions',
+            item: 'https://grandstoreglobal.com/global-wines'
+          }
+        ]
+      }
+    ]
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0907] pb-20 relative overflow-hidden">
+      <SEO
+        title="Global Wine Pavilions | International Fine Wine & Terroirs | The Grand Store"
+        description="Explore the world's most prestigious terroirs through our curated international wine pavilions: Bordeaux, Tuscany, Rioja, Napa, Stellenbosch, and beyond."
+        canonical="https://grandstoreglobal.com/global-wines"
+        ogType="website"
+        schema={globalWinesSchema}
+      />
       {/* Massive subtle golden glow background */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#c9a35b]/10 via-[#0a0907]/0 to-[#0a0907]/0 pointer-events-none rounded-full blur-3xl opacity-60"></div>
       

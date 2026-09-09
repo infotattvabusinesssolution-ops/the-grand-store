@@ -36,6 +36,7 @@ import AppPromoSection from './features/home/components/AppPromoSection'
 import DownloadAppRedirect from './pages/DownloadAppRedirect'
 import Footer from './components/Footer'
 import CookieConsent from './components/CookieConsent'
+import SEO from './components/SEO'
 import VendorApprovalPopup from './features/vendor/VendorApprovalPopup'
 import SiteMotion from './components/SiteMotion'
 import ProductCard from './components/ProductCard'
@@ -133,6 +134,7 @@ import CheckoutPage from './features/checkout/CheckoutPage'
 import OrderSuccessPage from './features/checkout/OrderSuccessPage'
 import GlobalWinesPage from './features/global/GlobalWinesPage'
 import CountryPavilionPage from './features/global/CountryPavilionPage'
+import BrandLandingPage from './features/shop/BrandLandingPage'
 import VendorPaymentGate from './features/vendor/VendorPaymentGate'
 import CommunityPage from './pages/CommunityPage'
 import AboutPage from './pages/AboutPage'
@@ -210,6 +212,41 @@ import WishlistPage from "./WishlistPage";
 import { useWishlist } from "./wishlistContext";
 
 gsap.registerPlugin(ScrollTrigger);
+
+const homePageSchema = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': 'https://grandstoreglobal.com/#website',
+      'url': 'https://grandstoreglobal.com',
+      'name': 'The Grand Store',
+      'description': 'Premier Luxury Wines, Fine Spirits, Rare Whiskies & Estate Tastings Marketplace',
+      'potentialAction': {
+        '@type': 'SearchAction',
+        'target': {
+          '@type': 'EntryPoint',
+          'urlTemplate': 'https://grandstoreglobal.com/shop?search={search_term_string}'
+        },
+        'query-input': 'required name=search_term_string'
+      }
+    },
+    {
+      '@type': 'Organization',
+      '@id': 'https://grandstoreglobal.com/#organization',
+      'name': 'The Grand Store',
+      'url': 'https://grandstoreglobal.com',
+      'logo': {
+        '@type': 'ImageObject',
+        'url': 'https://grandstoreglobal.com/assets/logo.png'
+      },
+      'sameAs': [
+        'https://www.instagram.com/grandstoreglobal',
+        'https://www.facebook.com/grandstoreglobal'
+      ]
+    }
+  ]
+};
 
 function App() {
   const navigate = useNavigate();
@@ -457,6 +494,12 @@ function App() {
           path="/"
           element={
             <main className="home-page">
+              <SEO
+                title="The Grand Store — Luxury Wines, Rare Spirits & Estate Tastings"
+                description="Shop exceptional fine wines, rare single malt whiskies, premium spirits, and book private winery tastings from premier global estates."
+                url="/"
+                schema={homePageSchema}
+              />
               <AuctionWinnerHomeAlert />
               <Hero />
               <Arrivals
@@ -707,6 +750,10 @@ function App() {
 
         {/* Curated 'Best Of' Collections (Section 5 SEO) */}
         <Route path="/collections/:slug" element={<CollectionLandingPage onAdd={addToCart} onWish={handleWishlist} onCompare={addToCompare} compareItems={compareItems} />} />
+        
+        {/* Dedicated Brand & Distillery Landing Pages (Section 15 SEO) */}
+        <Route path="/brand/:slug" element={<BrandLandingPage onAdd={addToCart} onWish={handleWishlist} onCompare={addToCompare} compareItems={compareItems} />} />
+        <Route path="/brands/:slug" element={<BrandLandingPage onAdd={addToCart} onWish={handleWishlist} onCompare={addToCompare} compareItems={compareItems} />} />
         
         {/* Global Wines */}
         <Route path="/global-wines" element={<GlobalWinesPage />} />

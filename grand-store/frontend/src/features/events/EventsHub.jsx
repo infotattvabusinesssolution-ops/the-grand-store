@@ -49,7 +49,7 @@ const EventCard = ({ event }) => {
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#777066]">From</p>
             <p className="mt-1 font-serif text-2xl text-[#d8b76d]">{startingPrice === null ? 'Enquire' : <Price amount={startingPrice} />}</p>
           </div>
-          <Link to={`/events/${event._id}`} className="border border-[#c9a35b] bg-[#c9a35b] px-6 py-3 text-xs font-bold uppercase tracking-[0.16em] text-[#0b0a08] transition-colors hover:bg-[#e1bd70]">{phase === 'completed' ? 'View recap' : 'View event'}</Link>
+          <Link to={`/events/${event.slug || event._id}`} className="border border-[#c9a35b] bg-[#c9a35b] px-6 py-3 text-xs font-bold uppercase tracking-[0.16em] text-[#0b0a08] transition-colors hover:bg-[#e1bd70]">{phase === 'completed' ? 'View recap' : 'View event'}</Link>
         </div>
       </div>
     </article>

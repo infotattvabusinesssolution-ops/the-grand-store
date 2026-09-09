@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Price from '../../components/ui/Price';
 import { useParams, Link } from 'react-router-dom';
+import SEO from '../../components/SEO';
 import api from '../../api';
 import {
   MapPin, Phone, Mail, Globe, Heart,
@@ -86,8 +87,76 @@ export default function EstateDetail() {
     });
   }
 
+  const estateCanonicalUrl = `https://grandstoreglobal.com/estate/${estate.slug || slug}`;
+  const winerySchema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': ['Winery', 'LocalBusiness'],
+        '@id': `${estateCanonicalUrl}#winery`,
+        name: estate.estateName,
+        description: estate.tagline || story.headline || `Discover luxury wines and tastings at ${estate.estateName}, ${estate.region || 'South Africa'}.`,
+        image: estate.heroImageUrl || 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80',
+        url: estateCanonicalUrl,
+        ...(contact.phone ? { telephone: contact.phone } : {}),
+        ...(contact.email ? { email: contact.email } : {}),
+        ...(contact.website ? { sameAs: [contact.website] } : {}),
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: contact.address || estate.region || 'Stellenbosch',
+          addressRegion: estate.region || 'Western Cape',
+          addressCountry: estate.country || 'ZA'
+        },
+        makesOffer: products.map(p => ({
+          '@type': 'Offer',
+          name: p.fullName || p.name,
+          url: `https://grandstoreglobal.com/product/${p.slug || p.id || p._id}`,
+          price: p.price,
+          priceCurrency: 'ZAR',
+          availability: p.stock === 0 ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock'
+        })),
+        amenityFeature: [
+          ...(hospitality.hasTastings ? [{ '@type': 'LocationFeatureSpecification', name: 'Wine Tasting Room', value: true }] : []),
+          ...(hospitality.hasRestaurant ? [{ '@type': 'LocationFeatureSpecification', name: 'Restaurant & Dining', value: true }] : []),
+          ...(hospitality.hasAccommodation ? [{ '@type': 'LocationFeatureSpecification', name: 'Luxury Accommodation', value: true }] : [])
+        ]
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: 'https://grandstoreglobal.com'
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Wine Estates',
+            item: 'https://grandstoreglobal.com/winefarm'
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: estate.estateName,
+            item: estateCanonicalUrl
+          }
+        ]
+      }
+    ]
+  };
+
   return (
     <div className="min-h-screen font-sans bg-white">
+      <SEO
+        title={`${estate.estateName} — ${estate.region || 'Wine Estate'}, ${estate.country || 'South Africa'}`}
+        description={estate.tagline || story.headline || `Explore ${estate.estateName} in ${estate.region || 'South Africa'}. Browse award-winning wines, book cellar tastings, and order directly.`}
+        image={estate.heroImageUrl}
+        url={`/estate/${estate.slug || slug}`}
+        type="business.business"
+        schema={winerySchema}
+      />
       
       <section className="relative w-full h-screen overflow-hidden flex flex-col">
         
@@ -221,7 +290,7 @@ export default function EstateDetail() {
                 <div key={p._id} className="flex flex-col bg-white border border-ink/10 group h-full">
                   
                   {/* Top Image Area */}
-                  <Link to={`/product/${p.id || p._id}`} className="block w-full h-72 relative overflow-hidden bg-ink/5 p-4">
+                  <Link to={`/product/${p.slug || p.id || p._id}`} className="block w-full h-72 relative overflow-hidden bg-ink/5 p-4">
                     {p.image || p.images?.[0] ? (
                       <img 
                         src={`${API}${p.image || p.images[0]}`} 
@@ -238,7 +307,7 @@ export default function EstateDetail() {
                   {/* Content Area */}
                   <div className="p-6 md:p-8 flex flex-col flex-1">
                     <div className="flex justify-between items-start gap-4 mb-4">
-                      <Link to={`/product/${p.id || p._id}`}>
+                      <Link to={`/product/${p.slug || p.id || p._id}`}>
                         <h3 className="font-serif text-2xl text-ink font-medium hover:text-[#7b263c] transition-colors">
                           {p.name}
                         </h3>

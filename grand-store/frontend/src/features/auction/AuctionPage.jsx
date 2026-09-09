@@ -6,6 +6,7 @@ import AuctionLotCard from './AuctionLotCard';
 import AuctionCountdown from './AuctionCountdown';
 import LuxuryAuctionHero from './LuxuryAuctionHero';
 import Price from '../../components/ui/Price';
+import SEO from '../../components/SEO';
 import { getAuctionPhase, isPastAuctionPhase } from './auctionPhase';
 
 export default function AuctionPage({ onNotify }) {
@@ -72,8 +73,54 @@ export default function AuctionPage({ onNotify }) {
   // Get top 3 live lots to feature in the hero section
   const heroLots = visibleLots.slice(0, 3);
 
+  const auctionPageSchema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        '@id': 'https://grandstoreglobal.com/auction#webpage',
+        url: 'https://grandstoreglobal.com/auction',
+        name: 'Rare Whisky & Wine Auctions | The Grand Store Luxury Vault',
+        description: 'Bid on authenticated rare single malts, collectible spirits, and investment-grade fine wines in The Grand Store Luxury Auction Vault.',
+        mainEntity: {
+          '@type': 'ItemList',
+          itemListElement: visibleLots.slice(0, 10).map((lot, idx) => ({
+            '@type': 'ListItem',
+            position: idx + 1,
+            url: `https://grandstoreglobal.com/auction/${lot._id}`,
+            name: lot.title
+          }))
+        }
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: 'https://grandstoreglobal.com'
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Rare Auctions',
+            item: 'https://grandstoreglobal.com/auction'
+          }
+        ]
+      }
+    ]
+  };
+
   return (
     <main className="auction-page min-h-screen bg-[#050505] text-[#eee8dd] relative">
+      <SEO
+        title="Rare Whisky & Wine Auctions | The Grand Store Luxury Vault"
+        description="Explore live auctions for rare single malts, collectible spirits, and vintage investment wines with certified provenance and white-glove security."
+        canonical="https://grandstoreglobal.com/auction"
+        ogType="website"
+        schema={auctionPageSchema}
+      />
       <div className="w-full max-w-7xl mx-auto px-6 absolute top-6 left-0 right-0 z-50 pointer-events-none flex justify-start">
         <Link
           to="/"

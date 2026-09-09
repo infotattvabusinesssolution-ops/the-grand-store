@@ -2,6 +2,7 @@ import Price from '../../components/ui/Price';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api';
+import SEO from '../../components/SEO';
 import { 
   ChevronLeft, ShieldCheck, Clock, History, AlertCircle, ArrowRight, 
   Play, Video, Film, Image as ImageIcon, Crown, ChevronDown, Check, 
@@ -62,6 +63,7 @@ export default function AuctionLotDetail({ onNotify }) {
   const [lastBidAmount, setLastBidAmount] = useState(0);
   const [showCelebrationModal, setShowCelebrationModal] = useState(false);
   const [downloadingCert, setDownloadingCert] = useState(false);
+  const [vaultRecommendations, setVaultRecommendations] = useState([]);
   const shouldCelebrate = searchParams.get('celebrate') === 'true';
 
   const { currency, rates, changeCurrency, availableCurrencies } = useCurrency();
@@ -123,6 +125,20 @@ export default function AuctionLotDetail({ onNotify }) {
   useEffect(() => {
     fetchLot();
     fetchBidderProfile();
+
+    const fetchVaultRecs = async () => {
+      try {
+        const res = await api.get('/products');
+        const prods = Array.isArray(res.data) ? res.data : (res.data?.products || []);
+        if (prods && prods.length > 0) {
+          setVaultRecommendations(prods.slice(0, 4));
+        }
+      } catch (e) {
+        console.warn('Could not load vault recommendations:', e);
+      }
+    };
+    fetchVaultRecs();
+
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     const interval = setInterval(fetchLot, 5000);
 
@@ -351,8 +367,66 @@ export default function AuctionLotDetail({ onNotify }) {
   const isRestrictedRole = user?.role === 'admin' || user?.role === 'vendor_active';
   const targetTime = isUpcoming && lot?.startDate ? new Date(lot.startDate).getTime() : new Date(lot.endDate).getTime();
 
+  const currentValuation = hasEnded && lot.winningBid ? lot.winningBid : (lot.currentBid || lot.startingBid || 0);
+
+  const auctionSchema = lot ? {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Product',
+        '@id': `https://grandstoreglobal.com/auction/${id}#product`,
+        name: lot.title,
+        description: lot.description || `${lot.title} - Rare collectible lot at The Grand Store Auction Vault.`,
+        image: (lot.images && lot.images.length > 0) ? lot.images : (lot.image ? [lot.image] : []),
+        sku: lot.bottleNumber ? `LOT-${lot.bottleNumber}` : `LOT-${lot._id}`,
+        category: lot.category || 'Fine Spirits & Wine Auctions',
+        offers: {
+          '@type': 'Offer',
+          url: `https://grandstoreglobal.com/auction/${id}`,
+          priceCurrency: 'ZAR',
+          price: currentValuation,
+          availability: hasEnded ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
+          validThrough: lot.endDate ? new Date(lot.endDate).toISOString() : undefined,
+          priceValidUntil: lot.endDate ? new Date(lot.endDate).toISOString() : undefined,
+          itemCondition: 'https://schema.org/NewCondition'
+        }
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: 'https://grandstoreglobal.com'
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Auction Vault',
+            item: 'https://grandstoreglobal.com/auction'
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: lot.title,
+            item: `https://grandstoreglobal.com/auction/${id}`
+          }
+        ]
+      }
+    ]
+  } : null;
+
   return (
     <main className="min-h-screen bg-[#050505] text-[var(--color-ivory)] font-sans">
+      <SEO
+        title={`${lot.title} | Rare Whisky & Wine Auction | The Grand Store`}
+        description={lot.description ? lot.description.slice(0, 160) : `Bid on rare collectible lot ${lot.title} at The Grand Store Auction Vault.`}
+        canonical={`https://grandstoreglobal.com/auction/${id}`}
+        ogType="product"
+        image={lot.images?.[0] || lot.image}
+        schema={auctionSchema}
+      />
       
       {/* Top Navigation Bar */}
       <nav className="w-full border-b border-white/[0.05] bg-[#050505] sticky top-0 z-50 px-8 py-6 flex items-center justify-between">
@@ -896,13 +970,67 @@ export default function AuctionLotDetail({ onNotify }) {
                           </div>
                         </div>
                       </div>
-                    ) : lot.status === 'sold' ? (
-                      <div className="border border-white/10 p-8 text-center bg-black/40">
-                        <h3 className="text-lg font-serif text-white mb-2">Auction Closed</h3>
-                        <p className="text-sm font-light">This lot has been sold. You were outbid or did not participate.</p>
+                    ) : (lot.status === 'sold' || hasEnded) ? (
+                      <div className="space-y-6">
+                        <div className="border border-white/10 p-6 bg-black/40 rounded-2xl">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-lg font-serif text-white">Historical Benchmark & Valuation</h3>
+                            <span className="text-[10px] uppercase tracking-widest px-2.5 py-1 rounded bg-[#c9a35b]/20 text-[#f5d77f] font-bold font-mono">
+                              {lot.status === 'sold' ? 'Sold at Auction' : 'Auction Concluded'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[var(--color-ivory-muted)] font-light mb-4 leading-relaxed">
+                            This singular lot has concluded. The recorded valuation serves as a certified collectible price guide reference.
+                          </p>
+                          <div className="p-3 bg-white/[0.03] border border-white/5 rounded-xl flex items-center justify-between text-xs font-mono">
+                            <span className="text-white/60">Final Valuation / Hammer:</span>
+                            <span className="text-[var(--color-gold)] font-bold text-base">
+                              <Price amount={lot.winningBid || lot.currentBid || lot.startingBid || 0} />
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* In-stock retail recommendation shelf for ended lots */}
+                        {vaultRecommendations.length > 0 && (
+                          <div className="p-6 border border-white/10 bg-white/[0.01] rounded-2xl">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <p className="text-[9px] uppercase tracking-widest text-gold-gradient font-bold">In-Stock Allocations</p>
+                                <h4 className="text-base font-serif text-white">Available in Our Luxury Vault</h4>
+                              </div>
+                              <Link to="/shop" className="text-[10px] uppercase tracking-widest text-[var(--color-gold)] hover:underline flex items-center gap-1 font-bold">
+                                Browse Store <ArrowRight size={12} />
+                              </Link>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              {vaultRecommendations.map((prod) => (
+                                <Link
+                                  key={prod._id || prod.id}
+                                  to={`/product/${prod.slug || prod.id || prod._id}`}
+                                  className="group p-3 bg-black/50 hover:bg-white/[0.04] border border-white/5 hover:border-[var(--color-gold)]/40 rounded-xl transition-all block"
+                                >
+                                  <div className="h-24 w-full flex items-center justify-center p-1 mb-2 bg-white/[0.02] rounded-lg overflow-hidden">
+                                    <img 
+                                      src={prod.image || prod.images?.[0] || '/assets/placeholder-bottle.png'} 
+                                      alt={prod.name} 
+                                      className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
+                                      loading="lazy"
+                                    />
+                                  </div>
+                                  <h5 className="text-[11px] font-medium text-white line-clamp-1 group-hover:text-[var(--color-gold)] transition-colors">
+                                    {prod.name}
+                                  </h5>
+                                  <p className="text-[11px] text-[var(--color-gold)] font-mono font-bold mt-1">
+                                    <Price amount={prod.price || 0} />
+                                  </p>
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : lot.status === 'unsold' ? (
-                      <div className="border border-white/[0.05] p-6 flex flex-col gap-4 text-[var(--color-ivory-muted)] bg-white/[0.02]">
+                      <div className="border border-white/[0.05] p-6 flex flex-col gap-4 text-[var(--color-ivory-muted)] bg-white/[0.02] rounded-xl">
                         <h3 className="text-lg font-serif text-white mb-2">Auction Closed</h3>
                         <p className="text-sm font-light">This lot did not meet its reserve or received no bids. (Unsold)</p>
                       </div>

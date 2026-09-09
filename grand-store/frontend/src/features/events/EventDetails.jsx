@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import SEO from '../../components/SEO';
 import api from '../../api';
 import { Calendar, MapPin, Clock, Users, Tag, Check, ArrowLeft, ShoppingBag, ChevronRight, CreditCard, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -51,7 +52,8 @@ export default function EventDetails({ onNotify, onAdd }) {
     
     setWaitlistLoading(true);
     try {
-      const res = await api.post(`/events/${id}/waitlist`);
+      const targetId = event?._id || id;
+      const res = await api.post(`/events/${targetId}/waitlist`);
       
       if (onNotify) onNotify(res.data.message || 'Successfully joined the waitlist!');
     } catch (error) {
@@ -77,7 +79,8 @@ export default function EventDetails({ onNotify, onAdd }) {
     setBookingLoading(true);
     try {
       // 1. Create Pending Booking
-      const res = await api.post(`/events/${id}/book`, {
+      const targetId = event?._id || id;
+      const res = await api.post(`/events/${targetId}/book`, {
         ticketTierId: selectedTicket._id,
         ticketType: selectedTicket.name,
         quantity,
@@ -119,8 +122,89 @@ export default function EventDetails({ onNotify, onAdd }) {
   const phase = getEventPhase(event);
   const bookable = isEventBookable(event);
 
+  const eventCanonicalUrl = `https://grandstoreglobal.com/events/${event.slug || event._id || id}`;
+  const eventSchema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Event',
+        '@id': `${eventCanonicalUrl}#event`,
+        name: event.title,
+        description: event.description,
+        image: resolveEventImage(event.image),
+        startDate: event.date ? `${new Date(event.date).toISOString().split('T')[0]}T${event.startTime || '18:00'}:00` : undefined,
+        endDate: event.date ? `${new Date(event.date).toISOString().split('T')[0]}T${event.endTime || '22:00'}:00` : undefined,
+        eventStatus: event.status === 'cancelled'
+          ? 'https://schema.org/EventCancelled'
+          : 'https://schema.org/EventScheduled',
+        eventAttendanceMode: event.format === 'Virtual'
+          ? 'https://schema.org/OnlineEventAttendanceMode'
+          : (event.format === 'Hybrid' ? 'https://schema.org/MixedEventAttendanceMode' : 'https://schema.org/OfflineEventAttendanceMode'),
+        location: event.format === 'Virtual' ? {
+          '@type': 'VirtualLocation',
+          url: 'https://grandstoreglobal.com'
+        } : {
+          '@type': 'Place',
+          name: event.location || 'The Grand Store Tasting Cellar',
+          address: {
+            '@type': 'PostalAddress',
+            addressLocality: event.city || 'South Africa',
+            addressCountry: 'ZA'
+          }
+        },
+        organizer: {
+          '@type': 'Organization',
+          name: event.hostName || 'The Grand Store',
+          url: 'https://grandstoreglobal.com'
+        },
+        offers: event.ticketTiers?.map(tier => ({
+          '@type': 'Offer',
+          name: tier.name,
+          price: tier.price,
+          priceCurrency: 'ZAR',
+          availability: (tier.quantity - (tier.sold || 0)) > 0
+            ? 'https://schema.org/InStock'
+            : 'https://schema.org/SoldOut',
+          validFrom: new Date().toISOString(),
+          url: eventCanonicalUrl
+        }))
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: 'https://grandstoreglobal.com'
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Events & Tastings',
+            item: 'https://grandstoreglobal.com/events'
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: event.title,
+            item: eventCanonicalUrl
+          }
+        ]
+      }
+    ]
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0907] pb-20 text-[#eee8dd]">
+      <SEO
+        title={`${event.title} — Events & Tastings`}
+        description={event.description?.substring(0, 160) || `Book tickets for ${event.title} at The Grand Store.`}
+        image={resolveEventImage(event.image)}
+        url={`/events/${event.slug || event._id || id}`}
+        type="event"
+        schema={eventSchema}
+      />
       {/* Hero Section */}
       <div className="relative h-[60vh] w-full">
         {event.image ? (

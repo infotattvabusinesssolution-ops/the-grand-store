@@ -145,21 +145,34 @@ const getEvents = async (_req, res) => {
 
 const getEventById = async (req, res) => {
   try {
-    const event = await Event.findOne({
-      _id: req.params.id,
+    const idOrSlug = req.params.id;
+    const query = {
       approvalStatus: "approved",
       status: { $ne: "cancelled" },
-    }).populate("vendorId", "name vendorProfile").populate("tastingProducts").lean();
+    };
+
+    if (mongoose.Types.ObjectId.isValid(idOrSlug)) {
+      query.$or = [{ _id: idOrSlug }, { slug: idOrSlug }];
+    } else {
+      query.slug = idOrSlug;
+    }
+
+    const event = await Event.findOne(query)
+      .populate("vendorId", "name vendorProfile")
+      .populate("tastingProducts")
+      .lean();
     if (!event) return res.status(404).json({ message: "Event not found" });
 
     if (event.vendorId?._id) {
       const EstateProfile = require("../models/EstateProfile");
-      const estate = await EstateProfile.findOne({ vendor: event.vendorId._id }).select("slug");
+      const estate = await EstateProfile.findOne({
+        $or: [{ vendorId: event.vendorId._id }, { vendor: event.vendorId._id }]
+      }).select("slug");
       if (estate) event.vendorSlug = estate.slug;
     }
     return res.json(withDerivedStatus(event));
   } catch (error) {
-    console.error("Error fetching event by ID:", error);
+    console.error("Error fetching event by ID or slug:", error);
     return res.status(500).json({ message: "Server error fetching event" });
   }
 };
