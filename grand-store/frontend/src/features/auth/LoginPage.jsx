@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { 
-  ArrowLeft, Lock, Mail, Eye, EyeOff, Smartphone, 
-  ShieldCheck, Sparkles, RefreshCw
+  Lock, Mail, Eye, EyeOff, Smartphone, 
+  Sparkles, RefreshCw
 } from 'lucide-react';
 import { auth, googleProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber } from '../../firebase';
 import CountryCodeSelect from '../../components/CountryCodeSelect';
@@ -261,45 +261,19 @@ export default function LoginPage() {
 
       {/* RIGHT COLUMN: Sculpted Obsidian & Gold Authentication Sanctuary           */}
       {/* ========================================================================= */}
-      <div className="col-span-1 lg:col-span-6 xl:col-span-5 h-screen max-h-screen bg-[#070605] overflow-y-auto p-4 sm:p-6 lg:p-8 xl:p-10 flex flex-col justify-between relative scrollbar-thin scrollbar-thumb-stone-800">
+      <div className="col-span-1 lg:col-span-6 xl:col-span-5 h-screen max-h-screen bg-[#070605] overflow-y-auto px-4 py-5 sm:px-6 lg:px-7 flex flex-col justify-center relative scrollbar-none">
         
-        {/* Top Header Row with Official Grand Store Logo (Clean Single-Line Brand Mark) */}
-        <div className="flex items-center justify-between mb-2">
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <img 
-              src="/logo.png" 
-              alt="The Grand Store" 
-              className="h-9 sm:h-10 w-auto max-w-[140px] sm:max-w-[165px] object-contain transition-transform duration-300 group-hover:scale-105"
-            />
-            <div className="hidden sm:flex flex-col border-l border-[#c9a35b]/30 pl-2.5">
-              <span className="text-[9.5px] font-mono uppercase tracking-[0.2em] text-[#c9a35b] font-bold whitespace-nowrap">
-                Member Vault
-              </span>
-              <span className="text-[8px] text-stone-400 font-light whitespace-nowrap">
-                Private Client Portal
-              </span>
-            </div>
-          </Link>
-
-          <Link 
-            to="/" 
-            className="inline-flex items-center gap-1.5 text-stone-400 hover:text-white text-xs font-medium transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full border border-white/10"
-          >
-            <ArrowLeft size={12} className="text-[#c9a35b]" /> Return to Store
-          </Link>
-        </div>
-
-        {/* Sculpted Obsidian & Gold Card Shell (Balanced Height for 730px Viewport) */}
-        <div className="w-full max-w-md mx-auto my-auto relative py-1">
+        {/* Sculpted Obsidian & Gold Card Shell (Expanded Width & Balanced Height) */}
+        <div className="w-full max-w-xl mx-auto my-auto relative">
           {/* Molten Gold Back-Halo behind card */}
-          <div className="absolute -top-6 -left-6 w-56 h-56 rounded-full bg-[#c9a35b]/10 blur-[80px] pointer-events-none" />
-          <div className="absolute -bottom-6 -right-6 w-56 h-56 rounded-full bg-[#d4af37]/10 blur-[80px] pointer-events-none" />
+          <div className="absolute -top-6 -left-6 w-64 h-64 rounded-full bg-[#c9a35b]/10 blur-[90px] pointer-events-none" />
+          <div className="absolute -bottom-6 -right-6 w-64 h-64 rounded-full bg-[#d4af37]/10 blur-[90px] pointer-events-none" />
 
-          <div className="relative bg-gradient-to-b from-[#110e0a]/95 via-[#0a0806]/95 to-[#060504] border border-[#c9a35b]/30 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(201,163,91,0.06)] backdrop-blur-2xl rounded-2xl p-5 sm:p-6 xl:p-7">
+          <div className="relative bg-gradient-to-b from-[#110e0a]/95 via-[#0a0806]/95 to-[#060504] border border-[#c9a35b]/30 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(201,163,91,0.06)] backdrop-blur-2xl rounded-2xl p-6 sm:p-8">
             
             {/* Card Header */}
             <div className="mb-4">
-              <h1 className="text-xl sm:text-2xl font-serif font-bold text-white tracking-tight">
+              <h1 className="text-2xl sm:text-[26px] font-serif font-bold text-white tracking-tight">
                 Log in to The Grand Store<span className="text-[#c9a35b]">.</span>
               </h1>
               <p className="text-xs text-stone-400 mt-1 font-light leading-relaxed">

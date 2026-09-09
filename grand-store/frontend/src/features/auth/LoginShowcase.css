@@ -55,12 +55,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 20px;
+  padding-top: 14px;
 }
 
 .login-showcase__brand {
   display: block;
   width: clamp(170px, 16vw, 230px);
   flex-shrink: 0;
+  transform: translateY(4px);
 }
 
 .login-showcase__brand img { display: block; width: 100%; height: auto; }
