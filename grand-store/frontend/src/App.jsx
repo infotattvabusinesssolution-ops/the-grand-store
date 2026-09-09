@@ -130,6 +130,7 @@ import AdvertisedProductDetail from './features/advertisement/AdvertisedProductD
 import AccessoriesPage from './features/shop/AccessoriesPage'
 import VendorMarketing from './features/vendor/VendorMarketing'
 import VendorAcademy from './features/vendor/VendorAcademy'
+import AdminVendorAcademy from './features/admin/AdminVendorAcademy'
 import CheckoutPage from './features/checkout/CheckoutPage'
 import OrderSuccessPage from './features/checkout/OrderSuccessPage'
 import GlobalWinesPage from './features/global/GlobalWinesPage'
@@ -831,6 +832,7 @@ function App() {
           <Route path="vendors" element={<AdminVendors />} />
           <Route path="vendors/:id" element={<AdminVendorDetail />} />
           <Route path="coupons" element={<AdminCoupons />} />
+          <Route path="academy" element={<AdminVendorAcademy />} />
           <Route path="expert-reviews" element={<AdminExpertReviews />} />
           <Route path="accessories" element={<AdminAccessories />} />
           <Route path="testimonials" element={<AdminTestimonials />} />

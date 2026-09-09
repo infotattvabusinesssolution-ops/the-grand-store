@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Navigate, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, Gavel, Wallet, Settings, Menu, X, LogOut, ArrowLeft, Star, Package, ShoppingBag, Tv, Mail, Activity, Briefcase, Shield, Gem, Award, MessageSquare, Bot, CalendarCheck, Tag, Layers, Flame, UserCheck } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Gavel, Wallet, Settings, Menu, X, LogOut, ArrowLeft, Star, Package, ShoppingBag, Tv, Mail, Activity, Briefcase, Shield, Gem, Award, MessageSquare, Bot, CalendarCheck, Tag, Layers, Flame, UserCheck, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AdminLayout() {
@@ -105,6 +105,9 @@ export default function AdminLayout() {
                 </button>
                 <button onClick={() => handleNavigate('/admin/coupons')} className={navItemClass('/admin/coupons')}>
                   <Tag size={16} /> Vendor Coupons
+                </button>
+                <button onClick={() => handleNavigate('/admin/academy')} className={navItemClass('/admin/academy')}>
+                  <GraduationCap size={16} /> Vendor Academy
                 </button>
                 <button onClick={() => handleNavigate('/admin/newsletter')} className={navItemClass('/admin/newsletter')}>
                   <Mail size={16} /> Newsletter Subscribers

@@ -10,6 +10,17 @@ export default function VendorLayout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [vendorData, setVendorData] = useState(null);
+  const [academyConfig, setAcademyConfig] = useState(null);
+
+  React.useEffect(() => {
+    import('../../api').then(({ default: api }) => {
+      api.get('/academy')
+        .then((res) => {
+          if (res.data?.config) setAcademyConfig(res.data.config);
+        })
+        .catch(() => {});
+    });
+  }, []);
 
   React.useEffect(() => {
     if (user?.role === 'vendor_approved_unpaid') {
@@ -163,9 +174,20 @@ export default function VendorLayout() {
             <button onClick={() => handleNavigate('/vendor/marketing')} className={navItemClass('/vendor/marketing')}>
               <Megaphone size={16} /> Marketing Centre
             </button>
-            <button onClick={() => handleNavigate('/vendor/academy')} className={navItemClass('/vendor/academy')}>
-              <GraduationCap size={16} /> Vendor Academy
-            </button>
+            {academyConfig?.isEnabled !== false && (
+              <button onClick={() => handleNavigate('/vendor/academy')} className={navItemClass('/vendor/academy')}>
+                <div className="flex items-center justify-between w-full">
+                  <span className="flex items-center gap-4">
+                    <GraduationCap size={16} /> {academyConfig?.sidebarLabel || 'Vendor Academy'}
+                  </span>
+                  {academyConfig?.sidebarBadge && (
+                    <span className="px-1.5 py-0.5 rounded bg-[#c9a35b] text-black text-[9px] font-bold uppercase tracking-wider">
+                      {academyConfig.sidebarBadge}
+                    </span>
+                  )}
+                </div>
+              </button>
+            )}
             <div className="mt-6 pt-6 border-t border-white/[0.05]">
               <button onClick={() => handleNavigate('/vendor/shipping')} className={navItemClass('/vendor/shipping')}>
                 <Truck size={16} /> Shipping Profile

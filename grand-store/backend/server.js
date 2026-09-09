@@ -190,6 +190,7 @@ app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/advertisements", require("./routes/advertisementRoutes"));
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/notifications', require("./routes/notificationRoutes"));
+app.use('/api/academy', require("./routes/vendorAcademyRoutes"));
 
 // Sitemap endpoints (Dynamic XML for Google and crawlers)
 const sitemapRoutes = require("./routes/sitemapRoutes");
