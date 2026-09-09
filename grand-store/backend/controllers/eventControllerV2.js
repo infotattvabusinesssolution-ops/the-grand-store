@@ -814,16 +814,39 @@ const generateTicketPdf = async ({ booking, event, user, qrDataUrl }) => {
   doc.setLineWidth(0.4);
   doc.rect(13, 13, 184, 271);
 
-  // Header Title
-  doc.setTextColor(201, 163, 91);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.text("THE GRAND STORE", 105, 32, { align: "center" });
+  // Header Brand Logo at Top
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const possibleLogoPaths = [
+      path.join(__dirname, "../assets/logo.png"),
+      path.join(__dirname, "../assets/grand-store-email-lockup.png"),
+      path.join(__dirname, "../../frontend/public/logo.png"),
+    ];
+    const logoPath = possibleLogoPaths.find((p) => fs.existsSync(p));
+    if (logoPath) {
+      const logoBuffer = fs.readFileSync(logoPath);
+      const logoBase64 = logoBuffer.toString("base64");
+      // Center logo: 65mm wide, 20.6mm high at y = 17mm
+      doc.addImage(`data:image/png;base64,${logoBase64}`, "PNG", 72.5, 17, 65, 20.6, "BRAND_LOGO", "FAST");
+    } else {
+      doc.setTextColor(201, 163, 91);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.text("THE GRAND STORE", 105, 30, { align: "center" });
+    }
+  } catch (logoErr) {
+    console.warn("Could not embed logo in ticket PDF:", logoErr.message);
+    doc.setTextColor(201, 163, 91);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text("THE GRAND STORE", 105, 30, { align: "center" });
+  }
 
-  doc.setFontSize(10);
-  doc.setTextColor(180, 180, 180);
-  doc.setFont("helvetica", "normal");
-  doc.text("OFFICIAL VIP CELLAR ACCESS PASS", 105, 40, { align: "center" });
+  doc.setFontSize(9.5);
+  doc.setTextColor(190, 170, 130);
+  doc.setFont("helvetica", "bold");
+  doc.text("OFFICIAL VIP CELLAR ACCESS PASS", 105, 41, { align: "center" });
 
   // Gold divider
   doc.setDrawColor(201, 163, 91);
