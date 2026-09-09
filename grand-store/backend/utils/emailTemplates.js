@@ -1,4 +1,4 @@
-const { EMAIL_LOGO_CID } = require('./emailBranding');
+const { emailLogoHeader } = require('./emailBranding');
 
 const BRAND_COLOR_GOLD = '#c9a35b';
 const BRAND_COLOR_DARK = '#050505';
@@ -7,7 +7,6 @@ const BRAND_COLOR_LIGHT = '#f5f5f5';
 const formatRand = (amount) => `R ${Number(amount || 0).toFixed(2)}`;
 
 const generateEmailTemplate = (title, content) => {
-  const logoUrl = `cid:${EMAIL_LOGO_CID}`;
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -29,24 +28,6 @@ const generateEmailTemplate = (title, content) => {
       margin: 0 auto;
       background-color: #0a0a0a;
       border: 1px solid #222;
-    }
-    .header {
-      padding: 32px 20px;
-      text-align: center;
-      background-color: ${BRAND_COLOR_DARK};
-      border-bottom: 2px solid ${BRAND_COLOR_GOLD};
-    }
-    .logo {
-      font-family: 'Times New Roman', Times, serif;
-      font-size: 24px;
-      font-weight: bold;
-      color: ${BRAND_COLOR_LIGHT};
-      text-transform: uppercase;
-      letter-spacing: 4px;
-      margin: 0;
-    }
-    .logo-gold {
-      color: ${BRAND_COLOR_GOLD};
     }
     .content {
       padding: 35px 25px;
@@ -110,20 +91,7 @@ const generateEmailTemplate = (title, content) => {
 </head>
 <body>
   <div class="email-container">
-    <div class="header">
-      <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto; text-align: center;">
-        <tr>
-          <td align="center" valign="middle" style="padding-right: 14px;">
-            <img src="${logoUrl}" alt="The Grand Store" width="52" height="52" style="display: inline-block; vertical-align: middle; border: 0; border-radius: 50%; width: 52px; height: 52px; outline: none;" />
-          </td>
-          <td align="left" valign="middle">
-            <span class="logo" style="font-family: 'Times New Roman', Times, serif; font-size: 24px; font-weight: bold; color: ${BRAND_COLOR_LIGHT}; text-transform: uppercase; letter-spacing: 4px; display: inline-block; vertical-align: middle;">
-              The <span class="logo-gold" style="color: ${BRAND_COLOR_GOLD};">Grand</span> Store
-            </span>
-          </td>
-        </tr>
-      </table>
-    </div>
+    ${emailLogoHeader()}
     <div class="content">
       ${content}
       <br><br>

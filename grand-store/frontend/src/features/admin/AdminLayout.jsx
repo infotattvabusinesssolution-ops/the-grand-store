@@ -101,7 +101,7 @@ export default function AdminLayout() {
                   <Shield size={16} /> Staff Directory
                 </button>
                 <button onClick={() => handleNavigate('/admin/vendors')} className={navItemClass('/admin/vendors')}>
-                  <Building2 size={16} /> Vendors & Approvals
+                  <Building2 size={16} /> Vendor Management
                 </button>
                 <button onClick={() => handleNavigate('/admin/coupons')} className={navItemClass('/admin/coupons')}>
                   <Tag size={16} /> Vendor Coupons
