@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Search, ChevronDown, Check, X, Star } from 'lucide-react';
-import * as Flags from 'country-flag-icons/react/3x2';
 import rawCountries from '../utils/phoneCountries.json';
 
 // Helper to generate Unicode flag emoji from 2-letter ISO country code (fallback)
@@ -17,18 +16,27 @@ export function getCountryFlag(iso) {
   }
 }
 
-// 100% Vector SVG Flag Component directly mapped from country-flag-icons
+// Crisp FlagCDN image with Unicode flag emoji fallback
 export function CountryFlag({ iso, className = '' }) {
-  if (!iso) return <span className="inline-block w-5 text-center text-xs">🌐</span>;
-  const upper = String(iso).toUpperCase();
-  const FlagComponent = Flags[upper];
+  const [failed, setFailed] = useState(false);
+  const code = (iso || '').trim().toLowerCase();
 
-  if (FlagComponent) {
+  useEffect(() => {
+    setFailed(false);
+  }, [code]);
+
+  if (code && code.length === 2 && !failed) {
     return (
-      <FlagComponent
-        className={`inline-block h-3.5 w-5 shrink-0 rounded-[2px] shadow-[0_0_0_1px_rgba(255,255,255,0.18)] ${className}`}
-        title={upper}
-        aria-label={`${upper} flag`}
+      <img
+        src={`https://flagcdn.com/w40/${code}.png`}
+        srcSet={`https://flagcdn.com/w80/${code}.png 2x`}
+        width="20"
+        height="14"
+        loading="lazy"
+        decoding="async"
+        alt={`${iso} flag`}
+        className={`inline-block h-3.5 w-5 shrink-0 rounded-[2px] object-cover shadow-[0_0_0_1px_rgba(255,255,255,0.18)] ${className}`}
+        onError={() => setFailed(true)}
       />
     );
   }

@@ -1,17 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Search } from 'lucide-react';
-import * as Flags from 'country-flag-icons/react/3x2';
 
 export function LocaleIcon({ option, className = '' }) {
-  const code = (option?.flagCode || option?.code || '').toUpperCase();
-  const FlagComponent = Flags[code];
+  const [failed, setFailed] = useState(false);
+  const code = (option?.flagCode || option?.code || option?.value || '').trim().toLowerCase();
 
-  if (FlagComponent) {
+  useEffect(() => {
+    setFailed(false);
+  }, [code]);
+
+  if (code && !failed) {
     return (
-      <FlagComponent
-        className={`inline-block h-3.5 w-5 shrink-0 rounded-[2px] shadow-[0_0_0_1px_rgba(255,255,255,0.18)] ${className}`}
-        title={code}
-        aria-label={`${code} flag`}
+      <img
+        src={`https://flagcdn.com/w40/${code}.png`}
+        srcSet={`https://flagcdn.com/w80/${code}.png 2x`}
+        width="20"
+        height="14"
+        loading="lazy"
+        decoding="async"
+        alt=""
+        className={`inline-block h-3.5 w-5 shrink-0 rounded-[2px] object-cover shadow-[0_0_0_1px_rgba(255,255,255,0.18)] ${className}`}
+        onError={() => setFailed(true)}
       />
     );
   }
