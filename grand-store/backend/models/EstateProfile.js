@@ -25,6 +25,8 @@ const estateProfileSchema = new mongoose.Schema({
     trim: true
   },
   isPublished: { type: Boolean, default: false },
+  seoTitle: { type: String, trim: true },
+  metaDescription: { type: String, trim: true },
 
   // ── Hero & Media ─────────────────────────────
   heroImageUrl:  { type: String },

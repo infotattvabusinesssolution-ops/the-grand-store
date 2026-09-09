@@ -85,9 +85,13 @@ const generateQuote = async (req, res) => {
       const itemPrice = product.price; // Enforce server-side pricing
       const itemSubtotal = itemPrice * item.quantity;
       
+      const resolvedImage = product.image || (Array.isArray(product.gallery) && product.gallery[0]) || product.imageSourceUrl || item.image || item.product_image || '';
       vendorGroups[vId].items.push({
         ...item,
         price: itemPrice, // overriding with server price
+        image: resolvedImage,
+        name: product.name || item.name,
+        product: product.id || product._id || item.product,
         vendorId: product.vendorId,
         category: product.category || 'Uncategorised',
         subcategory: product.subcategory || ''

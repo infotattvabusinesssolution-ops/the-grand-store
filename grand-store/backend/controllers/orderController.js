@@ -274,7 +274,24 @@ const addOrderItems = async (req, res) => {
     let shipmentSeqCounter = 1;
 
     for (const shp of quote.shipments) {
-      allOrderItems = allOrderItems.concat(shp.items);
+      if (Array.isArray(shp.items)) {
+        const Product = require('../models/Product');
+        for (const item of shp.items) {
+          if (!item.image || typeof item.image !== 'string' || item.image.trim() === '') {
+            const prod = await Product.findOne({
+              $or: [
+                { id: item.product },
+                { _id: /^[0-9a-fA-F]{24}$/.test(item.product?.toString()) ? item.product : null },
+                { name: item.name }
+              ].filter(Boolean)
+            }).select('image gallery imageSourceUrl').lean();
+            if (prod) {
+              item.image = prod.image || (Array.isArray(prod.gallery) && prod.gallery[0]) || prod.imageSourceUrl || '';
+            }
+          }
+        }
+      }
+      allOrderItems = allOrderItems.concat(shp.items || []);
       
       const vendorGross = shp.subtotal;
       const vendorCommission = parseFloat(((vendorGross * commissionPct) / 100).toFixed(2));
@@ -801,6 +818,74 @@ const processOrderPayment = async (orderId) => {
   return true;
 };
 
+// Helper to guarantee all order items have product images populated
+const ensureOrderItemsImages = async (ordersList) => {
+  if (!ordersList) return ordersList;
+  const isArray = Array.isArray(ordersList);
+  const list = isArray ? ordersList : [ordersList];
+  const Product = require('../models/Product');
+
+  const missingKeys = new Set();
+  const missingNames = new Set();
+
+  for (const ord of list) {
+    if (!ord || !Array.isArray(ord.orderItems)) continue;
+    for (const it of ord.orderItems) {
+      if (!it.image || typeof it.image !== 'string' || it.image.trim() === '') {
+        if (it.product) missingKeys.add(it.product.toString());
+        if (it.name) missingNames.add(it.name.trim());
+      }
+    }
+  }
+
+  if (missingKeys.size === 0 && missingNames.size === 0) return ordersList;
+
+  const keyList = Array.from(missingKeys);
+  const nameList = Array.from(missingNames);
+
+  const orConditions = [];
+  if (keyList.length > 0) {
+    orConditions.push({ id: { $in: keyList } });
+    const objectIds = keyList.filter(k => /^[0-9a-fA-F]{24}$/.test(k));
+    if (objectIds.length > 0) {
+      orConditions.push({ _id: { $in: objectIds } });
+    }
+  }
+  if (nameList.length > 0) {
+    orConditions.push({ name: { $in: nameList } });
+  }
+
+  const matched = await Product.find({ $or: orConditions })
+    .select('id _id name image gallery imageSourceUrl')
+    .lean();
+
+  const imgMap = new Map();
+  for (const p of matched) {
+    const img = p.image || (Array.isArray(p.gallery) && p.gallery[0]) || p.imageSourceUrl || '';
+    if (img) {
+      if (p.id) imgMap.set(p.id.toString(), img);
+      if (p._id) imgMap.set(p._id.toString(), img);
+      if (p.name) imgMap.set(p.name.toLowerCase().trim(), img);
+    }
+  }
+
+  for (const ord of list) {
+    if (!ord || !Array.isArray(ord.orderItems)) continue;
+    for (const it of ord.orderItems) {
+      if (!it.image || typeof it.image !== 'string' || it.image.trim() === '') {
+        const k = it.product ? it.product.toString() : '';
+        const nameK = it.name ? it.name.toLowerCase().trim() : '';
+        const resolved = (k && imgMap.get(k)) || (nameK && imgMap.get(nameK)) || '';
+        if (resolved) {
+          it.image = resolved;
+        }
+      }
+    }
+  }
+
+  return ordersList;
+};
+
 // @desc    Get logged in user orders
 // @route   GET /api/orders/myorders
 // @access  Private
@@ -839,6 +924,7 @@ const getMyOrders = async (req, res) => {
       }
     }
 
+    await ensureOrderItemsImages(orders);
     res.json(orders);
   } catch (error) {
     console.error('Get My Orders Error:', error);
@@ -855,6 +941,7 @@ const getOrderById = async (req, res) => {
       .populate('user', 'name email')
       .populate('shipments');
     if (order) {
+      await ensureOrderItemsImages(order);
       res.json(order);
     } else {
       res.status(404).json({ message: 'Order not found' });

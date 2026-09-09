@@ -1,6 +1,7 @@
 const Product = require('../models/Product');
 const Vendor = require('../models/Vendor');
 const { normalizeProduct } = require('../utils/productNormalization');
+const { slugify } = require('../utils/slugify');
 
 const INTERNAL_PRODUCT_ROLES = ['admin', 'super_admin', 'product_manager'];
 const canManageInternalProducts = (user) => INTERNAL_PRODUCT_ROLES.includes(user?.role);
@@ -131,6 +132,32 @@ const getProductById = async (req, res) => {
     res.status(500).json({ message: 'Server error fetching product' });
   }
 };
+
+// @desc    Fetch single product by slug (Isolated for SEO)
+// @route   GET /api/products/slugs/:slug
+// @access  Public
+const getProductBySlug = async (req, res) => {
+  try {
+    const product = await Product.findOne({ slug: req.params.slug }).lean();
+    if (product) {
+      if (!product.vendorId) {
+        product.storeId = 'admin';
+        product.storeName = 'The Grand Store';
+      } else {
+        const vendor = await Vendor.findOne({ userId: product.vendorId }).lean();
+        if (vendor) {
+          product.storeId = vendor.userId;
+          product.storeName = vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || 'Unknown Store';
+        }
+      }
+      res.json(product);
+    } else {
+      res.status(404).json({ message: 'Product not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Server error fetching product by slug' });
+  }
+};
 // @desc    Create a new product (Vendor or Admin)
 // @route   POST /api/products
 // @access  Private (Vendor/Admin)
@@ -220,6 +247,9 @@ const createProduct = async (req, res) => {
       foodPairing: normalizedProduct.foodPairing,
       stock: Number(stock) || 0,
       costing: parseJsonValue(req.body.costing, undefined),
+      slug: req.body.slug ? slugify(req.body.slug) : slugify(normalizedProduct.name),
+      seoTitle: req.body.seoTitle ? String(req.body.seoTitle).trim() : undefined,
+      metaDescription: req.body.metaDescription ? String(req.body.metaDescription).trim() : undefined,
       vendorId: canManageInternalProducts(req.user) ? null : req.user._id,
       approvalStatus: 'approved'
     });
@@ -307,6 +337,15 @@ const updateProduct = async (req, res) => {
     if (req.body.costing !== undefined) {
       product.costing = parseJsonValue(req.body.costing, product.costing);
     }
+    if (req.body.slug !== undefined) {
+      product.slug = req.body.slug ? slugify(req.body.slug) : undefined;
+    }
+    if (req.body.seoTitle !== undefined) {
+      product.seoTitle = req.body.seoTitle ? String(req.body.seoTitle).trim() : undefined;
+    }
+    if (req.body.metaDescription !== undefined) {
+      product.metaDescription = req.body.metaDescription ? String(req.body.metaDescription).trim() : undefined;
+    }
 
     let uploadedImages = [];
     if (req.files) {
@@ -368,6 +407,7 @@ const deleteProduct = async (req, res) => {
 module.exports = {
   getProducts,
   getProductById,
+  getProductBySlug,
   createProduct,
   getVendorProducts,
   updateProduct,
