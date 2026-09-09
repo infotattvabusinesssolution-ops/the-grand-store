@@ -1115,26 +1115,99 @@ const getEventAttendees = async (req, res) => {
   }
 };
 
+const extractTicketIdentifier = (input) => {
+  if (!input) return "";
+  if (typeof input === "object") {
+    return input.ticketId || input.ticket_id || input.id || input._id || input.gsReference || "";
+  }
+  let str = String(input).trim();
+  // Strip enclosing single/double quotes if present
+  if ((str.startsWith('"') && str.endsWith('"')) || (str.startsWith("'") && str.endsWith("'"))) {
+    str = str.slice(1, -1).trim();
+  }
+  // Try parsing JSON if payload is formatted as JSON string (e.g. from React Native QR code)
+  if ((str.startsWith("{") && str.endsWith("}")) || (str.startsWith("[") && str.endsWith("]"))) {
+    try {
+      const parsed = JSON.parse(str);
+      if (parsed && typeof parsed === "object") {
+        return parsed.ticketId || parsed.ticket_id || parsed.id || parsed._id || parsed.gsReference || str;
+      }
+    } catch (_) {}
+  }
+  // Try extracting ticket ID if payload is a URL
+  if (str.startsWith("http://") || str.startsWith("https://")) {
+    try {
+      const url = new URL(str);
+      return url.searchParams.get("ticketId") || url.searchParams.get("ticket") || url.searchParams.get("id") || str.split("/").pop() || str;
+    } catch (_) {}
+  }
+  return str;
+};
+
 const verifyTicket = async (req, res) => {
   try {
-    const booking = await Booking.findOne({ ticketId: req.body.ticketId })
-      .populate("event", "title date vendorId")
-      .populate("user", "name email");
-    if (!booking) return res.status(404).json({ message: "Ticket not found" });
-    if (!booking.event) return res.status(400).json({ message: "The event linked to this ticket no longer exists." });
-    if (booking.event.vendorId.toString() !== req.user._id.toString()) {
+    const rawInput = req.body.ticketId || req.body.code || req.body.data || req.body.qrData || req.body.ticket;
+    const identifier = extractTicketIdentifier(rawInput);
+
+    if (!identifier) {
+      return res.status(400).json({ message: "No ticket code provided." });
+    }
+
+    const queryConditions = [
+      { ticketId: identifier },
+      { gsReference: identifier }
+    ];
+
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+      queryConditions.push({ _id: identifier });
+    }
+
+    const booking = await Booking.findOne({ $or: queryConditions })
+      .populate("event", "title date vendorId location startTime")
+      .populate("user", "name email phone");
+
+    if (!booking) {
+      return res.status(404).json({ message: "Ticket not found. Please verify the ticket ID." });
+    }
+
+    if (!booking.event) {
+      return res.status(400).json({ message: "The event linked to this ticket no longer exists." });
+    }
+
+    const isOwnerVendor = (booking.event.vendorId && booking.event.vendorId.toString() === req.user._id.toString()) ||
+                          (booking.vendor && booking.vendor.toString() === req.user._id.toString());
+    const isAdmin = req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'event_host';
+
+    if (!isOwnerVendor && !isAdmin) {
       return res.status(403).json({ message: "Ticket belongs to an event you do not manage" });
     }
-    if (!PAID_PAYMENT_STATUSES.includes(booking.paymentStatus)) {
-      return res.status(400).json({ message: "This ticket has not been paid." });
-    }
-    if (booking.ticketStatus === "Used") return res.status(400).json({ message: "Ticket has already been used", booking });
-    if (booking.ticketStatus !== "Valid") return res.status(400).json({ message: "Ticket is not valid", booking });
 
-    const update = await Booking.updateOne({ _id: booking._id, ticketStatus: "Valid" }, { $set: { ticketStatus: "Used" } });
-    if (update.modifiedCount !== 1) return res.status(409).json({ message: "Ticket was already checked in." });
+    if (!PAID_PAYMENT_STATUSES.includes(booking.paymentStatus) && booking.bankTransferStatus !== "Approved") {
+      return res.status(400).json({ message: "This ticket has not been paid.", booking });
+    }
+
+    if (booking.ticketStatus === "Used") {
+      return res.status(400).json({ message: "Ticket has already been used", booking });
+    }
+
+    if (booking.ticketStatus === "Cancelled") {
+      return res.status(400).json({ message: "Ticket has been cancelled", booking });
+    }
+
+    const update = await Booking.updateOne(
+      { _id: booking._id, ticketStatus: { $ne: "Used" } },
+      { $set: { ticketStatus: "Used" } }
+    );
+
+    if (update.modifiedCount !== 1 && booking.ticketStatus === "Used") {
+      return res.status(409).json({ message: "Ticket was already checked in.", booking });
+    }
+
     booking.ticketStatus = "Used";
-    return res.json({ message: "Ticket successfully verified and marked as used", booking });
+    return res.json({ 
+      message: "Ticket successfully verified and checked in", 
+      booking 
+    });
   } catch (error) {
     console.error("Error verifying ticket:", error);
     return res.status(500).json({ message: "Server error verifying ticket" });

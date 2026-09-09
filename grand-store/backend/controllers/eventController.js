@@ -290,20 +290,65 @@ const getEventAttendees = async (req, res) => {
 // @desc    Verify event ticket (Vendor)
 // @route   POST /api/events/vendor/verify-ticket
 // @access  Private (Vendor)
+const extractTicketIdentifierLegacy = (input) => {
+  if (!input) return "";
+  if (typeof input === "object") {
+    return input.ticketId || input.ticket_id || input.id || input._id || input.gsReference || "";
+  }
+  let str = String(input).trim();
+  if ((str.startsWith('"') && str.endsWith('"')) || (str.startsWith("'") && str.endsWith("'"))) {
+    str = str.slice(1, -1).trim();
+  }
+  if ((str.startsWith("{") && str.endsWith("}")) || (str.startsWith("[") && str.endsWith("]"))) {
+    try {
+      const parsed = JSON.parse(str);
+      if (parsed && typeof parsed === "object") {
+        return parsed.ticketId || parsed.ticket_id || parsed.id || parsed._id || parsed.gsReference || str;
+      }
+    } catch (_) {}
+  }
+  if (str.startsWith("http://") || str.startsWith("https://")) {
+    try {
+      const url = new URL(str);
+      return url.searchParams.get("ticketId") || url.searchParams.get("ticket") || url.searchParams.get("id") || str.split("/").pop() || str;
+    } catch (_) {}
+  }
+  return str;
+};
+
 const verifyTicket = async (req, res) => {
   try {
-    const { ticketId } = req.body;
+    const rawInput = req.body.ticketId || req.body.code || req.body.data || req.body.qrData || req.body.ticket;
+    const identifier = extractTicketIdentifierLegacy(rawInput);
 
-    const booking = await Booking.findOne({ ticketId }).populate(
-      "event",
-      "title date vendorId",
-    );
-
-    if (!booking) {
-      return res.status(404).json({ message: "Ticket not found" });
+    if (!identifier) {
+      return res.status(400).json({ message: "No ticket code provided." });
     }
 
-    if (booking.event.vendorId.toString() !== req.user._id.toString()) {
+    const mongoose = require("mongoose");
+    const queryConditions = [
+      { ticketId: identifier },
+      { gsReference: identifier }
+    ];
+
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+      queryConditions.push({ _id: identifier });
+    }
+
+    const booking = await Booking.findOne({ $or: queryConditions }).populate(
+      "event",
+      "title date vendorId location startTime",
+    ).populate("user", "name email phone");
+
+    if (!booking) {
+      return res.status(404).json({ message: "Ticket not found. Please verify the ticket ID." });
+    }
+
+    const isOwnerVendor = (booking.event?.vendorId && booking.event.vendorId.toString() === req.user._id.toString()) ||
+                          (booking.vendor && booking.vendor.toString() === req.user._id.toString());
+    const isAdmin = req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'event_host';
+
+    if (!isOwnerVendor && !isAdmin) {
       return res
         .status(403)
         .json({ message: "Ticket belongs to an event you do not manage" });

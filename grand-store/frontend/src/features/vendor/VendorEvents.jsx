@@ -34,15 +34,39 @@ export default function VendorEvents() {
     if (user) fetchEvents();
   }, [user]);
 
+  const parseTicketCode = (raw) => {
+    if (!raw) return '';
+    let str = String(raw).trim();
+    if ((str.startsWith('"') && str.endsWith('"')) || (str.startsWith("'") && str.endsWith("'"))) {
+      str = str.slice(1, -1).trim();
+    }
+    if ((str.startsWith('{') && str.endsWith('}')) || (str.startsWith('[') && str.endsWith(']'))) {
+      try {
+        const parsed = JSON.parse(str);
+        if (parsed && typeof parsed === 'object') {
+          return parsed.ticketId || parsed.ticket_id || parsed.id || parsed._id || parsed.gsReference || str;
+        }
+      } catch (_) {}
+    }
+    if (str.startsWith('http://') || str.startsWith('https://')) {
+      try {
+        const url = new URL(str);
+        return url.searchParams.get('ticketId') || url.searchParams.get('ticket') || url.searchParams.get('id') || str.split('/').pop() || str;
+      } catch (_) {}
+    }
+    return str;
+  };
+
   const handleVerify = async (eventId, code) => {
-    if (!code.trim()) return;
+    const cleanCode = parseTicketCode(code);
+    if (!cleanCode) return;
     setVerifying(true);
     setActiveVerifyEvent(eventId);
     setVerifyStatus(null);
 
     try {
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/events/vendor/verify-ticket`, 
-        { ticketId: code.trim() },
+        { ticketId: cleanCode },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
       
@@ -226,10 +250,11 @@ export default function VendorEvents() {
                        <Scanner 
                          onScan={(result) => {
                            if (result && result.length > 0) {
-                             const code = result[0].rawValue;
+                             const rawCode = result[0].rawValue;
+                             const cleanCode = parseTicketCode(rawCode);
                              setActiveVerifyEvent(event._id);
-                             setTicketInput(code);
-                             handleVerify(event._id, code);
+                             setTicketInput(cleanCode);
+                             handleVerify(event._id, cleanCode);
                              setActiveScannerEvent(null); // Close scanner on successful read
                            }
                          }}

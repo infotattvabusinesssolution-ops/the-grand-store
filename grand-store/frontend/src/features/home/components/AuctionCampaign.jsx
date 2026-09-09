@@ -9,11 +9,19 @@ export default function AuctionCampaign() {
       style={{ isolation: 'isolate' }}
     >
       <video 
+        ref={(el) => {
+          if (el) {
+            el.muted = true;
+            el.defaultMuted = true;
+            el.volume = 0;
+          }
+        }}
         className="absolute inset-0 -z-20 w-full h-full object-cover lg:object-center object-[68%_center]" 
         src="https://res.cloudinary.com/oioqrgj0/video/upload/v1788935569/grand-store/hero/auctioneer_conducts_rare_wine_auction.mp4" 
         poster="https://res.cloudinary.com/oioqrgj0/image/upload/v1788172078/grand-store/assets/cu4jebfyyjt80fbqjzk0.jpg"
         autoPlay 
         muted 
+        defaultMuted
         loop 
         playsInline 
         aria-hidden="true"

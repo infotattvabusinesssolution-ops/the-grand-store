@@ -44,15 +44,39 @@ export default function EventAttendees({ onNotify }) {
     fetchAttendees();
   }, [id, user, authLoading, navigate, onNotify]);
 
+  const parseTicketCode = (raw) => {
+    if (!raw) return '';
+    let str = String(raw).trim();
+    if ((str.startsWith('"') && str.endsWith('"')) || (str.startsWith("'") && str.endsWith("'"))) {
+      str = str.slice(1, -1).trim();
+    }
+    if ((str.startsWith('{') && str.endsWith('}')) || (str.startsWith('[') && str.endsWith(']'))) {
+      try {
+        const parsed = JSON.parse(str);
+        if (parsed && typeof parsed === 'object') {
+          return parsed.ticketId || parsed.ticket_id || parsed.id || parsed._id || parsed.gsReference || str;
+        }
+      } catch (_) {}
+    }
+    if (str.startsWith('http://') || str.startsWith('https://')) {
+      try {
+        const url = new URL(str);
+        return url.searchParams.get('ticketId') || url.searchParams.get('ticket') || url.searchParams.get('id') || str.split('/').pop() || str;
+      } catch (_) {}
+    }
+    return str;
+  };
+
   const verifyCode = async (codeToVerify) => {
-    if (!codeToVerify.trim()) return;
+    const cleanCode = parseTicketCode(codeToVerify);
+    if (!cleanCode) return;
     setVerifying(true);
     setVerifyResult(null);
 
     try {
       const token = user?.token;
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/events/vendor/verify-ticket`, 
-        { ticketId: codeToVerify.trim() },
+        { ticketId: cleanCode },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -63,7 +87,7 @@ export default function EventAttendees({ onNotify }) {
       });
       
       setAttendees(prev => prev.map(a => 
-        a.ticketId === res.data.booking.ticketId ? { ...a, ticketStatus: 'Used' } : a
+        (a.ticketId === res.data.booking?.ticketId || a._id === res.data.booking?._id) ? { ...a, ticketStatus: 'Used' } : a
       ));
       
       setTicketInput('');
@@ -85,10 +109,11 @@ export default function EventAttendees({ onNotify }) {
 
   const handleScan = (result) => {
     if (result && result[0]?.rawValue) {
-      const scannedCode = result[0].rawValue;
+      const rawCode = result[0].rawValue;
+      const cleanCode = parseTicketCode(rawCode);
       setShowScanner(false);
-      setTicketInput(scannedCode);
-      verifyCode(scannedCode);
+      setTicketInput(cleanCode);
+      verifyCode(cleanCode);
     }
   };
 
@@ -173,7 +198,7 @@ export default function EventAttendees({ onNotify }) {
                   </p>
                   {verifyResult.success && verifyResult.booking && (
                     <div className="text-sm text-white/70 mt-2 space-y-1">
-                      <p>Name: <span className="text-white">{verifyResult.booking.user.name}</span></p>
+                      <p>Name: <span className="text-white">{verifyResult.booking.user?.name || 'Guest Patron'}</span></p>
                       <p>Ticket: <span className="text-white">{verifyResult.booking.ticketType} (x{verifyResult.booking.quantity})</span></p>
                     </div>
                   )}

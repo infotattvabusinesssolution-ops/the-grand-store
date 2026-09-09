@@ -98,8 +98,13 @@ export default function HeroDesktop() {
 
     transitionLockRef.current = false
     video.currentTime = 0
+    video.muted = true
+    video.defaultMuted = true
+    video.volume = 0
 
     const revealVideo = () => {
+      video.muted = true
+      video.volume = 0
       video.play().catch(() => undefined)
       gsap.fromTo(
         video,
@@ -136,6 +141,7 @@ export default function HeroDesktop() {
           className="hero-video"
           src={activeFilm.src}
           muted
+          defaultMuted
           autoPlay
           playsInline
           preload="auto"

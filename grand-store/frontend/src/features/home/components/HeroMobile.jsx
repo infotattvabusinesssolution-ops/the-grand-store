@@ -24,9 +24,17 @@ export default function HeroMobile() {
       {/* Background Video with Crisp Poster */}
       <div className="absolute inset-0 w-full h-full bg-black">
         <video
+          ref={(el) => {
+            if (el) {
+              el.muted = true;
+              el.defaultMuted = true;
+              el.volume = 0;
+            }
+          }}
           autoPlay
           loop
           muted
+          defaultMuted
           playsInline
           poster="https://res.cloudinary.com/oioqrgj0/video/upload/v1788935569/grand-store/hero/auctioneer_conducts_rare_wine_auction.jpg"
           className="absolute inset-0 w-full h-full object-cover object-center"
