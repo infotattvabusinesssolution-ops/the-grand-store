@@ -15,9 +15,9 @@ const heroFilms = [
     ctaLink: '#arrivals',
   },
   {
-    src: '/assets/media/grand-store-hero-cellar-hd.mp4',
+    src: 'https://res.cloudinary.com/oioqrgj0/video/upload/v1788935569/grand-store/hero/auctioneer_conducts_rare_wine_auction.mp4',
     label: 'Exclusive Rare Spirits & Fine Wine Auctions',
-    maxTime: 13,
+    maxTime: 6,
     titleLine1: 'Rare Vintages.',
     titleLine2: 'Live Auctions.',
     titleLine2Class: 'hero-title-line italic text-[#e5a93c]',
@@ -41,7 +41,7 @@ const heroFilms = [
     titleLine1: 'Premium Handcrafted',
     titleLine2: 'Cigars.',
     titleLine2Class: 'hero-title-line font-serif not-italic text-[#c9a35b]',
-    ctaText: 'Shop Premium Cigars',
+    ctaText: 'Explore',
     ctaLink: 'https://cigar.yogapranafitness.com',
   },
 ]

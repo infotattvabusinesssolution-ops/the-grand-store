@@ -31,6 +31,10 @@ const vendorSchema = new mongoose.Schema({
     enum: ['unpaid', 'paid', 'awaiting_verification'],
     default: 'unpaid'
   },
+  paidAt: {
+    type: Date,
+    default: null
+  },
   proofOfPaymentUrl: {
     type: String,
     default: null
@@ -189,6 +193,10 @@ const vendorSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  couponRedeemedAt: {
+    type: Date,
+    default: null
+  },
   freeTrialExpiry: {
     type: Date,
     default: null
@@ -207,7 +215,7 @@ const vendorSchema = new mongoose.Schema({
       enum: ['paid', 'due', 'overdue', 'grace_period'],
       default: 'paid'
     },
-    lastPaidAt: { type: Date, default: Date.now },
+    lastPaidAt: { type: Date, default: null },
     nextDueAt: {
       type: Date,
       default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
@@ -216,7 +224,9 @@ const vendorSchema = new mongoose.Schema({
       amount: Number,
       paidAt: { type: Date, default: Date.now },
       paymentMethod: { type: String, default: 'card' },
-      reference: String
+      reference: String,
+      gsReference: String,
+      status: { type: String, default: 'cleared' }
     }]
   }
 }, { timestamps: true });

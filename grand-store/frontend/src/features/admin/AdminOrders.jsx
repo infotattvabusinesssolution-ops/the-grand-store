@@ -240,7 +240,9 @@ export default function AdminOrders() {
                         <p className="text-xs text-white/70 mt-0.5">{ord.customerEmail}</p>
                       )}
                       {ord.customerPhone && (
-                        <p className="text-xs text-white/50 mt-0.5">📞 {ord.customerPhone}</p>
+                        <p className="text-xs text-white/50 mt-0.5 break-words">
+                          📞 {ord.customerPhone}{ord.customerPhoneCountry ? ` (${ord.customerPhoneCountry})` : ''}
+                        </p>
                       )}
                     </div>
 

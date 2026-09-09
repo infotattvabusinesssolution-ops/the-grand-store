@@ -280,6 +280,7 @@ exports.applyCoupon = async (req, res) => {
     expiryDate.setMonth(expiryDate.getMonth() + freeMonths);
 
     vendor.couponUsed = coupon.code;
+    vendor.couponRedeemedAt = new Date();
     vendor.freeTrialExpiry = expiryDate;
     vendor.trialStatus = 'active';
     vendor.paymentStatus = 'paid'; // Treat as paid while trial is active
@@ -308,6 +309,7 @@ exports.processVendorPayment = async (vendorId) => {
     }
 
     vendor.paymentStatus = 'paid';
+    vendor.paidAt = new Date();
 
     // Initialize Monthly Maintenance Fee
     let monthlyFee = 500;
@@ -320,16 +322,22 @@ exports.processVendorPayment = async (vendorId) => {
       console.error('Failed to read settings for maintenance fee:', e);
     }
 
+    const regFee = Number(vendor.registrationFee || 0);
+    const regRef = `REG-${vendor._id}`;
+    const gsRef = `GS-${new Date().getFullYear().toString().slice(-2)}-VND-REG-${vendor._id}-${Date.now().toString().slice(-6)}`;
+
     vendor.maintenanceFee = {
       amount: monthlyFee,
       status: 'paid',
       lastPaidAt: new Date(),
       nextDueAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       paymentHistory: [{
-        amount: vendor.registrationFee || 0,
+        amount: regFee,
         paidAt: new Date(),
         paymentMethod: 'PayFast',
-        reference: `REG-${vendor._id}`
+        reference: regRef,
+        gsReference: gsRef,
+        status: 'cleared'
       }]
     };
 
@@ -344,16 +352,24 @@ exports.processVendorPayment = async (vendorId) => {
     // Create Transaction record
     const Transaction = require('../models/Transaction');
     if (Transaction) {
-      await Transaction.create({
-        user: vendor.userId,
-        orderId: vendor._id, // Using vendor ID as reference
-        amount: vendor.registrationFee || 0,
-        type: 'Payment',
-        status: 'Completed',
-        reference: `VND-${vendor._id}`,
-        gateway: 'PayFast',
-        date: new Date()
-      });
+      try {
+        await Transaction.create({
+          gsReference: gsRef,
+          type: 'payment',
+          module: 'vendor',
+          amount: regFee,
+          netAmount: regFee,
+          currency: 'ZAR',
+          customer: vendor.userId,
+          vendor: vendor.userId,
+          gateway: 'PayFast',
+          gatewayTransactionId: regRef,
+          status: 'cleared',
+          description: `Vendor Registration Fee - ${vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || 'Vendor'}`
+        });
+      } catch (txnErr) {
+        console.error('Failed to create Transaction record for vendor registration payment:', txnErr);
+      }
     }
 
     // In-app notification for vendor
@@ -364,6 +380,16 @@ exports.processVendorPayment = async (vendorId) => {
       message: `Registration fee received! Your vendor privileges and storefront are now active. Your first monthly maintenance fee of R ${monthlyFee} will be due in 30 days.`,
       type: 'maintenance_fee',
       link: '/vendor/dashboard'
+    });
+
+    // In-app notification for admin
+    await createInAppNotification({
+      recipient: null,
+      recipientType: 'admin',
+      title: 'Vendor Registration Fee Received',
+      message: `${vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || 'Vendor'} paid R ${regFee} registration fee. Account is now active.`,
+      type: 'maintenance_fee',
+      link: `/admin/vendors/${vendor._id}`
     });
 
   } catch (error) {
@@ -500,6 +526,136 @@ exports.getMaintenanceFeeStatus = async (req, res) => {
   }
 };
 
+const processMaintenanceFeePayment = async (vendorId, { paymentMethod = 'PayFast / Card', reference = null, amount = null } = {}) => {
+  const vendor = await Vendor.findById(vendorId);
+  if (!vendor) throw new Error('Vendor not found');
+
+  let defaultMonthlyFee = 500;
+  try {
+    const PlatformSettings = require('../models/PlatformSettings');
+    const settings = await PlatformSettings.findOne();
+    if (settings && settings.vendorMonthlyMaintenanceFee !== undefined) {
+      defaultMonthlyFee = settings.vendorMonthlyMaintenanceFee;
+    }
+  } catch (e) {
+    console.error("Error reading platform settings", e);
+  }
+
+  const feeAmount = amount || vendor.maintenanceFee?.amount || defaultMonthlyFee;
+  const payRef = reference || `MNF-${vendor._id}-${Date.now().toString().slice(-6)}`;
+  const gsRef = `GS-${new Date().getFullYear().toString().slice(-2)}-VND-MNF-${Date.now()}`;
+
+  // Advance nextDueAt by 30 days
+  const currentDue = (vendor.maintenanceFee?.nextDueAt && new Date(vendor.maintenanceFee.nextDueAt) > new Date())
+    ? new Date(vendor.maintenanceFee.nextDueAt)
+    : new Date();
+  const newNextDue = new Date(currentDue.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  if (!vendor.maintenanceFee) vendor.maintenanceFee = {};
+  vendor.maintenanceFee.amount = feeAmount;
+  vendor.maintenanceFee.status = 'paid';
+  vendor.maintenanceFee.lastPaidAt = new Date();
+  vendor.maintenanceFee.nextDueAt = newNextDue;
+  vendor.paymentStatus = 'paid';
+  if (!vendor.paidAt) {
+    vendor.paidAt = new Date();
+  }
+
+  if (!Array.isArray(vendor.maintenanceFee.paymentHistory)) {
+    vendor.maintenanceFee.paymentHistory = [];
+  }
+
+  vendor.maintenanceFee.paymentHistory.unshift({
+    amount: feeAmount,
+    paidAt: new Date(),
+    paymentMethod,
+    reference: payRef,
+    gsReference: gsRef,
+    status: 'cleared'
+  });
+
+  await vendor.save();
+
+  // Create Transaction Record
+  try {
+    const Transaction = require('../models/Transaction');
+    await Transaction.create({
+      gsReference: gsRef,
+      type: 'payment',
+      module: 'vendor',
+      amount: Number(feeAmount),
+      netAmount: Number(feeAmount),
+      currency: 'ZAR',
+      customer: vendor.userId,
+      vendor: vendor.userId,
+      gateway: paymentMethod,
+      gatewayTransactionId: payRef,
+      status: 'cleared',
+      description: `Monthly Maintenance Fee - ${vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || 'Vendor'}`
+    });
+  } catch (txnErr) {
+    console.error('Failed to create Transaction record for maintenance fee:', txnErr);
+  }
+
+  // Ensure user has vendor_active role if approved
+  const User = require('../models/User');
+  const user = await User.findById(vendor.userId);
+  if (user && (user.role === 'vendor_approved_unpaid' || user.role === 'vendor_suspended')) {
+    user.role = 'vendor_active';
+    await user.save();
+  }
+
+  // In-app notification for vendor
+  await createInAppNotification({
+    recipient: vendor.userId,
+    recipientType: 'vendor',
+    title: 'Monthly Maintenance Fee Paid',
+    message: `Your monthly maintenance fee of R ${feeAmount} has been processed successfully. Store privileges are active through ${newNextDue.toLocaleDateString()}.`,
+    type: 'maintenance_fee',
+    link: '/vendor/dashboard'
+  });
+
+  // In-app notification for admin
+  await createInAppNotification({
+    recipient: null,
+    recipientType: 'admin',
+    title: 'Vendor Maintenance Fee Received',
+    message: `${vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || 'Vendor'} paid R ${feeAmount} maintenance renewal (${payRef}).`,
+    type: 'maintenance_fee',
+    link: `/admin/vendors/${vendor._id}`
+  });
+
+  // Automated email receipt to vendor (with BCC to admin if configured)
+  try {
+    const { sendEmail } = require('../utils/emailService');
+    const { vendorMaintenanceFeePaidTemplate } = require('../utils/emailTemplates');
+    if (user && user.email) {
+      const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
+      await sendEmail({
+        to: user.email,
+        bcc: adminEmail && adminEmail !== user.email ? adminEmail : undefined,
+        subject: `Monthly Maintenance Fee Receipt - R ${Number(feeAmount).toFixed(2)} (${payRef})`,
+        html: vendorMaintenanceFeePaidTemplate({
+          vendorName: user.name || 'Vendor Partner',
+          businessName: vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName,
+          amount: feeAmount,
+          paymentMethod,
+          reference: payRef,
+          paidAt: new Date(),
+          nextDueAt: newNextDue
+        })
+      });
+      console.log(`Automated maintenance fee receipt email sent to ${user.email} (${payRef})`);
+    }
+  } catch (emailErr) {
+    console.error('Failed to send vendor maintenance fee automated email:', emailErr);
+  }
+
+  return vendor;
+};
+
+exports.processMaintenanceFeePayment = processMaintenanceFeePayment;
+
 exports.payMaintenanceFee = async (req, res) => {
   try {
     const vendor = await Vendor.findOne({ userId: req.user._id });
@@ -507,73 +663,17 @@ exports.payMaintenanceFee = async (req, res) => {
       return res.status(404).json({ message: 'Vendor application not found' });
     }
 
-    let defaultMonthlyFee = 500;
-    try {
-      const settings = await PlatformSettings.findOne();
-      if (settings && settings.vendorMonthlyMaintenanceFee !== undefined) {
-        defaultMonthlyFee = settings.vendorMonthlyMaintenanceFee;
-      }
-    } catch (e) {
-      console.error("Error reading platform settings", e);
-    }
-
-    const feeAmount = vendor.maintenanceFee?.amount || defaultMonthlyFee;
     const paymentMethod = req.body.paymentMethod || 'PayFast / Card';
     const reference = req.body.reference || `MNF-${vendor._id}-${Date.now().toString().slice(-6)}`;
 
-    // Advance nextDueAt by 30 days
-    const currentDue = (vendor.maintenanceFee?.nextDueAt && new Date(vendor.maintenanceFee.nextDueAt) > new Date())
-      ? new Date(vendor.maintenanceFee.nextDueAt)
-      : new Date();
-    const newNextDue = new Date(currentDue.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-    if (!vendor.maintenanceFee) vendor.maintenanceFee = {};
-    vendor.maintenanceFee.amount = feeAmount;
-    vendor.maintenanceFee.status = 'paid';
-    vendor.maintenanceFee.lastPaidAt = new Date();
-    vendor.maintenanceFee.nextDueAt = newNextDue;
-
-    if (!Array.isArray(vendor.maintenanceFee.paymentHistory)) {
-      vendor.maintenanceFee.paymentHistory = [];
-    }
-
-    vendor.maintenanceFee.paymentHistory.unshift({
-      amount: feeAmount,
-      paidAt: new Date(),
+    const updatedVendor = await processMaintenanceFeePayment(vendor._id, {
       paymentMethod,
       reference
     });
 
-    await vendor.save();
-
-    // Create Transaction Record
-    const Transaction = require('../models/Transaction');
-    if (Transaction) {
-      await Transaction.create({
-        user: req.user._id,
-        orderId: vendor._id,
-        amount: feeAmount,
-        type: 'Vendor Maintenance Fee',
-        status: 'Completed',
-        reference,
-        gateway: paymentMethod,
-        date: new Date()
-      });
-    }
-
-    // In-app notification for vendor
-    await createInAppNotification({
-      recipient: req.user._id,
-      recipientType: 'vendor',
-      title: 'Monthly Maintenance Fee Paid',
-      message: `Your monthly maintenance fee of R ${feeAmount} has been paid successfully. Store privileges are active through ${newNextDue.toLocaleDateString()}.`,
-      type: 'maintenance_fee',
-      link: '/vendor/dashboard'
-    });
-
     res.json({
       message: 'Monthly maintenance fee paid successfully',
-      maintenanceFee: vendor.maintenanceFee
+      maintenanceFee: updatedVendor.maintenanceFee
     });
   } catch (error) {
     console.error('Error paying maintenance fee:', error);

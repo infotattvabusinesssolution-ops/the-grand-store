@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const { prepareEmailBranding } = require("./emailBranding");
 
 /**
  * Configure the SMTP transporter using environment variables.
@@ -27,7 +28,8 @@ const transporter = nodemailer.createTransport({
 const sendEmail = async ({ to, bcc, subject, html, text, attachments, fromName, replyTo }) => {
   try {
     // Basic HTML to text conversion if text is not provided
-    const plainText = text || html.replace(/<[^>]+>/g, '\n').replace(/\n\s*\n/g, '\n').trim();
+    const plainText = text || (typeof html === 'string' ? html.replace(/<[^>]+>/g, '\n').replace(/\n\s*\n/g, '\n').trim() : '');
+    const brandedEmail = prepareEmailBranding(html, attachments);
 
     const mailOptions = {
       from: `"${fromName || process.env.SMTP_FROM_NAME || "The Grand Store"}" <${process.env.SMTP_USER}>`,
@@ -36,8 +38,8 @@ const sendEmail = async ({ to, bcc, subject, html, text, attachments, fromName, 
       replyTo,
       subject,
       text: plainText,
-      html,
-      attachments,
+      html: brandedEmail.html,
+      attachments: brandedEmail.attachments,
     };
 
     const info = await transporter.sendMail(mailOptions);

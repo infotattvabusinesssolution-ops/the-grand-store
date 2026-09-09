@@ -132,6 +132,7 @@ export default function AdminVendors() {
                     <th className="px-5 py-4 font-medium">Application</th>
                     <th className="px-5 py-4 font-medium">Status</th>
                     <th className="px-5 py-4 font-medium">Progress</th>
+                    <th className="px-5 py-4 font-medium">Next Fee Due</th>
                     <th className="px-5 py-4 font-medium">Submitted</th>
                     <th className="px-5 py-4 text-right font-medium">Review</th>
                   </tr>
@@ -162,6 +163,45 @@ export default function AdminVendors() {
                             </div>
                             <span className="text-xs text-white/50">{progress.current}/{progress.total}</span>
                           </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          {(() => {
+                            const nextDue = vendor.maintenanceFee?.nextDueAt || vendor.freeTrialExpiry;
+                            if (!nextDue) return <span className="text-xs text-white/30">—</span>;
+                            const d = new Date(nextDue);
+                            if (isNaN(d.getTime())) return <span className="text-xs text-white/30">—</span>;
+                            const now = new Date();
+                            now.setHours(0, 0, 0, 0);
+                            const dMid = new Date(d);
+                            dMid.setHours(0, 0, 0, 0);
+                            const diffDays = Math.round((dMid - now) / (1000 * 60 * 60 * 24));
+                            return (
+                              <div>
+                                <div className="text-xs font-medium text-[#d5b46c]">
+                                  {d.toLocaleDateString()}
+                                </div>
+                                <div className="mt-0.5">
+                                  {vendor.couponUsed && vendor.freeTrialExpiry && new Date(vendor.freeTrialExpiry) >= new Date() ? (
+                                    <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400">
+                                      Voucher
+                                    </span>
+                                  ) : diffDays < 0 ? (
+                                    <span className="inline-flex items-center rounded-full bg-red-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-red-400">
+                                      {Math.abs(diffDays)}d overdue
+                                    </span>
+                                  ) : diffDays <= 7 ? (
+                                    <span className="inline-flex items-center rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
+                                      Due in {diffDays}d
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-white/40">
+                                      In {diffDays} days
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-5 py-4 text-sm text-white/55">
                           {vendor.createdAt ? new Date(vendor.createdAt).toLocaleDateString() : "—"}

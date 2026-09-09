@@ -6,6 +6,7 @@ import {
   Smartphone, Calendar, ShieldCheck, CheckCircle2 
 } from 'lucide-react';
 import { auth, googleProvider, appleProvider, signInWithPopup } from '../../firebase';
+import CountryCodeSelect from '../../components/CountryCodeSelect';
 
 export default function RegisterPage() {
   const [name, setName] = useState('');
@@ -141,12 +142,12 @@ export default function RegisterPage() {
             )}
 
             {/* Social 1-Click Fast Registration (Strictly NO Facebook, NO WhatsApp) */}
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="w-full">
               <button
                 type="button"
                 disabled={isLoading}
                 onClick={handleGoogleLogin}
-                className="flex items-center justify-center gap-2 py-3 px-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-white rounded-xl text-xs font-medium transition-all disabled:opacity-50 cursor-pointer"
+                className="w-full flex items-center justify-center gap-2.5 py-3 px-4 bg-white hover:bg-stone-100 text-black font-semibold rounded-xl text-xs transition-all shadow-sm disabled:opacity-50 cursor-pointer"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -154,9 +155,13 @@ export default function RegisterPage() {
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                 </svg>
-                <span>Google</span>
+                <span className="text-black font-semibold">Continue with Google</span>
               </button>
 
+              {/*
+              ========================================================================
+              [COMMENTED OUT FOR NOW AS REQUESTED - APPLE SIGN-IN]
+              ========================================================================
               <button
                 type="button"
                 disabled={isLoading}
@@ -168,6 +173,8 @@ export default function RegisterPage() {
                 </svg>
                 <span>Apple</span>
               </button>
+              ========================================================================
+              */}
             </div>
 
             <div className="relative my-4">
@@ -222,18 +229,14 @@ export default function RegisterPage() {
               <label className="block text-stone-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
                 Mobile Number (Recommended for SMS OTP login)
               </label>
-              <div className="flex rounded-xl border border-white/15 bg-black/40 overflow-hidden focus-within:border-[#c9a35b] transition-all">
-                <select 
+              <div className="flex rounded-xl border border-white/15 bg-black/40 overflow-visible focus-within:border-[#c9a35b] transition-all relative">
+                <CountryCodeSelect 
                   value={countryCode} 
-                  onChange={(e) => setCountryCode(e.target.value)}
-                  className="bg-stone-900/80 text-xs text-[#c9a35b] font-medium px-3 py-3 border-r border-white/10 outline-none cursor-pointer"
-                >
-                  <option value="+27">🇿🇦 +27</option>
-                  <option value="+1">🇺🇸 +1</option>
-                  <option value="+44">🇬🇧 +44</option>
-                  <option value="+61">🇦🇺 +61</option>
-                  <option value="+91">🇮🇳 +91</option>
-                </select>
+                  onChange={(code) => setCountryCode(code)}
+                  id="register-country-code"
+                  buttonClassName="py-3 px-3 rounded-l-xl"
+                  showName={true}
+                />
                 <input
                   type="tel"
                   value={phone}

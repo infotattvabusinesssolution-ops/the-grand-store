@@ -1,11 +1,33 @@
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Vendor = require("../models/Vendor");
 const Order = require("../models/Order");
 const AuctionLot = require("../models/AuctionLot");
 const Booking = require("../models/Booking");
 const bcrypt = require("bcryptjs");
+const { sendEmail } = require("../utils/emailService");
+const {
+  generateEmailTemplate,
+  vendorApprovalTemplate,
+  genericNotificationTemplate,
+} = require("../utils/emailTemplates");
 
 const STAFF_ROLES = ["accountant", "product_manager", "admin"];
+
+const findOrderByIdOrReference = async (orderId) => {
+  if (!orderId) return null;
+  if (mongoose.Types.ObjectId.isValid(orderId)) {
+    const byId = await Order.findById(orderId);
+    if (byId) return byId;
+  }
+  return await Order.findOne({
+    $or: [
+      { orderId: orderId },
+      { invoiceNumber: orderId },
+      { transactionId: orderId },
+    ],
+  });
+};
 
 // @desc    Get dashboard stats
 // @route   GET /api/admin/dashboard
@@ -94,7 +116,6 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-
 // @desc    Get seeded admin staff accounts
 // @route   GET /api/admin/staff
 // @access  Private/Super Admin
@@ -114,6 +135,9 @@ const getStaffAccounts = async (req, res) => {
 // @access  Private/Super Admin
 const updateStaffCredentials = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: "Staff account not found" });
+    }
     const staff = await User.findById(req.params.id);
     if (!staff || !STAFF_ROLES.includes(staff.role)) {
       return res.status(404).json({ message: "Staff account not found" });
@@ -227,6 +251,10 @@ const getAllVendors = async (req, res) => {
 // @access  Private/Admin
 const getVendorById = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
+
     const vendor = await Vendor.findById(req.params.id)
       .populate("userId", "name email role isEmailVerified createdAt")
       .lean();
@@ -250,6 +278,9 @@ const getVendorById = async (req, res) => {
 const updateVendorStatus = async (req, res) => {
   try {
     const { status, reason, registrationFee } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
     const vendor = await Vendor.findById(req.params.id);
 
     if (!vendor) {
@@ -264,7 +295,6 @@ const updateVendorStatus = async (req, res) => {
     if (registrationFee !== undefined) {
       vendor.registrationFee = registrationFee;
     }
-    // We could store the rejection reason in the vendor model if we add a field for it
     await vendor.save();
 
     // Update user role based on status
@@ -282,9 +312,6 @@ const updateVendorStatus = async (req, res) => {
 
     // Send email notification
     try {
-      const { sendEmail } = require('../utils/emailService');
-      const { vendorApprovalTemplate, genericNotificationTemplate } = require('../utils/emailTemplates');
-      
       if (user) {
         if (status === "approved") {
           await sendEmail({
@@ -370,6 +397,10 @@ const getPendingBankTransfers = async (req, res) => {
 // @access  Private/Super Admin
 const remindVendorPayment = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
+
     const vendor = await Vendor.findById(req.params.id).populate('userId', 'email name');
     
     if (!vendor) {
@@ -384,21 +415,22 @@ const remindVendorPayment = async (req, res) => {
     await vendor.save();
 
     // Send reminder email
-    const { sendEmail } = require('../utils/emailService');
     const fee = vendor.registrationFee || 2500;
     
     try {
-      await sendEmail({
-        to: vendor.userId.email,
-        subject: 'Action Required: Pay Registration Fee to Activate Store',
-        html: generateEmailTemplate('Action Required: Store Activation Pending', `
-          <h3>Action Required: Store Activation Pending</h3>
-          <p>Hi ${vendor.userId.name || 'Vendor'},</p>
-          <p>Your application to become a vendor on The Grand Store was approved!</p>
-          <p>To activate your store and start listing products, you need to pay the registration fee of R${fee}.</p>
-          <p>Please log in to your dashboard and complete the payment to activate your account.</p>
-        `)
-      });
+      if (vendor.userId && vendor.userId.email) {
+        await sendEmail({
+          to: vendor.userId.email,
+          subject: 'Action Required: Pay Registration Fee to Activate Store',
+          html: generateEmailTemplate('Action Required: Store Activation Pending', `
+            <h3>Action Required: Store Activation Pending</h3>
+            <p>Hi ${vendor.userId.name || 'Vendor'},</p>
+            <p>Your application to become a vendor on The Grand Store was approved!</p>
+            <p>To activate your store and start listing products, you need to pay the registration fee of R${fee}.</p>
+            <p>Please log in to your dashboard and complete the payment to activate your account.</p>
+          `)
+        });
+      }
     } catch (emailErr) {
       console.error('Failed to send reminder email to vendor:', emailErr);
     }
@@ -409,23 +441,116 @@ const remindVendorPayment = async (req, res) => {
   }
 };
 
+// @desc    Update vendor payment status
+// @route   PUT /api/admin/vendors/:id/payment-status
+// @access  Private/Super Admin
 const updateVendorPaymentStatus = async (req, res) => {
   try {
     const { paymentStatus } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
     const vendor = await Vendor.findById(req.params.id);
     if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
     vendor.paymentStatus = paymentStatus;
-    await vendor.save();
     if (paymentStatus === 'paid') {
+      if (!vendor.paidAt) {
+        vendor.paidAt = new Date();
+      }
+      if (!vendor.maintenanceFee) {
+        vendor.maintenanceFee = {};
+      }
+      vendor.maintenanceFee.status = 'paid';
+      if (!vendor.maintenanceFee.lastPaidAt) {
+        vendor.maintenanceFee.lastPaidAt = new Date();
+      }
+      if (!vendor.maintenanceFee.nextDueAt) {
+        vendor.maintenanceFee.nextDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      }
+      if (!Array.isArray(vendor.maintenanceFee.paymentHistory)) {
+        vendor.maintenanceFee.paymentHistory = [];
+      }
+      const regFee = Number(vendor.registrationFee || 0);
+      const regRef = `REG-EFT-${vendor._id}`;
+      const gsRef = `GS-${new Date().getFullYear().toString().slice(-2)}-VND-REG-${vendor._id}-${Date.now().toString().slice(-6)}`;
+      vendor.maintenanceFee.paymentHistory.unshift({
+        amount: regFee,
+        paidAt: new Date(),
+        paymentMethod: 'Bank Transfer / EFT (Verified)',
+        reference: regRef,
+        gsReference: gsRef,
+        status: 'cleared'
+      });
+
+      try {
+        const Transaction = require('../models/Transaction');
+        await Transaction.create({
+          gsReference: gsRef,
+          type: 'payment',
+          module: 'vendor',
+          amount: regFee,
+          netAmount: regFee,
+          currency: 'ZAR',
+          customer: vendor.userId,
+          vendor: vendor.userId,
+          gateway: 'Bank Transfer / EFT',
+          gatewayTransactionId: regRef,
+          status: 'cleared',
+          description: `Vendor Registration Fee (EFT Verified) - ${vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || 'Vendor'}`
+        });
+      } catch (txnErr) {
+        console.error('Failed to create Transaction for EFT verified vendor:', txnErr);
+      }
+
       const user = await User.findById(vendor.userId);
       if (user) {
         user.role = 'vendor_active';
         await user.save();
       }
     }
+    await vendor.save();
     res.json({ message: 'Payment status updated', vendor });
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
+// @desc    Update vendor maintenance fee schedule / next due date
+// @route   PUT /api/admin/vendors/:id/maintenance-fee
+// @access  Private/Super Admin
+const updateVendorMaintenanceFee = async (req, res) => {
+  try {
+    const { nextDueAt, status, amount } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+    const vendor = await Vendor.findById(req.params.id);
+    if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
+
+    if (!vendor.maintenanceFee) {
+      vendor.maintenanceFee = {};
+    }
+
+    if (nextDueAt) {
+      const parsedDate = new Date(nextDueAt);
+      if (!isNaN(parsedDate.getTime())) {
+        vendor.maintenanceFee.nextDueAt = parsedDate;
+      }
+    }
+    if (status && ['paid', 'due', 'overdue', 'grace_period'].includes(status)) {
+      vendor.maintenanceFee.status = status;
+      if (status === 'paid' && !vendor.maintenanceFee.lastPaidAt) {
+        vendor.maintenanceFee.lastPaidAt = new Date();
+      }
+    }
+    if (amount !== undefined && !isNaN(Number(amount))) {
+      vendor.maintenanceFee.amount = Number(amount);
+    }
+
+    await vendor.save();
+    return res.json({ message: 'Maintenance fee schedule updated successfully', vendor });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };
 
@@ -464,7 +589,7 @@ const getGuestVerifications = async (req, res) => {
 const verifyGuestKyc = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const order = await Order.findById(orderId);
+    const order = await findOrderByIdOrReference(orderId);
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
     if (!order.guestKyc) {
@@ -476,13 +601,19 @@ const verifyGuestKyc = async (req, res) => {
     order.guestKyc.reviewedBy = req.user ? req.user._id : null;
     order.guestKyc.rejectionReason = '';
 
+    if (!order.ageVerification) {
+      order.ageVerification = {};
+    }
+    order.ageVerification.isVerified = true;
+    order.ageVerification.verifiedVia = 'guest_document';
+    order.ageVerification.confirmedAt = new Date();
+
     await order.save();
 
     // Send confirmation email to guest
     const recipientEmail = order.guestInfo?.email || order.shippingAddress?.email;
     if (recipientEmail) {
       try {
-        const { sendEmail } = require('../utils/emailService');
         await sendEmail({
           to: recipientEmail,
           subject: `18+ Verification Approved - Order #${order.orderId || order.invoiceNumber}`,
@@ -511,7 +642,7 @@ const rejectGuestKyc = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { reason } = req.body;
-    const order = await Order.findById(orderId);
+    const order = await findOrderByIdOrReference(orderId);
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
     if (!order.guestKyc) {
@@ -522,13 +653,17 @@ const rejectGuestKyc = async (req, res) => {
     order.guestKyc.rejectionReason = reason || 'Identification document was unreadable or could not be verified.';
     order.guestKyc.reviewedBy = req.user ? req.user._id : null;
 
+    if (!order.ageVerification) {
+      order.ageVerification = {};
+    }
+    order.ageVerification.isVerified = false;
+
     await order.save();
 
     // Send notification email to guest
     const recipientEmail = order.guestInfo?.email || order.shippingAddress?.email;
     if (recipientEmail) {
       try {
-        const { sendEmail } = require('../utils/emailService');
         await sendEmail({
           to: recipientEmail,
           subject: `Action Required: 18+ Document Verification for Order #${order.orderId || order.invoiceNumber}`,
@@ -557,14 +692,14 @@ module.exports = {
   getAllVendors,
   getVendorById,
   updateVendorStatus,
+  updateVendorPaymentStatus,
+  updateVendorMaintenanceFee,
   remindVendorPayment,
   getPendingBankTransfers,
   getStaffAccounts,
   updateStaffCredentials,
   createStaffAccount,
-  updateVendorPaymentStatus,
   getGuestVerifications,
   verifyGuestKyc,
   rejectGuestKyc,
 };
-

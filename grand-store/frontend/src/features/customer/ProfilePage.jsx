@@ -60,11 +60,12 @@ export default function ProfilePage() {
     try {
       const { data } = await api.put(`/auth/profile`, {
         name: profileForm.name,
+        email: (profileForm.email || '').trim().toLowerCase(),
         phone: profileForm.phone,
         phoneNumber: profileForm.phone
       });
       updateUser(data);
-      setProfileMessage({ type: 'success', text: 'Profile updated successfully! Phone number saved.' });
+      setProfileMessage({ type: 'success', text: 'Profile updated successfully!' });
       setTimeout(() => setProfileMessage(null), 3000);
     } catch (err) {
       setProfileMessage({ type: 'error', text: err.response?.data?.message || 'Failed to update profile' });
@@ -229,12 +230,14 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">Email Address (Cannot be changed)</label>
+              <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">Email Address</label>
               <input 
                 type="email" 
-                disabled
+                required
                 value={profileForm.email}
-                className="w-full bg-transparent border-b border-white/10 px-0 py-2 text-white/50 focus:outline-none font-light text-lg cursor-not-allowed"
+                onChange={(e) => setProfileForm({...profileForm, email: e.target.value})}
+                placeholder="your.email@example.com"
+                className="w-full bg-transparent border-b border-white/20 px-0 py-2 text-white focus:border-[var(--color-gold)] focus:outline-none transition-colors font-light text-lg"
               />
             </div>
             <div className="md:col-span-2">

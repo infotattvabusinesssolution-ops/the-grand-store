@@ -6,11 +6,14 @@ import {
   BadgeCheck,
   Banknote,
   Building2,
+  Calendar,
   CalendarDays,
   Check,
   CheckCircle2,
   CircleDollarSign,
   Clock3,
+  CreditCard,
+  Edit3,
   ExternalLink,
   FileCheck2,
   FileText,
@@ -20,6 +23,7 @@ import {
   PackageCheck,
   Phone,
   RefreshCw,
+  Save,
   Send,
   ShieldCheck,
   Store,
@@ -145,6 +149,12 @@ export default function AdminVendorDetail() {
   const [reason, setReason] = useState("");
   const [working, setWorking] = useState("");
 
+  const [editingSchedule, setEditingSchedule] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleStatus, setScheduleStatus] = useState("paid");
+  const [scheduleAmount, setScheduleAmount] = useState("500");
+  const [scheduleWorking, setScheduleWorking] = useState(false);
+
   const fetchVendor = useCallback(async () => {
     try {
       setError("");
@@ -159,6 +169,77 @@ export default function AdminVendorDetail() {
   }, [id]);
 
   useEffect(() => { fetchVendor(); }, [fetchVendor]);
+
+  useEffect(() => {
+    if (vendor?.maintenanceFee?.nextDueAt) {
+      const d = new Date(vendor.maintenanceFee.nextDueAt);
+      if (!isNaN(d.getTime())) {
+        setScheduleDate(d.toISOString().slice(0, 10));
+      }
+    } else if (vendor?.freeTrialExpiry) {
+      const d = new Date(vendor.freeTrialExpiry);
+      if (!isNaN(d.getTime())) {
+        setScheduleDate(d.toISOString().slice(0, 10));
+      }
+    } else {
+      const d = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      setScheduleDate(d.toISOString().slice(0, 10));
+    }
+    if (vendor?.maintenanceFee?.status) {
+      setScheduleStatus(vendor.maintenanceFee.status);
+    }
+    if (vendor?.maintenanceFee?.amount !== undefined) {
+      setScheduleAmount(String(vendor.maintenanceFee.amount));
+    }
+  }, [vendor]);
+
+  const applyDateOffset = (days) => {
+    const base = scheduleDate ? new Date(scheduleDate) : new Date();
+    const target = isNaN(base.getTime()) ? new Date() : base;
+    target.setDate(target.getDate() + days);
+    setScheduleDate(target.toISOString().slice(0, 10));
+  };
+
+  const saveMaintenanceSchedule = async () => {
+    if (!scheduleDate) {
+      setError("Please select a valid next maintenance fee date.");
+      return;
+    }
+    try {
+      setScheduleWorking(true);
+      setError("");
+      setMessage("");
+      await api.put(`/admin/vendors/${id}/maintenance-fee`, {
+        nextDueAt: scheduleDate,
+        status: scheduleStatus,
+        amount: Number(scheduleAmount) || 500,
+      });
+      setMessage("Next maintenance fee date and schedule updated successfully.");
+      setEditingSchedule(false);
+      await fetchVendor();
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not update maintenance fee schedule.");
+    } finally {
+      setScheduleWorking(false);
+    }
+  };
+
+  const nextFeeDate = vendor?.maintenanceFee?.nextDueAt || vendor?.freeTrialExpiry || null;
+  const isTrialActive = Boolean(vendor?.couponUsed && vendor?.freeTrialExpiry && new Date(vendor.freeTrialExpiry) >= new Date());
+
+  const getDaysDiff = (targetDate) => {
+    if (!targetDate) return null;
+    const target = new Date(targetDate);
+    if (isNaN(target.getTime())) return null;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const targetMid = new Date(target);
+    targetMid.setHours(0, 0, 0, 0);
+    const diffTime = targetMid.getTime() - now.getTime();
+    return Math.round(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const daysDiff = getDaysDiff(nextFeeDate);
 
   const updateStatus = async (status) => {
     if (status === "approved" && (!fee || Number(fee) < 0)) {
@@ -281,17 +362,94 @@ export default function AdminVendorDetail() {
           </div>
         </header>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <SummaryCard icon={PackageCheck} label="Progress">{onboarding.percent}% complete</SummaryCard>
           <SummaryCard icon={CircleDollarSign} label="Subscription">
-            <span className="capitalize text-xs">
-              {vendor.couponUsed ? (
-                <>1 month free ends on {formatDate(new Date(new Date(vendor.createdAt).setMonth(new Date(vendor.createdAt).getMonth() + 1)))}. After that, payment is required.</>
-              ) : (
-                <span className="text-sm">{vendor.paymentStatus || "Unpaid"}</span>
-              )}
-            </span>
+            {vendor.couponUsed && vendor.freeTrialExpiry ? (
+              <div className="text-xs">
+                <span className="inline-block font-semibold text-emerald-400">
+                  {new Date(vendor.freeTrialExpiry) >= new Date() ? "Voucher Active" : "Voucher Expired"}
+                </span>
+                <p className="mt-1 text-white/70">
+                  Code: <span className="font-mono text-[#d5b46c]">{vendor.couponUsed}</span>
+                </p>
+                {vendor.couponRedeemedAt && (
+                  <p className="mt-0.5 text-[11px] text-white/50">
+                    Redeemed on {formatDate(vendor.couponRedeemedAt)}
+                  </p>
+                )}
+                <p className="mt-1 text-[11px] text-[#d5b46c] font-medium">
+                  Next fee: {formatDate(nextFeeDate)}
+                </p>
+              </div>
+            ) : vendor.paymentStatus === "paid" ? (
+              <div className="text-xs">
+                <span className="inline-block font-semibold text-emerald-400">Paid Active</span>
+                <p className="mt-1 text-white/70">
+                  Paid on {formatDate(vendor.paidAt || vendor.maintenanceFee?.lastPaidAt || vendor.updatedAt)}
+                </p>
+                <p className="mt-1 text-[11px] text-[#d5b46c] font-medium">
+                  Next fee: {formatDate(nextFeeDate)}
+                </p>
+              </div>
+            ) : vendor.paymentStatus === "awaiting_verification" ? (
+              <div>
+                <span className="text-sm font-semibold capitalize text-amber-300">
+                  Awaiting Verification
+                </span>
+                <p className="mt-1 text-[11px] text-white/40">
+                  Proof of payment uploaded
+                </p>
+              </div>
+            ) : (
+              <div>
+                <span className="text-sm font-semibold capitalize text-amber-300">
+                  {vendor.paymentStatus || "Unpaid"}
+                </span>
+                <p className="mt-1 text-[11px] text-white/40">
+                  Pending payment or voucher redemption
+                </p>
+              </div>
+            )}
           </SummaryCard>
+
+          <SummaryCard icon={Calendar} label="Next Maintenance Fee">
+            <div className="text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="font-serif text-base font-semibold text-[#d5b46c]">
+                  {nextFeeDate ? formatDate(nextFeeDate) : "Not scheduled"}
+                </span>
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                {daysDiff !== null ? (
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    daysDiff < 0
+                      ? "border border-red-500/30 bg-red-500/15 text-red-300"
+                      : daysDiff <= 7
+                        ? "border border-amber-500/30 bg-amber-500/15 text-amber-300"
+                        : "border border-emerald-500/30 bg-emerald-500/15 text-emerald-300"
+                  }`}>
+                    {daysDiff < 0
+                      ? `${Math.abs(daysDiff)}d overdue`
+                      : daysDiff === 0
+                        ? "Due today"
+                        : `${daysDiff} days left`}
+                  </span>
+                ) : null}
+                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/60">
+                  R {Number(vendor.maintenanceFee?.amount || 500).toLocaleString()}/mo
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingSchedule((prev) => !prev)}
+                className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-[#c9a35b] hover:text-[#e0be78] transition"
+              >
+                <Edit3 size={11} /> {editingSchedule ? "Close editor" : "Change date"}
+              </button>
+            </div>
+          </SummaryCard>
+
           <SummaryCard icon={Banknote} label="Registration fee">R {Number(vendor.registrationFee || 0).toLocaleString()}</SummaryCard>
           <SummaryCard icon={CalendarDays} label="Application created">{formatDate(vendor.createdAt)}</SummaryCard>
         </div>
@@ -334,6 +492,250 @@ export default function AdminVendorDetail() {
                 { label: "Account number", value: vendor.bankingInfo?.accountNumber }, { label: "Branch code", value: vendor.bankingInfo?.branchCode },
                 { label: "SWIFT code", value: vendor.bankingInfo?.swiftCode }, { label: "Payout preference", value: vendor.bankingInfo?.payoutPreference },
               ]} />
+            </Section>
+
+            <Section icon={CreditCard} title="Recurring Maintenance & Payment History" description="Monthly platform maintenance fee schedule and completed payments">
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-xl border border-white/10 bg-black/40 p-3.5">
+                    <span className="text-[10px] uppercase tracking-wider text-white/40">Fee Status</span>
+                    <div className="mt-1 flex items-center gap-2">
+                      {vendor.maintenanceFee?.status === "overdue" ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-xs font-bold text-red-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" /> Overdue
+                        </span>
+                      ) : vendor.maintenanceFee?.status === "due" ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-300">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" /> Due
+                        </span>
+                      ) : vendor.couponUsed && vendor.freeTrialExpiry && new Date(vendor.freeTrialExpiry) >= new Date() ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-300">
+                          Trial Active
+                        </span>
+                      ) : vendor.paymentStatus === "paid" ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-300">
+                          Active & Covered
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-xs font-bold text-white/60">
+                          Unpaid
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-white/10 bg-black/40 p-3.5">
+                    <span className="text-[10px] uppercase tracking-wider text-white/40">Monthly Rate</span>
+                    <div className="mt-1 font-serif text-lg font-semibold text-[#d5b46c]">
+                      R {Number(vendor.maintenanceFee?.amount || 500).toLocaleString()}<span className="text-xs font-normal text-white/40"> / mo</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-white/10 bg-black/40 p-3.5">
+                    <span className="text-[10px] uppercase tracking-wider text-white/40">Last Paid</span>
+                    <div className="mt-1 text-sm font-medium text-white/90">
+                      {vendor.maintenanceFee?.lastPaidAt || vendor.paidAt
+                        ? formatDate(vendor.maintenanceFee?.lastPaidAt || vendor.paidAt)
+                        : "Not yet paid"}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col justify-between rounded-xl border border-[#c9a35b]/30 bg-gradient-to-br from-[#1b1915] to-black/60 p-3.5">
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-[#d5b46c]">Next Maintenance Due</span>
+                        {daysDiff !== null && (
+                          <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
+                            daysDiff < 0
+                              ? "bg-red-500/20 text-red-300"
+                              : daysDiff <= 7
+                                ? "bg-amber-500/20 text-amber-300"
+                                : "bg-emerald-500/20 text-emerald-300"
+                          }`}>
+                            {daysDiff < 0 ? `${Math.abs(daysDiff)}d overdue` : daysDiff === 0 ? "Due today" : `${daysDiff}d left`}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 font-serif text-lg font-semibold text-[#f3dfad]">
+                        {nextFeeDate ? formatDate(nextFeeDate) : "Pending initial payment"}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditingSchedule((prev) => !prev)}
+                      className="mt-2 inline-flex items-center gap-1.5 self-start rounded-md border border-[#c9a35b]/40 bg-[#c9a35b]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#e6c985] hover:bg-[#c9a35b]/20 transition"
+                    >
+                      <Edit3 size={11} /> {editingSchedule ? "Hide editor" : "Adjust Date"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Interactive Next Maintenance Fee & Schedule Editor */}
+                {editingSchedule && (
+                  <div className="rounded-xl border border-[#c9a35b]/30 bg-[#14120e] p-4 text-white shadow-xl transition-all">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Calendar size={16} className="text-[#c9a35b]" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[#e8c982]">
+                          Manage Next Maintenance Fee Schedule
+                        </h4>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditingSchedule(false)}
+                        className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                      {/* Date Picker */}
+                      <div>
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+                          Next Maintenance Fee Due Date *
+                        </label>
+                        <input
+                          type="date"
+                          value={scheduleDate}
+                          onChange={(e) => setScheduleDate(e.target.value)}
+                          className="mt-1.5 w-full rounded-lg border border-white/15 bg-black/60 px-3 py-2 text-xs text-white outline-none focus:border-[#c9a35b] transition"
+                        />
+                        {/* Quick Offset Buttons */}
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          <button
+                            type="button"
+                            onClick={() => applyDateOffset(30)}
+                            className="rounded border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70 hover:bg-[#c9a35b]/20 hover:text-[#d5b46c] transition"
+                          >
+                            +30 Days
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyDateOffset(60)}
+                            className="rounded border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70 hover:bg-[#c9a35b]/20 hover:text-[#d5b46c] transition"
+                          >
+                            +60 Days
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyDateOffset(90)}
+                            className="rounded border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70 hover:bg-[#c9a35b]/20 hover:text-[#d5b46c] transition"
+                          >
+                            +90 Days
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyDateOffset(365)}
+                            className="rounded border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70 hover:bg-[#c9a35b]/20 hover:text-[#d5b46c] transition"
+                          >
+                            +1 Year
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Status Selector */}
+                      <div>
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+                          Maintenance Fee Status
+                        </label>
+                        <select
+                          value={scheduleStatus}
+                          onChange={(e) => setScheduleStatus(e.target.value)}
+                          className="mt-1.5 w-full rounded-lg border border-white/15 bg-black/60 px-3 py-2 text-xs text-white outline-none focus:border-[#c9a35b] transition"
+                        >
+                          <option value="paid">Paid / Active</option>
+                          <option value="due">Due for Payment</option>
+                          <option value="overdue">Overdue</option>
+                          <option value="grace_period">Grace Period</option>
+                        </select>
+                        <p className="mt-2 text-[10px] text-white/40">
+                          Determines vendor store visibility & billing reminders.
+                        </p>
+                      </div>
+
+                      {/* Fee Amount */}
+                      <div>
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+                          Monthly Fee Rate (ZAR)
+                        </label>
+                        <div className="relative mt-1.5">
+                          <span className="absolute left-3 top-2 text-xs text-white/40">R</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={scheduleAmount}
+                            onChange={(e) => setScheduleAmount(e.target.value)}
+                            className="w-full rounded-lg border border-white/15 bg-black/60 pl-8 pr-3 py-2 text-xs text-white outline-none focus:border-[#c9a35b] transition"
+                          />
+                        </div>
+                        <p className="mt-2 text-[10px] text-white/40">
+                          Standard monthly platform fee (default R 500).
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-end gap-2 border-t border-white/10 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => setEditingSchedule(false)}
+                        className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-white/60 hover:bg-white/5 transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={scheduleWorking}
+                        onClick={saveMaintenanceSchedule}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#c9a35b] px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-black hover:bg-[#d8b76f] disabled:opacity-50 transition"
+                      >
+                        <Save size={13} /> {scheduleWorking ? "Saving..." : "Save Next Fee Date"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Recurring Payment Records Table */}
+                <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                  <div className="border-b border-white/10 bg-white/[0.02] px-4 py-3">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-white/70">Payment History & Recurrent Receipts</h4>
+                  </div>
+                  {vendor.maintenanceFee?.paymentHistory && vendor.maintenanceFee.paymentHistory.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-white/10 bg-white/[0.01] text-[10px] uppercase tracking-wider text-white/40">
+                            <th className="px-4 py-3 font-medium">Ref / ID</th>
+                            <th className="px-4 py-3 font-medium">Date</th>
+                            <th className="px-4 py-3 font-medium">Payment Method</th>
+                            <th className="px-4 py-3 font-medium text-right">Amount</th>
+                            <th className="px-4 py-3 font-medium text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 text-white/80">
+                          {vendor.maintenanceFee.paymentHistory.map((item, idx) => (
+                            <tr key={idx} className="transition hover:bg-white/[0.02]">
+                              <td className="px-4 py-3 font-mono text-[11px] text-[#d5b46c]">{item.reference || item.gsReference || `PAY-${idx + 1}`}</td>
+                              <td className="px-4 py-3 text-white/60">{formatDate(item.paidAt, true)}</td>
+                              <td className="px-4 py-3 text-white/80">{item.paymentMethod || "Card / EFT"}</td>
+                              <td className="px-4 py-3 text-right font-medium text-white">R {Number(item.amount || 0).toLocaleString()}</td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="inline-block rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-300">
+                                  {item.status || "Cleared"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="p-6 text-center text-xs text-white/40">
+                      No recurrent maintenance payments recorded yet.
+                    </div>
+                  )}
+                </div>
+              </div>
             </Section>
 
             <Section icon={Truck} title="Products & fulfilment" description="What the vendor sells and how orders will be handled">
@@ -451,6 +853,89 @@ export default function AdminVendorDetail() {
                 )}
               </section>
             )}
+
+            <section className="rounded-xl border border-white/10 bg-[#101010] p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <Calendar size={17} className="text-[#c9a35b]" /> Maintenance Fee
+                </div>
+                {daysDiff !== null && (
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    daysDiff < 0
+                      ? "border border-red-500/20 bg-red-500/15 text-red-300"
+                      : daysDiff <= 7
+                        ? "border border-amber-500/20 bg-amber-500/15 text-amber-300"
+                        : "border border-emerald-500/20 bg-emerald-500/15 text-emerald-300"
+                  }`}>
+                    {daysDiff < 0 ? `${Math.abs(daysDiff)}d overdue` : daysDiff === 0 ? "Due today" : `${daysDiff}d left`}
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-3 rounded-lg border border-white/5 bg-white/[0.02] p-3 text-xs">
+                <div className="flex justify-between text-white/40">
+                  <span>Current Due Date</span>
+                  <span className="font-medium text-white/90">
+                    {nextFeeDate ? formatDate(nextFeeDate) : "Not scheduled"}
+                  </span>
+                </div>
+                <div className="mt-2 flex justify-between text-white/40">
+                  <span>Monthly Rate</span>
+                  <span className="font-serif font-semibold text-[#d5b46c]">
+                    R {Number(vendor.maintenanceFee?.amount || 500).toLocaleString()}/mo
+                  </span>
+                </div>
+                <div className="mt-2 flex justify-between text-white/40">
+                  <span>Status</span>
+                  <span className="capitalize font-semibold text-white/80">
+                    {vendor.maintenanceFee?.status || (isTrialActive ? "Trial Active" : "Unpaid")}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                  Adjust Next Due Date
+                </label>
+                <input
+                  type="date"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-xs text-white outline-none focus:border-[#c9a35b]"
+                />
+                <div className="mt-2 flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => applyDateOffset(30)}
+                    className="flex-1 rounded border border-white/10 bg-white/5 py-1 text-[10px] text-white/60 hover:bg-[#c9a35b]/10 hover:text-[#d5b46c]"
+                  >
+                    +30d
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyDateOffset(60)}
+                    className="flex-1 rounded border border-white/10 bg-white/5 py-1 text-[10px] text-white/60 hover:bg-[#c9a35b]/10 hover:text-[#d5b46c]"
+                  >
+                    +60d
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyDateOffset(90)}
+                    className="flex-1 rounded border border-white/10 bg-white/5 py-1 text-[10px] text-white/60 hover:bg-[#c9a35b]/10 hover:text-[#d5b46c]"
+                  >
+                    +90d
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  disabled={scheduleWorking}
+                  onClick={saveMaintenanceSchedule}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#c9a35b]/30 bg-[#c9a35b]/10 px-3 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-[#d5b46c] hover:bg-[#c9a35b]/20 disabled:opacity-50 transition"
+                >
+                  <Save size={13} /> {scheduleWorking ? "Saving..." : "Save Next Fee Date"}
+                </button>
+              </div>
+            </section>
 
             <section className="rounded-xl border border-white/10 bg-[#101010] p-5">
               <div className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck size={17} className="text-[#c9a35b]" /> Verification overview</div>

@@ -941,6 +941,71 @@ const giftOrderAdminNotificationTemplate = (order) => {
   return generateEmailTemplate(`Gift Order Alert #${orderRef}`, content);
 };
 
+const vendorMaintenanceFeePaidTemplate = ({
+  vendorName = 'Vendor Partner',
+  businessName = '',
+  amount = 500,
+  paymentMethod = 'PayFast / Card',
+  reference = '',
+  paidAt = new Date(),
+  nextDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+}) => {
+  const formattedPaidAt = new Date(paidAt).toLocaleDateString('en-ZA', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  const formattedNextDue = new Date(nextDueAt).toLocaleDateString('en-ZA', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+
+  const content = `
+    <h1>Monthly Maintenance Fee Receipt</h1>
+    <p>Dear ${vendorName},</p>
+    <p>Thank you for your payment. Your recurring monthly platform maintenance fee for <strong>${businessName || 'your storefront'}</strong> has been received and cleared. Your storefront, catalog listings, and order fulfillment remain fully active.</p>
+    
+    <div class="details-box" style="margin: 24px 0; padding: 20px; background: rgba(255,255,255,0.03); border: 1px solid rgba(201, 163, 91, 0.3); border-radius: 8px;">
+      <h3 style="margin-top: 0; color: ${BRAND_COLOR_GOLD}; font-size: 15px; letter-spacing: 1px; text-transform: uppercase;">Payment Receipt</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+        <tr>
+          <td style="padding: 8px 0; color: #888;">Transaction Reference:</td>
+          <td style="padding: 8px 0; text-align: right; font-family: monospace; color: #fff; font-weight: bold;">${reference}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #888;">Amount Paid:</td>
+          <td style="padding: 8px 0; text-align: right; color: ${BRAND_COLOR_GOLD}; font-weight: bold; font-size: 16px;">R ${Number(amount).toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #888;">Payment Method:</td>
+          <td style="padding: 8px 0; text-align: right; color: #eee;">${paymentMethod}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #888;">Payment Date:</td>
+          <td style="padding: 8px 0; text-align: right; color: #eee;">${formattedPaidAt}</td>
+        </tr>
+        <tr style="border-top: 1px solid rgba(255,255,255,0.1);">
+          <td style="padding: 10px 0 0; color: #aaa; font-weight: 500;">Next Renewal Due Date:</td>
+          <td style="padding: 10px 0 0; text-align: right; color: #55efc4; font-weight: bold;">${formattedNextDue}</td>
+        </tr>
+      </table>
+    </div>
+    
+    <p style="color: #aaa; font-size: 13px; line-height: 1.5;">
+      Your active listing and merchant privileges are extended for the next 30 days. You can review your transaction history, statements, and payouts anytime in your Vendor Dashboard.
+    </p>
+
+    <div style="text-align: center; margin-top: 25px;">
+      <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/vendor/dashboard" class="btn">View Vendor Dashboard</a>
+    </div>
+  `;
+
+  return generateEmailTemplate('Monthly Vendor Maintenance Fee Receipt', content);
+};
+
 module.exports = {
   generateEmailTemplate,
   welcomeEmailTemplate,
@@ -951,6 +1016,7 @@ module.exports = {
   bankTransferInstructionsTemplate,
   eventBankTransferInstructionsTemplate,
   vendorApprovalTemplate,
+  vendorMaintenanceFeePaidTemplate,
   hostApplicationApprovalTemplate,
   hostApplicationRejectionTemplate,
   eventReminderTemplate,

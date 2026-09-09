@@ -5,7 +5,7 @@ const {
   deleteUserProfile, googleAuth, getReferralSummary, verifyEmail, 
   forgotPassword, resetPassword, getCustomerBankDetails, updateCustomerBankDetails,
   getCustomerCalendarActivities, testBirthdayEmail,
-  sendOtp, verifyOtp, sendMagicLink, verifyMagicLink, appleAuth, convertGuestToAccount
+  sendOtp, verifyOtp, sendEmailOtp, verifyEmailOtp, sendMagicLink, verifyMagicLink, appleAuth, convertGuestToAccount
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -14,6 +14,8 @@ router.post('/login', loginUser);
 router.post('/convert-guest', convertGuestToAccount);
 router.post('/send-otp', sendOtp);
 router.post('/verify-otp', verifyOtp);
+router.post('/send-email-otp', sendEmailOtp);
+router.post('/verify-email-otp', verifyEmailOtp);
 router.post('/magic-link', sendMagicLink);
 router.post('/verify-magic-link', verifyMagicLink);
 router.post('/apple', appleAuth);

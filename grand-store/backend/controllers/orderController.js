@@ -190,6 +190,20 @@ const addOrderItems = async (req, res) => {
       await user.save();
     }
 
+    // If user registered via phone (has auto-generated placeholder email), update account to their real email from checkout
+    const isAutoPlaceholderEmail = !user?.email || /^customer_.*@grandstore\.co\.za$/i.test(user.email);
+    if (user && isAutoPlaceholderEmail && shippingAddress?.email) {
+      const checkoutEmail = String(shippingAddress.email).trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (emailRegex.test(checkoutEmail)) {
+        const emailTaken = await User.findOne({ email: checkoutEmail, _id: { $ne: user._id } });
+        if (!emailTaken) {
+          user.email = checkoutEmail;
+          await user.save();
+        }
+      }
+    }
+
     const finalTotal = parseFloat(Math.max(0, calculatedTotal - appliedWelcomeDiscount - appliedRewards - superCoinsDiscount).toFixed(2));
 
     let allOrderItems = [];

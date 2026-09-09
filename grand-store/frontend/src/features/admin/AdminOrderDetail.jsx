@@ -23,6 +23,7 @@ import {
   Gift
 } from 'lucide-react';
 import Price from '../../components/ui/Price';
+import { PHONE_COUNTRIES } from '../../utils/phoneNumbers';
 
 export default function AdminOrderDetail({ onNotify }) {
   const { id } = useParams();
@@ -374,6 +375,11 @@ export default function AdminOrderDetail({ onNotify }) {
                   </a>
                 ) : (
                   <span className="text-white/40 italic">Not provided</span>
+                )}
+                {order.customerPhoneCountry && (
+                  <span className="text-xs text-white/50 block mt-1">
+                    {PHONE_COUNTRIES.find((country) => country.country === order.customerPhoneCountry)?.name || order.customerPhoneCountry} ({order.customerPhoneCountryCode})
+                  </span>
                 )}
               </div>
             </div>

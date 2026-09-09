@@ -39,6 +39,8 @@ import SecurePaymentBadges from '../../components/checkout/SecurePaymentBadges';
 import Price from '../../components/ui/Price';
 import StoreBankDetailsCard from '../../components/StoreBankDetailsCard';
 import api from '../../api';
+import CountryCodeSelect from '../../components/CountryCodeSelect';
+import { PHONE_COUNTRIES, getCheckoutPhone, splitPhoneNumber } from '../../utils/phoneNumbers';
 
 const POPULAR_INTERNATIONAL_COUNTRIES = [
   { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
@@ -189,17 +191,49 @@ export default function CheckoutPage({
     }
   };
 
-  const [formData, setFormData] = useState({
-    email: user ? user.email : '',
-    firstName: user ? user.name.split(' ')[0] : '',
-    lastName: user && user.name.split(' ').length > 1 ? user.name.split(' ').slice(1).join(' ') : '',
-    phone: user ? (user.phone || user.phoneNumber || '') : '',
-    address: '',
-    city: '',
-    postalCode: '',
-    country: 'South Africa',
-    lat: null,
-    lng: null
+  const resolveUserFullName = (u) => {
+    if (!u) return '';
+    if (typeof u === 'string') return u.trim();
+    return (
+      u.name ||
+      u.fullName ||
+      u.displayName ||
+      [u.firstName, u.lastName].filter(Boolean).join(' ') ||
+      ''
+    ).trim();
+  };
+
+  const getStoredUser = () => {
+    try {
+      const raw = localStorage.getItem('userInfo');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const activeUser = user || getStoredUser();
+  const userFullName = resolveUserFullName(activeUser);
+
+  const [formData, setFormData] = useState(() => {
+    const u = user || getStoredUser();
+    const resolvedName = resolveUserFullName(u);
+    const parts = resolvedName.split(/\s+/).filter(Boolean);
+    const phoneInfo = splitPhoneNumber(u?.phone || u?.phoneNumber || '');
+    return {
+      email: u?.email || '',
+      fullName: resolvedName,
+      firstName: parts[0] || '',
+      lastName: parts.slice(1).join(' ') || '',
+      phone: phoneInfo.phone || '',
+      phoneCountry: phoneInfo.phoneCountry || 'South Africa',
+      address: '',
+      city: '',
+      postalCode: '',
+      country: 'South Africa',
+      lat: null,
+      lng: null
+    };
   });
 
   const [postnetPreview, setPostnetPreview] = useState({
@@ -211,6 +245,8 @@ export default function CheckoutPage({
     error: ''
   });
   const [preferredPostnetStore, setPreferredPostnetStore] = useState(null);
+  const [selectedPostnetBranch, setSelectedPostnetBranch] = useState(null);
+  const [isChangingPostnetBranch, setIsChangingPostnetBranch] = useState(false);
   const [showAllPostnetBranches, setShowAllPostnetBranches] = useState(false);
   const [showAllPostnetCities, setShowAllPostnetCities] = useState(false);
 
@@ -263,20 +299,48 @@ export default function CheckoutPage({
   }, [user, navigate, onNotify]);
 
   useEffect(() => {
-    if (user) {
-      setFormData((prev) => ({
-        ...prev,
-        email: prev.email || user.email || '',
-        firstName: prev.firstName || (user.name ? user.name.split(' ')[0] : ''),
-        lastName: prev.lastName || (user.name && user.name.split(' ').length > 1 ? user.name.split(' ').slice(1).join(' ') : ''),
-        phone: prev.phone || user.phone || user.phoneNumber || ''
-      }));
+    const u = user || getStoredUser();
+    if (u) {
+      const resolvedName = resolveUserFullName(u);
+      const nameParts = resolvedName.split(/\s+/).filter(Boolean);
+      const phoneInfo = splitPhoneNumber(u.phone || u.phoneNumber || '');
+      setFormData((prev) => {
+        const effectiveFullName = prev.fullName || resolvedName;
+        const parts = effectiveFullName.split(/\s+/).filter(Boolean);
+        return {
+          ...prev,
+          email: prev.email || u.email || '',
+          fullName: effectiveFullName,
+          firstName: prev.firstName || parts[0] || '',
+          lastName: prev.lastName || parts.slice(1).join(' ') || '',
+          ...(prev.phone ? { phone: prev.phone, phoneCountry: prev.phoneCountry } : phoneInfo)
+        };
+      });
     }
   }, [user]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((current) => ({ ...current, [name]: value }));
+    if (name === 'fullName') {
+      const parts = value.trim().split(/\s+/).filter(Boolean);
+      setFormData((current) => ({
+        ...current,
+        fullName: value,
+        firstName: parts[0] || value.trim(),
+        lastName: parts.slice(1).join(' ')
+      }));
+    } else if (name === 'firstName' || name === 'lastName') {
+      setFormData((current) => {
+        const next = { ...current, [name]: value };
+        next.fullName = `${next.firstName || ''} ${next.lastName || ''}`.trim();
+        return next;
+      });
+    } else if (name === 'phone') {
+      setFormData((current) => ({ ...current, phone: value.replace(/[^0-9]/g, '') }));
+    } else {
+      setFormData((current) => ({ ...current, [name]: value }));
+    }
+
     if (['address', 'city', 'postalCode', 'country'].includes(name)) {
       setQuote(null);
       setDutiesAccepted(false);
@@ -293,6 +357,8 @@ export default function CheckoutPage({
       lng: null
     }));
     setPreferredPostnetStore(null);
+    setSelectedPostnetBranch(null);
+    setIsChangingPostnetBranch(false);
     setPostnetPreview({
       loading: false,
       stores: [],
@@ -366,9 +432,9 @@ export default function CheckoutPage({
         usingNearestCity: Boolean(response.data?.usingNearestCity),
         error: ''
       });
-      // Default to nearest store if none selected yet
-      if (stores.length > 0 && !preferredPostnetStore) {
-        setPreferredPostnetStore(stores[0]);
+      // Do NOT auto-select stores[0]. Allow user to see all branches and pick their preferred branch.
+      if (preferredPostnetStore && stores.length > 0 && !stores.some((s) => s.id === preferredPostnetStore.id)) {
+        setPreferredPostnetStore(null);
       }
     }).catch((error) => {
       if (cancelled) return;
@@ -468,8 +534,25 @@ export default function CheckoutPage({
     });
   };
 
-  const handlePreferredPostnetStoreSelect = (store) => {
+  const handleSelectBranchCandidate = (store) => {
+    setSelectedPostnetBranch(store);
+  };
+
+  const handleConfirmPostnetStore = (storeToConfirm) => {
+    const store = storeToConfirm || selectedPostnetBranch;
+    if (!store) {
+      onNotify('Please choose a PostNet branch from the list.');
+      return;
+    }
     setPreferredPostnetStore(store);
+    setSelectedPostnetBranch(store);
+    setIsChangingPostnetBranch(false);
+    if (store?.postalCode) {
+      setFormData((current) => ({
+        ...current,
+        postalCode: store.postalCode
+      }));
+    }
     if (quote) {
       setQuote((currentQuote) => ({
         ...currentQuote,
@@ -485,8 +568,13 @@ export default function CheckoutPage({
   const handleProceedToDeliveryMethod = async (e) => {
     if (e) e.preventDefault();
 
-    if (!formData.firstName || !formData.lastName || !formData.phone || !formData.email) {
-      onNotify('Please fill in your recipient contact details including email address.');
+    const effectiveFullName = (formData.fullName || `${formData.firstName || ''} ${formData.lastName || ''}`).trim();
+    if (!effectiveFullName || !formData.phone || !formData.email) {
+      onNotify('Please fill in your recipient contact details including full name and email address.');
+      return;
+    }
+    if (!getCheckoutPhone(formData.phone, formData.phoneCountry)) {
+      onNotify('Please select a country code and enter a valid phone number for that country.');
       return;
     }
 
@@ -521,9 +609,17 @@ export default function CheckoutPage({
       return;
     }
 
-    if (deliveryPreference === 'postnet' && (!formData.city || !preferredPostnetStore)) {
-      onNotify('Please search for a city and select your preferred PostNet collection branch.');
-      return;
+    if (deliveryPreference === 'postnet') {
+      if (!formData.city) {
+        onNotify('Please search for your city or suburb for PostNet collection.');
+        return;
+      }
+      if (!preferredPostnetStore && selectedPostnetBranch) {
+        handleConfirmPostnetStore(selectedPostnetBranch);
+      } else if (!preferredPostnetStore && !selectedPostnetBranch) {
+        onNotify('Please select and confirm your preferred PostNet collection branch.');
+        return;
+      }
     }
 
     const currentQuote = quote || await fetchQuote();
@@ -567,6 +663,12 @@ export default function CheckoutPage({
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
 
+    const phoneDetails = getCheckoutPhone(formData.phone, formData.phoneCountry);
+    if (!phoneDetails) {
+      onNotify('Please select a country code and enter a valid phone number for that country.');
+      return;
+    }
+
     if (!quote) {
       onNotify('Please calculate and select a delivery option first.');
       return;
@@ -583,13 +685,13 @@ export default function CheckoutPage({
 
     try {
       const isGuest = !user;
-      const guestName = `${formData.firstName} ${formData.lastName}`.trim();
+      const guestName = (formData.fullName || `${formData.firstName || ''} ${formData.lastName || ''}`).trim() || 'Valued Customer';
       const orderData = {
         quote,
         isGuest,
         guestEmail: formData.email,
-        guestName: guestName || 'Guest Customer',
-        guestPhone: formData.phone || '',
+        guestName: guestName,
+        guestPhone: phoneDetails.phone,
         isAgeConfirmed: isAgeConfirmed,
         guestKyc: isGuest ? {
           idType: guestIdType,
@@ -604,6 +706,9 @@ export default function CheckoutPage({
         } : undefined),
         shippingAddress: {
           name: guestName,
+          fullName: guestName,
+          firstName: formData.firstName || guestName.split(' ')[0] || '',
+          lastName: formData.lastName || guestName.split(' ').slice(1).join(' ') || '',
           email: formData.email,
           address: deliveryPreference === 'postnet' && preferredPostnetStore
             ? preferredPostnetStore.address
@@ -611,8 +716,7 @@ export default function CheckoutPage({
           city: formData.city,
           postalCode: formData.postalCode,
           country: formData.country,
-          phone: formData.phone || user?.phone || user?.phoneNumber || '',
-          phoneNumber: formData.phone || user?.phone || user?.phoneNumber || ''
+          ...phoneDetails
         },
         deliveryPreference,
         selectedPostnetStore: preferredPostnetStore,
@@ -977,24 +1081,24 @@ export default function CheckoutPage({
                   <button
                     type="button"
                     onClick={() => selectDeliveryMode('domestic_home')}
-                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer overflow-hidden ${
                       destinationMode === 'domestic_sa' && deliveryPreference === 'home'
                         ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_20px_rgba(212,175,55,0.12)] ring-1 ring-[var(--color-gold)]/30'
                         : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
                     }`}
                   >
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className={`p-2 rounded-xl ${destinationMode === 'domestic_sa' && deliveryPreference === 'home' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
+                    <div className="flex items-center gap-3 mb-2 pr-7">
+                      <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'home' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
                         <Truck size={18} />
                       </span>
-                      <div>
-                        <p className="text-sm font-semibold text-white">SA Door Delivery</p>
-                        <p className="text-[10px] text-[var(--color-gold)] font-medium">🇿🇦 South Africa Direct Courier</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-white truncate">SA Door Delivery</p>
+                        <p className="text-[10px] text-[var(--color-gold)] font-medium truncate">🇿🇦 South Africa Direct Courier</p>
                       </div>
                     </div>
                     <p className="text-[11px] text-[var(--color-ivory-muted)]">Door-to-door courier via Courier Guy & PostNet</p>
                     {destinationMode === 'domestic_sa' && deliveryPreference === 'home' && (
-                      <CheckCircle2 size={16} className="absolute right-3.5 top-3.5 text-[var(--color-gold)]" />
+                      <CheckCircle2 size={16} className="absolute right-3.5 top-3.5 text-[var(--color-gold)] shrink-0" />
                     )}
                   </button>
 
@@ -1002,24 +1106,24 @@ export default function CheckoutPage({
                   <button
                     type="button"
                     onClick={() => selectDeliveryMode('domestic_postnet')}
-                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer overflow-hidden ${
                       destinationMode === 'domestic_sa' && deliveryPreference === 'postnet'
                         ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_20px_rgba(212,175,55,0.12)] ring-1 ring-[var(--color-gold)]/30'
                         : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
                     }`}
                   >
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className={`p-2 rounded-xl ${destinationMode === 'domestic_sa' && deliveryPreference === 'postnet' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
+                    <div className="flex items-center gap-3 mb-2 pr-7">
+                      <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'postnet' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
                         <Store size={18} />
                       </span>
-                      <div>
-                        <p className="text-sm font-semibold text-white">PostNet Collection</p>
-                        <p className="text-[10px] text-red-400 font-medium">🇿🇦 PostNet-to-PostNet</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-white truncate">PostNet Collection</p>
+                        <p className="text-[10px] text-red-400 font-medium truncate">🇿🇦 PostNet-to-PostNet</p>
                       </div>
                     </div>
                     <p className="text-[11px] text-[var(--color-ivory-muted)]">Collect at over 450+ PostNet branches nationwide</p>
                     {destinationMode === 'domestic_sa' && deliveryPreference === 'postnet' && (
-                      <CheckCircle2 size={16} className="absolute right-3.5 top-3.5 text-[var(--color-gold)]" />
+                      <CheckCircle2 size={16} className="absolute right-3.5 top-3.5 text-[var(--color-gold)] shrink-0" />
                     )}
                   </button>
 
@@ -1027,29 +1131,29 @@ export default function CheckoutPage({
                   <button
                     type="button"
                     onClick={() => selectDeliveryMode('international_dhl')}
-                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer overflow-hidden ${
                       destinationMode === 'international_dhl'
                         ? 'border-amber-400 bg-amber-500/15 shadow-[0_0_25px_rgba(245,158,11,0.18)] ring-1 ring-amber-400/40'
                         : 'border-white/10 bg-[#0d0d0d] hover:border-amber-400/40'
                     }`}
                   >
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className={`p-2 rounded-xl ${destinationMode === 'international_dhl' ? 'bg-amber-400 text-black' : 'bg-white/5 text-amber-400/80'}`}>
+                    <div className="flex items-start gap-3 mb-2 pr-7">
+                      <span className={`p-2 rounded-xl shrink-0 mt-0.5 ${destinationMode === 'international_dhl' ? 'bg-amber-400 text-black' : 'bg-white/5 text-amber-400/80'}`}>
                         <Globe size={18} />
                       </span>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-semibold text-white">International DHL</p>
-                          <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
-                            Express
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="text-sm font-semibold text-white truncate">DHL Express</p>
+                          <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono shrink-0 whitespace-nowrap">
+                            Worldwide
                           </span>
                         </div>
-                        <p className="text-[10px] text-amber-300/90 font-medium">✈️ Worldwide Delivery</p>
+                        <p className="text-[10px] text-amber-300/90 font-medium truncate">✈️ International Courier</p>
                       </div>
                     </div>
                     <p className="text-[11px] text-[var(--color-ivory-muted)]">Air express courier to UK, USA, Europe & 50+ countries</p>
                     {destinationMode === 'international_dhl' && (
-                      <CheckCircle2 size={16} className="absolute right-3.5 top-3.5 text-amber-400" />
+                      <CheckCircle2 size={16} className="absolute right-3.5 top-3.5 text-amber-400 shrink-0" />
                     )}
                   </button>
                 </div>
@@ -1058,26 +1162,23 @@ export default function CheckoutPage({
                 <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
                   <h3 className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-medium">Recipient Information</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">First Name *</label>
+                    <div className="sm:col-span-2">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70">Full Name *</label>
+                        {userFullName && formData.fullName === userFullName && (
+                          <span className="text-[10px] text-[var(--color-gold)] font-medium flex items-center gap-1 bg-[var(--color-gold)]/10 px-2.5 py-0.5 rounded-full border border-[var(--color-gold)]/25">
+                            <CheckCircle2 size={11} /> Auto-filled from profile
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="text"
-                        name="firstName"
-                        value={formData.firstName}
+                        name="fullName"
+                        value={formData.fullName}
                         onChange={handleChange}
                         required
-                        className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Last Name *</label>
-                      <input
-                        type="text"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleChange}
-                        required
-                        className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                        placeholder="e.g. Johnathan Smith"
+                        className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors text-white placeholder:text-white/30"
                       />
                     </div>
                     <div className="sm:col-span-2">
@@ -1094,19 +1195,37 @@ export default function CheckoutPage({
                     </div>
                     <div className="sm:col-span-2">
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[11px] uppercase tracking-wider text-white/70 flex items-center gap-1.5">
+                        <label htmlFor="checkout-phone" className="text-[11px] uppercase tracking-wider text-white/70 flex items-center gap-1.5">
                           <Phone size={12} className="text-[var(--color-gold)]" /> Mobile Number (Required for PostNet SMS alerts) *
                         </label>
                       </div>
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleChange}
-                        required
-                        placeholder="e.g. +27 82 123 4567"
-                        className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
-                      />
+                      <div className="flex min-w-0 rounded-xl border border-white/10 bg-black/60 focus-within:border-[var(--color-gold)] transition-colors relative overflow-visible">
+                        <CountryCodeSelect
+                          value={formData.phoneCountry}
+                          onChange={(dialCode, country) => {
+                            setFormData((current) => ({
+                              ...current,
+                              phoneCountry: country?.country || dialCode
+                            }));
+                          }}
+                          id="checkout-phone-country"
+                          buttonClassName="py-3 px-2.5 sm:px-3.5 rounded-l-xl bg-[#191712] hover:bg-[#232019] text-xs text-[var(--color-gold)] border-r border-white/10 shrink-0"
+                          showName={true}
+                        />
+                        <input
+                          id="checkout-phone"
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel-national"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleChange}
+                          required
+                          maxLength={17}
+                          placeholder="Mobile number"
+                          className="w-full min-w-0 bg-transparent rounded-r-xl px-3 py-3 text-sm focus:outline-none"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1148,11 +1267,15 @@ export default function CheckoutPage({
                           name="city"
                           value={formData.city}
                           onChange={handleCityChange}
-                          onCityDetails={({ city, country, lat, lng }) => {
+                          onCityDetails={({ city, postalCode, country, lat, lng }) => {
+                            const matchedCity = POSTNET_AVAILABLE_CITIES.find(
+                              (c) => c.name.toLowerCase() === city.toLowerCase()
+                            );
+                            const targetPostalCode = postalCode || matchedCity?.postalCode || '';
                             setFormData((current) => ({
                               ...current,
                               city,
-                              postalCode: '',
+                              postalCode: targetPostalCode || current.postalCode,
                               country: country || current.country,
                               lat,
                               lng
@@ -1213,55 +1336,6 @@ export default function CheckoutPage({
                       </div>
                     </div>
 
-                    {/* Quick City Selection: Top 3 cities by default with Show More / Less */}
-                    <div className="p-3.5 bg-white/[0.03] border border-white/10 rounded-xl space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] uppercase tracking-wider text-white/70 font-semibold">
-                          Available PostNet Hubs & Cities
-                        </span>
-                        {POSTNET_AVAILABLE_CITIES.length > 3 && (
-                          <button
-                            type="button"
-                            onClick={() => setShowAllPostnetCities(!showAllPostnetCities)}
-                            className="text-[11px] text-[var(--color-gold)] hover:underline flex items-center gap-1 font-semibold"
-                          >
-                            {showAllPostnetCities
-                              ? 'Show Fewer Cities ▴'
-                              : `Show More Cities (+${POSTNET_AVAILABLE_CITIES.length - 3} More) ▾`}
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {(showAllPostnetCities ? POSTNET_AVAILABLE_CITIES : POSTNET_AVAILABLE_CITIES.slice(0, 3)).map((city) => {
-                          const isSelected = String(formData.city || '').trim().toLowerCase() === city.name.toLowerCase();
-                          return (
-                            <button
-                              key={city.name}
-                              type="button"
-                              onClick={() => {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  city: city.name,
-                                  postalCode: city.postalCode,
-                                  lat: city.lat,
-                                  lng: city.lng
-                                }));
-                                setPreferredPostnetStore(null);
-                                setQuote(null);
-                              }}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                isSelected
-                                  ? 'bg-[var(--color-gold)] text-black font-bold shadow-md'
-                                  : 'bg-white/5 hover:bg-white/10 text-white/80 border border-white/10'
-                              }`}
-                            >
-                              📍 {city.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">City / Suburb</label>
@@ -1269,10 +1343,15 @@ export default function CheckoutPage({
                           name="city"
                           value={formData.city}
                           onChange={handleCityChange}
-                          onCityDetails={({ city, lat, lng }) => {
+                          onCityDetails={({ city, postalCode, lat, lng }) => {
+                            const matchedCity = POSTNET_AVAILABLE_CITIES.find(
+                              (c) => c.name.toLowerCase() === city.toLowerCase()
+                            );
+                            const targetPostalCode = postalCode || matchedCity?.postalCode || '';
                             setFormData((current) => ({
                               ...current,
                               city,
+                              postalCode: targetPostalCode || current.postalCode,
                               lat,
                               lng
                             }));
@@ -1305,37 +1384,124 @@ export default function CheckoutPage({
                       </div>
                     </div>
 
-                    {/* Selected Store Banner */}
-                    {preferredPostnetStore && (
-                      <div className="rounded-xl border border-[var(--color-gold)] bg-[var(--color-gold)]/10 p-4 flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                          <MapPin size={20} className="text-[var(--color-gold)] shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-xs uppercase tracking-widest text-emerald-400 font-bold mb-0.5">Your Collection Point</p>
-                            <p className="text-sm font-bold text-white">{preferredPostnetStore.name}</p>
-                            <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">{preferredPostnetStore.address}</p>
-                            {preferredPostnetStore.distance !== null && preferredPostnetStore.distance !== undefined && (
-                              <p className="text-[11px] text-white/50 mt-1">📍 {preferredPostnetStore.distance} km away</p>
-                            )}
+                    {/* Popular SA Cities Quick Chips */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase tracking-wider text-white/50">Popular Cities:</span>
+                        {POSTNET_AVAILABLE_CITIES.length > 6 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllPostnetCities(!showAllPostnetCities)}
+                            className="text-[10px] text-[var(--color-gold)] hover:underline"
+                          >
+                            {showAllPostnetCities ? 'Show fewer' : 'Show all'}
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(showAllPostnetCities ? POSTNET_AVAILABLE_CITIES : POSTNET_AVAILABLE_CITIES.slice(0, 6)).map((city) => {
+                          const isSelected = String(formData.city || '').trim().toLowerCase() === city.name.toLowerCase();
+                          return (
+                            <button
+                              key={city.name}
+                              type="button"
+                              onClick={() => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  city: city.name,
+                                  postalCode: city.postalCode,
+                                  lat: city.lat,
+                                  lng: city.lng
+                                }));
+                                setPreferredPostnetStore(null);
+                                setIsChangingPostnetBranch(false);
+                                setQuote(null);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                                isSelected
+                                  ? 'bg-[var(--color-gold)] text-black font-bold shadow-md'
+                                  : 'bg-white/5 hover:bg-white/10 text-white/80 border border-white/10'
+                              }`}
+                            >
+                              📍 {city.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Confirmed Collection Point Card (shown when a store is confirmed and not currently changing) */}
+                    {preferredPostnetStore && !isChangingPostnetBranch && (
+                      <div className="rounded-xl border border-[var(--color-gold)] bg-[var(--color-gold)]/10 p-4 md:p-5 flex items-start justify-between gap-4 transition-all">
+                        <div className="flex items-start gap-3.5 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-[var(--color-gold)]/20 border border-[var(--color-gold)]/40 flex items-center justify-center text-[var(--color-gold)] shrink-0 mt-0.5">
+                            <Store size={20} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="text-[10px] uppercase tracking-widest text-emerald-400 font-bold bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                <CheckCircle2 size={11} /> Confirmed Collection Point
+                              </span>
+                              {preferredPostnetStore.distance !== null && preferredPostnetStore.distance !== undefined && (
+                                <span className="text-[11px] text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
+                                  📍 {preferredPostnetStore.distance} km away
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-base font-bold text-white truncate">{preferredPostnetStore.name}</p>
+                            <p className="text-xs text-[var(--color-ivory-muted)] mt-1 leading-relaxed">{preferredPostnetStore.address}</p>
                           </div>
                         </div>
                         <button
                           type="button"
-                          onClick={() => setPreferredPostnetStore(null)}
-                          className="text-[11px] text-[var(--color-gold)] hover:text-white uppercase font-bold tracking-wider underline shrink-0"
+                          onClick={() => {
+                            setIsChangingPostnetBranch(true);
+                            setSelectedPostnetBranch(preferredPostnetStore);
+                          }}
+                          className="px-3.5 py-2 rounded-lg border border-[var(--color-gold)]/50 bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)] hover:text-black text-xs font-bold text-[var(--color-gold)] uppercase tracking-wider transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
                         >
-                          Change location
+                          Change Branch
                         </button>
                       </div>
                     )}
 
-                    {/* Nearby Stores List (shown if no store selected or changing) */}
-                    {!preferredPostnetStore && formData.city && (
+                    {/* Nearby Stores List (shown if no store selected or actively changing branch) */}
+                    {(!preferredPostnetStore || isChangingPostnetBranch) && (
                       <div className="space-y-3 mt-4">
-                        {postnetPreview.loading ? (
+                        {/* If actively changing, offer option to keep current selection */}
+                        {isChangingPostnetBranch && preferredPostnetStore && (
+                          <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                            <div className="text-xs text-white truncate pr-2">
+                              <span className="text-[var(--color-ivory-muted)]">Current branch: </span>
+                              <strong className="text-white">{preferredPostnetStore.name}</strong>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsChangingPostnetBranch(false);
+                                setSelectedPostnetBranch(preferredPostnetStore);
+                              }}
+                              className="text-[11px] text-[var(--color-gold)] hover:text-white uppercase font-bold tracking-wider underline shrink-0 cursor-pointer"
+                            >
+                              Keep Current Branch
+                            </button>
+                          </div>
+                        )}
+
+                        {!formData.city ? (
+                          <div className="text-center py-6 px-4 rounded-xl border border-dashed border-white/15 bg-black/20">
+                            <MapPin size={24} className="text-[var(--color-gold)]/60 mx-auto mb-2" />
+                            <p className="text-xs font-medium text-white">Enter your city or suburb above</p>
+                            <p className="text-[11px] text-[var(--color-ivory-muted)] mt-0.5">We will locate nearby PostNet branches for you to pick your collection point.</p>
+                          </div>
+                        ) : postnetPreview.loading ? (
                           <div className="flex items-center justify-center p-6 bg-black/40 rounded-xl border border-white/5">
                             <Loader2 size={24} className="animate-spin text-[var(--color-gold)] mr-3" />
-                            <span className="text-xs text-[var(--color-ivory-muted)]">Locating nearest PostNet branches...</span>
+                            <span className="text-xs text-[var(--color-ivory-muted)]">Locating nearest PostNet branches near {formData.city}...</span>
+                          </div>
+                        ) : postnetPreview.error ? (
+                          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-300">
+                            {postnetPreview.error}
                           </div>
                         ) : postnetPreview.stores.length > 0 ? (
                           <div className="space-y-3">
@@ -1350,34 +1516,112 @@ export default function CheckoutPage({
                                 </div>
                               </div>
                             )}
-                            <div className="grid grid-cols-1 gap-2.5">
-                              {(showAllPostnetBranches ? postnetPreview.stores : postnetPreview.stores.slice(0, 3)).map((store) => (
-                                <div
-                                  key={store.id}
-                                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-white/10 bg-black/40 hover:border-[var(--color-gold)]/50 transition-colors"
-                                >
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <p className="text-sm font-semibold text-white">{store.name}</p>
-                                      {store.distance !== null && (
-                                        <span className="text-[10px] bg-white/10 text-white/80 px-2 py-0.5 rounded-full">
-                                          📍 {store.distance} km away
+
+                            <div className="flex items-center justify-between pt-1">
+                              <p className="text-xs font-semibold text-white uppercase tracking-wider">
+                                {isChangingPostnetBranch ? 'Select a different PostNet branch:' : 'Choose your PostNet collection branch:'}
+                              </p>
+                              <span className="text-[11px] text-[var(--color-ivory-muted)]">
+                                {postnetPreview.stores.length} {postnetPreview.stores.length === 1 ? 'branch' : 'branches'} found
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {(showAllPostnetBranches ? postnetPreview.stores : postnetPreview.stores.slice(0, 4)).map((store) => {
+                                const isSelected = (selectedPostnetBranch?.id || preferredPostnetStore?.id) === store.id;
+                                return (
+                                  <div
+                                    key={store.id}
+                                    onClick={() => handleSelectBranchCandidate(store)}
+                                    className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                                      isSelected
+                                        ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15 shadow-[0_0_15px_rgba(212,175,55,0.15)] ring-1 ring-[var(--color-gold)]/40'
+                                        : 'border-white/10 bg-black/40 hover:border-white/30 hover:bg-white/[0.03]'
+                                    }`}
+                                  >
+                                    <div>
+                                      <div className="flex items-start justify-between gap-2 mb-1">
+                                        <p className="text-sm font-semibold text-white leading-snug">{store.name}</p>
+                                        <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                                          isSelected ? 'bg-[var(--color-gold)] text-black' : 'border border-white/30 text-transparent'
+                                        }`}>
+                                          <CheckCircle2 size={13} className={isSelected ? 'text-black' : 'hidden'} />
                                         </span>
+                                      </div>
+                                      <p className="text-xs text-[var(--color-ivory-muted)] line-clamp-2 mt-1 leading-relaxed">
+                                        {store.address}
+                                      </p>
+                                      <div className="flex flex-wrap gap-2 mt-2.5 text-[10px] uppercase tracking-wider">
+                                        <span className={store.isNearestAlternative ? 'text-amber-300' : 'text-emerald-300'}>
+                                          {store.isNearestAlternative ? `Nearest alternative${store.city ? ` · ${store.city}` : ''}` : `In ${formData.city}`}
+                                        </span>
+                                        {store.distance !== null && store.distance !== undefined && (
+                                          <span className="text-white/60">📍 {store.distance} km away</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div
+                                      className={`w-full py-2 px-3 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                        isSelected
+                                          ? 'bg-[var(--color-gold)]/25 text-[#f7dc94] border border-[var(--color-gold)]/40'
+                                          : 'bg-white/10 text-white/70'
+                                      }`}
+                                    >
+                                      {isSelected ? (
+                                        <>
+                                          <CheckCircle2 size={13} />
+                                          <span>Selected</span>
+                                        </>
+                                      ) : (
+                                        'Select'
                                       )}
                                     </div>
-                                    <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">{store.address}</p>
                                   </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Final Selection Action */}
+                            <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-black/40 p-4 rounded-xl border border-white/5">
+                              <div className="text-xs">
+                                {selectedPostnetBranch ? (
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-emerald-400 font-bold">Selected:</span>
+                                    <span className="text-white font-semibold">{selectedPostnetBranch.name}</span>
+                                    {selectedPostnetBranch.distance !== null && (
+                                      <span className="text-white/50 text-[11px]">(📍 {selectedPostnetBranch.distance} km away)</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-white/50">Click on a branch card above to choose your pickup store.</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {isChangingPostnetBranch && preferredPostnetStore && (
                                   <button
                                     type="button"
-                                    onClick={() => handlePreferredPostnetStoreSelect(store)}
-                                    className="self-start sm:self-auto px-4 py-2 bg-white/10 hover:bg-[var(--color-gold)] hover:text-black text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all"
+                                    onClick={() => {
+                                      setIsChangingPostnetBranch(false);
+                                      setSelectedPostnetBranch(preferredPostnetStore);
+                                    }}
+                                    className="px-4 py-2.5 rounded-lg border border-white/10 text-white/70 hover:text-white text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
                                   >
-                                    Select This Store
+                                    Cancel
                                   </button>
-                                </div>
-                              ))}
+                                )}
+                                <button
+                                  type="button"
+                                  disabled={!selectedPostnetBranch}
+                                  onClick={() => handleConfirmPostnetStore(selectedPostnetBranch)}
+                                  className="px-5 py-2.5 rounded-lg bg-[var(--color-gold)] text-black text-xs font-bold uppercase tracking-wider hover:shadow-[0_0_15px_rgba(212,175,55,0.4)] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                  <CheckCircle2 size={14} />
+                                  <span>Confirm Collection Point</span>
+                                </button>
+                              </div>
                             </div>
-                            {postnetPreview.stores.length > 3 && (
+
+                            {postnetPreview.stores.length > 4 && (
                               <button
                                 type="button"
                                 onClick={() => setShowAllPostnetBranches(!showAllPostnetBranches)}
@@ -1390,7 +1634,7 @@ export default function CheckoutPage({
                                   </>
                                 ) : (
                                   <>
-                                    <span>Show More Branches (+{postnetPreview.stores.length - 3} more)</span>
+                                    <span>Show More Branches (+{postnetPreview.stores.length - 4} more)</span>
                                     <ChevronDown size={14} />
                                   </>
                                 )}
@@ -1399,7 +1643,7 @@ export default function CheckoutPage({
                           </div>
                         ) : (
                           <p className="text-xs text-[var(--color-ivory-muted)] p-4 text-center">
-                            Start typing your suburb or city above to list nearby PostNet stores.
+                            No PostNet branches found for "{formData.city}". Try searching a nearby major suburb or city.
                           </p>
                         )}
                       </div>

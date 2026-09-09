@@ -8,10 +8,15 @@ export default function AuctionCampaign() {
       aria-labelledby="auction-campaign-title"
       style={{ isolation: 'isolate' }}
     >
-      <img 
+      <video 
         className="absolute inset-0 -z-20 w-full h-full object-cover lg:object-center object-[68%_center]" 
-        src="https://res.cloudinary.com/oioqrgj0/image/upload/v1788172078/grand-store/assets/cu4jebfyyjt80fbqjzk0.jpg" 
-        alt="Exclusive vintage cognac in a luxury auction room" 
+        src="https://res.cloudinary.com/oioqrgj0/video/upload/v1788935569/grand-store/hero/auctioneer_conducts_rare_wine_auction.mp4" 
+        poster="https://res.cloudinary.com/oioqrgj0/image/upload/v1788172078/grand-store/assets/cu4jebfyyjt80fbqjzk0.jpg"
+        autoPlay 
+        muted 
+        loop 
+        playsInline 
+        aria-hidden="true"
       />
       <div 
         className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(7,7,6,0.35),rgba(7,7,6,0.95)_70%)] lg:bg-[linear-gradient(90deg,rgba(7,7,6,0.93),rgba(7,7,6,0.66)_37%,rgba(7,7,6,0.08)_65%),linear-gradient(180deg,rgba(7,7,6,0.15),transparent_55%,rgba(7,7,6,0.54))]" 

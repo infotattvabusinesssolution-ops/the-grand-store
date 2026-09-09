@@ -396,6 +396,16 @@ exports.itnWebhook = async (req, res) => {
           const depositId = reference.replace('DEP-', '');
           await processBidderDepositPayment(depositId, payload.pf_payment_id);
           console.log(`Successfully processed VIP bidder deposit payment for ${depositId}`);
+       } else if (reference.startsWith('MNF-')) {
+          const parts = reference.replace('MNF-', '').split('-');
+          const vendorId = parts[0];
+          const { processMaintenanceFeePayment } = require('./vendorController');
+          await processMaintenanceFeePayment(vendorId, {
+            paymentMethod: 'PayFast',
+            reference: payload.pf_payment_id || reference,
+            amount: Number(payload.amount_gross || 0) || null
+          });
+          console.log(`Successfully processed vendor maintenance fee payment for ${vendorId}`);
        }
     }
 

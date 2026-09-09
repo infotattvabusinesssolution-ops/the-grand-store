@@ -1,0 +1,401 @@
+.login-showcase {
+  position: relative;
+  isolation: isolate;
+  height: 100vh;
+  min-width: 0;
+  flex-direction: column;
+  gap: 24px;
+  padding: clamp(24px, 3vw, 48px);
+  overflow: hidden auto;
+  border-right: 1px solid #c9a35b26;
+  background: radial-gradient(ellipse at 74% 52%, #70501d24, transparent 56%), #0b0a08;
+}
+
+.login-showcase__atmosphere { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.login-showcase__header,
+.login-showcase__content,
+.login-showcase__footer { position: relative; z-index: 1; }
+.login-showcase__light {
+  position: absolute;
+  width: 80%;
+  height: 65%;
+  top: 14%;
+  right: -22%;
+  background: radial-gradient(ellipse, #c99a4420, transparent 65%);
+  transform: rotate(-30deg);
+  animation: login-showcase-light 9s ease-in-out infinite;
+}
+.login-showcase__dust {
+  position: absolute;
+  border-radius: 50%;
+  background: #e8c783;
+  box-shadow: 0 0 7px 1px #e1b76360;
+  opacity: 0.3;
+  animation: login-showcase-dust 7s ease-in-out infinite;
+}
+.login-showcase__dust--star::before,
+.login-showcase__dust--star::after,
+.login-showcase__bottle-glint::before,
+.login-showcase__bottle-glint::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 13px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #ffe6ac, transparent);
+  transform: translate(-50%, -50%);
+}
+.login-showcase__dust--star::after,
+.login-showcase__bottle-glint::after { transform: translate(-50%, -50%) rotate(90deg); }
+
+.login-showcase__header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.login-showcase__brand {
+  display: block;
+  width: clamp(170px, 16vw, 230px);
+  flex-shrink: 0;
+}
+
+.login-showcase__brand img { display: block; width: 100%; height: auto; }
+
+.login-showcase__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #bcb5a8;
+  font-size: 14px;
+  white-space: nowrap;
+  transition: color 160ms ease;
+}
+
+.login-showcase__back:hover { color: #e6c98d; }
+.login-showcase a:focus-visible { outline: 2px solid #c9a35b; outline-offset: 5px; }
+
+.login-showcase__content { width: 100%; margin-block: auto; }
+.login-showcase__intro { margin-bottom: clamp(20px, 3vh, 32px); }
+.login-showcase__discover { display: none; }
+.login-showcase__discover-heading {
+  margin: 0 0 9px;
+  color: #bfa575;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.login-showcase__discover-link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  gap: 12px;
+  border-bottom: 1px solid #c9a35b20;
+  color: #c9a76a;
+  transition: color 180ms ease;
+}
+.login-showcase__discover-link:last-child { border-bottom: 0; }
+.login-showcase__discover-link svg { flex-shrink: 0; }
+.login-showcase__discover-link span {
+  flex: 1;
+  color: #c7c0b3;
+  font-size: 14px;
+  transition: color 180ms ease;
+}
+.login-showcase__discover-arrow { opacity: 0.5; transition: opacity 180ms ease, transform 180ms ease; }
+.login-showcase__discover-link:hover,
+.login-showcase__discover-link:hover span { color: #f0d59a; }
+.login-showcase__discover-link:hover .login-showcase__discover-arrow { opacity: 1; transform: translate(2px, -2px); }
+
+@media (min-width: 1280px) {
+  .login-showcase__intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(200px, 25%);
+    gap: clamp(24px, 3vw, 44px);
+    align-items: center;
+  }
+  .login-showcase__discover {
+    position: relative;
+    display: block;
+    padding: 10px 0 10px 22px;
+    background: radial-gradient(ellipse at left, #c9a35b09, transparent 75%);
+  }
+  .login-showcase__discover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    background: linear-gradient(transparent, #c9a35b70 30%, #c9a35b30 75%, transparent);
+  }
+}
+.login-showcase__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #c9a76a;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.login-showcase__eyebrow span { width: 24px; height: 1px; background: #c9a76a; }
+.login-showcase__intro h2 {
+  margin: 0 0 12px;
+  color: #f1ece2;
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: clamp(36px, 3.7vw, 60px);
+  font-weight: 400;
+  letter-spacing: -0.045em;
+  line-height: 1.12;
+}
+.login-showcase__intro h2 em {
+  color: #d3b577;
+  font-weight: 400;
+  background: linear-gradient(105deg, #bc9658 20%, #f5dda6 40%, #fff3d7 48%, #d3b577 58%, #bc9658 80%);
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: login-showcase-gold 10s ease-in-out infinite;
+}
+.login-showcase__description { margin: 0; color: #a49f95; font-size: 15px; line-height: 1.65; }
+
+.login-showcase__collection {
+  --showcase-rotate-x: 0deg;
+  --showcase-rotate-y: 0deg;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: clamp(20px, 3vw, 48px);
+  align-items: start;
+  perspective: 1100px;
+  padding-top: 18px;
+}
+.login-showcase__item { min-width: 0; margin: 0; }
+.login-showcase__app-stage,
+.login-showcase__bottle-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: clamp(160px, 29vh, 300px);
+}
+.login-showcase__app-stage {
+  perspective: 900px;
+  animation: login-showcase-app-float 7s ease-in-out infinite;
+}
+.login-showcase__app-card {
+  position: relative;
+  width: 96%;
+  height: 94%;
+  overflow: hidden;
+  background: #070705;
+  border: 1px solid #c9a35b60;
+  border-radius: 18px;
+  box-shadow: -5px 6px 0 #211a10, -6px 7px 0 #c9a35b45, 0 22px 30px -14px #000, 0 0 30px #c9a35b0c;
+  transform: rotateX(calc(3deg + var(--showcase-rotate-x))) rotateY(calc(10deg + var(--showcase-rotate-y)));
+  transition: transform 350ms ease-out;
+}
+.login-showcase__app-image { width: 100%; height: 100%; object-fit: contain; }
+.login-showcase__glass-shine {
+  position: absolute;
+  inset: -50%;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 40%, #ffe8b414 48%, #fff4d92b 50%, transparent 58%);
+  transform: translateX(-65%);
+  animation: login-showcase-glass 10s ease-in-out infinite;
+}
+.login-showcase__bottle-stage { perspective: 900px; }
+.login-showcase__bottle-scene {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--showcase-rotate-x)) rotateY(var(--showcase-rotate-y));
+  transition: transform 350ms ease-out;
+}
+.login-showcase__depth-type {
+  position: absolute;
+  top: 42%;
+  left: -8%;
+  width: 116%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+  user-select: none;
+  transform: translate3d(0, -50%, -100px) rotateY(-12deg) rotateZ(-5deg);
+}
+.login-showcase__depth-kicker {
+  color: #d8b97070;
+  font-size: 12px;
+  letter-spacing: 0.55em;
+  padding-left: 0.55em;
+}
+.login-showcase__depth-word {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: clamp(38px, 4.6vw, 74px);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  color: #c6a36640;
+  -webkit-text-stroke: 0.5px #d2b17060;
+  text-shadow: 1px 1px 0 #392c19, 2px 2px 0 #322617, 3px 3px 0 #2a2116, 7px 11px 12px #0008;
+}
+.login-showcase__arch {
+  position: absolute;
+  inset: -3% 8% 10%;
+  border: 1px solid #c9a35b60;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 60%, #d6a54728, transparent 70%);
+  box-shadow: inset 0 0 22px #d2a6510a, 0 0 24px #d2a6510c;
+  transform: translateZ(-24px) rotate(-18deg);
+}
+.login-showcase__arch::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border: 1px solid #c9a35b1c;
+  border-radius: inherit;
+}
+.login-showcase__orbit {
+  position: absolute;
+  width: 94%;
+  height: 43%;
+  bottom: 15%;
+  border: 1px solid #e4be7663;
+  border-left-color: #e4be7614;
+  border-radius: 50%;
+  transform: translateZ(-12px) rotate(-22deg);
+  box-shadow: 0 0 12px #c9a35b12;
+}
+.login-showcase__plinth {
+  position: absolute;
+  bottom: 0;
+  width: 76%;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #3e301b, #17120d 55%, #080706);
+  border-bottom: 1px solid #c9a35b55;
+  box-shadow: 0 14px 22px #0008;
+}
+.login-showcase__plinth::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 9px;
+  border: 1px solid #c9a35b69;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 40%, #a7813730, #20190f 70%);
+}
+.login-showcase__bottle-shadow {
+  position: absolute;
+  bottom: 12px;
+  width: 43%;
+  height: 10px;
+  background: #000;
+  border-radius: 50%;
+  filter: blur(5px);
+  animation: login-showcase-shadow 6s ease-in-out infinite;
+}
+.login-showcase__bottle-image {
+  position: absolute;
+  bottom: 8px;
+  height: 103%;
+  width: 82%;
+  object-fit: contain;
+  padding-bottom: 8px;
+  filter: drop-shadow(5px 10px 8px #0009) drop-shadow(-2px 0 3px #e8ba5930);
+  animation: login-showcase-bottle-float 6s ease-in-out infinite;
+}
+.login-showcase__bottle-glint {
+  position: absolute;
+  top: 6%;
+  right: 25%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ffe6ac;
+  box-shadow: 0 0 14px #eac677a6;
+  pointer-events: none;
+  animation: login-showcase-glint 6s ease-in-out infinite;
+}
+.login-showcase__bottle-glint::before,
+.login-showcase__bottle-glint::after { width: 22px; }
+
+@keyframes login-showcase-bottle-float {
+  0%, 100% { transform: translate3d(0, -6px, 40px) rotate(-4deg); }
+  50% { transform: translate3d(2px, -20px, 40px) rotate(1deg); }
+}
+@keyframes login-showcase-shadow {
+  0%, 100% { transform: scaleX(1); opacity: 0.7; }
+  50% { transform: scaleX(0.72); opacity: 0.38; }
+}
+@keyframes login-showcase-app-float {
+  0%, 100% { transform: translateY(2px); }
+  50% { transform: translateY(-5px); }
+}
+@keyframes login-showcase-dust {
+  0%, 100% { transform: translate3d(0, 8px, 0) scale(0.7); opacity: 0.12; }
+  50% { transform: translate3d(4px, -12px, 0) scale(1); opacity: 0.65; }
+}
+@keyframes login-showcase-glint {
+  0%, 100% { transform: translateY(-6px) scale(0.6); opacity: 0.12; }
+  50% { transform: translateY(-20px) scale(1); opacity: 0.75; }
+}
+@keyframes login-showcase-light {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+@keyframes login-showcase-gold {
+  0%, 25%, 100% { background-position: 100% 50%; }
+  65% { background-position: 0% 50%; }
+}
+@keyframes login-showcase-glass {
+  0%, 25% { transform: translateX(-65%); }
+  65%, 100% { transform: translateX(65%); }
+}
+.login-showcase__caption { display: flex; gap: 12px; margin-top: 17px; }
+.login-showcase__number { color: #736347; font-size: 12px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.login-showcase__label { margin: 0 0 5px; color: #d3b577; font-size: 12px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; }
+.login-showcase__caption-title { margin: 0; color: #cbc5ba; font-size: 14px; line-height: 1.55; }
+
+.login-showcase__footer {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-top: 1px solid #c9a35b26;
+  padding-top: 20px;
+}
+.login-showcase__download-title { margin: 0 0 5px; color: #d4cbbd; font-size: 14px; }
+.login-showcase__download-note { margin: 0; color: #837e73; font-size: 12px; }
+
+@media (max-height: 700px) {
+  .login-showcase { gap: 18px; padding-block: 24px; }
+  .login-showcase__intro { margin-bottom: 18px; }
+  .login-showcase__intro h2 { font-size: 40px; }
+  .login-showcase__footer { padding-top: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-showcase *,
+  .login-showcase *::before,
+  .login-showcase *::after { animation: none !important; transition: none !important; }
+  .login-showcase__app-card { transform: rotateY(6deg); }
+  .login-showcase__bottle-scene { transform: none; }
+  .login-showcase__bottle-image { transform: translate3d(0, -10px, 40px) rotate(-3deg); }
+  .login-showcase__glass-shine { display: none; }
+  .login-showcase__bottle-glint { opacity: 0.25; }
+}

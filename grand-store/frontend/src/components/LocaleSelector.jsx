@@ -1,33 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Search } from 'lucide-react';
+import * as Flags from 'country-flag-icons/react/3x2';
 
 export function LocaleIcon({ option, className = '' }) {
-  const [failed, setFailed] = useState(false);
+  const code = (option?.flagCode || option?.code || '').toUpperCase();
+  const FlagComponent = Flags[code];
 
-  useEffect(() => {
-    setFailed(false);
-  }, [option?.flagCode]);
-
-  if (option?.flagCode && !failed) {
-    const flagCode = option.flagCode.toLowerCase();
+  if (FlagComponent) {
     return (
-      <img
-        src={`https://flagcdn.com/w40/${flagCode}.png`}
-        srcSet={`https://flagcdn.com/w80/${flagCode}.png 2x`}
-        width="20"
-        height="15"
-        loading="lazy"
-        decoding="async"
-        alt=""
-        className={`locale-flag ${className}`}
-        onError={() => setFailed(true)}
+      <FlagComponent
+        className={`inline-block h-3.5 w-5 shrink-0 rounded-[2px] shadow-[0_0_0_1px_rgba(255,255,255,0.18)] ${className}`}
+        title={code}
+        aria-label={`${code} flag`}
       />
     );
   }
 
+  if (option?.icon) {
+    return <span className={`text-xs ${className}`}>{option.icon}</span>;
+  }
+
   return (
     <span className={`locale-flag-fallback ${className}`} aria-hidden="true">
-      {option?.flagCode || option?.icon || option?.value?.slice(0, 2)}
+      {option?.flagCode || option?.value?.slice(0, 2) || '🌐'}
     </span>
   );
 }

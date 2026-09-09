@@ -11,7 +11,9 @@ const orderSchema = new mongoose.Schema({
   guestInfo: {
     name: { type: String, default: '' },
     email: { type: String, default: '' },
-    phone: { type: String, default: '' }
+    phone: { type: String, default: '' },
+    phoneCountry: { type: String, default: '' },
+    phoneCountryCode: { type: String, default: '' }
   },
   isAgeConfirmed: { type: Boolean, default: false },
   guestAccessToken: { type: String },
@@ -58,6 +60,8 @@ const orderSchema = new mongoose.Schema({
     country: { type: String, required: true },
     phone: { type: String, default: '' },
     phoneNumber: { type: String, default: '' },
+    phoneCountry: { type: String, default: '' },
+    phoneCountryCode: { type: String, default: '' },
   },
   
   isGift: { type: Boolean, default: false },

@@ -1,39 +1,129 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import gsap from "gsap";
 import { ArrowRight } from "lucide-react";
 import { useProducts } from "../../../context/ProductContext";
 import ProductCard from "../../../components/ProductCard";
 
+const ROTATION_INTERVAL_MS = 6000; // Rotate bottles every 6 seconds
+
+const SLOT_DEFINITIONS = [
+  {
+    name: "Wine",
+    match: (p) => {
+      const c = String(p.category || p.type || "").toLowerCase();
+      return c.includes("wine");
+    },
+  },
+  {
+    name: "Beer",
+    match: (p) => {
+      const c = String(p.category || p.type || "").toLowerCase();
+      return c.includes("beer") || c.includes("cider");
+    },
+  },
+  {
+    name: "Champagne",
+    match: (p) => {
+      const c = String(p.category || p.type || "").toLowerCase();
+      return c.includes("champagne") || c.includes("sparkling");
+    },
+  },
+  {
+    name: "Whisky",
+    match: (p) => {
+      const c = String(p.category || p.type || "").toLowerCase();
+      return c.includes("whisky") || c.includes("scotch");
+    },
+  },
+  {
+    name: "Cognac / Tequila",
+    match: (p) => {
+      const c = String(p.category || p.type || "").toLowerCase();
+      return (
+        c.includes("cognac") ||
+        c.includes("tequila") ||
+        c.includes("brandy") ||
+        c.includes("spirit") ||
+        c.includes("rum") ||
+        c.includes("vodka") ||
+        c.includes("gin")
+      );
+    },
+  },
+];
+
 export default function Arrivals({ onAdd, onWish, onCompare, compareItems }) {
   const { products } = useProducts();
   const sectionRef = useRef(null);
+  const gridRef = useRef(null);
 
-  const [arrivalProducts, setArrivalProducts] = useState([]);
-
-  useEffect(() => {
-    if (products.length > 0 && arrivalProducts.length === 0) {
-      const filtered = [...products]
-        .filter(
-          (product) =>
-            !product.vendorId || product.approvalStatus === "approved",
-        )
-        .filter((product) => String(product.category || product.type || '').toLowerCase() !== 'accessories')
-        .sort((first, second) => {
-          const firstCreatedAt = Date.parse(first.createdAt || '') || 0
-          const secondCreatedAt = Date.parse(second.createdAt || '') || 0
-          return secondCreatedAt - firstCreatedAt
-        })
-        .slice(0, 15)
-        .sort(() => 0.5 - Math.random())
-        .slice(0, 5);
-
-      setArrivalProducts(filtered);
-    }
+  // Filter approved non-accessories products, sorted newest first
+  const validProducts = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    return [...products]
+      .filter((p) => !p.vendorId || p.approvalStatus === "approved")
+      .filter((p) => String(p.category || p.type || "").toLowerCase() !== "accessories")
+      .sort((a, b) => {
+        const first = Date.parse(a.createdAt || "") || 0;
+        const second = Date.parse(b.createdAt || "") || 0;
+        return second - first;
+      });
   }, [products]);
 
+  // Group products into the 5 category slots (Wine, Beer, Champagne, Whisky, Cognac/Spirits)
+  const categoryBuckets = useMemo(() => {
+    if (validProducts.length === 0) return [[], [], [], [], []];
+
+    const usedIds = new Set();
+    const buckets = SLOT_DEFINITIONS.map((def) => {
+      const matches = validProducts.filter((p) => def.match(p));
+      matches.forEach((m) => usedIds.add(m.id || m._id));
+      return matches;
+    });
+
+    // Fallback: if any bucket is empty, fill with unused newest products
+    const unused = validProducts.filter((p) => !usedIds.has(p.id || p._id));
+    buckets.forEach((bucket, idx) => {
+      if (bucket.length === 0) {
+        buckets[idx] = unused.length > 0 ? unused.slice(0, 5) : validProducts.slice(idx * 2, idx * 2 + 5);
+      }
+    });
+
+    return buckets;
+  }, [validProducts]);
+
+  const [rotationIndex, setRotationIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Time-to-time rotation: cycle through category bottles every 6 seconds
   useEffect(() => {
-    if (arrivalProducts.length === 0 || !sectionRef.current) return;
+    if (categoryBuckets.every((b) => b.length <= 1) || isHovered) return;
+
+    const timer = setInterval(() => {
+      setRotationIndex((prev) => prev + 1);
+    }, ROTATION_INTERVAL_MS);
+
+    return () => clearInterval(timer);
+  }, [categoryBuckets, isHovered]);
+
+  // GSAP animation whenever the bottles rotate
+  useEffect(() => {
+    if (!gridRef.current || rotationIndex === 0) return;
+    const cards = gridRef.current.querySelectorAll(".product-card");
+    if (cards.length === 0) return;
+
+    gsap.killTweensOf(cards);
+    gsap.fromTo(
+      cards,
+      { opacity: 0, y: 15 },
+      { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: "power2.out" }
+    );
+  }, [rotationIndex]);
+
+  // Initial reveal animation on scroll
+  useEffect(() => {
+    if (!sectionRef.current || validProducts.length === 0) return;
     const context = gsap.context(() => {
       gsap.from(".product-card", {
         y: 60,
@@ -46,7 +136,17 @@ export default function Arrivals({ onAdd, onWish, onCompare, compareItems }) {
     }, sectionRef);
 
     return () => context.revert();
-  }, [arrivalProducts.length]);
+  }, [validProducts.length > 0]);
+
+  // Get current 5 products (one for each category slot: Wine, Beer, Champagne, Whisky, Cognac/Spirits)
+  const currentProducts = useMemo(() => {
+    return categoryBuckets
+      .map((bucket) => {
+        if (!bucket || bucket.length === 0) return null;
+        return bucket[rotationIndex % bucket.length];
+      })
+      .filter(Boolean);
+  }, [categoryBuckets, rotationIndex]);
 
   return (
     <section
@@ -66,15 +166,20 @@ export default function Arrivals({ onAdd, onWish, onCompare, compareItems }) {
           </div>
           <Link className="text-link arrow-link flex items-center gap-1" to="/shop">
             <span className="hidden md:inline">View all bottles</span>
-            <span className="inline md:hidden">View all</span> 
+            <span className="inline md:hidden">View all</span>
             <ArrowRight size={16} />
           </Link>
         </div>
 
-        <div className="product-grid">
-          {arrivalProducts.map((product, index) => (
+        <div
+          ref={gridRef}
+          className="product-grid"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {currentProducts.map((product, index) => (
             <ProductCard
-              key={product.id || product._id}
+              key={`${product.id || product._id}-${index}`}
               product={product}
               index={index}
               onAdd={onAdd}

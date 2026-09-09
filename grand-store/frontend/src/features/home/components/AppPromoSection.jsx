@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Smartphone, QrCode, Mail, User, MessageSquare, Send, CheckCircle2, Phone } from 'lucide-react';
 import api from '../../../api';
+import AppDownloadBadges from '../../../components/AppDownloadBadges';
 
 export default function AppPromoSection() {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
@@ -77,15 +78,8 @@ export default function AppPromoSection() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center gap-6 bg-[#0a0a0a]/80 p-4 lg:p-6 rounded-3xl border border-white/10 backdrop-blur-md shadow-2xl w-full max-w-lg justify-between">
-              <div className="flex flex-col gap-4 w-full sm:w-auto flex-1">
-                <a href="https://apps.apple.com/in/app/grand-store/id6449220111" target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105 hover:-translate-y-1 block">
-                  <img src="/assets/footer/app-store.svg" alt="App Store" className="h-12 w-auto mx-auto sm:mx-0" />
-                </a>
-                <a href="https://play.google.com/store/apps/details?id=com.grandstore" target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105 hover:-translate-y-1 block">
-                  <img src="/assets/footer/google-play.svg" alt="Google Play" className="h-12 w-auto mx-auto sm:mx-0" />
-                </a>
-              </div>
-              
+              <AppDownloadBadges className="w-full flex-1 justify-center sm:justify-start" />
+
               <div className="hidden sm:block w-[1px] h-32 bg-gradient-to-b from-transparent via-white/20 to-transparent"></div>
               
               <div className="flex flex-col items-center gap-3">

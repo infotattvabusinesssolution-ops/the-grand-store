@@ -38,6 +38,7 @@ export default function CityInput({
 
         let city = '';
         let country = '';
+        let postalCode = '';
 
         for (const component of place.address_components || []) {
           const types = component.types || [];
@@ -50,6 +51,7 @@ export default function CityInput({
             city = component.long_name;
           }
           if (types.includes('country')) country = component.long_name;
+          if (types.includes('postal_code')) postalCode = component.long_name;
         }
 
         city = city || place.name || place.formatted_address?.split(',')[0] || '';
@@ -59,6 +61,7 @@ export default function CityInput({
         onCityDetailsRef.current?.({
           city,
           country: restrictToSouthAfrica ? 'South Africa' : country,
+          postalCode,
           lat: typeof place.geometry?.location?.lat === 'function' ? place.geometry.location.lat() : null,
           lng: typeof place.geometry?.location?.lng === 'function' ? place.geometry.location.lng() : null
         });

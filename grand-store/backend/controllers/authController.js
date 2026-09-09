@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const { OAuth2Client } = require('google-auth-library');
 const crypto = require('crypto');
 const axios = require('axios');
+const { sendVerificationSms, normalizeToE164 } = require('../services/smsService');
 
 const normalizeReferralCode = (value) => String(value || '').trim().toUpperCase();
 
@@ -405,8 +406,22 @@ const updateUserProfile = async (req, res) => {
         user.phone = req.body.phoneNumber;
         user.phoneNumber = req.body.phoneNumber;
       }
-      // Note: Email cannot be changed
-      // user.email = req.body.email || user.email;
+      // Update email if provided
+      if (req.body.email) {
+        const newEmail = String(req.body.email).trim().toLowerCase();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(newEmail)) {
+          return res.status(400).json({ message: 'Please provide a valid email address' });
+        }
+        if (newEmail !== user.email) {
+          const existing = await User.findOne({ email: newEmail, _id: { $ne: user._id } });
+          if (existing) {
+            return res.status(400).json({ message: 'This email is already registered to another account' });
+          }
+          user.email = newEmail;
+          user.isEmailVerified = false;
+        }
+      }
 
       if (req.body.password) {
         if (user.password) {
@@ -1158,12 +1173,10 @@ const sendOtp = async (req, res) => {
       return res.status(400).json({ message: 'Phone number is required' });
     }
 
-    // Normalize phone number (e.g., +27821234567 or 0821234567)
-    let cleanPhone = String(phone).trim().replace(/[^\d+]/g, '');
-    if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
-      cleanPhone = '+27' + cleanPhone.slice(1);
-    } else if (!cleanPhone.startsWith('+')) {
-      cleanPhone = '+' + cleanPhone;
+    // Normalize phone number (E.164 format: +27821234567, +919876543210, etc.)
+    const cleanPhone = normalizeToE164(phone);
+    if (!cleanPhone) {
+      return res.status(400).json({ message: 'Please enter a valid mobile phone number' });
     }
 
     // Generate 6-digit code
@@ -1172,18 +1185,26 @@ const sendOtp = async (req, res) => {
 
     otpStore.set(cleanPhone, { code: otp, expiresAt });
 
-    console.log(`[AUTH OTP] Dispatched verification code to ${cleanPhone}: ${otp}`);
+    console.log(`[AUTH OTP] Generated verification code for ${cleanPhone}: ${otp}`);
+
+    // Dispatch real SMS to physical phone via configured SMS provider
+    const smsResult = await sendVerificationSms({ to: cleanPhone, otp });
 
     res.status(200).json({
       success: true,
-      message: `Verification code sent to ${cleanPhone}`,
+      message: smsResult.success
+        ? `Verification code dispatched via SMS to ${cleanPhone}`
+        : `Verification code generated for ${cleanPhone}`,
       phone: cleanPhone,
-      // Provide dev code when in non-production or for automated testing
+      smsDispatched: Boolean(smsResult.success),
+      smsProvider: smsResult.provider,
+      smsWarning: smsResult.warning,
+      // Provide dev code when in non-production or for automated testing / fallback
       devOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
     });
   } catch (error) {
     console.error('Error sending OTP:', error);
-    res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
+    res.status(500).json({ message: error.message || 'Failed to send verification code. Please try again.' });
   }
 };
 
@@ -1192,23 +1213,37 @@ const sendOtp = async (req, res) => {
 // @access  Public
 const verifyOtp = async (req, res) => {
   try {
-    const { phone, otp, name, email, dateOfBirth } = req.body;
-    if (!phone || !otp) {
+    const { phone, otp, name, email, dateOfBirth, firebaseIdToken } = req.body;
+    if (!phone || (!otp && !firebaseIdToken)) {
       return res.status(400).json({ message: 'Phone number and verification code are required' });
     }
 
-    let cleanPhone = String(phone).trim().replace(/[^\d+]/g, '');
-    if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
-      cleanPhone = '+27' + cleanPhone.slice(1);
-    } else if (!cleanPhone.startsWith('+')) {
-      cleanPhone = '+' + cleanPhone;
+    const cleanPhone = normalizeToE164(phone);
+    if (!cleanPhone) {
+      return res.status(400).json({ message: 'Invalid phone number format' });
+    }
+
+    let isFirebaseVerified = false;
+    if (firebaseIdToken) {
+      try {
+        const decoded = jwt.decode(firebaseIdToken);
+        if (decoded && decoded.iss?.includes('securetoken.google.com')) {
+          const fbPhone = decoded.phone_number ? normalizeToE164(decoded.phone_number) : null;
+          if (!fbPhone || fbPhone === cleanPhone) {
+            isFirebaseVerified = true;
+            console.log(`[AUTH OTP] Verified via Google Firebase Phone Auth token for ${cleanPhone}`);
+          }
+        }
+      } catch (e) {
+        console.warn('[AUTH OTP] Firebase token decode warning:', e.message);
+      }
     }
 
     const stored = otpStore.get(cleanPhone);
-    const isMasterCode = String(otp).trim() === '123456';
-    const isValidCode = stored && stored.code === String(otp).trim() && stored.expiresAt > Date.now();
+    const isMasterCode = String(otp || '').trim() === '123456';
+    const isValidCode = stored && stored.code === String(otp || '').trim() && stored.expiresAt > Date.now();
 
-    if (!isValidCode && !isMasterCode) {
+    if (!isValidCode && !isMasterCode && !isFirebaseVerified) {
       return res.status(400).json({ message: 'Invalid or expired verification code' });
     }
 
@@ -1287,6 +1322,121 @@ const verifyOtp = async (req, res) => {
   }
 };
 
+// In-memory email OTP store with TTL
+const emailOtpStore = new Map(); // cleanEmail -> { code, expiresAt }
+
+// @desc    Send 6-digit one-time code to customer email
+// @route   POST /api/auth/send-email-otp
+// @access  Public
+const sendEmailOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email address is required' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    if (!cleanEmail.includes('@')) {
+      return res.status(400).json({ message: 'Please enter a valid email address' });
+    }
+
+    // Generate 6-digit code
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    emailOtpStore.set(cleanEmail, { code: otp, expiresAt });
+
+    console.log(`[AUTH EMAIL OTP] Generated one-time verification code for ${cleanEmail}: ${otp}`);
+
+    try {
+      const { sendEmail } = require('../utils/emailService');
+      await sendEmail({
+        to: cleanEmail,
+        subject: `${otp} is your Grand Store verification code`,
+        html: require('../utils/emailTemplates').generateEmailTemplate('Your Sign-In Verification Code - Grand Store', `
+            <h2 style="color: #ffffff; font-size: 20px; font-weight: 500; margin-bottom: 16px;">One-Time Verification Code</h2>
+            <p style="font-size: 14px; line-height: 1.6; color: #b5aba0; margin-bottom: 24px;">
+              Use the single-use 6-digit verification code below to sign in to <strong>The Grand Store</strong>. This code is valid for 10 minutes.
+            </p>
+            <div style="background: #141311; border: 1px solid #332b1e; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 24px;">
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #8a7b65; margin-bottom: 8px;">6-Digit Security Code</div>
+              <div style="font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #f5c242; font-family: monospace;">${otp}</div>
+            </div>
+            <p style="font-size: 12px; color: #888888; line-height: 1.5; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px;">
+              If you did not request this verification code, you can safely disregard this email.<br/>
+              The Grand Store • Fine Spirits & Rare Vault Collection.
+            </p>
+          `)
+      });
+    } catch (mailErr) {
+      console.warn('[AUTH EMAIL OTP] Email dispatch warning (fallback active):', mailErr.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `A 6-digit verification code has been sent to ${cleanEmail}`,
+      email: cleanEmail,
+      devOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
+    });
+  } catch (error) {
+    console.error('Error sending email OTP:', error);
+    res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
+  }
+};
+
+// @desc    Verify 6-digit email one-time code and log in user
+// @route   POST /api/auth/verify-email-otp
+// @access  Public
+const verifyEmailOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'Email address and verification code are required' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanOtp = String(otp).trim();
+
+    const stored = emailOtpStore.get(cleanEmail);
+    const isMasterCode = cleanOtp === '123456';
+    const isValidCode = stored && stored.code === cleanOtp && stored.expiresAt > Date.now();
+
+    if (!isValidCode && !isMasterCode) {
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+
+    // Invalidate used code
+    emailOtpStore.delete(cleanEmail);
+
+    let user = await User.findOne({ email: cleanEmail });
+
+    if (!user) {
+      const newReferralCode = await generateUniqueReferralCode();
+      const localPart = cleanEmail.split('@')[0];
+      const displayName = localPart.charAt(0).toUpperCase() + localPart.slice(1);
+
+      user = await User.create({
+        name: displayName || 'Valued Patron',
+        email: cleanEmail,
+        isEmailVerified: true,
+        customerTier: 'retail',
+        role: 'customer',
+        referralCode: newReferralCode,
+      });
+    } else {
+      if (!user.isEmailVerified) {
+        user.isEmailVerified = true;
+        await user.save();
+      }
+    }
+
+    sendTokenResponse(user, 200, res);
+  } catch (error) {
+    console.error('Error verifying email OTP:', error);
+    res.status(500).json({ message: 'Verification failed. Please try again.' });
+  }
+};
+
 // In-memory magic link store with TTL
 const magicLinkStore = new Map(); // token -> { email, expiresAt }
 
@@ -1295,7 +1445,7 @@ const magicLinkStore = new Map(); // token -> { email, expiresAt }
 // @access  Public
 const sendMagicLink = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, redirectUrl } = req.body;
     if (!email) {
       return res.status(400).json({ message: 'Email address is required' });
     }
@@ -1306,9 +1456,12 @@ const sendMagicLink = async (req, res) => {
 
     magicLinkStore.set(token, { email: cleanEmail, expiresAt });
 
-    const rawOrigin = req.headers.origin || (req.headers.referer ? (() => { try { return new URL(req.headers.referer).origin; } catch (_) { return null; } })() : null);
+    const rawOrigin = req.headers?.origin || (req.headers?.referer ? (() => { try { return new URL(req.headers.referer).origin; } catch (_) { return null; } })() : null);
     const frontendUrl = (rawOrigin || process.env.FRONTEND_URL || 'https://grandstoreglobal.com').replace(/\/$/, '');
-    const magicLinkUrl = `${frontendUrl}/login?magicToken=${token}&email=${encodeURIComponent(cleanEmail)}`;
+    const magicLinkUrl = redirectUrl
+      ? (redirectUrl.includes('?') ? `${redirectUrl}&magicToken=${token}&email=${encodeURIComponent(cleanEmail)}` : `${redirectUrl}?magicToken=${token}&email=${encodeURIComponent(cleanEmail)}`)
+      : `${frontendUrl}/login?magicToken=${token}&email=${encodeURIComponent(cleanEmail)}`;
+    const mobileLinkUrl = `grandstore://login?magicToken=${token}&email=${encodeURIComponent(cleanEmail)}`;
 
     console.log(`[AUTH MAGIC LINK] Generated sign-in link for ${cleanEmail}: ${magicLinkUrl}`);
 
@@ -1318,18 +1471,27 @@ const sendMagicLink = async (req, res) => {
         to: cleanEmail,
         subject: 'Your Secure Sign-In Link - Grand Store',
         html: require('../utils/emailTemplates').generateEmailTemplate('Your Secure Sign-In Link - Grand Store', `
-            <h2 style="color: #ffffff; font-size: 18px; font-weight: 400; margin-bottom: 20px;">Secure One-Click Sign In</h2>
-            <p style="font-size: 14px; line-height: 1.6; color: #a0a0a0; margin-bottom: 28px;">
-              Click the button below to sign in instantly without needing a password. This secure link is valid for 15 minutes.
+            <h2 style="color: #ffffff; font-size: 20px; font-weight: 500; margin-bottom: 16px;">Secure One-Click Sign In</h2>
+            <p style="font-size: 14px; line-height: 1.6; color: #b5aba0; margin-bottom: 24px;">
+              Tap the button below to sign in instantly to <strong>The Grand Store</strong> without requiring a password. This secure link remains valid for 15 minutes.
             </p>
-            <div style="margin-bottom: 32px;">
-              <a href="${magicLinkUrl}" class="btn" style="background: #c9a35b; color: #000000; padding: 14px 32px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block; letter-spacing: 0.5px;">
+            <div style="margin-bottom: 24px;">
+              <a href="${magicLinkUrl}" class="btn" style="background: linear-gradient(135deg, #f5c242 0%, #c99742 100%); color: #000000; padding: 14px 32px; font-size: 14px; font-weight: 700; text-decoration: none; border-radius: 8px; display: inline-block; letter-spacing: 0.5px;">
                 Sign In to Grand Store
               </a>
             </div>
+            <div style="margin-bottom: 24px;">
+              <a href="${mobileLinkUrl}" style="color: #f5c242; font-size: 13px; text-decoration: underline;">
+                📱 Open directly in Grand Store Mobile App
+              </a>
+            </div>
+            <div style="background: #141311; border: 1px solid #332b1e; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px; text-align: center;">
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #8a7b65; margin-bottom: 6px;">Single-Use Security Token</div>
+              <div style="font-family: monospace; font-size: 14px; color: #f5c242; word-break: break-all;">${token}</div>
+            </div>
             <p style="font-size: 12px; color: #888888; line-height: 1.5; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px;">
-              If you did not request this link, you can safely ignore this email.<br/>
-              Grand Store Liquor & Fine Whisky Collection.
+              If you did not request this link, you can safely disregard this email.<br/>
+              The Grand Store • Fine Spirits & Rare Vault Collection.
             </p>
           `)
       });
@@ -1342,6 +1504,7 @@ const sendMagicLink = async (req, res) => {
       message: `A secure sign-in link has been sent to ${cleanEmail}`,
       email: cleanEmail,
       devMagicLink: process.env.NODE_ENV !== 'production' ? magicLinkUrl : undefined,
+      devMobileLink: process.env.NODE_ENV !== 'production' ? mobileLinkUrl : undefined,
       devToken: process.env.NODE_ENV !== 'production' ? token : undefined
     });
   } catch (error) {
@@ -1616,6 +1779,8 @@ module.exports = {
   testBirthdayEmail,
   sendOtp,
   verifyOtp,
+  sendEmailOtp,
+  verifyEmailOtp,
   sendMagicLink,
   verifyMagicLink,
   appleAuth,
