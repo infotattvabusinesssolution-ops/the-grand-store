@@ -424,9 +424,15 @@ export default function OrderSuccessPage({ onClearCart }) {
           </div>
         </div>
 
-        {/* Concierge Custom Advisory / Emergency Notice */}
-        {(order.latestAdminMessage || (order.adminMessages && order.adminMessages.length > 0)) && (() => {
-          const latestMsg = order.latestAdminMessage || order.adminMessages[order.adminMessages.length - 1];
+        {/* Concierge Custom Advisory / Emergency Notice - strictly shown only when an admin has pushed a message */}
+        {(() => {
+          const latestMsg = [
+            order.latestAdminMessage,
+            ...(Array.isArray(order.adminMessages) ? [...order.adminMessages].reverse() : []),
+          ].find((notice) => typeof notice?.message === 'string' && notice.message.trim().length > 0);
+
+          if (!latestMsg) return null;
+
           return (
             <div className={`p-6 rounded-2xl border mb-8 relative overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.4)] ${
               latestMsg.type === 'emergency' || latestMsg.type === 'stock_issue'

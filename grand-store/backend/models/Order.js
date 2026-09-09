@@ -140,10 +140,8 @@ const orderSchema = new mongoose.Schema({
     sentByName: { type: String, default: 'The Grand Store Concierge' }
   }],
   latestAdminMessage: {
-    message: { type: String },
-    type: { type: String, default: 'info' },
-    sentAt: { type: Date },
-    sentByName: { type: String, default: 'The Grand Store Concierge' }
+    type: Object,
+    default: null
   },
   deliveryStatusText: { type: String, default: '' },
 

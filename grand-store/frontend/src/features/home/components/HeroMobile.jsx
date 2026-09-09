@@ -21,17 +21,18 @@ export default function HeroMobile() {
   return (
     <section className="relative w-full min-h-[85vh] py-16 flex flex-col justify-center items-center bg-[#050505] overflow-hidden select-none">
       
-      {/* Background Images covering the whole container */}
+      {/* Background Video with Crisp Poster */}
       <div className="absolute inset-0 w-full h-full bg-black">
-        {images.map((img, index) => (
-          <img 
-            key={img}
-            src={img} 
-            alt={`Luxury Bar Atmosphere ${index + 1}`} 
-            className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-1000 ease-in-out ${index === currentImage ? 'opacity-100' : 'opacity-0'}`}
-            loading={index === 0 ? "eager" : "lazy"}
-          />
-        ))}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster="https://res.cloudinary.com/oioqrgj0/video/upload/v1788935569/grand-store/hero/auctioneer_conducts_rare_wine_auction.jpg"
+          className="absolute inset-0 w-full h-full object-cover object-center"
+        >
+          <source src="https://res.cloudinary.com/oioqrgj0/video/upload/v1788935569/grand-store/hero/auctioneer_conducts_rare_wine_auction.mp4" type="video/mp4" />
+        </video>
         {/* Deep dark gradient overlay so text on top is perfectly readable */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/60 to-black/20" />
       </div>
