@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Lock, Mail, Eye, EyeOff, Smartphone, 
-  Sparkles, RefreshCw
+  ShieldCheck, Sparkles, RefreshCw
 } from 'lucide-react';
 import { auth, googleProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber } from '../../firebase';
 import CountryCodeSelect from '../../components/CountryCodeSelect';
