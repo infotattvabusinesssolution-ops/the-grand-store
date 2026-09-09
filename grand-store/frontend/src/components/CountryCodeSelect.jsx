@@ -35,7 +35,17 @@ export function CountryFlag({ iso, className = '' }) {
         loading="lazy"
         decoding="async"
         alt={`${iso} flag`}
-        className={`inline-block h-3.5 w-5 shrink-0 rounded-[2px] object-cover shadow-[0_0_0_1px_rgba(255,255,255,0.18)] ${className}`}
+        className={`locale-flag ${className}`}
+        style={{
+          width: '20px',
+          height: '14px',
+          minWidth: '20px',
+          maxWidth: '20px',
+          objectFit: 'cover',
+          borderRadius: '2px',
+          flexShrink: 0,
+          display: 'inline-block'
+        }}
         onError={() => setFailed(true)}
       />
     );

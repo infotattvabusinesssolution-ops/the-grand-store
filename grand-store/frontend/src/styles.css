@@ -454,12 +454,15 @@ video {
 }
 
 .locale-flag {
-  display: block;
-  width: 20px;
-  height: 15px;
+  display: inline-block;
+  width: 20px !important;
+  min-width: 20px !important;
+  max-width: 20px !important;
+  height: 14px !important;
   border-radius: 2px;
   object-fit: cover;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+  flex-shrink: 0 !important;
 }
 
 .locale-flag-fallback {
@@ -467,10 +470,10 @@ video {
   align-items: center;
   justify-content: center;
   width: 20px;
-  height: 15px;
+  height: 14px;
   flex: 0 0 auto;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 3px;
+  border-radius: 2px;
   color: #c9a35b;
   background: #24211c;
   font-size: 7px;
@@ -481,6 +484,8 @@ video {
 }
 
 .locale-trigger-label {
+  display: inline-block;
+  flex: 0 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -492,7 +497,7 @@ video {
 }
 
 .locale-picker-compact .locale-trigger {
-  max-width: 92px;
+  max-width: 120px;
 }
 
 .locale-menu {
