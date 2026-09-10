@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Building2, Package, PlusCircle, User, LayoutDashboard, Wallet, Megaphone, GraduationCap, Menu, X, ShoppingBag, Calendar, Settings, Truck, LogOut, Store, Gavel, MapPin } from 'lucide-react';
+import { Building2, Package, PlusCircle, User, LayoutDashboard, Wallet, Landmark, Megaphone, GraduationCap, Menu, X, ShoppingBag, Calendar, Settings, Truck, LogOut, Store, Gavel, MapPin } from 'lucide-react';
 import NotificationBell from '../../components/NotificationBell';
 
 export default function VendorLayout() {
@@ -142,6 +142,9 @@ export default function VendorLayout() {
             </button>
             <button onClick={() => handleNavigate('/vendor/wallet')} className={navItemClass('/vendor/wallet')}>
               <Wallet size={16} /> Vendor Wallet
+            </button>
+            <button onClick={() => handleNavigate('/vendor/banking')} className={navItemClass('/vendor/banking')}>
+              <Landmark size={16} /> Bank Details
             </button>
 
             <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-2 mt-4 pl-2">Products & Inventory</div>

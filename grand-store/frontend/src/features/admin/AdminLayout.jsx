@@ -24,6 +24,13 @@ export default function AdminLayout() {
   };
 
   const isActive = (path) => {
+    if (path.includes('?')) {
+      const [basePath, search] = path.split('?');
+      return location.pathname === basePath && location.search === `?${search}`;
+    }
+    if (path === '/admin/vendors') {
+      return location.pathname === '/admin/vendors' && (location.search === '' || location.search === '?tab=applications');
+    }
     return location.pathname === path;
   };
 
@@ -102,6 +109,9 @@ export default function AdminLayout() {
                 </button>
                 <button onClick={() => handleNavigate('/admin/vendors')} className={navItemClass('/admin/vendors')}>
                   <Building2 size={16} /> Vendor Management
+                </button>
+                <button onClick={() => handleNavigate('/admin/vendors?tab=payouts')} className={navItemClass('/admin/vendors?tab=payouts')}>
+                  <Wallet size={16} /> Vendor Payout Requests
                 </button>
                 <button onClick={() => handleNavigate('/admin/coupons')} className={navItemClass('/admin/coupons')}>
                   <Tag size={16} /> Vendor Coupons

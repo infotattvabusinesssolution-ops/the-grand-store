@@ -1542,8 +1542,10 @@ const verifyMagicLink = async (req, res) => {
 
     if (!user) {
       const newReferralCode = await generateUniqueReferralCode();
-      const localPart = targetEmail.split('@')[0];
-      const displayName = localPart.charAt(0).toUpperCase() + localPart.slice(1);
+      const rawLocal = targetEmail.split('@')[0].replace(/[._-]+/g, ' ').trim();
+      const displayName = rawLocal
+        ? rawLocal.split(' ').filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+        : 'Valued Patron';
 
       user = await User.create({
         name: displayName || 'Valued Patron',

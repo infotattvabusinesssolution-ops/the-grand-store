@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../api';
-import { DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp, History, Download, FileSpreadsheet, Layers3, Scale, ShieldCheck } from 'lucide-react';
+import { 
+  DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp, History, Download, 
+  FileSpreadsheet, Layers3, Scale, ShieldCheck 
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { downloadAccountingWorkbook, downloadCategoryAccountingWorkbook, downloadAuctionsWorkbook, downloadEventsWorkbook, downloadVendorWorkbook, downloadLedgerWorkbook } from '../../utils/accountingWorkbook';
 
@@ -29,12 +32,15 @@ export default function AdminFinancials({ hideHeader = false }) {
         const res = await api.get(`${API_URL}/api/admin/finance?limit=2000`, {
           headers: { Authorization: `Bearer ${user?.token}` }
         });
-        setMetrics(res.data.metrics);
-        setTransactions(res.data.transactions);
-        setShopOrders(res.data.shopOrders || []);
-        setAuctionOrders(res.data.auctionOrders || []);
-        setEventBookings(res.data.eventBookings || []);
-        setVendorPayments(res.data.vendorPayments || []);
+
+        if (res.data) {
+          setMetrics(res.data.metrics);
+          setTransactions(res.data.transactions);
+          setShopOrders(res.data.shopOrders || []);
+          setAuctionOrders(res.data.auctionOrders || []);
+          setEventBookings(res.data.eventBookings || []);
+          setVendorPayments(res.data.vendorPayments || []);
+        }
       } catch (err) {
         setError('Failed to load finance data');
         console.error(err);

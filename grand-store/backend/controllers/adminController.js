@@ -4,6 +4,9 @@ const Vendor = require("../models/Vendor");
 const Order = require("../models/Order");
 const AuctionLot = require("../models/AuctionLot");
 const Booking = require("../models/Booking");
+const Transaction = require("../models/Transaction");
+const Wallet = require("../models/Wallet");
+const { createInAppNotification } = require("./notificationController");
 const bcrypt = require("bcryptjs");
 const { sendEmail } = require("../utils/emailService");
 const {
@@ -111,6 +114,32 @@ const getAllUsers = async (req, res) => {
       .select("-password")
       .sort({ createdAt: -1 });
     res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+// @desc    Delete a user account
+// @route   DELETE /api/admin/users/:id
+// @access  Private/Admin
+const deleteUser = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Protect administrative staff accounts from accidental deletion
+    if (["admin", "super_admin", ...STAFF_ROLES].includes(user.role)) {
+      return res.status(403).json({ message: "Cannot delete an administrative account through this endpoint" });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: `User ${user.name} (${user.email}) deleted successfully` });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
@@ -262,6 +291,15 @@ const getVendorById = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({ message: "Vendor not found" });
     }
+
+    // Attach wallet and payouts if available
+    const [wallet, payouts] = await Promise.all([
+      Wallet.findOne({ vendorId: vendor.userId?._id }).lean(),
+      Transaction.find({ vendor: vendor.userId?._id, type: 'payout' }).sort({ createdAt: -1 }).lean()
+    ]);
+
+    vendor.wallet = wallet || null;
+    vendor.payouts = payouts || [];
 
     return res.json(vendor);
   } catch (error) {
@@ -686,6 +724,284 @@ const rejectGuestKyc = async (req, res) => {
   }
 };
 
+// @desc    Get all vendor payouts & redemptions with date and status filters
+// @route   GET /api/admin/payouts
+// @access  Private/Finance or Admin
+const getVendorPayouts = async (req, res) => {
+  try {
+    const { status, startDate, endDate } = req.query;
+    const query = { type: 'payout', module: 'vendor' };
+
+    if (status && status !== 'all') {
+      if (status === 'cleared' || status === 'paid') {
+        query.status = { $in: ['cleared', 'paid'] };
+      } else {
+        query.status = status;
+      }
+    }
+
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
+
+    const payouts = await Transaction.find(query)
+      .sort({ createdAt: -1 })
+      .populate('vendor', 'name email');
+
+    // Enrich with vendor trading name and status
+    const vendorIds = payouts.map(p => p.vendor?._id).filter(Boolean);
+    const vendors = await Vendor.find({ userId: { $in: vendorIds } }).select('userId businessInfo status bankingInfo').lean();
+    const vendorMap = new Map();
+    vendors.forEach(v => vendorMap.set(String(v.userId), v));
+
+    const enriched = payouts.map(p => {
+      const v = vendorMap.get(String(p.vendor?._id));
+      return {
+        ...p.toObject(),
+        businessInfo: v?.businessInfo || null,
+        vendorStatus: v?.status || null,
+        vendorCurrentBanking: v?.bankingInfo || null
+      };
+    });
+
+    res.json(enriched);
+  } catch (error) {
+    console.error('Get Vendor Payouts Error:', error);
+    res.status(500).json({ message: 'Server Error retrieving vendor payouts', error: error.message });
+  }
+};
+
+// @desc    Update Vendor Payout Status (Paid/Cleared, Pending, Delayed, Declined) & Custom Message
+// @route   PUT /api/admin/payouts/:id/status
+// @access  Private/Finance or Admin
+const updateVendorPayoutStatus = async (req, res) => {
+  try {
+    const { status, adminReference, adminNotes, rejectionReason, customMessage } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: 'Payout transaction not found' });
+    }
+
+    const transaction = await Transaction.findOne({ _id: req.params.id, type: 'payout' });
+    if (!transaction) {
+      return res.status(404).json({ message: 'Payout transaction not found' });
+    }
+
+    const normalizedStatus = (status === 'paid' || status === 'cleared')
+      ? 'cleared'
+      : (status === 'delayed' || status === 'delaying')
+      ? 'delayed'
+      : (status === 'pending')
+      ? 'pending'
+      : (status === 'failed' || status === 'declined')
+      ? 'failed'
+      : null;
+
+    if (!normalizedStatus) {
+      return res.status(400).json({
+        message: 'Invalid status. Status must be "paid", "cleared", "delayed", "pending", or "failed".'
+      });
+    }
+
+    const prevStatus = transaction.status;
+    const wallet = await Wallet.findOne({ vendorId: transaction.vendor });
+
+    transaction.payoutDetails = transaction.payoutDetails || {};
+
+    if (adminNotes !== undefined) {
+      transaction.payoutDetails.adminNotes = String(adminNotes).trim();
+    }
+    if (customMessage !== undefined) {
+      transaction.payoutDetails.customMessage = String(customMessage).trim();
+    }
+
+    if (normalizedStatus === 'cleared') {
+      transaction.status = 'cleared';
+      transaction.payoutDetails.clearedAt = new Date();
+      transaction.payoutDetails.processedAt = new Date();
+      if (adminReference) {
+        transaction.payoutDetails.adminReference = String(adminReference).trim();
+      } else if (!transaction.payoutDetails.adminReference) {
+        transaction.payoutDetails.adminReference = `EFT-${Date.now().toString().slice(-6)}`;
+      }
+
+      if (wallet && prevStatus !== 'cleared') {
+        if (prevStatus === 'failed') {
+          wallet.availableBalance = Math.max(0, Number(((wallet.availableBalance || 0) - transaction.amount).toFixed(2)));
+        } else {
+          wallet.pendingWithdrawalAmount = Math.max(0, Number(((wallet.pendingWithdrawalAmount || 0) - transaction.amount).toFixed(2)));
+        }
+        wallet.totalWithdrawn = Number(((wallet.totalWithdrawn || 0) + transaction.amount).toFixed(2));
+        await wallet.save();
+      }
+
+      try {
+        await createInAppNotification({
+          recipient: transaction.vendor,
+          recipientType: 'vendor',
+          title: 'Payout Disbursed (Paid)',
+          message: `Your payout of R ${transaction.amount.toFixed(2)} (${transaction.gsReference}) has been marked as Paid via EFT. Ref: ${transaction.payoutDetails.adminReference}.${transaction.payoutDetails.customMessage ? ' Note: ' + transaction.payoutDetails.customMessage : ''}`,
+          type: 'payout_cleared',
+          link: '/vendor/wallet'
+        });
+      } catch (notifErr) {
+        console.warn('Notification to vendor failed:', notifErr.message);
+      }
+    } else if (normalizedStatus === 'delayed') {
+      transaction.status = 'delayed';
+      transaction.payoutDetails.processedAt = new Date();
+
+      if (wallet) {
+        if (prevStatus === 'cleared') {
+          wallet.totalWithdrawn = Math.max(0, Number(((wallet.totalWithdrawn || 0) - transaction.amount).toFixed(2)));
+          wallet.pendingWithdrawalAmount = Number(((wallet.pendingWithdrawalAmount || 0) + transaction.amount).toFixed(2));
+          await wallet.save();
+        } else if (prevStatus === 'failed') {
+          wallet.availableBalance = Math.max(0, Number(((wallet.availableBalance || 0) - transaction.amount).toFixed(2)));
+          wallet.pendingWithdrawalAmount = Number(((wallet.pendingWithdrawalAmount || 0) + transaction.amount).toFixed(2));
+          await wallet.save();
+        }
+      }
+
+      try {
+        await createInAppNotification({
+          recipient: transaction.vendor,
+          recipientType: 'vendor',
+          title: 'Payout Status: Delayed',
+          message: `Your payout request of R ${transaction.amount.toFixed(2)} (${transaction.gsReference}) is currently Delayed. ${transaction.payoutDetails.customMessage ? 'Message from Admin: "' + transaction.payoutDetails.customMessage + '"' : 'The finance team will disburse funds shortly.'}`,
+          type: 'payout_delayed',
+          link: '/vendor/wallet'
+        });
+      } catch (notifErr) {
+        console.warn('Notification to vendor failed:', notifErr.message);
+      }
+    } else if (normalizedStatus === 'pending') {
+      transaction.status = 'pending';
+
+      if (wallet) {
+        if (prevStatus === 'cleared') {
+          wallet.totalWithdrawn = Math.max(0, Number(((wallet.totalWithdrawn || 0) - transaction.amount).toFixed(2)));
+          wallet.pendingWithdrawalAmount = Number(((wallet.pendingWithdrawalAmount || 0) + transaction.amount).toFixed(2));
+          await wallet.save();
+        } else if (prevStatus === 'failed') {
+          wallet.availableBalance = Math.max(0, Number(((wallet.availableBalance || 0) - transaction.amount).toFixed(2)));
+          wallet.pendingWithdrawalAmount = Number(((wallet.pendingWithdrawalAmount || 0) + transaction.amount).toFixed(2));
+          await wallet.save();
+        }
+      }
+
+      try {
+        await createInAppNotification({
+          recipient: transaction.vendor,
+          recipientType: 'vendor',
+          title: 'Payout Status: Pending Review',
+          message: `Your payout request of R ${transaction.amount.toFixed(2)} (${transaction.gsReference}) status is Pending Review.${transaction.payoutDetails.customMessage ? ' Note: ' + transaction.payoutDetails.customMessage : ''}`,
+          type: 'payout_pending',
+          link: '/vendor/wallet'
+        });
+      } catch (notifErr) {
+        console.warn('Notification to vendor failed:', notifErr.message);
+      }
+    } else if (normalizedStatus === 'failed') {
+      transaction.status = 'failed';
+      transaction.payoutDetails.processedAt = new Date();
+      transaction.payoutDetails.rejectionReason = rejectionReason || customMessage || 'Payout request declined by admin.';
+
+      if (wallet && prevStatus !== 'failed') {
+        if (prevStatus === 'cleared') {
+          wallet.totalWithdrawn = Math.max(0, Number(((wallet.totalWithdrawn || 0) - transaction.amount).toFixed(2)));
+        } else {
+          wallet.pendingWithdrawalAmount = Math.max(0, Number(((wallet.pendingWithdrawalAmount || 0) - transaction.amount).toFixed(2)));
+        }
+        wallet.availableBalance = Number(((wallet.availableBalance || 0) + transaction.amount).toFixed(2));
+        await wallet.save();
+      }
+
+      try {
+        await createInAppNotification({
+          recipient: transaction.vendor,
+          recipientType: 'vendor',
+          title: 'Payout Request Declined',
+          message: `Your payout request of R ${transaction.amount.toFixed(2)} was declined: ${transaction.payoutDetails.rejectionReason}. The funds have been returned to your available balance.`,
+          type: 'payout_rejected',
+          link: '/vendor/wallet'
+        });
+      } catch (notifErr) {
+        console.warn('Notification to vendor failed:', notifErr.message);
+      }
+    }
+
+    await transaction.save();
+    res.json({ message: `Payout request updated to ${normalizedStatus}`, transaction });
+  } catch (error) {
+    console.error('Update Vendor Payout Status Error:', error);
+    res.status(500).json({ message: 'Server Error updating payout status', error: error.message });
+  }
+};
+
+// @desc    Admin update or verify vendor banking details
+// @route   PUT /api/admin/vendors/:id/banking
+// @access  Private/Admin
+const updateVendorBanking = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+
+    const vendor = await Vendor.findById(req.params.id);
+    if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
+
+    const { bankName, accountName, accountNumber, branchCode, accountType, swiftCode, bankConfirmationUrl, isVerified } = req.body;
+
+    vendor.bankingInfo = vendor.bankingInfo || {};
+    if (bankName !== undefined) vendor.bankingInfo.bankName = String(bankName).trim();
+    if (accountName !== undefined) vendor.bankingInfo.accountName = String(accountName).trim();
+    if (accountNumber !== undefined) vendor.bankingInfo.accountNumber = String(accountNumber).trim();
+    if (branchCode !== undefined) vendor.bankingInfo.branchCode = String(branchCode).trim();
+    if (accountType !== undefined) vendor.bankingInfo.accountType = String(accountType).trim();
+    if (swiftCode !== undefined) vendor.bankingInfo.swiftCode = String(swiftCode).trim();
+    if (bankConfirmationUrl !== undefined) vendor.bankingInfo.bankConfirmationUrl = String(bankConfirmationUrl).trim();
+    if (isVerified !== undefined) {
+      vendor.bankingInfo.isVerified = Boolean(isVerified);
+      if (isVerified) vendor.bankingInfo.verifiedAt = new Date();
+    }
+    vendor.bankingInfo.updatedAt = new Date();
+
+    await vendor.save();
+
+    // Sync to Wallet
+    await Wallet.findOneAndUpdate(
+      { vendorId: vendor.userId },
+      {
+        $set: {
+          'payoutDetails.bankName': vendor.bankingInfo.bankName,
+          'payoutDetails.accountName': vendor.bankingInfo.accountName,
+          'payoutDetails.accountNumber': vendor.bankingInfo.accountNumber,
+          'payoutDetails.branchCode': vendor.bankingInfo.branchCode,
+          'payoutDetails.accountType': vendor.bankingInfo.accountType,
+          'payoutDetails.swiftCode': vendor.bankingInfo.swiftCode,
+          'payoutDetails.bankConfirmationUrl': vendor.bankingInfo.bankConfirmationUrl,
+          'payoutDetails.isVerified': vendor.bankingInfo.isVerified,
+          'payoutDetails.updatedAt': new Date()
+        }
+      },
+      { upsert: true }
+    );
+
+    res.json({ message: 'Vendor banking details updated successfully', bankingInfo: vendor.bankingInfo });
+  } catch (error) {
+    console.error('Admin Update Vendor Banking Error:', error);
+    res.status(500).json({ message: 'Server Error updating vendor banking', error: error.message });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getAllUsers,
@@ -702,4 +1018,9 @@ module.exports = {
   getGuestVerifications,
   verifyGuestKyc,
   rejectGuestKyc,
+  getVendorPayouts,
+  updateVendorPayoutStatus,
+  updateVendorBanking,
+  deleteUser,
 };
+

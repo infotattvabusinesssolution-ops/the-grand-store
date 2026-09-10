@@ -100,6 +100,7 @@ import EstateDetail from './features/wine-farm/EstateDetail'
 import EventAttendees from './features/vendor/EventAttendees'
 import VendorInventory from './features/vendor/VendorInventory'
 import VendorWallet from './features/vendor/VendorWallet'
+import VendorBankDetails from './features/vendor/VendorBankDetails'
 import VendorOrders from './features/vendor/VendorOrders'
 import VendorShippingProfile from './features/vendor/VendorShippingProfile'
 import AdminLoginPage from './features/admin/AdminLoginPage'
@@ -779,6 +780,7 @@ function App() {
           <Route path="orders" element={<VendorOrders />} />
           <Route path="inventory" element={<VendorInventory />} />
           <Route path="wallet" element={<VendorWallet />} />
+          <Route path="banking" element={<VendorBankDetails />} />
           <Route path="marketing" element={<VendorMarketing />} />
           <Route path="academy" element={<VendorAcademy />} />
           <Route path="products" element={<VendorProducts />} />

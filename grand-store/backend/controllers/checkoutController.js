@@ -193,9 +193,13 @@ const generateQuote = async (req, res) => {
     const SuperCoinEngine = require('../engines/superCoinEngine');
     const User = require('../models/User');
     let userCoins = 0;
+    let userRewardBalance = 0;
     if (req.user && req.user._id) {
-      const dbUser = await User.findById(req.user._id).select('superCoinsBalance');
-      if (dbUser) userCoins = dbUser.superCoinsBalance || 0;
+      const dbUser = await User.findById(req.user._id).select('superCoinsBalance rewardBalance');
+      if (dbUser) {
+        userCoins = dbUser.superCoinsBalance || 0;
+        userRewardBalance = Math.max(0, Number(dbUser.rewardBalance) || 0);
+      }
     }
 
     const superCoinsEstimate = SuperCoinEngine.calculateAllowedRedemption({
@@ -230,6 +234,7 @@ const generateQuote = async (req, res) => {
         ...superCoinsEstimate,
         potentialCoinsToEarn
       },
+      rewardBalance: userRewardBalance,
       bankDetails: settings.bankDetails,
       shipments
     });

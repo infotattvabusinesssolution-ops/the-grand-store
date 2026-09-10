@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowRight,
+  ArrowUpRight,
   ShieldCheck,
   Lock,
   CreditCard,
@@ -265,7 +266,12 @@ export default function CheckoutPage({
     : 0;
 
   const placeOrderBaseTotal = quote ? quote.aggregatedTotals.totalToPay : cartSubtotal;
-  const referralRewardDiscount = applyRewards ? (user?.rewardBalance || 0) : 0;
+  const userRewardCredit = quote?.rewardBalance !== undefined
+    ? Number(quote.rewardBalance)
+    : Number(user?.rewardBalance || 0);
+  const referralRewardDiscount = applyRewards && userRewardCredit > 0
+    ? Math.min(userRewardCredit, Math.max(0, placeOrderBaseTotal - superCoinDiscount))
+    : 0;
   const displayedTotal = Math.max(0, parseFloat((placeOrderBaseTotal - superCoinDiscount - referralRewardDiscount).toFixed(2)));
 
   const handleUpdateQuantity = (productId, option, newQuantity) => {
@@ -2134,22 +2140,76 @@ export default function CheckoutPage({
                   </div>
                 )}
 
-                {/* Legacy Referral Rewards if available */}
-                {user?.rewardBalance > 0 && (
-                  <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-4 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-semibold text-white">Apply Referral Credits</p>
-                      <p className="text-[11px] text-[var(--color-ivory-muted)]">Available: <Price amount={user.rewardBalance} /></p>
+                {/* Refer & Earn Store Credits Redemption Card */}
+                {user && (
+                  <div className={`rounded-2xl border p-5 transition-all relative overflow-hidden ${
+                    userRewardCredit > 0 
+                      ? 'border-[var(--color-gold)]/40 bg-gradient-to-r from-[var(--color-gold)]/10 via-black/60 to-black/80 shadow-[0_0_20px_rgba(201,163,91,0.08)]' 
+                      : 'border-white/10 bg-[#0d0d0d]'
+                  }`}>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3.5">
+                        <div className={`p-2.5 rounded-xl border ${
+                          userRewardCredit > 0 
+                            ? 'border-[var(--color-gold)]/40 bg-[var(--color-gold)]/15 text-[var(--color-gold)]' 
+                            : 'border-white/10 bg-white/5 text-white/40'
+                        }`}>
+                          <Gift size={20} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-bold text-white">Refer &amp; Earn Store Credits</h3>
+                            {userRewardCredit > 0 && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                Available
+                              </span>
+                            )}
+                          </div>
+                          {userRewardCredit > 0 ? (
+                            <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                              You have <strong className="text-[var(--color-gold)] font-serif"><Price amount={userRewardCredit} /></strong> in earned store credits ready to redeem.
+                            </p>
+                          ) : (
+                            <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                              Share your invite link with friends to earn R50 store credit per friend for checkout!
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {userRewardCredit > 0 ? (
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={applyRewards}
+                            onChange={(e) => setApplyRewards(e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-gold)]"></div>
+                        </label>
+                      ) : (
+                        <Link
+                          to="/customer/referrals"
+                          target="_blank"
+                          className="shrink-0 text-xs text-[var(--color-gold)] hover:underline flex items-center gap-1 font-medium"
+                        >
+                          Invite Friends <ArrowUpRight size={13} />
+                        </Link>
+                      )}
                     </div>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={applyRewards}
-                        onChange={(e) => setApplyRewards(e.target.checked)}
-                        className="accent-[var(--color-gold)] w-4 h-4 rounded"
-                      />
-                      <span className="text-xs text-white">Apply</span>
-                    </label>
+
+                    {applyRewards && userRewardCredit > 0 && (
+                      <div className="mt-3 pt-3 border-t border-[var(--color-gold)]/20 flex items-center justify-between text-xs">
+                        <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                          <CheckCircle2 size={14} /> Applied to this purchase: -<Price amount={referralRewardDiscount} />
+                        </span>
+                        {userRewardCredit > referralRewardDiscount && (
+                          <span className="text-[var(--color-ivory-muted)] text-[11px]">
+                            Remaining balance: <Price amount={userRewardCredit - referralRewardDiscount} />
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 

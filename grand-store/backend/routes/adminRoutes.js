@@ -14,9 +14,11 @@ router.use(protect);
 // Anyone in staff/admin can see dashboard metrics (frontend handles component visibility)
 router.get('/dashboard', adminController.getDashboardStats);
 router.get('/users', superAdmin, adminController.getAllUsers);
+router.delete('/users/:id', superAdmin, adminController.deleteUser);
 router.get('/vendors', superAdmin, adminController.getAllVendors);
 router.get('/vendors/:id', superAdmin, adminController.getVendorById);
 router.put('/vendors/:id/status', superAdmin, adminController.updateVendorStatus);
+router.put('/vendors/:id/banking', superAdmin, adminController.updateVendorBanking);
 router.put('/vendors/:id/payment-status', superAdmin, adminController.updateVendorPaymentStatus);
 router.put('/vendors/:id/maintenance-fee', superAdmin, adminController.updateVendorMaintenanceFee);
 router.post('/vendors/:id/remind-payment', superAdmin, adminController.remindVendorPayment);
@@ -26,6 +28,8 @@ router.put('/staff/:id', superAdmin, adminController.updateStaffCredentials);
 
 router.get('/finance', financeStaff, financeController.getAdminFinanceOverview);
 router.get('/bank-transfers', financeStaff, adminController.getPendingBankTransfers);
+router.get('/payouts', financeStaff, adminController.getVendorPayouts);
+router.put('/payouts/:id/status', financeStaff, adminController.updateVendorPayoutStatus);
 router.get('/guest-verifications', adminController.getGuestVerifications);
 router.put('/orders/:orderId/guest-kyc/verify', adminController.verifyGuestKyc);
 router.put('/orders/:orderId/guest-kyc/reject', adminController.rejectGuestKyc);

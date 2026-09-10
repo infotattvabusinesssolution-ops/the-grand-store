@@ -97,8 +97,18 @@ const vendorSchema = new mongoose.Schema({
     accountName: String,
     accountNumber: String,
     branchCode: String,
+    accountType: {
+      type: String,
+      default: 'Cheque / Current'
+    },
     swiftCode: String,
     bankConfirmationUrl: String,
+    isVerified: {
+      type: Boolean,
+      default: false
+    },
+    verifiedAt: Date,
+    updatedAt: Date,
     payoutPreference: {
       type: String,
       enum: ['Weekly', 'Fortnightly', 'Monthly'],

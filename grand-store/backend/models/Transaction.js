@@ -35,11 +35,29 @@ const transactionSchema = new mongoose.Schema({
   // Tracking status
   status: {
     type: String,
-    enum: ['pending', 'cleared', 'failed', 'refunded'],
+    enum: ['pending', 'cleared', 'paid', 'delayed', 'failed', 'refunded'],
     default: 'pending'
   },
   
-  description: { type: String }
+  description: { type: String },
+  
+  // Specific metadata for vendor/host payouts and redemptions
+  payoutDetails: {
+    bankName: { type: String },
+    accountName: { type: String },
+    accountNumber: { type: String },
+    branchCode: { type: String },
+    accountType: { type: String },
+    swiftCode: { type: String },
+    bankConfirmationUrl: { type: String },
+    requestedAt: { type: Date, default: Date.now },
+    processedAt: { type: Date },
+    clearedAt: { type: Date },
+    adminReference: { type: String },
+    adminNotes: { type: String },
+    customMessage: { type: String },
+    rejectionReason: { type: String }
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Transaction', transactionSchema);

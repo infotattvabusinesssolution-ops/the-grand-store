@@ -681,3 +681,141 @@ exports.payMaintenanceFee = async (req, res) => {
   }
 };
 
+// @desc    Get Vendor Banking Information
+// @route   GET /api/vendor/banking
+// @access  Private/Vendor
+exports.getVendorBanking = async (req, res) => {
+  try {
+    const vendor = await Vendor.findOne({ userId: req.user._id });
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor profile not found' });
+    }
+
+    const Wallet = require('../models/Wallet');
+    const wallet = await Wallet.findOne({ vendorId: req.user._id });
+
+    // Fall back to wallet payoutDetails if vendor.bankingInfo has missing values
+    const bankingInfo = vendor.bankingInfo || wallet?.payoutDetails || {
+      bankName: '',
+      accountName: '',
+      accountNumber: '',
+      branchCode: '',
+      accountType: 'Cheque / Current',
+      swiftCode: '',
+      bankConfirmationUrl: '',
+      payoutPreference: 'Monthly',
+      isVerified: false
+    };
+
+    res.json({
+      bankingInfo: {
+        bankName: bankingInfo.bankName || '',
+        accountName: bankingInfo.accountName || vendor.businessInfo?.legalName || vendor.businessInfo?.tradingName || req.user.name || '',
+        accountNumber: bankingInfo.accountNumber || '',
+        branchCode: bankingInfo.branchCode || '',
+        accountType: bankingInfo.accountType || 'Cheque / Current',
+        swiftCode: bankingInfo.swiftCode || '',
+        bankConfirmationUrl: bankingInfo.bankConfirmationUrl || '',
+        payoutPreference: bankingInfo.payoutPreference || 'Monthly',
+        isVerified: Boolean(bankingInfo.isVerified),
+        verifiedAt: bankingInfo.verifiedAt || null,
+        updatedAt: bankingInfo.updatedAt || vendor.updatedAt || null
+      },
+      businessName: vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || ''
+    });
+  } catch (error) {
+    console.error('Get Vendor Banking Error:', error);
+    res.status(500).json({ message: 'Server error fetching bank details', error: error.message });
+  }
+};
+
+// @desc    Update Vendor Banking Information
+// @route   PUT /api/vendor/banking
+// @access  Private/Vendor
+exports.updateVendorBanking = async (req, res) => {
+  try {
+    const { bankName, accountName, accountNumber, branchCode, accountType, swiftCode, bankConfirmationUrl, payoutPreference } = req.body;
+
+    if (!bankName || !accountName || !accountNumber || !branchCode) {
+      return res.status(400).json({ message: 'Bank Name, Account Holder Name, Account Number, and Branch Code are required.' });
+    }
+
+    const vendor = await Vendor.findOne({ userId: req.user._id });
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor profile not found' });
+    }
+
+    const cleanBank = {
+      bankName: String(bankName).trim(),
+      accountName: String(accountName).trim(),
+      accountNumber: String(accountNumber).trim(),
+      branchCode: String(branchCode).trim(),
+      accountType: accountType ? String(accountType).trim() : 'Cheque / Current',
+      swiftCode: swiftCode ? String(swiftCode).trim() : '',
+      bankConfirmationUrl: bankConfirmationUrl ? String(bankConfirmationUrl).trim() : (vendor.bankingInfo?.bankConfirmationUrl || ''),
+      payoutPreference: ['Weekly', 'Fortnightly', 'Monthly'].includes(payoutPreference) ? payoutPreference : (vendor.bankingInfo?.payoutPreference || 'Monthly'),
+      isVerified: vendor.bankingInfo?.isVerified ?? false,
+      updatedAt: new Date()
+    };
+
+    vendor.bankingInfo = {
+      ...vendor.bankingInfo,
+      ...cleanBank
+    };
+    await vendor.save();
+
+    // Synchronize to Wallet
+    const Wallet = require('../models/Wallet');
+    await Wallet.findOneAndUpdate(
+      { vendorId: req.user._id },
+      {
+        $set: {
+          'payoutDetails.bankName': cleanBank.bankName,
+          'payoutDetails.accountName': cleanBank.accountName,
+          'payoutDetails.accountNumber': cleanBank.accountNumber,
+          'payoutDetails.branchCode': cleanBank.branchCode,
+          'payoutDetails.accountType': cleanBank.accountType,
+          'payoutDetails.swiftCode': cleanBank.swiftCode,
+          'payoutDetails.bankConfirmationUrl': cleanBank.bankConfirmationUrl,
+          'payoutDetails.updatedAt': new Date()
+        }
+      },
+      { upsert: true, new: true }
+    );
+
+    // Synchronize to User account
+    await User.findByIdAndUpdate(req.user._id, {
+      $set: {
+        'bankAccountDetails.bankName': cleanBank.bankName,
+        'bankAccountDetails.accountHolder': cleanBank.accountName,
+        'bankAccountDetails.accountNumber': cleanBank.accountNumber,
+        'bankAccountDetails.branchCode': cleanBank.branchCode,
+        'bankAccountDetails.updatedAt': new Date()
+      }
+    });
+
+    // Notify Admin of banking update
+    try {
+      await createInAppNotification({
+        recipient: null,
+        recipientType: 'admin',
+        title: 'Vendor Bank Details Updated',
+        message: `${vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || req.user.name} updated settlement banking details (${cleanBank.bankName} - ***${cleanBank.accountNumber.slice(-4)}).`,
+        type: 'vendor_banking',
+        link: `/admin/vendors/${vendor._id}`
+      });
+    } catch (notifErr) {
+      console.warn('Failed to send admin notification for bank update:', notifErr.message);
+    }
+
+    res.json({
+      message: 'Bank details saved successfully',
+      bankingInfo: vendor.bankingInfo
+    });
+  } catch (error) {
+    console.error('Update Vendor Banking Error:', error);
+    res.status(500).json({ message: 'Failed to update bank details', error: error.message });
+  }
+};
+
+
