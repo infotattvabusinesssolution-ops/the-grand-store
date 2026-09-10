@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { DollarSign, ShieldCheck, AlertTriangle, Info, ChevronDown, ChevronUp, Scale, CheckCircle2 } from 'lucide-react';
 import Price from './ui/Price';
 import api from '../api';
@@ -19,11 +19,7 @@ export default function ProductCostingCard({
   isInternalProductManager = false
 }) {
   const [platformSettings, setPlatformSettings] = useState({
-    minimumPlatformMarginPct: 15,
-    targetPlatformMarginPct: 30,
-    marginHealthyThresholdPct: 15,
-    marginWarningThresholdPct: 10,
-    marginBlockedThresholdPct: 10
+    platformMarginPct: 15
   });
 
   // Costing form inputs
@@ -43,14 +39,12 @@ export default function ProductCostingCard({
       try {
         const res = await api.get('/settings/public');
         if (res.data) {
-          setPlatformSettings(prev => ({
-            ...prev,
-            minimumPlatformMarginPct: res.data.minimumPlatformMarginPct !== undefined ? res.data.minimumPlatformMarginPct : 15,
-            targetPlatformMarginPct: res.data.targetPlatformMarginPct !== undefined ? res.data.targetPlatformMarginPct : 30,
-            marginHealthyThresholdPct: res.data.marginHealthyThresholdPct !== undefined ? res.data.marginHealthyThresholdPct : 15,
-            marginWarningThresholdPct: res.data.marginWarningThresholdPct !== undefined ? res.data.marginWarningThresholdPct : 10,
-            marginBlockedThresholdPct: res.data.marginBlockedThresholdPct !== undefined ? res.data.marginBlockedThresholdPct : 10
-          }));
+          const comm = res.data.marketplaceCommissionPct !== undefined
+            ? res.data.marketplaceCommissionPct
+            : (res.data.minimumPlatformMarginPct !== undefined ? res.data.minimumPlatformMarginPct : 15);
+          setPlatformSettings({
+            platformMarginPct: comm
+          });
         }
       } catch (err) {
         console.error('Failed to fetch public settings for costing engine', err);
@@ -72,7 +66,7 @@ export default function ProductCostingCard({
     }
   }, [initialCosting]);
 
-  // Mathematical Calculations
+  // Compute live calculations
   const calculations = useMemo(() => {
     const rawCost = Math.max(0, parseFloat(productCost) || 0);
     const discPct = Math.max(0, parseFloat(supplierDiscountPct) || 0);
@@ -86,41 +80,20 @@ export default function ProductCostingCard({
       (parseFloat(otherLandedCost) || 0)
     ).toFixed(2));
 
-    const trueCost = parseFloat((netSupplierCost + landed).toFixed(2));
-    const effectiveBaseCost = isInternalProductManager && showAdvanced ? trueCost : rawCost;
+    const trueCost = parseFloat((netSupplierCost + (showAdvanced ? landed : 0)).toFixed(2));
+    const effectiveBaseCost = showAdvanced ? trueCost : rawCost;
 
     const profitPct = Math.max(0, parseFloat(vendorProfitPct) || 0);
     const vendorProfitAmount = parseFloat(((effectiveBaseCost * profitPct) / 100).toFixed(2));
     const vendorPayout = parseFloat((effectiveBaseCost + vendorProfitAmount).toFixed(2));
 
-    const platformMarginPct = Number(platformSettings.minimumPlatformMarginPct || 15);
+    const platformMarginPct = Number(platformSettings.platformMarginPct || 15);
     const marginRatio = platformMarginPct / 100;
     const computedSellingPrice = marginRatio < 1
       ? parseFloat((vendorPayout / (1 - marginRatio)).toFixed(2))
       : vendorPayout;
 
     const platformMarginAmount = parseFloat((computedSellingPrice - vendorPayout).toFixed(2));
-
-    // Evaluate customer price against Profit Guard
-    const activePrice = parseFloat(currentPrice) || computedSellingPrice;
-    const effectiveGrossMarginAmount = parseFloat((activePrice - vendorPayout).toFixed(2));
-    const effectiveMarginPct = activePrice > 0
-      ? parseFloat(((effectiveGrossMarginAmount / activePrice) * 100).toFixed(2))
-      : 0;
-
-    const healthyFloor = platformSettings.marginHealthyThresholdPct;
-    const warningFloor = platformSettings.marginWarningThresholdPct;
-
-    let marginStatus = 'healthy';
-    let statusBadge = { icon: '🟢', label: 'Healthy (Protected)', color: 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30' };
-
-    if (effectiveMarginPct < warningFloor) {
-      marginStatus = 'blocked';
-      statusBadge = { icon: '🔴', label: 'Blocked / Below Floor', color: 'text-rose-400 bg-rose-950/40 border-rose-500/30' };
-    } else if (effectiveMarginPct < healthyFloor) {
-      marginStatus = 'warning';
-      statusBadge = { icon: '🟠', label: 'Warning (Thin Margin)', color: 'text-amber-400 bg-amber-950/40 border-amber-500/30' };
-    }
 
     return {
       rawCost,
@@ -135,12 +108,9 @@ export default function ProductCostingCard({
       platformMarginPct,
       computedSellingPrice,
       platformMarginAmount,
-      activePrice,
-      effectiveMarginPct,
-      marginStatus,
-      statusBadge
+      marginStatus: 'healthy'
     };
-  }, [productCost, vendorProfitPct, supplierDiscountPct, freightCost, insuranceCost, dutiesCost, otherLandedCost, showAdvanced, isInternalProductManager, currentPrice, platformSettings]);
+  }, [productCost, vendorProfitPct, supplierDiscountPct, freightCost, insuranceCost, dutiesCost, otherLandedCost, showAdvanced, platformSettings.platformMarginPct]);
 
   // Handle changes and notify parent
   const handleCostChange = (val) => {
@@ -148,7 +118,7 @@ export default function ProductCostingCard({
     const costNum = Math.max(0, parseFloat(val) || 0);
     const profitPct = Math.max(0, parseFloat(vendorProfitPct) || 0);
     const payout = costNum * (1 + profitPct / 100);
-    const m = (platformSettings.minimumPlatformMarginPct || 15) / 100;
+    const m = (platformSettings.platformMarginPct || 15) / 100;
     const price = m < 1 ? parseFloat((payout / (1 - m)).toFixed(2)) : payout;
 
     if (onPriceChange && price > 0) {
@@ -161,7 +131,7 @@ export default function ProductCostingCard({
     const costNum = Math.max(0, parseFloat(productCost) || 0);
     const profitPct = Math.max(0, parseFloat(val) || 0);
     const payout = costNum * (1 + profitPct / 100);
-    const m = (platformSettings.minimumPlatformMarginPct || 15) / 100;
+    const m = (platformSettings.platformMarginPct || 15) / 100;
     const price = m < 1 ? parseFloat((payout / (1 - m)).toFixed(2)) : payout;
 
     if (onPriceChange && price > 0) {
@@ -169,28 +139,54 @@ export default function ProductCostingCard({
     }
   };
 
-  // Push full costing snapshot to parent whenever calculations change
+  // Keep callback reference stable
+  const onCostingChangeRef = useRef(onCostingChange);
   useEffect(() => {
-    if (onCostingChange) {
-      onCostingChange({
-        supplierPrice: calculations.rawCost,
-        supplierDiscountPct: parseFloat(supplierDiscountPct) || 0,
-        netSupplierCost: calculations.netSupplierCost,
-        freightCost: parseFloat(freightCost) || 0,
-        insuranceCost: parseFloat(insuranceCost) || 0,
-        dutiesCost: parseFloat(dutiesCost) || 0,
-        otherLandedCost: parseFloat(otherLandedCost) || 0,
-        trueCost: calculations.trueCost,
-        vendorProfitPct: calculations.profitPct,
-        vendorPriceToPlatform: calculations.vendorPayout,
-        platformMarginPct: calculations.platformMarginPct,
-        targetMarginPct: platformSettings.targetPlatformMarginPct,
-        baseSellingPrice: calculations.computedSellingPrice,
-        minimumSellingPrice: calculations.computedSellingPrice,
-        marginStatus: calculations.marginStatus
-      });
+    onCostingChangeRef.current = onCostingChange;
+  }, [onCostingChange]);
+
+  // Push full costing snapshot to parent only when calculation values actually change
+  const prevSnapshotRef = useRef('');
+  useEffect(() => {
+    const snapshot = {
+      supplierPrice: calculations.rawCost,
+      supplierDiscountPct: parseFloat(supplierDiscountPct) || 0,
+      netSupplierCost: calculations.netSupplierCost,
+      freightCost: parseFloat(freightCost) || 0,
+      insuranceCost: parseFloat(insuranceCost) || 0,
+      dutiesCost: parseFloat(dutiesCost) || 0,
+      otherLandedCost: parseFloat(otherLandedCost) || 0,
+      trueCost: calculations.trueCost,
+      vendorProfitPct: calculations.profitPct,
+      vendorPriceToPlatform: calculations.vendorPayout,
+      platformMarginPct: calculations.platformMarginPct,
+      targetMarginPct: calculations.platformMarginPct,
+      baseSellingPrice: calculations.computedSellingPrice,
+      minimumSellingPrice: calculations.computedSellingPrice,
+      marginStatus: calculations.marginStatus
+    };
+    const serialized = JSON.stringify(snapshot);
+    if (prevSnapshotRef.current !== serialized) {
+      prevSnapshotRef.current = serialized;
+      if (onCostingChangeRef.current) {
+        onCostingChangeRef.current(snapshot);
+      }
     }
-  }, [calculations, supplierDiscountPct, freightCost, insuranceCost, dutiesCost, otherLandedCost, platformSettings.targetPlatformMarginPct, onCostingChange]);
+  }, [
+    calculations.rawCost,
+    calculations.netSupplierCost,
+    calculations.trueCost,
+    calculations.profitPct,
+    calculations.vendorPayout,
+    calculations.platformMarginPct,
+    calculations.computedSellingPrice,
+    calculations.marginStatus,
+    supplierDiscountPct,
+    freightCost,
+    insuranceCost,
+    dutiesCost,
+    otherLandedCost
+  ]);
 
   return (
     <div className="space-y-6 bg-black/40 border border-white/10 rounded-2xl p-6 relative overflow-hidden">
@@ -208,9 +204,9 @@ export default function ProductCostingCard({
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <span className={`px-2.5 py-1 text-xs font-mono rounded-full border ${calculations.statusBadge.color} flex items-center gap-1.5 shadow-sm`}>
-            <span>{calculations.statusBadge.icon}</span>
-            <span>{calculations.statusBadge.label}</span>
+          <span className="px-2.5 py-1 text-xs font-mono rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 text-[var(--color-gold)] flex items-center gap-1.5 shadow-sm">
+            <ShieldCheck size={13} />
+            <span>Standard {calculations.platformMarginPct}% Commission</span>
           </span>
         </div>
       </div>
@@ -283,7 +279,7 @@ export default function ProductCostingCard({
           </div>
 
           <div className="flex justify-between text-gray-300">
-            <span>Platform Margin (Protected Minimum {calculations.platformMarginPct}%):</span>
+            <span>Grand Store Commission ({calculations.platformMarginPct}%):</span>
             <span className="text-amber-400">+ <Price amount={calculations.platformMarginAmount.toFixed(2)} /></span>
           </div>
 
@@ -293,11 +289,11 @@ export default function ProductCostingCard({
           </div>
         </div>
 
-        {/* Section 300–344 Official Vendor Explanation Notice */}
+        {/* Official Vendor Explanation Notice */}
         <div className="mt-3 p-3 bg-white/5 border border-white/10 rounded-lg flex items-start gap-2.5">
           <Info size={16} className="text-[var(--color-gold)] shrink-0 mt-0.5" />
           <p className="text-[11px] text-white/70 leading-relaxed">
-            <strong className="text-white">Vendor Pricing Transparency:</strong> You decide your own profit percentage. Grand Store then applies its required minimum 15% platform margin automatically: <code className="text-[var(--color-gold)] font-mono">Customer Price = Your Payout / (1 - 0.15)</code>. You will receive your full agreed payout of <strong className="text-white"><Price amount={calculations.vendorPayout.toFixed(2)} /></strong> upon customer delivery.
+            <strong className="text-white">Vendor Pricing Transparency:</strong> You decide your own profit percentage. Grand Store then applies its standard {calculations.platformMarginPct}% platform commission automatically: <code className="text-[var(--color-gold)] font-mono">Customer Price = Your Payout / (1 - {(calculations.platformMarginPct / 100).toFixed(2)})</code>. You will receive your full agreed payout of <strong className="text-white"><Price amount={calculations.vendorPayout.toFixed(2)} /></strong> upon customer delivery.
           </p>
         </div>
       </div>

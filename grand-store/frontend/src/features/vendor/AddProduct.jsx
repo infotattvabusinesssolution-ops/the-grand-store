@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +18,14 @@ export default function AddProduct({ onNotify }) {
   const isInternalProductManager = ['admin', 'super_admin', 'product_manager'].includes(user?.role);
   
   const [costingData, setCostingData] = useState(null);
+
+  const handleCostingChange = useCallback((costing) => {
+    setCostingData(costing);
+  }, []);
+
+  const handlePriceChange = useCallback((newPrice) => {
+    setFormData(prev => ({ ...prev, price: newPrice }));
+  }, []);
   const [formData, setFormData] = useState({
     name: '',
     type: '', // Empty initially for floating label to work well
@@ -308,8 +316,8 @@ export default function AddProduct({ onNotify }) {
                 <ProductCostingCard
                   initialCosting={null}
                   currentPrice={formData.price}
-                  onPriceChange={(newPrice) => setFormData(prev => ({ ...prev, price: newPrice }))}
-                  onCostingChange={(costing) => setCostingData(costing)}
+                  onPriceChange={handlePriceChange}
+                  onCostingChange={handleCostingChange}
                   isInternalProductManager={isInternalProductManager}
                 />
 

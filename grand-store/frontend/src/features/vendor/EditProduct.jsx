@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +18,14 @@ export default function EditProduct({ onNotify }) {
   const storeCategories = categories.map(c => c.name);
   
   const [costingData, setCostingData] = useState(null);
+
+  const handleCostingChange = useCallback((costing) => {
+    setCostingData(costing);
+  }, []);
+
+  const handlePriceChange = useCallback((newPrice) => {
+    setFormData(prev => ({ ...prev, price: newPrice }));
+  }, []);
   const [formData, setFormData] = useState({
     name: '',
     type: '',
@@ -330,8 +338,8 @@ export default function EditProduct({ onNotify }) {
                 <ProductCostingCard
                   initialCosting={costingData}
                   currentPrice={formData.price}
-                  onPriceChange={(newPrice) => setFormData(prev => ({ ...prev, price: newPrice }))}
-                  onCostingChange={(costing) => setCostingData(costing)}
+                  onPriceChange={handlePriceChange}
+                  onCostingChange={handleCostingChange}
                   isInternalProductManager={isInternalProductManager}
                 />
 

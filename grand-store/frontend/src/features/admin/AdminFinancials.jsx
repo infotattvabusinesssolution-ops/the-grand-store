@@ -158,12 +158,6 @@ export default function AdminFinancials({ hideHeader = false }) {
     });
 
     const netMarginPct = totalSales > 0 ? parseFloat(((netContribution / totalSales) * 100).toFixed(2)) : 0;
-    let statusBadge = { icon: '🟢', label: 'Healthy Margin', color: 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30' };
-    if (netMarginPct < 10) {
-      statusBadge = { icon: '🔴', label: 'Blocked / Low Margin', color: 'text-rose-400 bg-rose-950/40 border-rose-500/30' };
-    } else if (netMarginPct < 15) {
-      statusBadge = { icon: '🟠', label: 'Warning Range', color: 'text-amber-400 bg-amber-950/40 border-amber-500/30' };
-    }
 
     return {
       totalSales: parseFloat(totalSales.toFixed(2)),
@@ -175,8 +169,7 @@ export default function AdminFinancials({ hideHeader = false }) {
       gatewayAbsorbed: parseFloat(gatewayAbsorbed.toFixed(2)),
       courierAbsorbed: parseFloat(courierAbsorbed.toFixed(2)),
       netContribution: parseFloat(netContribution.toFixed(2)),
-      netMarginPct,
-      statusBadge
+      netMarginPct
     };
   }, [shopOrders]);
 
@@ -280,9 +273,9 @@ export default function AdminFinancials({ hideHeader = false }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className={`px-3 py-1 text-xs font-mono rounded-full border ${managementSummary.statusBadge.color} flex items-center gap-1.5 shadow-sm`}>
-              <span>{managementSummary.statusBadge.icon}</span>
-              <span>{managementSummary.statusBadge.label}</span>
+            <span className="px-3 py-1 text-xs font-mono rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 text-[var(--color-gold)] flex items-center gap-1.5 shadow-sm">
+              <ShieldCheck size={14} />
+              <span>Standard 15% Platform Commission</span>
             </span>
           </div>
         </div>
@@ -339,7 +332,7 @@ export default function AdminFinancials({ hideHeader = false }) {
               <span className="text-[10px] uppercase tracking-widest text-[var(--color-gold)] font-mono font-semibold">True Net Margin</span>
               <div className="text-2xl font-mono font-bold text-white">{managementSummary.netMarginPct}%</div>
             </div>
-            <div className={`p-2.5 rounded-full border ${managementSummary.statusBadge.color}`}>
+            <div className="p-2.5 rounded-full border border-[var(--color-gold)]/30 text-[var(--color-gold)] bg-[var(--color-gold)]/10">
               <ShieldCheck size={24} />
             </div>
           </div>

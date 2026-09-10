@@ -62,7 +62,11 @@ class CostingEngine {
     const vendorProfitAmount = parseFloat(((trueCost * vendorProfitPct) / 100).toFixed(2));
     const vendorPayout = parseFloat((trueCost + vendorProfitAmount).toFixed(2));
 
-    const platformMarginPct = Number(settings.minimumPlatformMarginPct !== undefined ? settings.minimumPlatformMarginPct : 15);
+    const platformMarginPct = Number(
+      settings.marketplaceCommissionPct !== undefined
+        ? settings.marketplaceCommissionPct
+        : (settings.minimumPlatformMarginPct !== undefined ? settings.minimumPlatformMarginPct : 15)
+    );
     const marginRatio = platformMarginPct / 100;
     const baseSellingPrice = marginRatio < 1
       ? parseFloat((vendorPayout / (1 - marginRatio)).toFixed(2))
@@ -103,8 +107,6 @@ class CostingEngine {
     const gsGatewayShare = getGsShare(gatewayCost, whoPaysGateway);
 
     // Gross contribution after promotional discount absorption
-    // When GS funds promo, Gross Margin = (customerPrice - vendorPayout) = baseGrossMargin - promoDiscountAmount
-    // When Vendor funds promo, GS retains baseGrossMargin
     const grossContribution = parseFloat((baseGrossMargin - gsPromoShare).toFixed(2));
 
     const totalGsCosts = parseFloat((gsReferralShare + gsCoinsShare + gsGatewayShare).toFixed(2));
@@ -113,16 +115,7 @@ class CostingEngine {
       ? parseFloat(((netContribution / customerPrice) * 100).toFixed(2))
       : 0;
 
-    // Margin status thresholds (Section 9)
-    const healthyThreshold = Number(settings.marginHealthyThresholdPct !== undefined ? settings.marginHealthyThresholdPct : 15);
-    const warningThreshold = Number(settings.marginWarningThresholdPct !== undefined ? settings.marginWarningThresholdPct : 10);
-
-    let marginStatus = 'healthy';
-    if (effectiveNetMarginPct < warningThreshold) {
-      marginStatus = 'blocked';
-    } else if (effectiveNetMarginPct < healthyThreshold) {
-      marginStatus = 'warning';
-    }
+    const marginStatus = 'healthy';
 
     return {
       supplierPrice,
@@ -191,15 +184,7 @@ class CostingEngine {
       ? parseFloat(((netPlatformContribution / subTotal) * 100).toFixed(2))
       : 0;
 
-    const healthyThreshold = Number(settings.marginHealthyThresholdPct !== undefined ? settings.marginHealthyThresholdPct : 15);
-    const warningThreshold = Number(settings.marginWarningThresholdPct !== undefined ? settings.marginWarningThresholdPct : 10);
-
-    let marginStatus = 'healthy';
-    if (netMarginPct < warningThreshold) {
-      marginStatus = 'blocked';
-    } else if (netMarginPct < healthyThreshold) {
-      marginStatus = 'warning';
-    }
+    const marginStatus = 'healthy';
 
     const totalVendorPayouts = (order.vendorPayables || [])
       .filter(vp => Boolean(vp.vendorId))
