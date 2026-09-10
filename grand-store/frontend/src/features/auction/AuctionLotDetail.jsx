@@ -844,38 +844,40 @@ export default function AuctionLotDetail({ onNotify }) {
                ) : (
                   <div className="flex flex-col gap-6">
                     {lot.status === 'sold' && isWinner ? (
-                      <div id="acquisition-certificate" className="gs-acquisition-shell">
-                        <AuctionAcquisitionCertificate lot={lot} user={user} bidderProfile={bidderProfile} />
+                      <div className="space-y-4">
+                        <div id="acquisition-certificate" className="gs-acquisition-shell">
+                          <AuctionAcquisitionCertificate lot={lot} user={user} bidderProfile={bidderProfile} />
 
-                        {/* 11. Download, Share & Action Buttons */}
-                        <div className="relative z-10 pt-4 grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={handleDownloadCertificate}
-                            disabled={downloadingCert}
-                            className="w-full col-span-2 flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-[#161616] hover:bg-black text-[#f5d77f] border border-[#c5a059] font-sans font-bold uppercase tracking-widest text-xs transition-all shadow-md hover:shadow-lg cursor-pointer disabled:opacity-50"
-                          >
-                            <Download size={16} className={downloadingCert ? "animate-bounce" : ""} />
-                            <span>{downloadingCert ? "Downloading PDF..." : "Download Official Certificate"}</span>
-                          </button>
+                          {/* 11. Download, Share & Action Buttons */}
+                          <div className="relative z-10 pt-5 grid grid-cols-2 gap-3 border-t border-[#b99b60]/30 mt-4">
+                            <button
+                              type="button"
+                              onClick={handleDownloadCertificate}
+                              disabled={downloadingCert}
+                              className="w-full col-span-2 flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-[#ffd700] via-[#f5d77f] to-[#d4af37] hover:brightness-110 text-black font-sans font-black uppercase tracking-widest text-sm transition-all shadow-[0_4px_25px_rgba(212,175,55,0.5)] hover:shadow-[0_6px_35px_rgba(212,175,55,0.8)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-50"
+                            >
+                              <Download size={18} className={downloadingCert ? "animate-bounce" : ""} />
+                              <span>{downloadingCert ? "Downloading PDF..." : "Download Official Certificate (PDF)"}</span>
+                            </button>
 
-                          <button
-                            type="button"
-                            onClick={handleShareCertificate}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-[#c5a059]/15 hover:bg-[#c5a059]/25 text-[#705214] border border-[#c5a059]/50 font-sans font-bold uppercase tracking-widest text-xs transition-all cursor-pointer shadow-sm"
-                          >
-                            <Share2 size={15} />
-                            <span>Share</span>
-                          </button>
-                          
-                          <button
-                            type="button"
-                            onClick={handlePrintCertificate}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-white hover:bg-stone-100 text-[#332e27] border border-stone-300 font-sans font-bold uppercase tracking-widest text-xs transition-all cursor-pointer shadow-sm"
-                          >
-                            <Printer size={15} />
-                            <span>Print</span>
-                          </button>
+                            <button
+                              type="button"
+                              onClick={handleShareCertificate}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#f0e8d8] hover:bg-[#e4d8c2] text-[#29261f] border border-[#b99b60] font-sans font-bold uppercase tracking-widest text-xs transition-all cursor-pointer shadow-sm hover:shadow"
+                            >
+                              <Share2 size={15} />
+                              <span>Share Certificate</span>
+                            </button>
+                            
+                            <button
+                              type="button"
+                              onClick={handlePrintCertificate}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#f0e8d8] hover:bg-[#e4d8c2] text-[#29261f] border border-[#b99b60] font-sans font-bold uppercase tracking-widest text-xs transition-all cursor-pointer shadow-sm hover:shadow"
+                            >
+                              <Printer size={15} />
+                              <span>Print Certificate</span>
+                            </button>
+                          </div>
                         </div>
 
                         {/* Payment Settlement Status CTA */}
