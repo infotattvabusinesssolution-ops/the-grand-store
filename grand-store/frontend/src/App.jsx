@@ -515,7 +515,15 @@ function App() {
                 onCompare={addToCompare}
                 compareItems={compareItems}
               />
-              <TastingCampaign />
+              {/* Campaign row — Tasting & Auction side by side */}
+              <div className="flex flex-col lg:flex-row w-[calc(100%-32px)] sm:w-[calc(100%-48px)] lg:w-[calc(100%-60px)] max-w-[1500px] mx-auto my-[18px] border border-[#e1bd70]/20">
+                <div className="flex-1 min-h-[330px] sm:min-h-[460px] lg:min-h-[520px] lg:border-r lg:border-[#e1bd70]/20">
+                  <TastingCampaign />
+                </div>
+                <div className="flex-1 min-h-[330px] lg:min-h-[520px]">
+                  <AuctionCampaign />
+                </div>
+              </div>
               <TequilaShowcase
                 onAdd={addToCart}
                 onWish={handleWishlist}
@@ -560,7 +568,7 @@ function App() {
                 onCompare={addToCompare}
                 compareItems={compareItems}
               />
-              <AuctionCampaign />
+
               <CategoryShowcase
                 categoryId="Gin"
                 title="Top Gin"
