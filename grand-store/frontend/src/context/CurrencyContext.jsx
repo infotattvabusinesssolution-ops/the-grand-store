@@ -133,20 +133,43 @@ export const CurrencyProvider = ({ children }) => {
 
   useEffect(() => {
     if (!geoLoading && rates) {
+      const isManual = localStorage.getItem('userCurrencyManual') === 'true';
       const savedCurrency = localStorage.getItem('userCurrency');
-      if (savedCurrency && (savedCurrency === 'ZAR' || rates[savedCurrency])) {
+
+      if (isManual && savedCurrency && (savedCurrency === 'ZAR' || rates[savedCurrency])) {
+        // User explicitly picked this currency in the past; respect their choice
         setCurrency(savedCurrency);
       } else if (geoCurrency && (geoCurrency === 'ZAR' || rates[geoCurrency])) {
+        // First-time or non-manual visitor: auto-adopt detected geo currency
         setCurrency(geoCurrency);
         localStorage.setItem('userCurrency', geoCurrency);
+      } else if (savedCurrency && (savedCurrency === 'ZAR' || rates[savedCurrency])) {
+        setCurrency(savedCurrency);
       }
     }
   }, [geoLoading, geoCurrency, rates]);
+
+  // Listen for manual country changes from LocationContext / Header
+  useEffect(() => {
+    const handleCountryChanged = (e) => {
+      const targetCurrency = e.detail?.currency;
+      if (targetCurrency && (targetCurrency === 'ZAR' || rates?.[targetCurrency])) {
+        setCurrency(targetCurrency);
+        localStorage.setItem('userCurrency', targetCurrency);
+      }
+    };
+
+    window.addEventListener('country-manual-changed', handleCountryChanged);
+    return () => {
+      window.removeEventListener('country-manual-changed', handleCountryChanged);
+    };
+  }, [rates]);
 
   const changeCurrency = (newCurrency) => {
     if (newCurrency === 'ZAR' || rates?.[newCurrency]) {
       setCurrency(newCurrency);
       localStorage.setItem('userCurrency', newCurrency);
+      localStorage.setItem('userCurrencyManual', 'true');
     }
   };
 
