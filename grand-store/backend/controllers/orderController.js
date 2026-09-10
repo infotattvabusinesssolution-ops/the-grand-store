@@ -147,10 +147,19 @@ const addOrderItems = async (req, res) => {
         }
     }
 
+    const superCoinEligibleSubtotal = Number(
+      quote.superCoinEligibleSubtotal !== undefined 
+        ? quote.superCoinEligibleSubtotal 
+        : (quote.superCoins?.eligibleSubtotal !== undefined ? quote.superCoins.eligibleSubtotal : subTotal)
+    );
+    const referralEligibleSubtotal = Number(
+      quote.referralEligibleSubtotal !== undefined ? quote.referralEligibleSubtotal : subTotal
+    );
+
     let appliedRewards = 0;
     if (req.body.applyRewards && user && user.rewardBalance > 0) {
-        // Can only apply up to the order total
-        appliedRewards = Math.min(user.rewardBalance, calculatedTotal - appliedWelcomeDiscount);
+        // Can only apply up to eligible referral total
+        appliedRewards = Math.min(user.rewardBalance, Math.max(0, referralEligibleSubtotal - appliedWelcomeDiscount));
         user.rewardBalance -= appliedRewards;
         await user.save();
     }
@@ -166,7 +175,7 @@ const addOrderItems = async (req, res) => {
     if (req.body.useSuperCoins && user && (user.superCoinsBalance || 0) > 0) {
       const redemptionCheck = SuperCoinEngine.calculateAllowedRedemption({
         userCoins: user.superCoinsBalance || 0,
-        eligibleSubtotal: subTotal,
+        eligibleSubtotal: superCoinEligibleSubtotal,
         shippingCost,
         commissionPct,
         gatewayFeePct,
@@ -181,7 +190,7 @@ const addOrderItems = async (req, res) => {
     }
 
     // Calculate potential coins earned on eligible product subtotal
-    superCoinsEarned = SuperCoinEngine.calculateEarnedCoins(subTotal, settings);
+    superCoinsEarned = SuperCoinEngine.calculateEarnedCoins(superCoinEligibleSubtotal, settings);
     if (superCoinsEarned > 0 && user) {
       user.pendingSuperCoins = (user.pendingSuperCoins || 0) + superCoinsEarned;
       await user.save();

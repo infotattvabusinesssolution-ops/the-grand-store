@@ -148,6 +148,23 @@ const productSchema = new mongoose.Schema(
       rrp: { type: Number, default: 0 },
       marginStatus: { type: String, enum: ['healthy', 'warning', 'blocked'], default: 'healthy' }
     },
+    // Loyalty & Referral Promotion Controls
+    isSuperCoinEligible: {
+      type: Boolean,
+      default: true,
+    },
+    maxSuperCoinDiscountPct: {
+      type: Number,
+      default: 10,
+    },
+    isReferralEligible: {
+      type: Boolean,
+      default: true,
+    },
+    referralDiscountPct: {
+      type: Number,
+      default: 5,
+    },
   },
   { timestamps: true },
 );

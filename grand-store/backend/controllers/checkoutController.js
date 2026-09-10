@@ -86,6 +86,11 @@ const generateQuote = async (req, res) => {
       const itemSubtotal = itemPrice * item.quantity;
       
       const resolvedImage = product.image || (Array.isArray(product.gallery) && product.gallery[0]) || product.imageSourceUrl || item.image || item.product_image || '';
+      const isSuperCoinEligible = !(product.isSuperCoinEligible === false || product.isSuperCoinEligible === 'false' || product.isSuperCoinEligible === 0 || product.isSuperCoinEligible === '0');
+      const maxSuperCoinDiscountPct = Number(product.maxSuperCoinDiscountPct !== undefined ? product.maxSuperCoinDiscountPct : 10);
+      const isReferralEligible = !(product.isReferralEligible === false || product.isReferralEligible === 'false' || product.isReferralEligible === 0 || product.isReferralEligible === '0');
+      const referralDiscountPct = Number(product.referralDiscountPct !== undefined ? product.referralDiscountPct : 5);
+
       vendorGroups[vId].items.push({
         ...item,
         price: itemPrice, // overriding with server price
@@ -94,7 +99,11 @@ const generateQuote = async (req, res) => {
         product: product.id || product._id || item.product,
         vendorId: product.vendorId,
         category: product.category || 'Uncategorised',
-        subcategory: product.subcategory || ''
+        subcategory: product.subcategory || '',
+        isSuperCoinEligible,
+        maxSuperCoinDiscountPct,
+        isReferralEligible,
+        referralDiscountPct
       });
       vendorGroups[vId].subtotal += itemSubtotal;
       
@@ -202,16 +211,33 @@ const generateQuote = async (req, res) => {
       }
     }
 
+    // Calculate product-level eligible subtotals for SuperCoins and Referral discounts
+    let superCoinEligibleSubtotal = 0;
+    let referralEligibleSubtotal = 0;
+    for (const vId in vendorGroups) {
+      for (const it of vendorGroups[vId].items) {
+        const itemLineTotal = Number(it.price || 0) * Number(it.quantity || 1);
+        if (it.isSuperCoinEligible === true) {
+          superCoinEligibleSubtotal += itemLineTotal;
+        }
+        if (it.isReferralEligible === true) {
+          referralEligibleSubtotal += itemLineTotal;
+        }
+      }
+    }
+    superCoinEligibleSubtotal = parseFloat(superCoinEligibleSubtotal.toFixed(2));
+    referralEligibleSubtotal = parseFloat(referralEligibleSubtotal.toFixed(2));
+
     const superCoinsEstimate = SuperCoinEngine.calculateAllowedRedemption({
       userCoins,
-      eligibleSubtotal: globalSubtotal,
+      eligibleSubtotal: superCoinEligibleSubtotal,
       shippingCost: defaultShippingTotal,
       commissionPct: settings.marketplaceCommissionPct || 15,
       gatewayFeePct: settings.gatewayFeePct || 2.5,
       settings
     });
 
-    const potentialCoinsToEarn = SuperCoinEngine.calculateEarnedCoins(globalSubtotal, settings);
+    const potentialCoinsToEarn = SuperCoinEngine.calculateEarnedCoins(superCoinEligibleSubtotal, settings);
 
     const quoteId = `QUOTE-${Date.now()}`;
     const expiresAt = new Date(Date.now() + 10 * 60000); // 10 minutes
@@ -232,9 +258,11 @@ const generateQuote = async (req, res) => {
       },
       superCoins: {
         ...superCoinsEstimate,
+        eligibleSubtotal: superCoinEligibleSubtotal,
         potentialCoinsToEarn
       },
       rewardBalance: userRewardBalance,
+      referralEligibleSubtotal,
       bankDetails: settings.bankDetails,
       shipments
     });

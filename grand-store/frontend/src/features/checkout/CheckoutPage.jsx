@@ -269,10 +269,38 @@ export default function CheckoutPage({
   const userRewardCredit = quote?.rewardBalance !== undefined
     ? Number(quote.rewardBalance)
     : Number(user?.rewardBalance || 0);
+
+  const cartCoinsEligibleSubtotal = vendorCartItems
+    .filter((item) => !(item.isSuperCoinEligible === false || item.isSuperCoinEligible === 'false' || item.isSuperCoinEligible === 0 || item.isSuperCoinEligible === '0'))
+    .reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+
+  const cartReferralEligibleSubtotal = vendorCartItems
+    .filter((item) => !(item.isReferralEligible === false || item.isReferralEligible === 'false' || item.isReferralEligible === 0 || item.isReferralEligible === '0'))
+    .reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+
+  const referralEligibleBase = quote?.referralEligibleSubtotal !== undefined
+    ? Number(quote.referralEligibleSubtotal)
+    : cartReferralEligibleSubtotal;
   const referralRewardDiscount = applyRewards && userRewardCredit > 0
-    ? Math.min(userRewardCredit, Math.max(0, placeOrderBaseTotal - superCoinDiscount))
+    ? Math.min(userRewardCredit, Math.max(0, referralEligibleBase - superCoinDiscount))
     : 0;
   const displayedTotal = Math.max(0, parseFloat((placeOrderBaseTotal - superCoinDiscount - referralRewardDiscount).toFixed(2)));
+
+  useEffect(() => {
+    const isCoinsEligible = quote?.superCoins
+      ? ((quote.superCoins.maxDiscountRand || 0) > 0 || (quote.superCoins.eligibleSubtotal || 0) > 0)
+      : cartCoinsEligibleSubtotal > 0;
+    if (!isCoinsEligible && useSuperCoins) {
+      setUseSuperCoins(false);
+    }
+  }, [quote, useSuperCoins, cartCoinsEligibleSubtotal]);
+
+  useEffect(() => {
+    const isReferralEligible = (quote?.referralEligibleSubtotal !== undefined ? Number(quote.referralEligibleSubtotal) : cartReferralEligibleSubtotal) > 0;
+    if (!isReferralEligible && applyRewards) {
+      setApplyRewards(false);
+    }
+  }, [quote, applyRewards, cartReferralEligibleSubtotal]);
 
   const handleUpdateQuantity = (productId, option, newQuantity) => {
     if (updateCartQuantity) updateCartQuantity(productId, option, newQuantity);
@@ -973,6 +1001,13 @@ export default function CheckoutPage({
                   <div className="flex justify-between text-[var(--color-ivory-muted)]">
                     <span>Merchandise Subtotal</span>
                     <span className="text-white"><Price amount={cartSubtotal} /></span>
+                  </div>
+
+                  <div className="flex justify-between text-[11px] text-white/50 pl-2">
+                    <span>Includes 15% South African VAT:</span>
+                    <span className="text-white/70 font-mono">
+                      <Price amount={(cartSubtotal * 0.15).toFixed(2)} />
+                    </span>
                   </div>
 
                   <div className="flex justify-between text-[var(--color-ivory-muted)]">
@@ -2097,121 +2132,162 @@ export default function CheckoutPage({
                 </div>
 
                 {/* ⭐ SUPER COINS REDEMPTION CARD */}
-                {quote?.superCoins && quote.superCoins.availableCoins > 0 && (
-                  <div className="bg-gradient-to-br from-[#161309] to-[#0d0d0d] border border-[var(--color-gold)]/30 rounded-2xl p-5 md:p-6 shadow-xl space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="p-2 rounded-xl bg-[var(--color-gold)]/20 text-[var(--color-gold)]">
-                          <Coins size={20} />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                            Grand Store Super Coins
-                          </h3>
-                          <p className="text-xs text-[var(--color-ivory-muted)]">
-                            You have <strong className="text-[var(--color-gold)]">{quote.superCoins.availableCoins.toLocaleString()} Super Coins</strong> (Value: R{(quote.superCoins.availableCoins * quote.superCoins.coinValue).toFixed(2)})
-                          </p>
-                        </div>
-                      </div>
+                {quote?.superCoins && quote.superCoins.availableCoins > 0 && (() => {
+                  const isCoinsEligible = (quote.superCoins.maxDiscountRand || 0) > 0 || (quote.superCoins.eligibleSubtotal || 0) > 0;
+                  if (!isCoinsEligible) return null;
+                  const isPartial = quote.superCoins.eligibleSubtotal < (quote.globalSubtotal || cartSubtotal);
 
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={useSuperCoins}
-                          onChange={(e) => setUseSuperCoins(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-gold)]"></div>
-                      </label>
-                    </div>
-
-                    {useSuperCoins && (
-                      <div className="pt-3 border-t border-[var(--color-gold)]/10 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <span className="text-emerald-400 font-medium flex items-center gap-1.5">
-                          <CheckCircle2 size={14} /> Margin-Safe Deduction: -R{quote.superCoins.maxDiscountRand.toFixed(2)} ({quote.superCoins.maxRedeemableCoins} coins)
-                        </span>
-                        {quote.superCoins.isMarginCapped && (
-                          <span className="text-amber-300/90 text-[11px]">
-                            {quote.superCoins.marginMessage}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Refer & Earn Store Credits Redemption Card */}
-                {user && (
-                  <div className={`rounded-2xl border p-5 transition-all relative overflow-hidden ${
-                    userRewardCredit > 0 
-                      ? 'border-[var(--color-gold)]/40 bg-gradient-to-r from-[var(--color-gold)]/10 via-black/60 to-black/80 shadow-[0_0_20px_rgba(201,163,91,0.08)]' 
-                      : 'border-white/10 bg-[#0d0d0d]'
-                  }`}>
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3.5">
-                        <div className={`p-2.5 rounded-xl border ${
-                          userRewardCredit > 0 
-                            ? 'border-[var(--color-gold)]/40 bg-[var(--color-gold)]/15 text-[var(--color-gold)]' 
-                            : 'border-white/10 bg-white/5 text-white/40'
-                        }`}>
-                          <Gift size={20} />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold text-white">Refer &amp; Earn Store Credits</h3>
-                            {userRewardCredit > 0 && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                                Available
-                              </span>
-                            )}
+                  return (
+                    <div className="bg-gradient-to-br from-[#161309] to-[#0d0d0d] border border-[var(--color-gold)]/30 rounded-2xl p-5 md:p-6 shadow-xl space-y-3 transition-all">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2 rounded-xl bg-[var(--color-gold)]/20 text-[var(--color-gold)]">
+                            <Coins size={20} />
                           </div>
-                          {userRewardCredit > 0 ? (
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-bold text-white">
+                                Grand Store Super Coins
+                              </h3>
+                              {isPartial && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--color-gold)]/15 text-[var(--color-gold)] border border-[var(--color-gold)]/30 uppercase tracking-wider">
+                                  Eligible Items: R{quote.superCoins.eligibleSubtotal.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
-                              You have <strong className="text-[var(--color-gold)] font-serif"><Price amount={userRewardCredit} /></strong> in earned store credits ready to redeem.
+                              You have <strong className="text-[var(--color-gold)]">{quote.superCoins.availableCoins.toLocaleString()} Super Coins</strong> (Value: R{(quote.superCoins.availableCoins * quote.superCoins.coinValue).toFixed(2)})
                             </p>
-                          ) : (
-                            <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
-                              Share your invite link with friends to earn R50 store credit per friend for checkout!
-                            </p>
-                          )}
+                          </div>
                         </div>
-                      </div>
 
-                      {userRewardCredit > 0 ? (
                         <label className="relative inline-flex items-center cursor-pointer shrink-0">
                           <input
                             type="checkbox"
-                            checked={applyRewards}
-                            onChange={(e) => setApplyRewards(e.target.checked)}
+                            checked={useSuperCoins}
+                            onChange={(e) => setUseSuperCoins(e.target.checked)}
                             className="sr-only peer"
                           />
                           <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-gold)]"></div>
                         </label>
-                      ) : (
-                        <Link
-                          to="/customer/referrals"
-                          target="_blank"
-                          className="shrink-0 text-xs text-[var(--color-gold)] hover:underline flex items-center gap-1 font-medium"
-                        >
-                          Invite Friends <ArrowUpRight size={13} />
-                        </Link>
+                      </div>
+
+                      {useSuperCoins && (
+                        <div className="pt-3 border-t border-[var(--color-gold)]/10 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                            <CheckCircle2 size={14} /> Margin-Safe Deduction: -R{quote.superCoins.maxDiscountRand.toFixed(2)} ({quote.superCoins.maxRedeemableCoins} coins)
+                          </span>
+                          {quote.superCoins.isMarginCapped && (
+                            <span className="text-amber-300/90 text-[11px]">
+                              {quote.superCoins.marginMessage}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
+                  );
+                })()}
 
-                    {applyRewards && userRewardCredit > 0 && (
-                      <div className="mt-3 pt-3 border-t border-[var(--color-gold)]/20 flex items-center justify-between text-xs">
-                        <span className="text-emerald-400 font-medium flex items-center gap-1.5">
-                          <CheckCircle2 size={14} /> Applied to this purchase: -<Price amount={referralRewardDiscount} />
-                        </span>
-                        {userRewardCredit > referralRewardDiscount && (
-                          <span className="text-[var(--color-ivory-muted)] text-[11px]">
-                            Remaining balance: <Price amount={userRewardCredit - referralRewardDiscount} />
-                          </span>
+                {/* Refer & Earn Store Credits Redemption Card */}
+                {user && (() => {
+                  const referralEligibleAmount = quote?.referralEligibleSubtotal !== undefined 
+                    ? Number(quote.referralEligibleSubtotal) 
+                    : cartReferralEligibleSubtotal;
+                  const isReferralEligible = referralEligibleAmount > 0;
+                  if (!isReferralEligible) return null;
+                  const isPartial = isReferralEligible && referralEligibleAmount < (quote?.globalSubtotal || cartSubtotal);
+
+                  return (
+                    <div className={`rounded-2xl border p-5 transition-all relative overflow-hidden ${
+                      userRewardCredit > 0 && isReferralEligible
+                        ? 'border-[var(--color-gold)]/40 bg-gradient-to-r from-[var(--color-gold)]/10 via-black/60 to-black/80 shadow-[0_0_20px_rgba(201,163,91,0.08)]' 
+                        : 'border-white/10 bg-[#0d0d0d]'
+                    }`}>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5">
+                          <div className={`p-2.5 rounded-xl border ${
+                            userRewardCredit > 0 && isReferralEligible
+                              ? 'border-[var(--color-gold)]/40 bg-[var(--color-gold)]/15 text-[var(--color-gold)]' 
+                              : 'border-white/10 bg-white/5 text-white/40'
+                          }`}>
+                            <Gift size={20} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-bold text-white">Refer &amp; Earn Store Credits</h3>
+                              {userRewardCredit > 0 ? (
+                                isReferralEligible ? (
+                                  isPartial ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--color-gold)]/15 text-[var(--color-gold)] border border-[var(--color-gold)]/30 uppercase tracking-wider">
+                                      Eligible Items: R{referralEligibleAmount.toFixed(2)}
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                      Available
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
+                                    Not Eligible on this Order
+                                  </span>
+                                )
+                              ) : null}
+                            </div>
+                            {userRewardCredit > 0 ? (
+                              isReferralEligible ? (
+                                <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                                  You have <strong className="text-[var(--color-gold)] font-serif"><Price amount={userRewardCredit} /></strong> in earned store credits ready to redeem.
+                                </p>
+                              ) : (
+                                <p className="text-xs text-amber-300/80 mt-0.5 font-mono">
+                                  ⚠️ Products in this cart are excluded from Refer &amp; Earn store credit discounts.
+                                </p>
+                              )
+                            ) : (
+                              <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                                Share your invite link with friends to earn R50 store credit per friend for checkout!
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {userRewardCredit > 0 ? (
+                          isReferralEligible ? (
+                            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                              <input
+                                type="checkbox"
+                                checked={applyRewards}
+                                onChange={(e) => setApplyRewards(e.target.checked)}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-gold)]"></div>
+                            </label>
+                          ) : (
+                            <div className="text-[11px] text-amber-400/80 font-mono bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg shrink-0">
+                              Ineligible
+                            </div>
+                          )
+                        ) : (
+                          <Link
+                            to="/customer/referrals"
+                            target="_blank"
+                            className="shrink-0 text-xs text-[var(--color-gold)] hover:underline flex items-center gap-1 font-medium"
+                          >
+                            Invite Friends <ArrowUpRight size={13} />
+                          </Link>
                         )}
                       </div>
-                    )}
-                  </div>
-                )}
+
+                      {userRewardCredit > 0 && isReferralEligible && applyRewards && referralRewardDiscount > 0 && (
+                        <div className="mt-3 pt-3 border-t border-[var(--color-gold)]/10 text-xs flex items-center justify-between">
+                          <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                            <CheckCircle2 size={14} /> Store Credit Applied: -R{referralRewardDiscount.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Payment Methods */}
                 <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">

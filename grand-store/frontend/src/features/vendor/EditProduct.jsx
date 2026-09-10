@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
-import { Building2, Package, UploadCloud, CheckCircle2, AlertCircle, PlusCircle, User } from 'lucide-react';
+import { Building2, Package, UploadCloud, CheckCircle2, AlertCircle, PlusCircle, User, Coins, Gift } from 'lucide-react';
 import { useCategories } from '../../context/CategoryContext';
 import DynamicIcon from '../../components/DynamicIcon';
 import CatalogHierarchyFields from '../../components/CatalogHierarchyFields';
@@ -46,7 +46,11 @@ export default function EditProduct({ onNotify }) {
     options: 'Pack of 1',
     tradePrice: '',
     minOrderQuantity: '',
-    exportReady: false
+    exportReady: false,
+    isSuperCoinEligible: true,
+    maxSuperCoinDiscountPct: 10,
+    isReferralEligible: true,
+    referralDiscountPct: 5
   });
   
   const [imageEntries, setImageEntries] = useState([]);
@@ -101,7 +105,11 @@ export default function EditProduct({ onNotify }) {
             stock: product.stock !== undefined ? product.stock.toString() : '0',
             tradePrice: product.tradePrice || '',
             minOrderQuantity: product.minOrderQuantity || '',
-            exportReady: product.exportReady || false
+            exportReady: product.exportReady || false,
+            isSuperCoinEligible: product.isSuperCoinEligible !== undefined ? product.isSuperCoinEligible : true,
+            maxSuperCoinDiscountPct: product.maxSuperCoinDiscountPct !== undefined ? product.maxSuperCoinDiscountPct : 10,
+            isReferralEligible: product.isReferralEligible !== undefined ? product.isReferralEligible : true,
+            referralDiscountPct: product.referralDiscountPct !== undefined ? product.referralDiscountPct : 5
           });
           if (product.costing) {
             setCostingData(product.costing);
@@ -214,6 +222,10 @@ export default function EditProduct({ onNotify }) {
       if (formData.tradePrice) payload.append('tradePrice', formData.tradePrice);
       if (formData.minOrderQuantity) payload.append('minOrderQuantity', formData.minOrderQuantity);
       payload.append('exportReady', formData.exportReady);
+      payload.append('isSuperCoinEligible', formData.isSuperCoinEligible);
+      payload.append('maxSuperCoinDiscountPct', formData.maxSuperCoinDiscountPct);
+      payload.append('isReferralEligible', formData.isReferralEligible);
+      payload.append('referralDiscountPct', formData.referralDiscountPct);
 
       let uploadIndex = 0;
       const imageOrder = imageEntries.map((entry) => {
@@ -353,11 +365,26 @@ export default function EditProduct({ onNotify }) {
                       onChange={handleChange} 
                       min="0"
                       step="any"
-                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
+                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer font-mono" 
                       placeholder=" " 
                       required 
                     />
-                    <label className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6">Price (ZAR) *</label>
+                    <label className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6">
+                      Retail Selling Price (ZAR - 15% VAT Inclusive) *
+                    </label>
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[10px] text-white/40">
+                        ⚖️ South African law requires VAT-inclusive customer retail pricing.
+                      </p>
+                      {parseFloat(formData.price) > 0 && (
+                        <div className="text-[11px] font-mono flex items-center justify-between text-white/80 bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/25 px-2.5 py-1 rounded-md">
+                          <span className="text-[var(--color-gold)] font-medium">Net Vendor Payout (70%):</span>
+                          <span className="text-emerald-400 font-bold font-mono">
+                            R{(parseFloat(formData.price) * 0.70).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="relative z-0 w-full group">
@@ -401,6 +428,157 @@ export default function EditProduct({ onNotify }) {
                       placeholder=" " 
                     />
                     <label className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6">Tasting Notes (Comma separated)</label>
+                  </div>
+                </div>
+
+                {/* SuperCoins & Refer and Earn Discount Settings */}
+                <div className="bg-black/40 border border-white/10 rounded-2xl p-6 space-y-6 relative overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-4 gap-2">
+                    <div>
+                      <h3 className="text-white font-serif text-xl flex items-center gap-2">
+                        <Coins className="text-[var(--color-gold)]" size={22} />
+                        SuperCoins & Refer & Earn Discount Eligibility
+                      </h3>
+                      <p className="text-xs text-white/50 mt-1 font-light">
+                        Configure customer loyalty rewards, SuperCoins redemption limits, and referral discount eligibility for this retail bottle.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* SuperCoins Card */}
+                    <div className={`p-5 rounded-xl border transition-all ${formData.isSuperCoinEligible ? 'bg-[var(--color-gold)]/[0.03] border-[var(--color-gold)]/30' : 'bg-white/[0.02] border-white/10 opacity-70'}`}>
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/30 flex items-center justify-center text-[var(--color-gold)]">
+                            <Coins size={17} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-semibold text-white">SuperCoins Program</h4>
+                            <span className="text-[11px] text-white/50 block">Earn on purchase & redeem at checkout</span>
+                          </div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox"
+                            name="isSuperCoinEligible"
+                            checked={formData.isSuperCoinEligible}
+                            onChange={(e) => setFormData(prev => ({ ...prev, isSuperCoinEligible: e.target.checked }))}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-gold)]"></div>
+                        </label>
+                      </div>
+
+                      {formData.isSuperCoinEligible ? (
+                        <div className="space-y-3 pt-3 border-t border-white/10">
+                          <div>
+                            <label className="block text-xs uppercase tracking-wider text-white/70 mb-1 font-mono">
+                              Max SuperCoin Discount Cap (%) *
+                            </label>
+                            <div className="relative">
+                              <input 
+                                type="number" 
+                                name="maxSuperCoinDiscountPct" 
+                                value={formData.maxSuperCoinDiscountPct} 
+                                onChange={handleChange} 
+                                min="0" 
+                                max="100" 
+                                step="1" 
+                                className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:border-[var(--color-gold)] focus:outline-none pr-8 font-mono" 
+                                placeholder="10" 
+                              />
+                              <span className="absolute right-3 top-2.5 text-xs text-white/40 font-mono">%</span>
+                            </div>
+                          </div>
+
+                          <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 text-[11px] text-white/60 space-y-1">
+                            <div className="flex justify-between">
+                              <span>Max discount at current price:</span>
+                              <span className="text-[var(--color-gold)] font-mono font-medium">
+                                R{((parseFloat(formData.price || 0) * (parseFloat(formData.maxSuperCoinDiscountPct) || 0)) / 100).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Max coins customer can redeem:</span>
+                              <span className="text-white/80 font-mono">
+                                {Math.round(((parseFloat(formData.price || 0) * (parseFloat(formData.maxSuperCoinDiscountPct) || 0)) / 100) / 0.10)} coins
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-amber-400/80 pt-2 border-t border-white/5 font-mono">
+                          ⚠️ SuperCoins cannot be redeemed against this product at checkout.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Refer & Earn Card */}
+                    <div className={`p-5 rounded-xl border transition-all ${formData.isReferralEligible ? 'bg-purple-500/[0.03] border-purple-500/30' : 'bg-white/[0.02] border-white/10 opacity-70'}`}>
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                            <Gift size={17} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-semibold text-white">Refer & Earn Program</h4>
+                            <span className="text-[11px] text-white/50 block">Customer credits & reward commissions</span>
+                          </div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox"
+                            name="isReferralEligible"
+                            checked={formData.isReferralEligible}
+                            onChange={(e) => setFormData(prev => ({ ...prev, isReferralEligible: e.target.checked }))}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                        </label>
+                      </div>
+
+                      {formData.isReferralEligible ? (
+                        <div className="space-y-3 pt-3 border-t border-white/10">
+                          <div>
+                            <label className="block text-xs uppercase tracking-wider text-white/70 mb-1 font-mono">
+                              Referral Discount / Reward Value (%) *
+                            </label>
+                            <div className="relative">
+                              <input 
+                                type="number" 
+                                name="referralDiscountPct" 
+                                value={formData.referralDiscountPct} 
+                                onChange={handleChange} 
+                                min="0" 
+                                max="100" 
+                                step="1" 
+                                className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-400 focus:outline-none pr-8 font-mono" 
+                                placeholder="5" 
+                              />
+                              <span className="absolute right-3 top-2.5 text-xs text-white/40 font-mono">%</span>
+                            </div>
+                          </div>
+
+                          <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 text-[11px] text-white/60 space-y-1">
+                            <div className="flex justify-between">
+                              <span>Referral reward allocation:</span>
+                              <span className="text-purple-300 font-mono font-medium">
+                                R{((parseFloat(formData.price || 0) * (parseFloat(formData.referralDiscountPct) || 0)) / 100).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Wallet discount eligible:</span>
+                              <span className="text-emerald-400 font-mono">Active on Checkout</span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-amber-400/80 pt-2 border-t border-white/5 font-mono">
+                          ⚠️ Referral wallet credits & reward discounts cannot be applied to this product.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 

@@ -331,7 +331,7 @@ export default function AddProduct({ onNotify }) {
                       onChange={handleChange} 
                       min="0"
                       step="any"
-                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
+                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer font-mono" 
                       placeholder=" " 
                       required 
                     />
@@ -339,8 +339,21 @@ export default function AddProduct({ onNotify }) {
                       htmlFor="price" 
                       className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
                     >
-                      Price (ZAR) *
+                      Retail Selling Price (ZAR - 15% VAT Inclusive) *
                     </label>
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[10px] text-white/40">
+                        ⚖️ South African law requires VAT-inclusive customer retail pricing.
+                      </p>
+                      {parseFloat(formData.price) > 0 && (
+                        <div className="text-[11px] font-mono flex items-center justify-between text-white/80 bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/25 px-2.5 py-1 rounded-md">
+                          <span className="text-[var(--color-gold)] font-medium">Net Vendor Payout (70%):</span>
+                          <span className="text-emerald-400 font-bold font-mono">
+                            R{(parseFloat(formData.price) * 0.70).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="relative z-0 w-full group">

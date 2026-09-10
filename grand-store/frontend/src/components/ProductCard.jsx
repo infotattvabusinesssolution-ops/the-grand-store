@@ -61,7 +61,7 @@ const resolveImageUrl = (src) => {
   }
 
   if (normalizedSrc.includes("uploads/")) {
-    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5015";
+    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
     const cleanPath = normalizedSrc.substring(
       normalizedSrc.indexOf("uploads/"),
     );
@@ -90,7 +90,7 @@ function VendorProductImage({ src, alt }) {
 
     if (
       !resolvedSrc ||
-      (!resolvedSrc.includes(import.meta.env.VITE_API_URL || "http://localhost:5015") &&
+      (!resolvedSrc.includes(import.meta.env.VITE_API_URL || "http://localhost:5000") &&
         !resolvedSrc.includes("res.cloudinary.com")) ||
       trimmedUploadCache.has(cacheKey)
     ) {
@@ -422,7 +422,6 @@ export default function ProductCard({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  if (onAdd) onAdd(product, 1, product.options?.[0] || "Pack of 1", false);
                   setIsCheckoutModalOpen(true);
                 }}
                 style={{ 
@@ -463,13 +462,21 @@ export default function ProductCard({
         <ConfirmCheckoutModal 
           isOpen={isCheckoutModalOpen} 
           onClose={() => setIsCheckoutModalOpen(false)} 
-          inline={true} 
+          product={product}
+          initialQuantity={1}
+          selectedOption={product.options?.[0] || "Pack of 1"}
+          onAddToCart={(prod, qty, opt, openCart) => {
+            if (onAdd) onAdd(prod, qty, opt, openCart);
+          }}
+          onProceed={(prod, qty, opt) => {
+            if (onAdd) onAdd(prod, qty, opt, false);
+            navigate('/customer/checkout');
+          }}
         />
       </article>
     </>
   );
 }
-
 
 
 

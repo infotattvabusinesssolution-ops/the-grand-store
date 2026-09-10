@@ -41,7 +41,7 @@ const resolveImageUrl = (src) => {
   }
   
   if (normalizedSrc.includes('uploads/')) {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5015';
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     const cleanPath = normalizedSrc.substring(normalizedSrc.indexOf('uploads/'));
     return `${apiUrl.replace(/\/$/, '')}/${cleanPath}`;
   }
@@ -452,12 +452,17 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                 </span>
               </div>
 
-              <div className="mt-4 min-w-0 text-[clamp(2rem,10vw,3rem)] font-semibold leading-none text-[#e1bd70]">
-                <Price amount={product.price * quantity} presentation="product" />
+              <div className="mt-4 min-w-0 flex flex-wrap items-baseline gap-3">
+                <div className="text-[clamp(2rem,10vw,3rem)] font-semibold leading-none text-[#e1bd70]">
+                  <Price amount={product.price * quantity} presentation="product" />
+                </div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-2.5 py-1 text-xs font-mono text-[var(--color-gold)] font-medium">
+                  Incl. 15% VAT
+                </span>
               </div>
 
               <p className="mt-4 border-t border-white/[0.08] pt-3 text-xs leading-relaxed text-[#837b70]">
-                Taxes included <span className="mx-2 text-[#c9a35b]/60">•</span> Delivery calculated at checkout
+                15% South African VAT Included <span className="mx-2 text-[#c9a35b]/60">•</span> Delivery calculated at checkout
               </p>
             </div>
 
