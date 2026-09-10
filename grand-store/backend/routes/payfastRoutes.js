@@ -8,6 +8,7 @@ router.post('/generate-auction', protect, payfastController.generateAuctionPayme
 router.post('/generate-deposit', protect, payfastController.generateDepositPayment);
 router.post('/generate-event', protect, payfastController.generateEventPayment);
 router.post('/generate-vendor', protect, payfastController.generateVendorPayment);
+router.post('/generate-maintenance', protect, payfastController.generateMaintenancePayment);
 router.post('/confirm-order', optionalAuth, payfastController.confirmOrderPayment);
 router.get('/mobile-return', payfastController.mobileReturnHandler);
 // PayFast posts ITNs as application/x-www-form-urlencoded form data, not JSON.

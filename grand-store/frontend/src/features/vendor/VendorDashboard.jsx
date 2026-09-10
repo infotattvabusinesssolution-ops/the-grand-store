@@ -5,7 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   TrendingUp, Package, DollarSign, Activity, AlertCircle, ShoppingBag, 
   Lightbulb, Calendar, Gavel, CreditCard, Clock, ShieldCheck, CheckCheck, 
-  Bell, Check, RefreshCw, X, ExternalLink, ShieldAlert, AlertTriangle
+  Bell, Check, RefreshCw, X, ExternalLink, ShieldAlert, AlertTriangle,
+  Copy, Upload, Landmark, FileText, ArrowRight, CheckCircle
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatCartPrice } from '../../data';
@@ -27,7 +28,12 @@ export default function VendorDashboard() {
   const [payingMaintenanceFee, setPayingMaintenanceFee] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [paymentMethod, setPaymentMethod] = useState('payfast'); // 'payfast' or 'eft'
+  const [proofFile, setProofFile] = useState(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
+  const [proofError, setProofError] = useState('');
+  const [proofSuccess, setProofSuccess] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
   const [vendorNotifications, setVendorNotifications] = useState([]);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
@@ -78,26 +84,105 @@ export default function VendorDashboard() {
     }
   }, [user]);
 
-  const handlePayMaintenanceFee = async () => {
+  useEffect(() => {
+    // Check if we just returned from PayFast
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success' && params.get('fee') === 'paid') {
+      setPaymentSuccess(true);
+      setShowPayModal(true);
+      // Fast fallback to confirm payment in case ITN webhook is slightly delayed
+      api.post('/payfast/confirm-order', { maintenanceFee: true }).catch(() => {});
+      fetchFeeAndNotifications();
+      window.history.replaceState({}, '', window.location.pathname);
+      setTimeout(() => {
+        setPaymentSuccess(false);
+        setShowPayModal(false);
+      }, 4000);
+    } else if (params.get('payment') === 'cancelled') {
+      alert("PayFast payment was cancelled. You can complete your maintenance fee payment at any time.");
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const handlePayFastMaintenanceFee = async () => {
     setPayingMaintenanceFee(true);
     try {
-      await api.post('/vendor/maintenance-fee/pay', {
-        paymentMethod: paymentMethod === 'card' ? 'PayFast / Credit Card' : 'Instant EFT / Bank Transfer',
-        reference: `MNF-${Date.now().toString().slice(-6)}`
+      const { data } = await api.post('/payfast/generate-maintenance');
+
+      if (!data || !data.url || !data.data) {
+        throw new Error('Failed to generate PayFast checkout data.');
+      }
+
+      // Construct and submit a form dynamically to redirect to PayFast
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = data.url;
+
+      for (const key in data.data) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = data.data[key];
+        form.appendChild(input);
+      }
+
+      document.body.appendChild(form);
+      form.submit();
+    } catch (err) {
+      console.error('PayFast payment generation failed', err);
+      alert(err.response?.data?.message || err.message || 'Failed to initialize PayFast gateway.');
+      setPayingMaintenanceFee(false);
+    }
+  };
+
+  const handleUploadEftProof = async (e) => {
+    if (e) e.preventDefault();
+    if (!proofFile) {
+      setProofError('Please choose a proof of payment document (.pdf, .jpg, .png).');
+      return;
+    }
+
+    setUploadingProof(true);
+    setProofError('');
+
+    try {
+      // 1. Upload proof file via /vendor/upload-public
+      const formData = new FormData();
+      formData.append('document', proofFile);
+      const uploadRes = await api.post('/vendor/upload-public', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setPaymentSuccess(true);
+      const proofUrl = uploadRes.data.url;
+
+      // 2. Submit proof record
+      const ref = maintenanceFeeData?.reference || `MNF-${user?._id?.substring(0, 8).toUpperCase() || 'REF'}`;
+      await api.post('/vendor/maintenance-fee/submit-proof', {
+        proofUrl,
+        reference: ref,
+        amount: maintenanceFeeData?.amount || 500
+      });
+
+      setProofSuccess(true);
       await fetchFeeAndNotifications();
 
       setTimeout(() => {
+        setProofSuccess(false);
+        setProofFile(null);
         setShowPayModal(false);
-        setPaymentSuccess(false);
-      }, 2000);
+      }, 3500);
     } catch (err) {
-      console.error('Payment failed', err);
-      alert(err.response?.data?.message || 'Failed to process maintenance fee payment.');
+      console.error('Failed to submit EFT proof', err);
+      setProofError(err.response?.data?.message || 'Failed to submit proof of payment.');
     } finally {
-      setPayingMaintenanceFee(false);
+      setUploadingProof(false);
     }
+  };
+
+  const handleCopy = (text, fieldName) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    setTimeout(() => setCopiedField(null), 2000);
   };
 
   const handleMarkNotifRead = async (id, e) => {
@@ -260,7 +345,11 @@ export default function VendorDashboard() {
             <div>
               <div className="flex items-center gap-3 mb-1.5 flex-wrap">
                 <h3 className="text-xl font-serif text-[var(--color-ivory)] font-medium">Monthly Vendor Maintenance Fee</h3>
-                {maintenanceFeeData?.status === 'overdue' ? (
+                {maintenanceFeeData?.status === 'awaiting_verification' ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 flex items-center gap-1.5">
+                    <Clock size={12} className="text-blue-400" /> EFT Verification Pending
+                  </span>
+                ) : maintenanceFeeData?.status === 'overdue' ? (
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Overdue ({Math.abs(maintenanceFeeData.daysRemaining || 0)}d)
                   </span>
@@ -275,8 +364,18 @@ export default function VendorDashboard() {
                 )}
               </div>
               <p className="text-sm text-[var(--color-ivory-muted)] max-w-2xl font-light">
-                Recurring monthly platform & marketplace maintenance fee configured by admin. Keeps your store storefront, catalog listings, and order fulfillment active.
+                {maintenanceFeeData?.status === 'awaiting_verification'
+                  ? 'Your EFT proof of payment has been uploaded and is undergoing admin review. Store privileges remain active while our accounts team verifies your transfer.'
+                  : 'Recurring monthly platform & marketplace maintenance fee configured by admin. Keeps your store storefront, catalog listings, and order fulfillment active.'}
               </p>
+              {maintenanceFeeData?.proofOfPaymentUrl && (
+                <div className="mt-2 text-xs text-[#e1bd70] flex items-center gap-2">
+                  <FileText size={13} />
+                  <a href={maintenanceFeeData.proofOfPaymentUrl} target="_blank" rel="noreferrer" className="underline hover:text-white transition-colors">
+                    View Uploaded Proof of Payment
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 
@@ -294,21 +393,26 @@ export default function VendorDashboard() {
                 {maintenanceFeeData?.nextDueAt ? new Date(maintenanceFeeData.nextDueAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'In 30 Days'}
               </div>
               <div className="text-[11px] text-[var(--color-ivory-muted)]">
-                {maintenanceFeeData?.daysRemaining > 0 
-                  ? `${maintenanceFeeData.daysRemaining} days remaining`
-                  : maintenanceFeeData?.daysRemaining === 0 
-                    ? 'Due today'
-                    : `${Math.abs(maintenanceFeeData?.daysRemaining || 0)} days overdue`}
+                {maintenanceFeeData?.status === 'awaiting_verification'
+                  ? 'EFT Review in progress'
+                  : maintenanceFeeData?.daysRemaining > 0 
+                    ? `${maintenanceFeeData.daysRemaining} days remaining`
+                    : maintenanceFeeData?.daysRemaining === 0 
+                      ? 'Due today'
+                      : `${Math.abs(maintenanceFeeData?.daysRemaining || 0)} days overdue`}
               </div>
             </div>
 
-            <button
-              onClick={() => setShowPayModal(true)}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#c9a35b] to-[#b58b38] hover:from-[#d8b467] hover:to-[#c9a35b] text-black font-bold text-xs uppercase tracking-widest shadow-lg shadow-[#c9a35b]/20 transition-all flex items-center gap-2 shrink-0"
-            >
-              <CreditCard size={15} />
-              <span>{maintenanceFeeData?.status === 'paid' ? 'Pay Advance / Renew' : 'Pay Maintenance Fee'}</span>
-            </button>
+            <div className="flex items-center w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setShowPayModal(true)}
+                className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#c9a35b] to-[#b58b38] hover:from-[#d8b467] hover:to-[#c9a35b] text-black font-bold text-xs uppercase tracking-widest shadow-lg shadow-[#c9a35b]/20 hover:shadow-[#c9a35b]/35 transition-all flex items-center justify-center gap-2.5 shrink-0 cursor-pointer"
+              >
+                <CreditCard size={16} />
+                <span>Pay Maintenance Fee</span>
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -653,126 +757,327 @@ export default function VendorDashboard() {
         )}
       </section>
 
-      {/* Pay Maintenance Fee Modal */}
+      {/* Pay Maintenance Fee Modal with PayFast & Manual EFT */}
       {showPayModal && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="bg-[#0e0e0c] border border-[#c9a35b]/40 rounded-2xl w-full max-w-lg overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.9)] relative animate-in fade-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.08] bg-white/[0.02]">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-[#c9a35b]/10 text-[#e1bd70] border border-[#c9a35b]/20">
+        <div 
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !payingMaintenanceFee && !uploadingProof) {
+              setShowPayModal(false);
+            }
+          }}
+        >
+          <div className="bg-[#0e0e0c] border border-[#c9a35b]/40 rounded-2xl w-full max-w-xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden shadow-[0_25px_90px_rgba(0,0,0,0.95)] relative animate-in fade-in zoom-in-95 duration-200">
+            {/* Header - Sticky at top so Close cross button is ALWAYS visible */}
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-white/[0.08] bg-[#141310] shrink-0 sticky top-0 z-30">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-xl bg-[#c9a35b]/10 text-[#e1bd70] border border-[#c9a35b]/20 shrink-0">
                   <CreditCard size={20} />
                 </div>
-                <div>
-                  <h3 className="text-lg font-serif text-white font-medium">Pay Maintenance Fee</h3>
-                  <p className="text-xs text-[var(--color-ivory-muted)]">Monthly vendor platform & catalog coverage</p>
+                <div className="min-w-0">
+                  <h3 className="text-base sm:text-lg font-serif text-white font-medium truncate">Settle Monthly Maintenance Fee</h3>
+                  <p className="text-xs text-[var(--color-ivory-muted)] truncate">Choose PayFast Gateway or Manual Bank Transfer (EFT)</p>
                 </div>
               </div>
               <button
-                onClick={() => !payingMaintenanceFee && setShowPayModal(false)}
-                className="text-white/40 hover:text-white transition-colors"
-                disabled={payingMaintenanceFee}
+                type="button"
+                onClick={() => !payingMaintenanceFee && !uploadingProof && setShowPayModal(false)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-white/80 hover:text-white border border-white/10 hover:border-white/25 flex items-center justify-center transition-all cursor-pointer shrink-0 ml-3 group"
+                title="Close modal"
+                aria-label="Close modal"
+                disabled={payingMaintenanceFee || uploadingProof}
               >
-                <X size={20} />
+                <X size={18} className="group-hover:scale-110 transition-transform" />
               </button>
             </div>
 
-            {/* Content */}
-            <div className="p-6 space-y-6">
+            {/* Scrollable Content Body */}
+            <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1 overscroll-contain">
               {paymentSuccess ? (
-                <div className="py-8 text-center space-y-3">
+                <div className="py-10 text-center space-y-3">
                   <div className="w-16 h-16 rounded-full bg-green-500/10 text-green-400 border border-green-500/30 flex items-center justify-center mx-auto">
                     <Check size={32} />
                   </div>
-                  <h4 className="text-xl font-serif text-white">Payment Successful!</h4>
-                  <p className="text-sm text-[var(--color-ivory-muted)] max-w-xs mx-auto">
-                    Your monthly maintenance fee of R {maintenanceFeeData?.amount || 500} has been processed. Your store is active for the next 30 days.
+                  <h4 className="text-xl font-serif text-white">Payment Confirmed!</h4>
+                  <p className="text-sm text-[var(--color-ivory-muted)] max-w-sm mx-auto">
+                    Your monthly maintenance fee of R {maintenanceFeeData?.amount || 500}.00 has been successfully processed. Store privileges and catalog listings are renewed for the next 30 days.
+                  </p>
+                </div>
+              ) : proofSuccess ? (
+                <div className="py-10 text-center space-y-3">
+                  <div className="w-16 h-16 rounded-full bg-[#c9a35b]/10 text-[#e1bd70] border border-[#c9a35b]/30 flex items-center justify-center mx-auto">
+                    <FileText size={32} />
+                  </div>
+                  <h4 className="text-xl font-serif text-white">EFT Proof Submitted!</h4>
+                  <p className="text-sm text-[var(--color-ivory-muted)] max-w-sm mx-auto">
+                    Your proof of payment has been uploaded to our finance team. Your store remains active while we verify the deposit.
                   </p>
                 </div>
               ) : (
                 <>
-                  {/* Fee Summary */}
-                  <div className="p-4 rounded-xl bg-black/50 border border-white/[0.08] space-y-3">
+                  {/* Fee Summary Pill */}
+                  <div className="p-4 rounded-xl bg-black/60 border border-white/[0.08] space-y-2.5">
                     <div className="flex items-center justify-between text-xs text-[var(--color-ivory-muted)]">
-                      <span>Monthly Maintenance Fee:</span>
-                      <span className="font-mono text-white text-sm font-semibold">R {maintenanceFeeData?.amount || 500}.00</span>
+                      <span>Monthly Fee Amount:</span>
+                      <span className="font-mono text-white text-base font-bold">R {maintenanceFeeData?.amount || 500}.00</span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-[var(--color-ivory-muted)]">
                       <span>Coverage Duration:</span>
-                      <span className="text-white font-medium">+30 Days Active Listing</span>
+                      <span className="text-[#e1bd70] font-medium">+30 Days Active Storefront</span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-[var(--color-ivory-muted)] pt-2 border-t border-white/[0.06]">
-                      <span>Next Due Date After Payment:</span>
-                      <span className="text-[#e1bd70] font-medium font-serif">
+                      <span>Next Due Date After Settlement:</span>
+                      <span className="text-white font-mono">
                         {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                       </span>
                     </div>
                   </div>
 
-                  {/* Payment Method Selector */}
-                  <div className="space-y-3">
-                    <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)]">Select Payment Method</label>
+                  {/* Payment Method Split Tabs */}
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2 font-semibold">
+                      Select Payment Method
+                    </label>
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         type="button"
-                        onClick={() => setPaymentMethod('card')}
-                        className={`p-3.5 rounded-xl border text-left transition-all ${
-                          paymentMethod === 'card'
-                            ? 'bg-[#c9a35b]/10 border-[#c9a35b] text-[#e1bd70]'
-                            : 'bg-black/40 border-white/10 text-[var(--color-ivory-muted)] hover:border-white/20'
+                        onClick={() => setPaymentMethod('payfast')}
+                        className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                          paymentMethod === 'payfast'
+                            ? 'bg-[#c9a35b]/15 border-[#c9a35b] text-[#e1bd70] shadow-[0_0_20px_rgba(201,163,91,0.15)] ring-1 ring-[#c9a35b]/50'
+                            : 'bg-black/40 border-white/10 text-[var(--color-ivory-muted)] hover:border-white/25'
                         }`}
                       >
-                        <div className="font-semibold text-xs text-white mb-1">Credit / Debit Card</div>
-                        <div className="text-[10px] text-white/50">PayFast Secure Checkout</div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-xs sm:text-sm text-white">PayFast Gateway</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 font-bold uppercase tracking-wider">Instant</span>
+                        </div>
+                        <div className="text-[11px] text-white/50">Cards & Instant EFT (Instant settlement)</div>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('eft')}
-                        className={`p-3.5 rounded-xl border text-left transition-all ${
+                        className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                           paymentMethod === 'eft'
-                            ? 'bg-[#c9a35b]/10 border-[#c9a35b] text-[#e1bd70]'
-                            : 'bg-black/40 border-white/10 text-[var(--color-ivory-muted)] hover:border-white/20'
+                            ? 'bg-[#c9a35b]/15 border-[#c9a35b] text-[#e1bd70] shadow-[0_0_20px_rgba(201,163,91,0.15)] ring-1 ring-[#c9a35b]/50'
+                            : 'bg-black/40 border-white/10 text-[var(--color-ivory-muted)] hover:border-white/25'
                         }`}
                       >
-                        <div className="font-semibold text-xs text-white mb-1">Instant EFT</div>
-                        <div className="text-[10px] text-white/50">Direct Bank Settlement</div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-xs sm:text-sm text-white">Bank Transfer / EFT</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/60 font-bold uppercase tracking-wider">Manual</span>
+                        </div>
+                        <div className="text-[11px] text-white/50">Direct bank deposit & proof upload</div>
                       </button>
                     </div>
                   </div>
 
-                  {/* Security Notice */}
-                  <div className="flex items-center gap-2.5 text-[11px] text-white/50 bg-white/[0.02] p-3 rounded-lg border border-white/[0.04]">
-                    <ShieldCheck size={16} className="text-[#e1bd70] shrink-0" />
-                    <span>Protected with bank-grade 256-bit encryption. An official invoice & receipt will be posted to your wallet and notifications.</span>
-                  </div>
+                  {/* TAB 1: PayFast */}
+                  {paymentMethod === 'payfast' && (
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-[#c9a35b]/10 text-[#e1bd70]">
+                            <CreditCard size={18} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-semibold text-white">Automated PayFast Checkout</h4>
+                            <p className="text-xs text-white/50">Supports Visa, Mastercard, and Instant EFT (Capitec, FNB, ABSA, Standard Bank, Nedbank)</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-white/60 pt-2 border-t border-white/[0.06]">
+                          <ShieldCheck size={16} className="text-[#e1bd70] shrink-0" />
+                          <span>Immediate automated activation with PCI-DSS 256-bit bank-grade security.</span>
+                        </div>
+                      </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowPayModal(false)}
-                      disabled={payingMaintenanceFee}
-                      className="flex-1 py-3 px-4 rounded-xl border border-white/10 text-white/70 hover:text-white hover:bg-white/[0.04] text-xs font-semibold uppercase tracking-wider transition-all"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handlePayMaintenanceFee}
-                      disabled={payingMaintenanceFee}
-                      className="flex-[2] py-3 px-4 rounded-xl bg-[#c9a35b] hover:bg-[#e1bd70] text-black text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-[#c9a35b]/20 flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      {payingMaintenanceFee ? (
-                        <>
-                          <RefreshCw size={15} className="animate-spin" />
-                          <span>Processing...</span>
-                        </>
-                      ) : (
-                        <span>Confirm Payment of R {maintenanceFeeData?.amount || 500}</span>
-                      )}
-                    </button>
-                  </div>
+                      <div className="flex items-center gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowPayModal(false)}
+                          disabled={payingMaintenanceFee}
+                          className="flex-1 py-3.5 px-4 rounded-xl border border-white/10 text-white/70 hover:text-white hover:bg-white/[0.04] text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handlePayFastMaintenanceFee}
+                          disabled={payingMaintenanceFee}
+                          className="flex-[2] py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#c9a35b] to-[#b58b38] hover:from-[#d8b467] hover:to-[#c9a35b] text-black text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-[#c9a35b]/20 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                        >
+                          {payingMaintenanceFee ? (
+                            <>
+                              <RefreshCw size={15} className="animate-spin" />
+                              <span>Connecting to PayFast...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Pay R {maintenanceFeeData?.amount || 500} via PayFast</span>
+                              <ArrowRight size={14} />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 2: Manual EFT / Bank Details & Proof Upload */}
+                  {paymentMethod === 'eft' && (
+                    <div className="space-y-4">
+                      {/* Bank Details Card */}
+                      <div className="bg-[#11100e] border border-[#c9a35b]/30 p-4 rounded-xl space-y-2.5">
+                        <div className="flex items-center justify-between pb-2 border-b border-white/[0.08]">
+                          <div className="flex items-center gap-2">
+                            <Landmark size={15} className="text-[#e1bd70]" />
+                            <span className="text-xs font-bold uppercase tracking-wider text-[#e1bd70]">Official Bank Account</span>
+                          </div>
+                          <span className="text-[10px] text-white/40 uppercase tracking-widest font-mono">South Africa</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="bg-black/40 p-2.5 rounded-lg border border-white/[0.04]">
+                            <div className="text-[10px] text-white/40 uppercase">Bank</div>
+                            <div className="font-semibold text-white mt-0.5">{maintenanceFeeData?.bankDetails?.bankName || 'First National Bank (FNB)'}</div>
+                          </div>
+
+                          <div className="bg-black/40 p-2.5 rounded-lg border border-white/[0.04]">
+                            <div className="text-[10px] text-white/40 uppercase">Account Name</div>
+                            <div className="font-semibold text-white mt-0.5">{maintenanceFeeData?.bankDetails?.accountName || 'The Grand Store (Pty) Ltd'}</div>
+                          </div>
+
+                          <div className="bg-black/40 p-2.5 rounded-lg border border-white/[0.04] flex items-center justify-between">
+                            <div>
+                              <div className="text-[10px] text-white/40 uppercase">Account Number</div>
+                              <div className="font-mono text-white font-bold mt-0.5">{maintenanceFeeData?.bankDetails?.accountNumber || '62800000000'}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(maintenanceFeeData?.bankDetails?.accountNumber || '62800000000', 'acc')}
+                              className="text-[#e1bd70] hover:text-white p-1 transition-colors cursor-pointer"
+                              title="Copy Account Number"
+                            >
+                              {copiedField === 'acc' ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                            </button>
+                          </div>
+
+                          <div className="bg-black/40 p-2.5 rounded-lg border border-white/[0.04] flex items-center justify-between">
+                            <div>
+                              <div className="text-[10px] text-white/40 uppercase">Branch Code</div>
+                              <div className="font-mono text-white font-bold mt-0.5">{maintenanceFeeData?.bankDetails?.branchCode || '250655'}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(maintenanceFeeData?.bankDetails?.branchCode || '250655', 'branch')}
+                              className="text-[#e1bd70] hover:text-white p-1 transition-colors cursor-pointer"
+                              title="Copy Branch Code"
+                            >
+                              {copiedField === 'branch' ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Reference Pill */}
+                        <div className="bg-[#c9a35b]/10 border border-[#c9a35b]/40 p-3 rounded-lg flex items-center justify-between">
+                          <div>
+                            <div className="text-[10px] uppercase font-bold text-[#e1bd70]">Payment Reference (Required)</div>
+                            <div className="font-mono font-bold text-white text-sm mt-0.5">
+                              {maintenanceFeeData?.reference || `MNF-${user?._id?.substring(0, 8).toUpperCase() || 'REF'}`}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(maintenanceFeeData?.reference || `MNF-${user?._id?.substring(0, 8).toUpperCase() || 'REF'}`, 'ref')}
+                            className="px-2.5 py-1 rounded bg-[#c9a35b]/20 hover:bg-[#c9a35b]/30 text-[#e1bd70] text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            {copiedField === 'ref' ? (
+                              <>
+                                <Check size={12} className="text-green-400" />
+                                <span>Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={12} />
+                                <span>Copy</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Proof of Payment Upload Form */}
+                      <form onSubmit={handleUploadEftProof} className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold text-white flex items-center gap-2">
+                            <Upload size={14} className="text-[#e1bd70]" />
+                            <span>Upload Proof of Payment</span>
+                          </label>
+                          <span className="text-[10px] text-white/40">PDF, JPG, or PNG (Max 10MB)</span>
+                        </div>
+
+                        <div className="relative border-2 border-dashed border-white/15 hover:border-[#c9a35b]/50 rounded-xl p-4 text-center transition-colors cursor-pointer bg-black/30">
+                          <input
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.pdf"
+                            onChange={(e) => {
+                              if (e.target.files?.[0]) {
+                                setProofFile(e.target.files[0]);
+                                setProofError('');
+                              }
+                            }}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                          {proofFile ? (
+                            <div className="flex items-center justify-center gap-2 text-xs text-[#e1bd70]">
+                              <FileText size={16} />
+                              <span className="font-medium truncate max-w-xs">{proofFile.name}</span>
+                              <span className="text-white/40">({(proofFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-white/50">
+                              <span className="text-[#e1bd70] font-semibold">Click to browse</span> or drop your bank payment receipt here
+                            </div>
+                          )}
+                        </div>
+
+                        {proofError && (
+                          <div className="text-red-400 text-xs flex items-center gap-1.5">
+                            <AlertCircle size={14} />
+                            <span>{proofError}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-3 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowPayModal(false)}
+                            disabled={uploadingProof}
+                            className="flex-1 py-3 px-4 rounded-xl border border-white/10 text-white/70 hover:text-white hover:bg-white/[0.04] text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={uploadingProof || !proofFile}
+                            className="flex-[2] py-3 px-4 rounded-xl bg-[#c9a35b] hover:bg-[#e1bd70] text-black text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-[#c9a35b]/20 flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer"
+                          >
+                            {uploadingProof ? (
+                              <>
+                                <RefreshCw size={14} className="animate-spin" />
+                                <span>Uploading Receipt...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Upload size={14} />
+                                <span>Submit Proof of Payment</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
                 </>
               )}
             </div>

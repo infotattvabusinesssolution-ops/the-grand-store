@@ -222,9 +222,10 @@ const vendorSchema = new mongoose.Schema({
     amount: { type: Number, default: 500 },
     status: {
       type: String,
-      enum: ['paid', 'due', 'overdue', 'grace_period'],
+      enum: ['paid', 'due', 'overdue', 'grace_period', 'awaiting_verification'],
       default: 'paid'
     },
+    proofOfPaymentUrl: { type: String, default: null },
     lastPaidAt: { type: Date, default: null },
     nextDueAt: {
       type: Date,
@@ -236,7 +237,8 @@ const vendorSchema = new mongoose.Schema({
       paymentMethod: { type: String, default: 'card' },
       reference: String,
       gsReference: String,
-      status: { type: String, default: 'cleared' }
+      status: { type: String, default: 'cleared' },
+      proofUrl: String
     }]
   }
 }, { timestamps: true });

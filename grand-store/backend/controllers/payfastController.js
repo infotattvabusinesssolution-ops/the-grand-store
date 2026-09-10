@@ -282,6 +282,58 @@ exports.generateVendorPayment = async (req, res) => {
   }
 };
 
+// @desc    Generate PayFast payload for Vendor Monthly Maintenance Fee
+// @route   POST /api/payfast/generate-maintenance
+// @access  Private
+exports.generateMaintenancePayment = async (req, res) => {
+  try {
+    const Vendor = require('../models/Vendor');
+    const PlatformSettings = require('../models/PlatformSettings');
+    const vendor = await Vendor.findOne({ userId: req.user._id }).populate('userId');
+
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor application not found' });
+    }
+
+    let monthlyFee = 500;
+    try {
+      const settings = await PlatformSettings.findOne();
+      if (settings && settings.vendorMonthlyMaintenanceFee !== undefined) {
+        monthlyFee = settings.vendorMonthlyMaintenanceFee;
+      }
+    } catch (e) {
+      console.error('Error reading platform settings for maintenance fee', e);
+    }
+
+    const feeAmount = vendor.maintenanceFee?.amount || monthlyFee;
+    const config = getPayfastConfig();
+    const frontendUrl = getFrontendUrl(req);
+    const backendUrl = getBackendUrl(req);
+
+    const data = {
+      merchant_id: config.merchant_id,
+      merchant_key: config.merchant_key,
+      return_url: `${frontendUrl}/vendor/dashboard?payment=success&fee=paid`,
+      cancel_url: `${frontendUrl}/vendor/dashboard?payment=cancelled`,
+      notify_url: `${backendUrl}/api/payfast/itn`,
+      name_first: vendor.userId?.name?.split(' ')[0] || 'Vendor',
+      name_last: vendor.userId?.name?.split(' ').slice(1).join(' ') || 'Partner',
+      email_address: vendor.userId?.email || req.user.email,
+      m_payment_id: `MNF-${vendor._id}-${Date.now()}`,
+      amount: Number(feeAmount).toFixed(2),
+      item_name: 'Vendor Monthly Maintenance Fee'
+    };
+
+    const signature = generateSignature(data, config.passphrase);
+    data.signature = signature;
+
+    res.json({ url: config.url, data });
+  } catch (error) {
+    console.error('Error generating PayFast maintenance payment:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // @desc    Generate PayFast payload for a VIP Bidding Refundable Deposit
 // @route   POST /api/payfast/generate-deposit
 // @access  Private
@@ -481,7 +533,27 @@ exports.confirmOrderPayment = async (req, res) => {
       return res.json({ success: true, deposit: updatedDeposit });
     }
 
-    // 4. Shop Order Confirmation
+    // 4. Vendor Maintenance Fee Confirmation
+    if (req.body.maintenanceVendorId || req.body.maintenanceFee) {
+      const Vendor = require('../models/Vendor');
+      const vendor = await Vendor.findOne({
+        $or: [
+          { _id: req.body.maintenanceVendorId },
+          { userId: req.user?._id }
+        ]
+      });
+      if (!vendor) {
+        return res.status(404).json({ message: 'Vendor application not found' });
+      }
+      const { processMaintenanceFeePayment } = require('./vendorController');
+      const updatedVendor = await processMaintenanceFeePayment(vendor._id, {
+        paymentMethod: 'PayFast',
+        reference: req.body.pfPaymentId || `PF-MNF-${Date.now().toString().slice(-6)}`
+      });
+      return res.json({ success: true, vendor: updatedVendor });
+    }
+
+    // 5. Shop Order Confirmation
     let order = null;
     if (orderId) {
       if (mongoose.Types.ObjectId.isValid(orderId)) {

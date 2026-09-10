@@ -140,6 +140,8 @@ const auctionLotSchema = new mongoose.Schema({
   },
   proofUrl: { type: String },
   isPaid: { type: Boolean, default: false },
+  reminderSent: { type: Boolean, default: false },
+  reminderSentAt: { type: Date },
 
 }, { timestamps: true });
 

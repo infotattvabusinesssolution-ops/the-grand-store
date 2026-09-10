@@ -491,18 +491,20 @@ exports.getMaintenanceFeeStatus = async (req, res) => {
     const msDiff = nextDue.getTime() - now.getTime();
     const daysRemaining = Math.ceil(msDiff / (1000 * 60 * 60 * 24));
 
-    // Evaluate live status
-    let currentStatus = 'paid';
-    if (daysRemaining <= 0) {
-      if (Math.abs(daysRemaining) <= graceDays) {
+    // Evaluate live status (preserve awaiting_verification if manual EFT proof submitted)
+    let currentStatus = vendor.maintenanceFee.status === 'awaiting_verification' ? 'awaiting_verification' : 'paid';
+    if (currentStatus !== 'awaiting_verification') {
+      if (daysRemaining <= 0) {
+        if (Math.abs(daysRemaining) <= graceDays) {
+          currentStatus = 'due';
+        } else {
+          currentStatus = 'overdue';
+        }
+      } else if (daysRemaining <= 5) {
         currentStatus = 'due';
       } else {
-        currentStatus = 'overdue';
+        currentStatus = 'paid';
       }
-    } else if (daysRemaining <= 5) {
-      currentStatus = 'due';
-    } else {
-      currentStatus = 'paid';
     }
 
     if (vendor.maintenanceFee.status !== currentStatus) {
@@ -510,14 +512,43 @@ exports.getMaintenanceFeeStatus = async (req, res) => {
       await vendor.save();
     }
 
+    let bankDetails = {
+      bankName: 'First National Bank (FNB)',
+      accountName: 'The Grand Store (Pty) Ltd',
+      accountNumber: '62800000000',
+      branchCode: '250655',
+      accountType: 'Business Cheque Account',
+      swiftCode: 'FIRNZAJJ'
+    };
+    try {
+      const PlatformSettings = require('../models/PlatformSettings');
+      const settings = await PlatformSettings.findOne();
+      if (settings?.bankDetails?.accountNumber) {
+        bankDetails = {
+          bankName: settings.bankDetails.bankName || 'Standard Bank',
+          accountName: settings.bankDetails.accountName || 'The Grand Store PTY LTD',
+          accountNumber: settings.bankDetails.accountNumber || '0123456789',
+          branchCode: settings.bankDetails.branchCode || '051001',
+          accountType: settings.bankDetails.accountType || 'Business Cheque',
+          swiftCode: settings.bankDetails.swiftCode || 'SBZAJJ'
+        };
+      }
+    } catch (bErr) {
+      console.error('Error fetching platform bank details for vendor fee:', bErr);
+    }
+
     res.json({
+      vendorId: vendor._id,
+      reference: `MNF-${vendor._id.toString().slice(-6).toUpperCase()}`,
       amount: vendor.maintenanceFee.amount || defaultMonthlyFee,
       configuredMonthlyFee: defaultMonthlyFee,
       status: currentStatus,
+      proofOfPaymentUrl: vendor.maintenanceFee.proofOfPaymentUrl || null,
       lastPaidAt: vendor.maintenanceFee.lastPaidAt,
       nextDueAt: vendor.maintenanceFee.nextDueAt,
       daysRemaining,
       graceDays,
+      bankDetails,
       paymentHistory: vendor.maintenanceFee.paymentHistory || []
     });
   } catch (error) {
@@ -677,6 +708,66 @@ exports.payMaintenanceFee = async (req, res) => {
     });
   } catch (error) {
     console.error('Error paying maintenance fee:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+exports.submitMaintenanceFeeProof = async (req, res) => {
+  try {
+    const { proofUrl, reference, amount } = req.body;
+    if (!proofUrl) {
+      return res.status(400).json({ message: 'No proof of payment document provided' });
+    }
+    const vendor = await Vendor.findOne({ userId: req.user._id });
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor application not found' });
+    }
+
+    const payRef = reference || `EFT-MNF-${vendor._id.toString().slice(-6).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+
+    if (!vendor.maintenanceFee) vendor.maintenanceFee = {};
+    vendor.maintenanceFee.proofOfPaymentUrl = proofUrl;
+    vendor.maintenanceFee.status = 'awaiting_verification';
+
+    if (!Array.isArray(vendor.maintenanceFee.paymentHistory)) {
+      vendor.maintenanceFee.paymentHistory = [];
+    }
+
+    vendor.maintenanceFee.paymentHistory.unshift({
+      amount: amount || vendor.maintenanceFee.amount || 500,
+      paidAt: new Date(),
+      paymentMethod: 'Manual EFT / Bank Transfer',
+      reference: payRef,
+      status: 'pending_verification',
+      proofUrl
+    });
+
+    await vendor.save();
+
+    await createInAppNotification({
+      recipient: null,
+      recipientType: 'admin',
+      title: 'Vendor Maintenance Fee EFT Submitted',
+      message: `${vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || 'Vendor'} submitted EFT proof of payment (${payRef}) for monthly maintenance fee.`,
+      type: 'maintenance_fee',
+      link: `/admin/vendors/${vendor._id}`
+    });
+
+    await createInAppNotification({
+      recipient: vendor.userId,
+      recipientType: 'vendor',
+      title: 'EFT Proof of Payment Received',
+      message: `Your proof of payment (${payRef}) for the monthly maintenance fee has been submitted and is awaiting admin verification.`,
+      type: 'maintenance_fee',
+      link: '/vendor/dashboard'
+    });
+
+    res.json({
+      message: 'Proof of payment submitted successfully. Your payment is awaiting admin verification.',
+      vendor
+    });
+  } catch (error) {
+    console.error('Error submitting maintenance fee proof:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

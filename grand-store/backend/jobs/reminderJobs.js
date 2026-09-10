@@ -28,44 +28,74 @@ const startReminderJobs = () => {
       );
 
       // 1. Event Reminders
-      const upcomingBookings = await Booking.find({ paymentStatus: "Paid" })
+      const upcomingBookings = await Booking.find({
+        paymentStatus: "Paid",
+        reminderSent: { $ne: true },
+      })
         .populate({
           path: "event",
           match: { date: { $gte: tomorrowStart, $lt: tomorrowEnd } },
         })
         .populate("user");
 
-      let eventsReminded = 0;
+      // Group bookings by recipient email & event so each attendee receives exactly ONE consolidated reminder
+      const userEventMap = new Map();
+
       for (const booking of upcomingBookings) {
-        if (booking.event && booking.user) {
-          try {
-            await sendEmail({
-              to: booking.user.email,
-              subject: `Reminder: ${booking.event.title} is coming up!`,
-              html: eventReminderTemplate(
-                booking.user.name,
-                booking.event.title,
-                booking.event.date,
-                booking.event.startTime,
-                booking.event.location,
-              ),
-            });
-            eventsReminded++;
-          } catch (err) {
-            console.error(
-              `Error sending event reminder to ${booking.user.email}:`,
-              err.message,
-            );
-          }
+        if (!booking.event || !booking.user || !booking.user.email) continue;
+
+        const recipientEmail = booking.user.email.toLowerCase().trim();
+        const eventId = String(booking.event._id || booking.event);
+        const groupKey = `${recipientEmail}_${eventId}`;
+
+        if (!userEventMap.has(groupKey)) {
+          userEventMap.set(groupKey, {
+            user: booking.user,
+            event: booking.event,
+            bookings: [],
+          });
+        }
+        userEventMap.get(groupKey).bookings.push(booking);
+      }
+
+      let eventsReminded = 0;
+      for (const group of userEventMap.values()) {
+        try {
+          await sendEmail({
+            to: group.user.email,
+            subject: `Reminder: ${group.event.title} is coming up!`,
+            html: eventReminderTemplate(
+              group.user.name,
+              group.event.title,
+              group.event.date,
+              group.event.startTime,
+              group.event.location,
+            ),
+          });
+
+          // Mark all bookings for this user & event as reminded
+          const bookingIds = group.bookings.map((b) => b._id);
+          await Booking.updateMany(
+            { _id: { $in: bookingIds } },
+            { $set: { reminderSent: true, reminderSentAt: new Date() } }
+          );
+
+          eventsReminded++;
+        } catch (err) {
+          console.error(
+            `Error sending event reminder to ${group.user.email}:`,
+            err.message,
+          );
         }
       }
       if (eventsReminded > 0)
-        console.log(`Sent ${eventsReminded} event reminders.`);
+        console.log(`Sent ${eventsReminded} consolidated event reminders.`);
 
       // 2. Auction Reminders
       const upcomingAuctions = await AuctionLot.find({
         startDate: { $gte: tomorrowStart, $lt: tomorrowEnd },
         status: { $in: ["upcoming", "live"] },
+        reminderSent: { $ne: true },
       });
 
       let auctionsReminded = 0;
@@ -73,7 +103,17 @@ const startReminderJobs = () => {
         const usersWatching = await User.find({
           auctionWatchlist: auction._id,
         });
-        for (const user of usersWatching) {
+
+        // De-duplicate watching users by email so no watcher gets duplicate emails
+        const uniqueWatchers = Array.from(
+          new Map(
+            usersWatching
+              .filter((u) => u && u.email)
+              .map((u) => [u.email.toLowerCase().trim(), u])
+          ).values()
+        );
+
+        for (const user of uniqueWatchers) {
           try {
             await sendEmail({
               to: user.email,
@@ -93,6 +133,11 @@ const startReminderJobs = () => {
             );
           }
         }
+
+        // Mark auction lot as reminded
+        auction.reminderSent = true;
+        auction.reminderSentAt = new Date();
+        await auction.save();
       }
       if (auctionsReminded > 0)
         console.log(`Sent ${auctionsReminded} auction reminders.`);

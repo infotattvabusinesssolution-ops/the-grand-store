@@ -22,16 +22,16 @@ import { storeCategories, accessoryCategories, menuCategories } from "../data";
 import { useAuth } from "../context/AuthContext";
 import { useProducts } from "../context/ProductContext";
 import { useGeoLocation } from "../context/LocationContext";
-import { useCurrency } from "../context/CurrencyContext";
+import { useCurrency, getCountryForCurrency } from "../context/CurrencyContext";
 import LocaleSelector, { LocaleIcon } from "./LocaleSelector";
 import NotificationBell from "./NotificationBell";
 import api from "../api";
 
 const currencyFlagCountries = {
   AED: 'AE', AUD: 'AU', BWP: 'BW', BRL: 'BR', CAD: 'CA', CHF: 'CH', CNY: 'CN',
-  EUR: 'EU', GBP: 'GB', GHS: 'GH', HKD: 'HK', INR: 'IN', JPY: 'JP', KES: 'KE',
-  KRW: 'KR', MUR: 'MU', MXN: 'MX', NAD: 'NA', NGN: 'NG', NZD: 'NZ', RUB: 'RU',
-  SAR: 'SA', SGD: 'SG', TRY: 'TR', USD: 'US', ZAR: 'ZA'
+  CLP: 'CL', EUR: 'EU', GBP: 'GB', GHS: 'GH', HKD: 'HK', INR: 'IN', JPY: 'JP',
+  KES: 'KE', KRW: 'KR', MUR: 'MU', MXN: 'MX', NAD: 'NA', NGN: 'NG', NZD: 'NZ',
+  RUB: 'RU', SAR: 'SA', SGD: 'SG', TRY: 'TR', USD: 'US', ZAR: 'ZA'
 };
 
 const currencyNames = typeof Intl !== 'undefined' && Intl.DisplayNames
@@ -62,7 +62,7 @@ export default function Header({
   const currencyOptions = useMemo(() => availableCurrencies.map((currencyCode) => ({
     value: currencyCode,
     label: currencyNames?.of(currencyCode) || currencyCode,
-    flagCode: currencyFlagCountries[currencyCode],
+    flagCode: currencyFlagCountries[currencyCode] || getCountryForCurrency(currencyCode),
     icon: '¤'
   })), [availableCurrencies]);
 

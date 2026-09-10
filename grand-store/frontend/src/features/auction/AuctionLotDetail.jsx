@@ -16,7 +16,8 @@ import GoldenCelebrationShower from './GoldenCelebrationShower';
 import MagicalBidEffect from './MagicalBidEffect';
 import AuctionWinnerCelebrationModal from './components/AuctionWinnerCelebrationModal';
 import AuctionAcquisitionCertificate from './components/AuctionAcquisitionCertificate';
-import { useCurrency } from '../../context/CurrencyContext';
+import { useCurrency, getCountryForCurrency, CURRENCY_SYMBOLS, ZERO_DECIMAL_CURRENCIES } from '../../context/CurrencyContext';
+import { CountryFlag } from '../../components/CountryCodeSelect';
 
 const formatRelativeTime = (dateStr) => {
   if (!dateStr) return '';
@@ -69,29 +70,6 @@ export default function AuctionLotDetail({ onNotify }) {
   const { currency, rates, changeCurrency, availableCurrencies } = useCurrency();
 
   const [now, setNow] = useState(() => Date.now());
-
-  const CURRENCY_SYMBOLS = {
-    ZAR: 'R',
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-    INR: '₹',
-    AUD: 'A$',
-    CAD: 'C$',
-    JPY: '¥',
-    CNY: '¥',
-    CHF: 'CHF',
-    AED: 'AED',
-    SGD: 'S$',
-    HKD: 'HK$',
-    NZD: 'NZ$',
-    BRL: 'R$',
-    KRW: '₩',
-    THB: '฿',
-    NGN: '₦',
-    KES: 'KSh',
-    GHS: 'GH₵',
-  };
 
   const fetchBidderProfile = async () => {
     try {
@@ -766,33 +744,42 @@ export default function AuctionLotDetail({ onNotify }) {
                               className="flex items-center gap-1.5 bg-black/80 hover:bg-white/10 border border-white/20 hover:border-[var(--color-gold)]/60 px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold text-[#f5d77f] transition-all cursor-pointer shadow-md"
                               title="Change bidding currency"
                             >
-                              <span>{activeSymbol}</span>
+                              <CountryFlag iso={getCountryForCurrency(currency)} className="rounded-xs shrink-0" />
+                              {activeSymbol !== currency && (
+                                <span className="text-white/90">{activeSymbol}</span>
+                              )}
                               <span className="text-[11px] text-white/70">{currency}</span>
                               <ChevronDown size={11} className={`text-white/40 transition-transform ${showCurrencyDropdown ? 'rotate-180' : ''}`} />
                             </button>
 
                             {/* Currency Dropdown Menu */}
                             {showCurrencyDropdown && (
-                              <div className="absolute top-full left-0 mt-2 w-44 bg-[#12110e] border border-[#c9a35b]/40 rounded-xl shadow-2xl py-2 z-50 max-h-56 overflow-y-auto scrollbar-thin">
+                              <div className="absolute top-full left-0 mt-2 w-48 bg-[#12110e] border border-[#c9a35b]/40 rounded-xl shadow-2xl py-2 z-50 max-h-56 overflow-y-auto scrollbar-thin">
                                 <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-white/40 font-bold border-b border-white/5 mb-1">
                                   Select Currency
                                 </div>
-                                {(availableCurrencies || ['ZAR', 'USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD']).map((c) => (
-                                  <button
-                                    key={c}
-                                    type="button"
-                                    onClick={() => {
-                                      changeCurrency(c);
-                                      setShowCurrencyDropdown(false);
-                                    }}
-                                    className={`w-full px-3 py-1.5 text-left text-xs font-mono flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer ${
-                                      currency === c ? 'text-[#f5d77f] font-bold bg-white/5' : 'text-white/70'
-                                    }`}
-                                  >
-                                    <span>{CURRENCY_SYMBOLS[c] || c} {c}</span>
-                                    {currency === c && <Check size={12} className="text-[#f5d77f]" />}
-                                  </button>
-                                ))}
+                                {(availableCurrencies || ['ZAR', 'USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD']).map((c) => {
+                                  const sym = CURRENCY_SYMBOLS[c] || c;
+                                  return (
+                                    <button
+                                      key={c}
+                                      type="button"
+                                      onClick={() => {
+                                        changeCurrency(c);
+                                        setShowCurrencyDropdown(false);
+                                      }}
+                                      className={`w-full px-3 py-1.5 text-left text-xs font-mono flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer ${
+                                        currency === c ? 'text-[#f5d77f] font-bold bg-white/5' : 'text-white/70'
+                                      }`}
+                                    >
+                                      <span className="flex items-center gap-2">
+                                        <CountryFlag iso={getCountryForCurrency(c)} className="rounded-xs shrink-0" />
+                                        <span>{sym !== c ? `${sym} ` : ''}{c}</span>
+                                      </span>
+                                      {currency === c && <Check size={12} className="text-[#f5d77f] shrink-0" />}
+                                    </button>
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
@@ -802,10 +789,10 @@ export default function AuctionLotDetail({ onNotify }) {
                             required
                             value={bidAmount}
                             onChange={(e) => setBidAmount(e.target.value)}
-                            placeholder={`Min: ${nextMinimumInCurrency.toLocaleString(undefined, { minimumFractionDigits: currency === 'ZAR' ? 0 : 2, maximumFractionDigits: 2 })}`}
+                            placeholder={`Min: ${nextMinimumInCurrency.toLocaleString(undefined, { minimumFractionDigits: currency === 'ZAR' || ZERO_DECIMAL_CURRENCIES.has(currency) ? 0 : 2, maximumFractionDigits: currency === 'ZAR' || ZERO_DECIMAL_CURRENCIES.has(currency) ? 0 : 2 })}`}
                             min={nextMinimumInCurrency}
-                            step={currency === 'ZAR' ? "1" : "0.01"}
-                            className="w-full bg-transparent border border-white/20 rounded-none py-5 pl-28 pr-6 text-xl font-mono text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)] transition-colors placeholder-white/20"
+                            step={currency === 'ZAR' || ZERO_DECIMAL_CURRENCIES.has(currency) ? "1" : "0.01"}
+                            className="w-full bg-transparent border border-white/20 rounded-none py-5 pl-32 pr-6 text-xl font-mono text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)] transition-colors placeholder-white/20"
                           />
                        </div>
 
