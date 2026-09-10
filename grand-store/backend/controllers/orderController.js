@@ -59,7 +59,10 @@ const addOrderItems = async (req, res) => {
     const customsFees = Number(quote.aggregatedTotals?.estimatedCustomsFees || quote.customsFees || 0);
     
     const calculatedTotal = parseFloat((subTotal + shippingCost).toFixed(2));
-    const commissionAmount = parseFloat(((subTotal * commissionPct) / 100).toFixed(2));
+    const vendorSubTotal = (quote.shipments || [])
+      .filter(s => Boolean(s.vendorId))
+      .reduce((sum, s) => sum + Number(s.subtotal || 0), 0);
+    const commissionAmount = parseFloat(((vendorSubTotal * commissionPct) / 100).toFixed(2));
     const gatewayFeeAmount = parseFloat((calculatedTotal * gatewayFeePct / 100).toFixed(2));
 
     // Calculate Referral/Rewards discounts
@@ -293,20 +296,23 @@ const addOrderItems = async (req, res) => {
       }
       allOrderItems = allOrderItems.concat(shp.items || []);
       
-      const vendorGross = shp.subtotal;
-      const vendorCommission = parseFloat(((vendorGross * commissionPct) / 100).toFixed(2));
-      const vendorVat = shp.taxData.vatAmount;
-      const shippingCostVendorGets = shp.selectedCourier ? shp.selectedCourier.cost : 0;
+      const isVendorShipment = Boolean(shp.vendorId);
+      const vendorGross = Number(shp.subtotal || 0);
+      const vendorCommission = isVendorShipment ? parseFloat(((vendorGross * commissionPct) / 100).toFixed(2)) : 0;
+      const vendorVat = Number(shp.taxData?.vatAmount || 0);
+      const shippingCostVendorGets = (isVendorShipment && shp.selectedCourier) ? Number(shp.selectedCourier.cost || 0) : 0;
       
-      const vendorNet = parseFloat((vendorGross - vendorCommission - vendorVat + shippingCostVendorGets).toFixed(2));
+      const vendorNet = isVendorShipment ? parseFloat((vendorGross - vendorCommission - vendorVat + shippingCostVendorGets).toFixed(2)) : 0;
 
-      vendorPayables.push({
-        vendorId: shp.vendorId,
-        grossAmount: vendorGross,
-        commission: vendorCommission,
-        vatDeducted: vendorVat,
-        netPayable: vendorNet
-      });
+      if (isVendorShipment) {
+        vendorPayables.push({
+          vendorId: shp.vendorId,
+          grossAmount: vendorGross,
+          commission: vendorCommission,
+          vatDeducted: vendorVat,
+          netPayable: vendorNet
+        });
+      }
 
       const shipmentSeqString = `${sequence}-${shipmentSeqCounter.toString().padStart(2, '0')}`;
       const shipmentId = `GS-${year}-${moduleCode}-SHP-${shipmentSeqString}`;

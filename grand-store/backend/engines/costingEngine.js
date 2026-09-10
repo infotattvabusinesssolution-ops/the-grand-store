@@ -201,10 +201,12 @@ class CostingEngine {
       marginStatus = 'warning';
     }
 
-    const totalVendorPayouts = (order.vendorPayables || []).reduce(
-      (sum, vp) => sum + (Number(vp.netPayable) || 0),
-      0
-    );
+    const totalVendorPayouts = (order.vendorPayables || [])
+      .filter(vp => Boolean(vp.vendorId))
+      .reduce(
+        (sum, vp) => sum + (Number(vp.netPayable) || 0),
+        0
+      );
 
     return {
       orderId: order._id || order.orderId,
@@ -212,7 +214,7 @@ class CostingEngine {
       subTotal,
       totalPrice: order.totalPrice,
       grossPlatformCommission,
-      totalVendorPayouts: totalVendorPayouts || (subTotal - grossPlatformCommission),
+      totalVendorPayouts: totalVendorPayouts,
       gatewayFeeTotal: rawGatewayFee,
       gatewayFeeAbsorbedByGS: gsGatewayAbsorbed,
       superCoinsDiscountTotal: superCoinsDiscount,
