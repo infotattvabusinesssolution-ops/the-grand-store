@@ -1,5 +1,4 @@
 const axios = require('axios');
-const { lookup: ipLookup } = require('ip-location-api');
 const geoip = require('geoip-lite');
 
 let cachedRates = null;
@@ -151,30 +150,16 @@ exports.geoLookup = async (req, res) => {
 
     const cleanIp = rawIp ? String(rawIp).replace(/^::ffff:/, '').trim() : '';
 
-    // 4. Primary: Ultra-fast in-memory sapics lookup (0.3 μs, native IPv4 & IPv6 coverage, updated daily)
+    // 4. IP-based lookup for non-private IP (fallback)
     if (!countryCode && cleanIp && !isPrivateIp(cleanIp)) {
       try {
-        const geo = ipLookup(cleanIp);
+        const geo = geoip.lookup(cleanIp);
         if (geo && geo.country) {
           countryCode = geo.country.toUpperCase();
           city = geo.city || null;
-          source = 'sapics_ip_location_db';
+          source = 'geoip_lite';
         }
-      } catch (sapicsErr) {
-        console.warn('[geoLookup] sapics lookup warning:', sapicsErr.message);
-      }
-
-      // Secondary offline fallback: geoip-lite
-      if (!countryCode) {
-        try {
-          const legacyGeo = geoip.lookup(cleanIp);
-          if (legacyGeo && legacyGeo.country) {
-            countryCode = legacyGeo.country.toUpperCase();
-            city = legacyGeo.city || null;
-            source = 'geoip_lite';
-          }
-        } catch (legacyErr) {}
-      }
+      } catch (err) {}
     }
 
     // 5. Fallback for private IP / local development: fast server-side external query
