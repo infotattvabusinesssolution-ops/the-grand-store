@@ -9,6 +9,7 @@
     "test": "node --test test/payfast-itn.test.js",
     "test:checkout-phone": "node --test test/checkout-phone.test.js",
     "test:email-branding": "node --test test/email-branding.test.js",
+    "test:wine-enquiry": "node --test test/wine-enquiry.test.js",
     "catalog:import": "node scripts/importFrontendProductWorkbooks.js",
     "catalog:wine": "node scripts/seedWine.js",
     "catalog:wine-images": "node scripts/seedWineImages.js",

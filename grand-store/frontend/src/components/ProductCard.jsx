@@ -272,6 +272,7 @@ export default function ProductCard({
   isCompared = false,
   onQuickView,
 }) {
+  const navigate = useNavigate();
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const productId = product.id || product._id;
   const productPath = `/product/${product.slug || productId}`;

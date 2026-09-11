@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Navigate, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, Gavel, Wallet, Settings, Menu, X, LogOut, ArrowLeft, Star, Package, ShoppingBag, Tv, Mail, Activity, Briefcase, Shield, Gem, Award, MessageSquare, Bot, CalendarCheck, Tag, Layers, Flame, UserCheck, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Gavel, Wallet, Settings, Menu, X, LogOut, ArrowLeft, Star, Package, ShoppingBag, Tv, Mail, Activity, Briefcase, Shield, Gem, Award, MessageSquare, Bot, CalendarCheck, Tag, Layers, Flame, Wine, UserCheck, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AdminLayout() {
@@ -174,6 +174,9 @@ export default function AdminLayout() {
                 </button>
                 <button onClick={() => handleNavigate('/admin/cigar-enquiries')} className={navItemClass('/admin/cigar-enquiries')}>
                   <Flame size={16} /> Cigar Enquiries
+                </button>
+                <button onClick={() => handleNavigate('/admin/wine-enquiries')} className={navItemClass('/admin/wine-enquiries')}>
+                  <Wine size={16} /> Wine Enquiries
                 </button>
               </>
             )}

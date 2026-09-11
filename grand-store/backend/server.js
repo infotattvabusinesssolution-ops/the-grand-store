@@ -31,6 +31,9 @@ let allowedOrigins = process.env.ALLOWED_ORIGINS
       "http://localhost:5173",
       "http://localhost:5174",
       "http://localhost:5175",
+      "http://localhost:5176",
+      "http://localhost:5177",
+      "http://localhost:5178",
       "http://localhost:56842",
     ];
 
@@ -45,6 +48,10 @@ const productionDomains = [
   "http://www.grandstore.yogapranafitness.com",
   "https://cigar.yogapranafitness.com",
   "https://www.cigar.yogapranafitness.com",
+  "https://millionaires.yogapranafitness.com",
+  "https://www.millionaires.yogapranafitness.com",
+  "https://millionairestore.yogapranafitness.com",
+  "https://www.millionairestore.yogapranafitness.com",
 ];
 
 productionDomains.forEach((domain) => {
@@ -186,6 +193,7 @@ app.use("/api/glossary", glossaryRoutes);
 app.use("/api/config", configRoutes);
 app.use("/api/trade-enquiries", require("./routes/tradeEnquiryRoutes"));
 app.use("/api/cigar-enquiries", require("./routes/cigarEnquiryRoutes"));
+app.use("/api/wine-enquiries", require("./routes/wineEnquiryRoutes"));
 app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/advertisements", require("./routes/advertisementRoutes"));
 app.use('/api/chatbot', chatbotRoutes);
