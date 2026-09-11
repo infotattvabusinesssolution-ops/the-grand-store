@@ -104,13 +104,13 @@ export default function EventsHub() {
               <Filter size={15} className="text-[#d8b76d]" />
               Browse by experience
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex overflow-x-auto sm:flex-wrap gap-2 pb-2 sm:pb-0 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden -mx-5 px-5 sm:mx-0 sm:px-0">
               {categories.map((category) => (
                 <button
                   key={category}
                   type="button"
                   onClick={() => setFilterType(category)}
-                  className={`border px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] transition-colors md:px-5 ${
+                  className={`shrink-0 whitespace-nowrap border px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] transition-colors md:px-5 ${
                     filterType === category
                       ? 'border-[#c9a35b] bg-[#c9a35b] text-[#0b0a08]'
                       : 'border-white/15 bg-[#15130f] text-[#aaa296] hover:border-[#c9a35b]/70 hover:text-[#eee8dd]'
