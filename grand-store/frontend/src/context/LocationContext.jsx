@@ -143,13 +143,20 @@ export function LocationProvider({ children }) {
         const lastIp = localStorage.getItem('userLastIp');
         const isManual = localStorage.getItem('userCountryManual') === 'true';
         const savedCountry = localStorage.getItem('userCountry');
-        const ipChanged = detected?.ip && lastIp && detected.ip !== lastIp;
+        const parsedSaved = savedCountry ? (() => {
+          try { return JSON.parse(savedCountry); } catch { return null; }
+        })() : null;
 
-        // If IP changed (VPN connected/disconnected or network switched), adapt automatically
-        if (ipChanged && detected && isMounted) {
+        // If detected country differs from saved country (VPN toggled, network changed, or old stuck default):
+        const countryChanged = Boolean(detected?.country_code && parsedSaved?.country_code && detected.country_code !== parsedSaved.country_code);
+        const isStuckOnDefaultZa = parsedSaved?.country_code === 'ZA' && detected?.country_code && detected.country_code !== 'ZA';
+        const ipChanged = Boolean(detected?.ip && lastIp && detected.ip !== lastIp);
+
+        // If location changed via VPN/network or stuck on old default, immediately adopt detected location
+        if ((countryChanged || ipChanged || isStuckOnDefaultZa || !parsedSaved) && detected && isMounted) {
           localStorage.removeItem('userCountryManual');
           localStorage.removeItem('userCurrencyManual');
-          localStorage.setItem('userLastIp', detected.ip);
+          if (detected.ip) localStorage.setItem('userLastIp', detected.ip);
           localStorage.setItem('userCountry', JSON.stringify({
             country_code: detected.country_code,
             country_name: detected.country_name,
@@ -172,25 +179,19 @@ export function LocationProvider({ children }) {
           return;
         }
 
-        // If user manually chose a country on this same IP, respect their manual choice
-        if (!ipChanged && isManual && savedCountry) {
-          try {
-            const parsedCountry = JSON.parse(savedCountry);
-            const matchedCountry = countries.find((c) => c.code === parsedCountry.country_code);
-            if (matchedCountry && isMounted) {
-              setLocation({
-                country_code: matchedCountry.code,
-                country_name: matchedCountry.name,
-                currency: parsedCountry.currency || getCurrencyForCountry(matchedCountry.code),
-                isLoading: false,
-                isManual: true,
-                error: null
-              });
-              return;
-            }
-          } catch {
-            localStorage.removeItem('userCountry');
-            localStorage.removeItem('userCountryManual');
+        // If user manually chose a country on this exact same location, respect their choice
+        if (isManual && parsedSaved?.country_code) {
+          const matchedCountry = countries.find((c) => c.code === parsedSaved.country_code);
+          if (matchedCountry && isMounted) {
+            setLocation({
+              country_code: matchedCountry.code,
+              country_name: matchedCountry.name,
+              currency: parsedSaved.currency || getCurrencyForCountry(matchedCountry.code),
+              isLoading: false,
+              isManual: true,
+              error: null
+            });
+            return;
           }
         }
 

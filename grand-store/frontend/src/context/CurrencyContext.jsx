@@ -193,13 +193,19 @@ export const CurrencyProvider = ({ children }) => {
       const isManual = localStorage.getItem('userCurrencyManual') === 'true';
       const savedCurrency = localStorage.getItem('userCurrency');
 
-      if (isManual && savedCurrency) {
-        // User explicitly picked this currency in the past; respect their choice
+      // If saved currency is stuck on 'ZAR' default while detected is different (e.g. INR, JPY, USD), auto-adopt detected
+      const isStuckOnZar = savedCurrency === 'ZAR' && geoCurrency && geoCurrency !== 'ZAR';
+
+      if (!isStuckOnZar && isManual && savedCurrency) {
+        // User explicitly picked a genuine currency; respect their choice
         setCurrency(savedCurrency);
       } else if (geoCurrency) {
-        // Auto-adopt detected geo currency (e.g. INR for India)
+        // Auto-adopt detected geo currency (e.g. INR for India, JPY for Japan)
         setCurrency(geoCurrency);
         localStorage.setItem('userCurrency', geoCurrency);
+        if (isStuckOnZar) {
+          localStorage.removeItem('userCurrencyManual');
+        }
       } else if (savedCurrency) {
         setCurrency(savedCurrency);
       }
