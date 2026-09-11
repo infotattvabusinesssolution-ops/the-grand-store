@@ -16,7 +16,7 @@ const testimonialRoutes = require("./routes/testimonialRoutes");
 const attributeRoutes = require("./routes/attributeRoutes");
 const glossaryRoutes = require("./routes/glossaryRoutes");
 const app = express();
-app.set('trust proxy', 1);
+app.set('trust proxy', true);
 
 app.use((req, res, next) => {
   console.log(`[API] ${req.method} ${req.originalUrl}`);

@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { lookup: ipLookup } = require('ip-location-api');
 const geoip = require('geoip-lite');
 
 let cachedRates = null;
@@ -150,26 +151,50 @@ exports.geoLookup = async (req, res) => {
 
     const cleanIp = rawIp ? String(rawIp).replace(/^::ffff:/, '').trim() : '';
 
-    // 4. Local fast offline geoip-lite lookup
+    // 4. Primary: Ultra-fast in-memory sapics lookup (0.3 μs, native IPv4 & IPv6 coverage, updated daily)
     if (!countryCode && cleanIp && !isPrivateIp(cleanIp)) {
-      const geo = geoip.lookup(cleanIp);
-      if (geo && geo.country) {
-        countryCode = geo.country.toUpperCase();
-        city = geo.city || null;
-        source = 'geoip_lite';
+      try {
+        const geo = ipLookup(cleanIp);
+        if (geo && geo.country) {
+          countryCode = geo.country.toUpperCase();
+          city = geo.city || null;
+          source = 'sapics_ip_location_db';
+        }
+      } catch (sapicsErr) {
+        console.warn('[geoLookup] sapics lookup warning:', sapicsErr.message);
+      }
+
+      // Secondary offline fallback: geoip-lite
+      if (!countryCode) {
+        try {
+          const legacyGeo = geoip.lookup(cleanIp);
+          if (legacyGeo && legacyGeo.country) {
+            countryCode = legacyGeo.country.toUpperCase();
+            city = legacyGeo.city || null;
+            source = 'geoip_lite';
+          }
+        } catch (legacyErr) {}
       }
     }
 
     // 5. Fallback for private IP / local development: fast server-side external query
     if (!countryCode && (!cleanIp || isPrivateIp(cleanIp))) {
       try {
-        const extRes = await axios.get('https://api.country.is', { timeout: 2000 });
-        if (extRes.data && extRes.data.country) {
-          countryCode = extRes.data.country.toUpperCase();
-          source = 'server_external';
+        // Fast Cloudflare Anycast trace (50ms, never blocked, HTTPS)
+        const cfTrace = await axios.get('https://1.1.1.1/cdn-cgi/trace', { timeout: 1500 });
+        const match = typeof cfTrace.data === 'string' && cfTrace.data.match(/loc=([A-Z]{2})/);
+        if (match && match[1]) {
+          countryCode = match[1].toUpperCase();
+          source = 'cloudflare_trace_server';
         }
-      } catch (extErr) {
-        // Fall through to default
+      } catch {
+        try {
+          const extRes = await axios.get('https://api.country.is', { timeout: 1500 });
+          if (extRes.data && extRes.data.country) {
+            countryCode = extRes.data.country.toUpperCase();
+            source = 'server_external';
+          }
+        } catch (extErr) {}
       }
     }
 

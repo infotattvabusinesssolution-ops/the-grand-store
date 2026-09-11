@@ -57,55 +57,90 @@ export function LocationProvider({ children }) {
         }
       }
 
-      // 2. Perform automated geo-lookup (First-party backend endpoint -> External fallback)
+      // 2. Perform automated geo-lookup
+      // Primary: Direct client-side Cloudflare Anycast Trace (matches newsletter logic, ~30ms, never blocked, bypasses proxy/datacenter masking)
       try {
         let detected = null;
 
-        // Step A: First-party backend endpoint (unblocked by ad-blockers, uses Cloudflare cf-ipcountry in production)
+        // Step 1: Direct Cloudflare Anycast Trace from browser (fast, edge-based, ad-blocker immune)
         try {
-          const res = await api.get('/config/geo-lookup', { timeout: 4000 });
-          if (res.data && res.data.success && res.data.country_code) {
-            const matched = countries.find((c) => c.code === res.data.country_code);
+          const cfResponse = await fetch('https://1.1.1.1/cdn-cgi/trace');
+          const cfText = await cfResponse.text();
+          const cfData = {};
+          cfText.trim().split('\n').forEach(line => {
+            const [key, value] = line.split('=');
+            if (key && value) cfData[key.trim()] = value.trim();
+          });
+
+          if (cfData.loc && cfData.loc.length === 2) {
+            const code = cfData.loc.toUpperCase();
+            const matched = countries.find(c => c.code === code);
+            const countryName = regionNames?.of(code) || matched?.name || getCountryName(code) || code;
             detected = {
-              country_code: res.data.country_code,
-              country_name: res.data.country_name || matched?.name || res.data.country_code,
-              currency: res.data.currency || getCurrencyForCountry(res.data.country_code)
+              country_code: code,
+              country_name: countryName,
+              currency: getCurrencyForCountry(code),
+              ip: cfData.ip || null,
+              source: 'cloudflare_edge_client'
             };
           }
-        } catch (apiErr) {
-          // Backend call failed or offline, fall through to client-side fallback
+        } catch (cfErr) {
+          // Cloudflare Anycast trace unreachable or blocked, proceed to fallback
         }
 
-        // Step B: Secondary fallback via external IP lookup services
+        // Step 2: Client-side fallback (matches Footer.jsx: ipapi.co or api.country.is)
         if (!detected) {
           try {
-            const fallbackRes = await axios.get('https://api.country.is', { timeout: 3500 });
-            if (fallbackRes.data && fallbackRes.data.country) {
-              const code = fallbackRes.data.country.toUpperCase();
+            const geoResponse = await fetch('https://ipapi.co/json/');
+            const geoData = await geoResponse.json();
+            if (geoData.country_code && geoData.country_code.length === 2) {
+              const code = geoData.country_code.toUpperCase();
               const matched = countries.find(c => c.code === code);
               detected = {
                 country_code: code,
-                country_name: matched ? matched.name : code,
-                currency: getCurrencyForCountry(code)
+                country_name: geoData.country_name || regionNames?.of(code) || matched?.name || code,
+                currency: geoData.currency || getCurrencyForCountry(code),
+                ip: geoData.ip || null,
+                source: 'ipapi_client'
               };
             }
           } catch {
             try {
-              const ipwhoRes = await axios.get('https://ipwho.is/', { timeout: 3500 });
-              if (ipwhoRes.data && ipwhoRes.data.success && ipwhoRes.data.country_code) {
-                const code = ipwhoRes.data.country_code.toUpperCase();
+              const fallbackRes = await fetch('https://api.country.is');
+              const fallbackData = await fallbackRes.json();
+              if (fallbackData.country && fallbackData.country.length === 2) {
+                const code = fallbackData.country.toUpperCase();
                 const matched = countries.find(c => c.code === code);
                 detected = {
                   country_code: code,
-                  country_name: ipwhoRes.data.country || matched?.name || code,
-                  currency: getCurrencyForCountry(code)
+                  country_name: regionNames?.of(code) || matched?.name || code,
+                  currency: getCurrencyForCountry(code),
+                  ip: fallbackData.ip || null,
+                  source: 'country_is_client'
                 };
               }
             } catch {}
           }
         }
 
-        // Step C: Instant Zero-Network Timezone Heuristic (works offline, never blocked by ad-blockers)
+        // Step 3: First-party backend endpoint fallback
+        if (!detected) {
+          try {
+            const res = await api.get('/config/geo-lookup', { timeout: 4000 });
+            if (res.data && res.data.success && res.data.country_code) {
+              const matched = countries.find((c) => c.code === res.data.country_code);
+              detected = {
+                country_code: res.data.country_code,
+                country_name: res.data.country_name || matched?.name || res.data.country_code,
+                currency: res.data.currency || getCurrencyForCountry(res.data.country_code),
+                ip: res.data.ip || null,
+                source: 'backend_geo_lookup'
+              };
+            }
+          } catch (apiErr) {}
+        }
+
+        // Step 4: Instant Zero-Network Timezone Heuristic
         if (!detected) {
           const tzCountry = getCountryFromTimezone();
           if (tzCountry) {
@@ -113,11 +148,13 @@ export function LocationProvider({ children }) {
             detected = {
               country_code: tzCountry,
               country_name: matched ? matched.name : getCountryName(tzCountry),
-              currency: getCurrencyForCountry(tzCountry)
+              currency: getCurrencyForCountry(tzCountry),
+              source: 'timezone_heuristic'
             };
           }
         }
 
+        // Step 5: Save detected location or fallback to South Africa (ZA / ZAR)
         if (detected && detected.country_code && isMounted) {
           setLocation({
             country_code: detected.country_code,
@@ -135,7 +172,6 @@ export function LocationProvider({ children }) {
           return;
         }
 
-        // Step C: Ultimate default (South Africa)
         if (isMounted) {
           setLocation({
             country_code: 'ZA',
