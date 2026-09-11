@@ -70,6 +70,33 @@ export default function AuctionLotDetail({ onNotify }) {
   const { currency, rates, changeCurrency, availableCurrencies } = useCurrency();
 
   const [now, setNow] = useState(() => Date.now());
+  const [shareToast, setShareToast] = useState(false);
+
+  const handleShare = async () => {
+    if (!lot) return;
+    const shareData = {
+      title: `${lot.title} | The Grand Store Auction`,
+      text: `Inspect Lot #${lot.lotNumber}: ${lot.title} on The Grand Store Auction Vault`,
+      url: window.location.href,
+    };
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error(err);
+        }
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShareToast(true);
+      setTimeout(() => setShareToast(false), 2400);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchBidderProfile = async () => {
     try {
@@ -406,21 +433,43 @@ export default function AuctionLotDetail({ onNotify }) {
         schema={auctionSchema}
       />
       
-      {/* Top Navigation Bar */}
-      <nav className="w-full border-b border-white/[0.05] bg-[#050505] sticky top-0 z-50 px-8 py-6 flex items-center justify-between">
-        <Link to="/auction" className="inline-flex items-center gap-3 text-[10px] uppercase tracking-widest font-bold text-[var(--color-ivory-muted)] hover:text-[var(--color-gold)] transition-colors group">
-          <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-          Back to Live Catalogue
-        </Link>
-        <div className="flex items-center gap-4">
-           {isLive && !hasEnded && (
-             <span className="flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold text-red-500">
-               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> Live
-             </span>
-           )}
-           <span className="text-[10px] uppercase tracking-widest font-bold text-[var(--color-ivory-muted)] px-3 py-1 border border-white/10 rounded-full">
-             Lot {lot.lotNumber}
-           </span>
+      {/* Top Navigation Bar - Centered, Minimal Luxury */}
+      <nav className="w-full border-b border-white/[0.08] bg-[#050505]/95 backdrop-blur-xl sticky top-0 z-50 px-4 sm:px-8 py-3 shadow-[0_4px_24px_rgba(0,0,0,0.6)]">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          
+          {/* Left: Clean, Elegant Return to Catalogue */}
+          <Link 
+            to="/auction" 
+            className="inline-flex items-center gap-2 text-stone-400 hover:text-[#f5d77f] text-xs uppercase tracking-widest font-semibold transition-all group active:scale-95"
+            aria-label="Return to live catalogue"
+          >
+            <ChevronLeft size={16} className="text-[#c9a35b] group-hover:-translate-x-0.5 transition-transform shrink-0" />
+            <span className="hidden sm:inline">Back to Live Catalogue</span>
+            <span className="sm:hidden text-[11px]">Catalogue</span>
+          </Link>
+
+          {/* Right: Live Bidding / Auction Phase Indicator */}
+          <div className="flex items-center gap-2">
+            {isLive && !hasEnded ? (
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-950/40 border border-red-500/30 text-red-400 text-[11px] font-bold uppercase tracking-wider shadow-[0_0_12px_rgba(239,68,68,0.25)]">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]" />
+                </span>
+                <span>Live Bidding Open</span>
+              </div>
+            ) : isUpcoming ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-950/40 border border-blue-500/30 text-blue-400 text-[11px] font-bold uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                <span>Upcoming Lot</span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/5 border border-white/10 text-stone-400 text-[11px] font-bold uppercase tracking-wider">
+                <span>Auction Concluded</span>
+              </div>
+            )}
+          </div>
+
         </div>
       </nav>
 
@@ -526,24 +575,39 @@ export default function AuctionLotDetail({ onNotify }) {
             
             {/* Header section */}
             <div className="mb-12">
-              <div className="flex flex-wrap items-center gap-3 mb-6">
-                <span className="text-gold-gradient text-[11px] uppercase tracking-widest font-bold">
-                  LOT {lot.lotNumber || `GS-${lot._id.slice(-6).toUpperCase()}`}
-                </span>
-                <span className="text-white/20">•</span>
-                <span className="text-white/60 text-[11px] uppercase tracking-widest font-medium">{lot.category}</span>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="text-gold-gradient text-[11px] uppercase tracking-widest font-bold">
+                    LOT {lot.lotNumber || `GS-${lot._id.slice(-6).toUpperCase()}`}
+                  </span>
+                  <span className="text-white/20">•</span>
+                  <span className="text-white/60 text-[11px] uppercase tracking-widest font-medium">{lot.category}</span>
+                </div>
                 
-                {isLive && (
-                  lot.reserveMet ? (
-                    <span className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      🟢 Reserve Met
-                    </span>
-                  ) : (
-                    <span className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      🔴 Reserve Not Met
-                    </span>
-                  )
-                )}
+                <div className="flex items-center gap-2.5 ml-auto">
+                  {/* Share button */}
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] hover:bg-[#c9a35b]/15 border border-white/10 hover:border-[#c9a35b]/40 text-stone-300 hover:text-[#f5d77f] text-xs font-medium transition-all cursor-pointer shadow-sm active:scale-95"
+                    title="Share this lot"
+                  >
+                    <Share2 size={12} className="text-[#c9a35b]" />
+                    <span>Share</span>
+                  </button>
+
+                  {isLive && (
+                    lot.reserveMet ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        🟢 Reserve Met
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        🔴 Reserve Not Met
+                      </span>
+                    )
+                  )}
+                </div>
               </div>
 
               {lot.isExtended && (
@@ -1242,6 +1306,14 @@ export default function AuctionLotDetail({ onNotify }) {
         }}
         onNotify={onNotify}
       />
+
+      {/* Floating Share Confirmation Toast */}
+      {shareToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#12110e] border border-[#c9a35b]/50 text-[#f5d77f] text-xs uppercase tracking-wider font-bold py-2.5 px-4 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200 flex items-center gap-2">
+          <span>✓</span>
+          <span>Link Copied to Clipboard</span>
+        </div>
+      )}
     </main>
   );
 }
