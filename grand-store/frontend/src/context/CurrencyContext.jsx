@@ -107,53 +107,110 @@ const formatCurrencyAmount = (amount, currencyCode) => {
   return `${symbol}\u00A0${formatted}`;
 };
 
+// Comprehensive fallback exchange rates (relative to USD = 1)
+export const DEFAULT_RATES = {
+  USD: 1,
+  ZAR: 18.5,
+  EUR: 0.92,
+  GBP: 0.79,
+  INR: 83.5,
+  AUD: 1.52,
+  CAD: 1.36,
+  JPY: 155.0,
+  CNY: 7.23,
+  CHF: 0.90,
+  AED: 3.67,
+  SGD: 1.35,
+  HKD: 7.82,
+  NZD: 1.67,
+  BRL: 5.65,
+  KRW: 1380,
+  THB: 36.5,
+  NGN: 1550,
+  KES: 130,
+  GHS: 15.5,
+  CLP: 930,
+  COP: 4100,
+  MXN: 18.2,
+  ARS: 950,
+  PHP: 58.5,
+  VND: 25400,
+  IDR: 16200,
+  MYR: 4.70,
+  PLN: 3.95,
+  SEK: 10.5,
+  NOK: 10.7,
+  DKK: 6.85,
+  CZK: 23.2,
+  HUF: 365,
+  ILS: 3.75,
+  TRY: 33.0,
+  RUB: 90.0,
+  SAR: 3.75,
+  BWP: 13.5,
+  NAD: 18.5,
+  MUR: 46.5,
+  EGP: 48.5,
+};
+
 export const CurrencyProvider = ({ children }) => {
   const [currency, setCurrency] = useState('ZAR'); // Default is ZAR
-  const [rates, setRates] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [rates, setRates] = useState(DEFAULT_RATES);
+  const [loading, setLoading] = useState(false);
   const { currency: geoCurrency, isLoading: geoLoading } = useGeoLocation();
 
   useEffect(() => {
     const initCurrency = async () => {
+      // 1. Fetch live rates from backend
       try {
-        // 1. Fetch Exchange Rates
-        const ratesRes = await api.get(`/config/currency-rates`);
+        const ratesRes = await api.get(`/config/currency-rates`, { timeout: 4000 });
         if (ratesRes.data && ratesRes.data.rates) {
-          setRates(ratesRes.data.rates);
+          setRates((prev) => ({ ...prev, ...ratesRes.data.rates }));
+          return;
         }
       } catch (error) {
-        console.error('Error initializing currency context:', error);
-      } finally {
-        setLoading(false);
+        console.warn('[Currency] Backend currency-rates unreachable, trying direct exchange API:', error?.message);
+      }
+
+      // 2. Fallback: Direct public exchange rate API if backend is 502 / offline
+      try {
+        const directRes = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+        const directData = await directRes.json();
+        if (directData && directData.rates) {
+          setRates((prev) => ({ ...prev, ...directData.rates }));
+        }
+      } catch (directErr) {
+        console.warn('[Currency] Direct exchange rate API unreachable, active with DEFAULT_RATES:', directErr?.message);
       }
     };
 
     initCurrency();
   }, []);
 
+  // Sync currency with detected geolocation or saved preference
   useEffect(() => {
-    if (!geoLoading && rates) {
+    if (!geoLoading) {
       const isManual = localStorage.getItem('userCurrencyManual') === 'true';
       const savedCurrency = localStorage.getItem('userCurrency');
 
-      if (isManual && savedCurrency && (savedCurrency === 'ZAR' || rates[savedCurrency])) {
+      if (isManual && savedCurrency) {
         // User explicitly picked this currency in the past; respect their choice
         setCurrency(savedCurrency);
-      } else if (geoCurrency && (geoCurrency === 'ZAR' || rates[geoCurrency])) {
-        // First-time or non-manual visitor: auto-adopt detected geo currency
+      } else if (geoCurrency) {
+        // Auto-adopt detected geo currency (e.g. INR for India)
         setCurrency(geoCurrency);
         localStorage.setItem('userCurrency', geoCurrency);
-      } else if (savedCurrency && (savedCurrency === 'ZAR' || rates[savedCurrency])) {
+      } else if (savedCurrency) {
         setCurrency(savedCurrency);
       }
     }
-  }, [geoLoading, geoCurrency, rates]);
+  }, [geoLoading, geoCurrency]);
 
   // Listen for manual country changes from LocationContext / Header
   useEffect(() => {
     const handleCountryChanged = (e) => {
       const targetCurrency = e.detail?.currency;
-      if (targetCurrency && (targetCurrency === 'ZAR' || rates?.[targetCurrency])) {
+      if (targetCurrency) {
         setCurrency(targetCurrency);
         localStorage.setItem('userCurrency', targetCurrency);
       }
@@ -163,10 +220,10 @@ export const CurrencyProvider = ({ children }) => {
     return () => {
       window.removeEventListener('country-manual-changed', handleCountryChanged);
     };
-  }, [rates]);
+  }, []);
 
   const changeCurrency = (newCurrency) => {
-    if (newCurrency === 'ZAR' || rates?.[newCurrency]) {
+    if (newCurrency) {
       setCurrency(newCurrency);
       localStorage.setItem('userCurrency', newCurrency);
       localStorage.setItem('userCurrencyManual', 'true');
@@ -179,19 +236,32 @@ export const CurrencyProvider = ({ children }) => {
     const num = parseFloat(numericStr);
     if (isNaN(num)) return amountInZar;
 
-    // If no rates loaded or viewing in base currency or missing rates, fallback to base ZAR
-    if (!rates || currency === 'ZAR' || !rates['ZAR'] || !rates[currency]) {
+    const currentRates = rates || DEFAULT_RATES;
+
+    // If viewing in base currency or missing rates, fallback to base ZAR
+    if (currency === 'ZAR' || !currentRates['ZAR'] || !currentRates[currency]) {
       return formatCurrencyAmount(num, 'ZAR');
     }
 
     // Convert: ZAR -> USD -> Target Currency
     // Since rates are based in USD (1 USD = X ZAR, 1 USD = Y Currency)
-    const rateZarToUsd = 1 / rates['ZAR'];
+    const rateZarToUsd = 1 / currentRates['ZAR'];
     const amountInUsd = num * rateZarToUsd;
-    const amountInTarget = amountInUsd * rates[currency];
+    const amountInTarget = amountInUsd * currentRates[currency];
 
     return formatCurrencyAmount(amountInTarget, currency);
   };
+
+  // Combine all known currencies so the user can search and select ANY currency
+  const availableCurrencies = Array.from(new Set([
+    'ZAR', 'INR', 'USD', 'EUR', 'GBP', 'AED', 'AUD', 'CAD', 'JPY', 'CNY', 'CHF',
+    'SGD', 'HKD', 'NZD', 'BRL', 'KRW', 'THB', 'NGN', 'KES', 'GHS', 'CLP', 'COP',
+    'MXN', 'ARS', 'PHP', 'VND', 'IDR', 'MYR', 'PLN', 'SEK', 'NOK', 'DKK', 'CZK',
+    'HUF', 'ILS', 'TRY', 'RUB', 'SAR', 'BWP', 'NAD', 'MUR', 'EGP',
+    ...Object.keys(CURRENCY_SYMBOLS),
+    ...Object.keys(DEFAULT_RATES),
+    ...Object.keys(rates || {})
+  ])).sort();
 
   return (
     <CurrencyContext.Provider value={{
@@ -200,9 +270,7 @@ export const CurrencyProvider = ({ children }) => {
       loading,
       changeCurrency,
       formatPrice: convertAndFormat,
-      availableCurrencies: rates
-        ? Array.from(new Set(['ZAR', ...Object.keys(rates)])).sort()
-        : ['ZAR']
+      availableCurrencies
     }}>
       {children}
     </CurrencyContext.Provider>
