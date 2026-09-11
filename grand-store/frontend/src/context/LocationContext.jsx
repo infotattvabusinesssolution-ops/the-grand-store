@@ -33,65 +33,50 @@ export function LocationProvider({ children }) {
     let isMounted = true;
 
     const fetchLocation = async () => {
-      // 1. Check if user previously manually selected a country
-      const isManual = localStorage.getItem('userCountryManual') === 'true';
-      const savedCountry = localStorage.getItem('userCountry');
-      if (isManual && savedCountry) {
-        try {
-          const parsedCountry = JSON.parse(savedCountry);
-          const matchedCountry = countries.find((c) => c.code === parsedCountry.country_code);
-          if (matchedCountry && isMounted) {
-            setLocation({
-              country_code: matchedCountry.code,
-              country_name: matchedCountry.name,
-              currency: parsedCountry.currency || getCurrencyForCountry(matchedCountry.code),
-              isLoading: false,
-              isManual: true,
-              error: null
-            });
-            return;
-          }
-        } catch {
-          localStorage.removeItem('userCountry');
-          localStorage.removeItem('userCountryManual');
-        }
-      }
-
-      // 2. Perform automated geo-lookup
-      // Primary: Direct client-side Cloudflare Anycast Trace (matches newsletter logic, ~30ms, never blocked, bypasses proxy/datacenter masking)
+      // Perform automated geo-lookup with instant VPN/IP change detection
+      // Supports both domain-based VPN extensions (www.cloudflare.com) and desktop VPNs (1.1.1.1)
       try {
         let detected = null;
 
-        // Step 1: Direct Cloudflare Anycast Trace from browser (fast, edge-based, ad-blocker immune)
-        try {
-          const cfResponse = await fetch('https://1.1.1.1/cdn-cgi/trace');
-          const cfText = await cfResponse.text();
-          const cfData = {};
-          cfText.trim().split('\n').forEach(line => {
-            const [key, value] = line.split('=');
-            if (key && value) cfData[key.trim()] = value.trim();
-          });
+        // Step 1: Direct Cloudflare Anycast Trace with cache busting
+        // www.cloudflare.com is intercepted by browser extension VPNs; 1.1.1.1 covers desktop VPNs
+        const traceUrls = [
+          `https://www.cloudflare.com/cdn-cgi/trace?_t=${Date.now()}`,
+          `https://1.1.1.1/cdn-cgi/trace?_t=${Date.now()}`
+        ];
 
-          if (cfData.loc && cfData.loc.length === 2) {
-            const code = cfData.loc.toUpperCase();
-            const matched = countries.find(c => c.code === code);
-            const countryName = regionNames?.of(code) || matched?.name || getCountryName(code) || code;
-            detected = {
-              country_code: code,
-              country_name: countryName,
-              currency: getCurrencyForCountry(code),
-              ip: cfData.ip || null,
-              source: 'cloudflare_edge_client'
-            };
-          }
-        } catch (cfErr) {
-          // Cloudflare Anycast trace unreachable or blocked, proceed to fallback
+        for (const url of traceUrls) {
+          try {
+            const cfResponse = await fetch(url, { cache: 'no-store' });
+            if (cfResponse.ok) {
+              const cfText = await cfResponse.text();
+              const cfData = {};
+              cfText.trim().split('\n').forEach(line => {
+                const [key, value] = line.split('=');
+                if (key && value) cfData[key.trim()] = value.trim();
+              });
+
+              if (cfData.loc && cfData.loc.length === 2) {
+                const code = cfData.loc.toUpperCase();
+                const matched = countries.find(c => c.code === code);
+                const countryName = regionNames?.of(code) || matched?.name || getCountryName(code) || code;
+                detected = {
+                  country_code: code,
+                  country_name: countryName,
+                  currency: getCurrencyForCountry(code),
+                  ip: cfData.ip || null,
+                  source: url.includes('www.cloudflare') ? 'cloudflare_domain_client' : 'cloudflare_edge_client'
+                };
+                break;
+              }
+            }
+          } catch (e) {}
         }
 
         // Step 2: Client-side fallback (matches Footer.jsx: ipapi.co or api.country.is)
         if (!detected) {
           try {
-            const geoResponse = await fetch('https://ipapi.co/json/');
+            const geoResponse = await fetch(`https://ipapi.co/json/?_t=${Date.now()}`, { cache: 'no-store' });
             const geoData = await geoResponse.json();
             if (geoData.country_code && geoData.country_code.length === 2) {
               const code = geoData.country_code.toUpperCase();
@@ -106,7 +91,7 @@ export function LocationProvider({ children }) {
             }
           } catch {
             try {
-              const fallbackRes = await fetch('https://api.country.is');
+              const fallbackRes = await fetch(`https://api.country.is?_t=${Date.now()}`, { cache: 'no-store' });
               const fallbackData = await fallbackRes.json();
               if (fallbackData.country && fallbackData.country.length === 2) {
                 const code = fallbackData.country.toUpperCase();
@@ -154,8 +139,64 @@ export function LocationProvider({ children }) {
           }
         }
 
-        // Step 5: Save detected location or fallback to South Africa (ZA / ZAR)
+        // Check if user changed networks or toggled a VPN
+        const lastIp = localStorage.getItem('userLastIp');
+        const isManual = localStorage.getItem('userCountryManual') === 'true';
+        const savedCountry = localStorage.getItem('userCountry');
+        const ipChanged = detected?.ip && lastIp && detected.ip !== lastIp;
+
+        // If IP changed (VPN connected/disconnected or network switched), adapt automatically
+        if (ipChanged && detected && isMounted) {
+          localStorage.removeItem('userCountryManual');
+          localStorage.removeItem('userCurrencyManual');
+          localStorage.setItem('userLastIp', detected.ip);
+          localStorage.setItem('userCountry', JSON.stringify({
+            country_code: detected.country_code,
+            country_name: detected.country_name,
+            currency: detected.currency
+          }));
+          localStorage.setItem('userCurrency', detected.currency);
+
+          setLocation({
+            country_code: detected.country_code,
+            country_name: detected.country_name,
+            currency: detected.currency,
+            isLoading: false,
+            isManual: false,
+            error: null
+          });
+
+          window.dispatchEvent(new CustomEvent('country-manual-changed', {
+            detail: { country_code: detected.country_code, currency: detected.currency }
+          }));
+          return;
+        }
+
+        // If user manually chose a country on this same IP, respect their manual choice
+        if (!ipChanged && isManual && savedCountry) {
+          try {
+            const parsedCountry = JSON.parse(savedCountry);
+            const matchedCountry = countries.find((c) => c.code === parsedCountry.country_code);
+            if (matchedCountry && isMounted) {
+              setLocation({
+                country_code: matchedCountry.code,
+                country_name: matchedCountry.name,
+                currency: parsedCountry.currency || getCurrencyForCountry(matchedCountry.code),
+                isLoading: false,
+                isManual: true,
+                error: null
+              });
+              return;
+            }
+          } catch {
+            localStorage.removeItem('userCountry');
+            localStorage.removeItem('userCountryManual');
+          }
+        }
+
+        // Apply newly detected location
         if (detected && detected.country_code && isMounted) {
+          if (detected.ip) localStorage.setItem('userLastIp', detected.ip);
           setLocation({
             country_code: detected.country_code,
             country_name: detected.country_name,
@@ -168,6 +209,10 @@ export function LocationProvider({ children }) {
             country_code: detected.country_code,
             country_name: detected.country_name,
             currency: detected.currency
+          }));
+          localStorage.setItem('userCurrency', detected.currency);
+          window.dispatchEvent(new CustomEvent('country-manual-changed', {
+            detail: { country_code: detected.country_code, currency: detected.currency }
           }));
           return;
         }
