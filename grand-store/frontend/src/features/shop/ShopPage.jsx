@@ -1,7 +1,7 @@
 import { useProducts } from "../../context/ProductContext";
 import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { SlidersHorizontal, Grid3X3, X } from "lucide-react";
+import { SlidersHorizontal, Grid3X3, X, ChevronDown } from "lucide-react";
 import ProductCard from "../../components/ProductCard";
 import FilterGroup from "./FilterGroup";
 import Price from "../../components/ui/Price";
@@ -386,37 +386,48 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
                   Curated and ready to discover
                 </span>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
                 <button
-                  className="lg:hidden flex items-center gap-2 border border-white/20 px-4 py-2 text-xs font-medium uppercase tracking-widest hover:bg-white/5 transition-colors whitespace-nowrap"
+                  className="lg:hidden flex-1 sm:flex-none h-10 flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-[#111] px-3 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-white hover:border-[#b58b38] hover:text-[#b58b38] transition-all whitespace-nowrap active:scale-[0.98]"
                   type="button"
                   onClick={() => setMobileFiltersOpen(true)}
                 >
-                  <SlidersHorizontal size={14} /> Filters{" "}
-                  {activeFilterCount > 0 && `(${activeFilterCount})`}
+                  <SlidersHorizontal size={14} className="text-[#b58b38]" />
+                  <span>Filters</span>
+                  {activeFilterCount > 0 && (
+                    <span className="rounded-full bg-[#b58b38] px-1.5 py-0.5 text-[10px] font-bold text-black leading-none">
+                      {activeFilterCount}
+                    </span>
+                  )}
                 </button>
-                <div className="flex items-center gap-2">
-                  <label className="text-[#888] text-[10px] uppercase tracking-widest">
+                <div className="flex-1 sm:flex-none flex items-center gap-2">
+                  <label className="hidden sm:inline-block text-[#888] text-[10px] uppercase tracking-widest whitespace-nowrap">
                     Sort by
                   </label>
-                  <select
-                    value={sortBy}
-                    onChange={(event) => setSortBy(event.target.value)}
-                    className="bg-transparent border-[#b58b38] rounded-xl border p-2 text-white text-xs font-medium uppercase tracking-widest outline-none cursor-pointer hover:text-[#e6c97a] transition-colors"
-                  >
-                    <option value="featured" className="bg-[#111]">
-                      Featured
-                    </option>
-                    <option value="price-low" className="bg-[#111]">
-                      Price: low to high
-                    </option>
-                    <option value="price-high" className="bg-[#111]">
-                      Price: high to low
-                    </option>
-                    <option value="name" className="bg-[#111]">
-                      Name
-                    </option>
-                  </select>
+                  <div className="relative w-full sm:w-auto">
+                    <select
+                      value={sortBy}
+                      onChange={(event) => setSortBy(event.target.value)}
+                      className="w-full sm:w-auto h-10 appearance-none rounded-lg border border-[#b58b38]/40 bg-[#111] pl-3 pr-8 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-white outline-none cursor-pointer hover:border-[#b58b38] hover:text-[#e6c97a] focus:border-[#b58b38] focus:ring-1 focus:ring-[#b58b38] transition-all shadow-sm"
+                    >
+                      <option value="featured" className="bg-[#111] text-white">
+                        Featured
+                      </option>
+                      <option value="price-low" className="bg-[#111] text-white">
+                        Price: Low to High
+                      </option>
+                      <option value="price-high" className="bg-[#111] text-white">
+                        Price: High to Low
+                      </option>
+                      <option value="name" className="bg-[#111] text-white">
+                        Name
+                      </option>
+                    </select>
+                    <ChevronDown
+                      size={14}
+                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#b58b38]"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

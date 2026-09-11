@@ -34,6 +34,22 @@
   }
 }
 
+.age-gate-logo-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.age-gate-logo {
+  height: auto;
+  max-height: 56px;
+  width: auto;
+  max-width: 230px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 12px rgba(212, 175, 55, 0.2));
+}
+
 .age-gate-kicker {
   margin: 0 0 16px;
   color: var(--brass-light, #d5b57d);

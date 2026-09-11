@@ -54,7 +54,13 @@ export default function AgeGate() {
     <div className="age-gate-overlay">
       <div className="age-gate-modal">
         <div className="age-gate-content">
-          <p className="age-gate-kicker">The Grand Store</p>
+          <div className="age-gate-logo-wrap">
+            <img
+              src="/grand-store-logo.png"
+              alt="The Grand Store"
+              className="age-gate-logo"
+            />
+          </div>
           <h2>Are you 18 years or older?</h2>
           {isDenied ? (
             <div className="age-gate-denied-message">

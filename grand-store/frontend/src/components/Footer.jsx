@@ -157,12 +157,12 @@ export default function Footer() {
           <strong className="block mt-[28px] pb-[22px] border-b border-[#d99d39]/70 text-[#d99d39] font-serif text-[23px] font-medium">
             Total Visitors <span className="px-[5px]">:</span> 538113
           </strong>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center mt-[28px] gap-[12px] sm:gap-[18px]" aria-label="Download The Grand Store mobile app">
-            <a className="transition-all duration-[180ms] ease hover:opacity-85 hover:-translate-y-[2px]" href="https://apps.apple.com/in/app/grand-store/id6449220111" target="_blank" rel="noopener noreferrer">
-              <img className="w-auto h-[48px] lg:h-[54px] object-contain" src="/assets/footer/app-store.svg" alt="Download on the App Store" />
+          <div className="flex flex-row items-center mt-[24px] sm:mt-[28px] gap-[10px] sm:gap-[16px]" aria-label="Download The Grand Store mobile app">
+            <a className="transition-all duration-[180ms] ease hover:opacity-85 hover:-translate-y-[2px] shrink-0" href="https://apps.apple.com/in/app/grand-store/id6449220111" target="_blank" rel="noopener noreferrer">
+              <img className="w-auto h-[42px] sm:h-[48px] lg:h-[54px] object-contain" src="/assets/footer/app-store.svg" alt="Download on the App Store" />
             </a>
-            <a className="transition-all duration-[180ms] ease hover:opacity-85 hover:-translate-y-[2px]" href="https://play.google.com/store/apps/details?id=com.grandstore" target="_blank" rel="noopener noreferrer">
-              <img className="w-auto h-[48px] lg:h-[54px] object-contain" src="/assets/footer/google-play.svg" alt="Get it on Google Play" />
+            <a className="transition-all duration-[180ms] ease hover:opacity-85 hover:-translate-y-[2px] shrink-0" href="https://play.google.com/store/apps/details?id=com.grandstore" target="_blank" rel="noopener noreferrer">
+              <img className="w-auto h-[42px] sm:h-[48px] lg:h-[54px] object-contain" src="/assets/footer/google-play.svg" alt="Get it on Google Play" />
             </a>
           </div>
         </div>

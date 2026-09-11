@@ -29,7 +29,7 @@ const resetShowcaseTilt = (event) => {
 
 export default function LoginShowcase() {
   return (
-    <aside className="login-showcase hidden lg:flex lg:col-span-6 xl:col-span-7" aria-label="Discover The Grand Store">
+    <aside className="login-showcase hidden xl:flex xl:col-span-7" aria-label="Discover The Grand Store">
       <div className="login-showcase__atmosphere" aria-hidden="true">
         <div className="login-showcase__light" />
         {GOLD_DUST.map(([x, y, size, delay], index) => (
