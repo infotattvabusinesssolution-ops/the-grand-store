@@ -1,5 +1,5 @@
 const isLocalhost = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
-const fallbackOrigin = isLocalhost ? 'http://localhost:5000' : 'https://store-api.yogapranafitness.com';
+const fallbackOrigin = isLocalhost ? 'http://localhost:5015' : 'https://store-api.yogapranafitness.com';
 const apiOrigin = (import.meta.env.VITE_API_URL || fallbackOrigin).replace(/\/$/, '');
 
 export const submitWineEnquiry = async (payload) => {

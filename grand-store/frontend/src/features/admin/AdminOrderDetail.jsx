@@ -23,6 +23,7 @@ import {
   Gift
 } from 'lucide-react';
 import Price from '../../components/ui/Price';
+import { PHONE_COUNTRIES } from '../../utils/phoneNumbers';
 
 export default function AdminOrderDetail({ onNotify }) {
   const { id } = useParams();
