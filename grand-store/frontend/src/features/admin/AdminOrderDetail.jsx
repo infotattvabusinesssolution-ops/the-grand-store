@@ -147,9 +147,13 @@ export default function AdminOrderDetail({ onNotify }) {
                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
                 : order.paymentStatus === 'Awaiting_Approval'
                 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                : 'bg-blue-500/20 text-blue-400 border border-blue-500/40'
+                : 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
             }`}>
-              {order.isPaid || order.paymentStatus === 'Paid' ? '✓ Paid & Verified' : order.paymentStatus || 'Pending'}
+              {order.isPaid || order.paymentStatus === 'Paid'
+                ? '✓ Paid & Verified'
+                : order.paymentStatus === 'Awaiting_Approval'
+                ? '⏳ Awaiting Approval (EFT)'
+                : '⚠️ Unpaid / Payment Pending'}
             </span>
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
               isPostNet
@@ -173,6 +177,21 @@ export default function AdminOrderDetail({ onNotify }) {
           </button>
         </div>
       </div>
+
+      {/* Unpaid Warning Banner */}
+      {!(order.isPaid || order.paymentStatus === 'Paid') && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3.5 shadow-lg">
+          <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5 animate-pulse" />
+          <div className="flex-1">
+            <h4 className="text-sm font-bold text-rose-300 uppercase tracking-wider">
+              ⚠️ Fulfillment On Hold — Order Unpaid
+            </h4>
+            <p className="text-xs text-rose-200/80 mt-1 leading-relaxed">
+              This order has not been cleared for fulfillment. Do NOT pack, ship, or hand over items until payment has been confirmed via PayFast or manual EFT approval.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Main 2-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -489,7 +508,9 @@ export default function AdminOrderDetail({ onNotify }) {
               )}
               <div className="pt-3 border-t border-white/10 flex justify-between items-baseline">
                 <div>
-                  <span className="text-sm font-bold text-[#c99742] block">Grand Total Paid:</span>
+                  <span className="text-sm font-bold text-[#c99742] block">
+                    {order.isPaid || order.paymentStatus === 'Paid' ? 'Grand Total Paid:' : 'Grand Total Due (Unpaid):'}
+                  </span>
                   <span className="text-[10px] text-white/40">Inclusive of 15% VAT & duties</span>
                 </div>
                 <span className="text-xl font-serif font-bold text-[#c99742] font-mono">
@@ -500,6 +521,7 @@ export default function AdminOrderDetail({ onNotify }) {
 
             <div className="pt-3 border-t border-white/5 text-[11px] text-white/50 space-y-1">
               <div>Payment Method: <strong className="text-white">{order.paymentMethod || 'Instant EFT / PayFast'}</strong></div>
+              <div>Payment Status: <strong className={order.isPaid || order.paymentStatus === 'Paid' ? 'text-emerald-400' : 'text-rose-400'}>{order.isPaid || order.paymentStatus === 'Paid' ? 'Paid' : 'Unpaid (Pending)'}</strong></div>
               <div>Transaction ID: <strong className="font-mono text-white">{order.transactionId || orderRef}</strong></div>
             </div>
           </div>

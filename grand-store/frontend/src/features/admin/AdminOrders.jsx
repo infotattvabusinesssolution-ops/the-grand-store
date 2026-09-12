@@ -173,15 +173,26 @@ export default function AdminOrders() {
                       <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-0.5">
                         Payment Status
                       </div>
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        ord.isPaid || ord.paymentStatus === "Paid"
-                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                          : ord.paymentStatus === "Awaiting_Approval"
-                          ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
-                          : "bg-blue-500/15 text-blue-400 border border-blue-500/30"
-                      }`}>
-                        {ord.isPaid || ord.paymentStatus === "Paid" ? "✓ Paid" : ord.paymentStatus || "Pending"}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          ord.isPaid || ord.paymentStatus === "Paid"
+                            ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                            : ord.paymentStatus === "Awaiting_Approval"
+                            ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                            : "bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                        }`}>
+                          {ord.isPaid || ord.paymentStatus === "Paid"
+                            ? "✓ Paid"
+                            : ord.paymentStatus === "Awaiting_Approval"
+                            ? "⏳ Awaiting Approval"
+                            : "⚠️ Unpaid / Pending"}
+                        </span>
+                        {!(ord.isPaid || ord.paymentStatus === "Paid") && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">
+                            Hold
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div>
@@ -211,7 +222,7 @@ export default function AdminOrders() {
 
                   <div className="text-left md:text-right">
                     <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-0.5">
-                      Total Paid (Incl. VAT)
+                      {ord.isPaid || ord.paymentStatus === "Paid" ? "Total Paid (Incl. VAT)" : "Amount Due (Unpaid)"}
                     </div>
                     <div className="text-lg font-serif text-[#e1bd70] font-bold">
                       <Price amount={ord.totalPrice} />
@@ -315,9 +326,22 @@ export default function AdminOrders() {
                         </span>
                       </div>
                     ) : (
-                      <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 text-[11px] text-white/40 flex items-center gap-2">
-                        <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
-                        <span>Ready for processing & fulfillment.</span>
+                      <div className={`p-3 rounded-xl border text-[11px] flex items-center gap-2 ${
+                        ord.isPaid || ord.paymentStatus === "Paid"
+                          ? "bg-white/[0.02] border-white/5 text-white/40"
+                          : "bg-rose-500/10 border-rose-500/20 text-rose-300"
+                      }`}>
+                        {ord.isPaid || ord.paymentStatus === "Paid" ? (
+                          <>
+                            <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
+                            <span>Ready for processing & fulfillment.</span>
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle size={14} className="text-rose-400 shrink-0" />
+                            <span className="font-medium">Payment pending: Hold fulfillment until verified.</span>
+                          </>
+                        )}
                       </div>
                     )}
 

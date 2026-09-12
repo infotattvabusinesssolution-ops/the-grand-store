@@ -79,6 +79,7 @@ const shipmentSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
+        "Payment Pending",
         "Order Confirmed",
         "Preparing",
         "Collected",
@@ -88,7 +89,7 @@ const shipmentSchema = new mongoose.Schema(
         "Delayed",
         "Failed",
       ],
-      default: "Order Confirmed",
+      default: "Payment Pending",
     },
 
     estimatedDeliveryDate: { type: Date },

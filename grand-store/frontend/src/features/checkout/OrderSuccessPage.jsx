@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { CheckCircle2, ChevronLeft, Download, Loader2, Truck, MapPin, Coins, ShieldCheck, ArrowRight, Clock, AlertTriangle, Package, FileCheck, Gift } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Download, Loader2, Truck, MapPin, Coins, ShieldCheck, ArrowRight, Clock, AlertTriangle, Package, FileCheck, Gift, CreditCard } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useCurrency } from "../../context/CurrencyContext";
 import Price from "../../components/ui/Price";
 import StoreBankDetailsCard from "../../components/StoreBankDetailsCard";
+import PaymentForm from "./PaymentForm";
 import api from "../../api";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -18,6 +19,24 @@ export default function OrderSuccessPage({ onClearCart }) {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [payfastUrl, setPayfastUrl] = useState(null);
+  const [paymentData, setPaymentData] = useState(null);
+  const [initiatingPayment, setInitiatingPayment] = useState(false);
+
+  const handlePayWithPayFast = async () => {
+    if (!order) return;
+    try {
+      setInitiatingPayment(true);
+      const pfRes = await api.post('/payfast/generate-shop', { orderId: order._id });
+      setPayfastUrl(pfRes.data.url);
+      setPaymentData(pfRes.data.data);
+    } catch (err) {
+      console.error('Failed to initiate PayFast payment:', err);
+      alert(err.response?.data?.message || err.message || 'Failed to initialize PayFast gateway.');
+    } finally {
+      setInitiatingPayment(false);
+    }
+  };
 
   // 1-Click Post-Order Account Creation State (Section 6 & Quick Buyer)
   const [accountPassword, setAccountPassword] = useState("");
@@ -308,47 +327,83 @@ export default function OrderSuccessPage({ onClearCart }) {
   return (
     <main className="min-h-screen bg-[#050505] text-[var(--color-ivory)] pt-0 pb-24">
       <div className="max-w-4xl mx-auto px-6">
-        {/* Success Header */}
-        <div className="text-center mb-16">
-          <div className="w-20 h-20 bg-[var(--color-gold)]/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 size={40} className="text-gold-gradient" />
-          </div>
-          <h1 className="text-4xl md:text-5xl font-serif mb-4">
-            Order Placed Successfully
-          </h1>
+        {/* Success / Pending Header */}
+        {(() => {
+          const isOrderPaid = Boolean(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success');
 
-          {paymentStatus === "success" ? (
-            <div className="inline-block px-4 py-2 bg-green-900/30 border border-green-500/50 rounded-lg text-green-400 font-medium mb-4">
-              Payment completed successfully via PayFast.
+          return (
+            <div className="text-center mb-16">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
+                isOrderPaid ? "bg-[var(--color-gold)]/10" : "bg-amber-500/15 border border-amber-500/30"
+              }`}>
+                {isOrderPaid ? (
+                  <CheckCircle2 size={40} className="text-gold-gradient" />
+                ) : (
+                  <Clock size={40} className="text-amber-400" />
+                )}
+              </div>
+              <h1 className="text-4xl md:text-5xl font-serif mb-4">
+                {isOrderPaid ? "Order Placed Successfully" : "Order Created — Payment Pending"}
+              </h1>
+
+              {isOrderPaid ? (
+                <div className="inline-block px-4 py-2 bg-green-900/30 border border-green-500/50 rounded-lg text-green-400 font-medium mb-4">
+                  Payment completed successfully. Your order is confirmed and being prepared for fulfillment.
+                </div>
+              ) : paymentStatus === "cancel" ? (
+                <div className="space-y-4 max-w-lg mx-auto mb-4">
+                  <div className="inline-block px-4 py-2 bg-amber-900/30 border border-amber-500/50 rounded-lg text-amber-300 font-medium text-sm">
+                    Payment was not completed. Your items are reserved on hold until payment is received.
+                  </div>
+                  {order.paymentMethod === 'PayFast' && (
+                    <div>
+                      <button
+                        onClick={handlePayWithPayFast}
+                        disabled={initiatingPayment}
+                        className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-gold-gradient text-black font-bold uppercase tracking-widest text-xs hover:opacity-95 shadow-[0_0_25px_rgba(212,175,55,0.35)] transition-all flex items-center justify-center gap-2 mx-auto disabled:opacity-50"
+                      >
+                        {initiatingPayment ? <><Loader2 size={16} className="animate-spin" /> Connecting to PayFast...</> : `Retry Payment with PayFast (${formatPrice(order.totalPrice)})`}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : order.paymentMethod === "Bank Transfer" &&
+                order.paymentStatus === "Pending" ? (
+                <div className="inline-block px-4 py-2 bg-yellow-900/30 border border-yellow-500/50 rounded-lg text-yellow-400 font-medium mb-4">
+                  Awaiting Bank Transfer. Please transfer funds and upload proof of payment below.
+                </div>
+              ) : order.paymentMethod === "Bank Transfer" &&
+                order.paymentStatus === "Awaiting_Approval" ? (
+                <div className="inline-block px-4 py-2 bg-blue-900/30 border border-blue-500/50 rounded-lg text-blue-400 font-medium mb-4">
+                  Proof of Payment Uploaded. Awaiting verification by our finance team.
+                </div>
+              ) : order.paymentMethod === "Bank Transfer" &&
+                (order.paymentStatus === "Failed" ||
+                  order.paymentStatus === "Rejected") ? (
+                <div className="inline-block px-4 py-2 bg-red-900/30 border border-red-500/50 rounded-lg text-red-400 font-medium mb-4">
+                  Your previous proof of payment was rejected. Please review and resubmit below.
+                </div>
+              ) : (
+                <div className="space-y-4 max-w-lg mx-auto mb-4">
+                  <div className="inline-block px-4 py-2 bg-amber-900/30 border border-amber-500/50 rounded-lg text-amber-300 font-medium text-sm">
+                    ⏳ Payment has not yet been completed. Complete payment to confirm order and initiate dispatch.
+                  </div>
+                  {order.paymentMethod === 'PayFast' && (
+                    <div>
+                      <button
+                        onClick={handlePayWithPayFast}
+                        disabled={initiatingPayment}
+                        className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-gold-gradient text-black font-bold uppercase tracking-widest text-xs hover:opacity-95 shadow-[0_0_25px_rgba(212,175,55,0.35)] transition-all flex items-center justify-center gap-2 mx-auto disabled:opacity-50"
+                      >
+                        {initiatingPayment ? <><Loader2 size={16} className="animate-spin" /> Connecting to PayFast...</> : `Pay Now with PayFast (${formatPrice(order.totalPrice)})`}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          ) : paymentStatus === "cancel" ? (
-            <div className="inline-block px-4 py-2 bg-red-900/30 border border-red-500/50 rounded-lg text-red-400 font-medium mb-4">
-              Payment was cancelled. You can retry payment from your account
-              dashboard.
-            </div>
-          ) : order.paymentMethod === "Bank Transfer" &&
-            order.paymentStatus === "Pending" ? (
-            <div className="inline-block px-4 py-2 bg-yellow-900/30 border border-yellow-500/50 rounded-lg text-yellow-400 font-medium mb-4">
-              Awaiting Bank Transfer. Please upload proof of payment below.
-            </div>
-          ) : order.paymentMethod === "Bank Transfer" &&
-            order.paymentStatus === "Awaiting_Approval" ? (
-            <div className="inline-block px-4 py-2 bg-blue-900/30 border border-blue-500/50 rounded-lg text-blue-400 font-medium mb-4">
-              Proof of Payment Uploaded. Awaiting verification by our team.
-            </div>
-          ) : order.paymentMethod === "Bank Transfer" &&
-            (order.paymentStatus === "Failed" ||
-              order.paymentStatus === "Rejected") ? (
-            <div className="inline-block px-4 py-2 bg-red-900/30 border border-red-500/50 rounded-lg text-red-400 font-medium mb-4">
-              Your previous proof of payment was rejected. Please review and
-              resubmit below.
-            </div>
-          ) : (
-            <p className="text-[var(--color-ivory-muted)]">
-              Thank you for your purchase. Your order is being processed.
-            </p>
-          )}
-        </div>
+          );
+        })()}
 
         {/* Guest Tracking & 18+ Verification Document Compliance Notification */}
         <div className="bg-gradient-to-br from-[#17140e] via-[#100f0a] to-[#090805] border-2 border-[var(--color-gold)]/50 rounded-3xl p-6 md:p-8 mb-10 shadow-[0_0_40px_rgba(212,175,55,0.15)] relative overflow-hidden">
@@ -363,10 +418,16 @@ export default function OrderSuccessPage({ onClearCart }) {
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-xl font-serif text-white font-bold">
-                      Order Confirmed & 18+ Compliance Clearance
+                      {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                        ? "Order Confirmed & 18+ Compliance Clearance"
+                        : "Order Reserved — Pending Payment Clearance"}
                     </h2>
-                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      Active
+                    <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded-full border ${
+                      (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                        : "bg-amber-500/20 text-amber-400 border-amber-500/40"
+                    }`}>
+                      {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success') ? "Active" : "Payment Pending"}
                     </span>
                   </div>
                   <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
@@ -403,21 +464,54 @@ export default function OrderSuccessPage({ onClearCart }) {
               </div>
 
               {/* Dispatch & Compliance Status */}
-              <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
-                <div className="flex items-center gap-2 text-emerald-400 text-sm font-semibold">
-                  <FileCheck size={16} />
-                  <span>{order.guestKyc?.documentUrl ? "18+ Document Under Review" : "Order Dispatch Clearance"}</span>
+              <div className={`p-4 rounded-2xl border space-y-2 ${
+                (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                  ? "bg-emerald-950/20 border-emerald-500/30"
+                  : "bg-amber-950/25 border-amber-500/40"
+              }`}>
+                <div className={`flex items-center gap-2 text-sm font-semibold ${
+                  (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                    ? "text-emerald-400"
+                    : "text-amber-400"
+                }`}>
+                  {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success') ? <FileCheck size={16} /> : <Clock size={16} />}
+                  <span>
+                    {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                      ? (order.guestKyc?.documentUrl ? "18+ Document Under Review" : "Order Dispatch Clearance")
+                      : "Fulfillment On Hold (Awaiting Payment)"}
+                  </span>
                 </div>
-                <p className="text-xs text-emerald-200/80 leading-relaxed">
-                  {order.guestKyc?.documentUrl ? (
-                    <>Your official identification document (<strong>{(order.guestKyc.idType || "ID/Passport").toUpperCase()}</strong>) has been securely transmitted to Grand Store Administration.</>
+                <p className={`text-xs leading-relaxed ${
+                  (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                    ? "text-emerald-200/80"
+                    : "text-amber-200/85"
+                }`}>
+                  {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success') ? (
+                    order.guestKyc?.documentUrl ? (
+                      <>Your official identification document (<strong>{(order.guestKyc.idType || "ID/Passport").toUpperCase()}</strong>) has been securely transmitted to Grand Store Administration.</>
+                    ) : (
+                      <>Your order and payment are confirmed. Standard fulfillment and courier dispatch preparation are underway without any document verification delays.</>
+                    )
                   ) : (
-                    <>Your order and payment are confirmed. Standard fulfillment and courier dispatch preparation are underway without any document verification delays.</>
+                    <>Your order has been recorded and reserved in our system. Fulfillment, warehouse packaging, and courier dispatch will initiate as soon as payment is confirmed.</>
                   )}
                 </p>
-                <div className="text-[11px] text-emerald-400/70 pt-1 flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Fulfillment in progress • No further customer action required</span>
+                <div className={`text-[11px] pt-1 flex items-center gap-1.5 ${
+                  (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                    ? "text-emerald-400/70"
+                    : "text-amber-400/80 font-medium"
+                }`}>
+                  {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success') ? (
+                    <>
+                      <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Fulfillment in progress • No further customer action required</span>
+                    </>
+                  ) : (
+                    <>
+                      <Clock size={13} className="text-amber-400" />
+                      <span>Awaiting payment confirmation to begin fulfillment</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -482,17 +576,27 @@ export default function OrderSuccessPage({ onClearCart }) {
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-mono tracking-widest text-[var(--color-gold)] block">
-                    Fulfillment Status
+                    {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success') ? "Fulfillment Status" : "Fulfillment Status (On Hold)"}
                   </span>
                   <h3 className="text-white font-serif text-lg leading-snug">
-                    {order.deliveryPreference === 'pickup' || order.selectedPostnetStore
-                      ? "Your order has been received — Arriving at your PostNet collection branch"
-                      : "Your order has been received — Delivery Soon"}
+                    {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                      ? (order.deliveryPreference === 'pickup' || order.selectedPostnetStore
+                          ? "Your order has been received — Arriving at your PostNet collection branch"
+                          : "Your order has been received — Delivery Soon")
+                      : (order.deliveryPreference === 'pickup' || order.selectedPostnetStore
+                          ? "Payment Pending — Will be dispatched to PostNet once paid"
+                          : "Payment Pending — Delivery on hold until payment confirmed")}
                   </h3>
                 </div>
               </div>
-              <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                {order.deliveryPreference === 'pickup' || order.selectedPostnetStore ? '2–3 Business Days' : '2–5 Business Days'}
+              <span className={`text-xs font-mono px-2.5 py-1 rounded-full border ${
+                (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                  : "bg-amber-500/15 text-amber-300 border-amber-500/40 font-semibold"
+              }`}>
+                {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                  ? (order.deliveryPreference === 'pickup' || order.selectedPostnetStore ? '2–3 Business Days' : '2–5 Business Days')
+                  : 'Est. 2–3 Days Post-Payment'}
               </span>
             </div>
 
@@ -1021,6 +1125,8 @@ export default function OrderSuccessPage({ onClearCart }) {
             </Link>
           </div>
         )}
+
+        <PaymentForm paymentData={paymentData} payfastUrl={payfastUrl} />
       </div>
     </main>
   );

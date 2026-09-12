@@ -252,6 +252,7 @@ export default function CustomerOrdersPage() {
               {/* Order Status Banner & Concierge Advisory */}
               {(() => {
                 const isPickup = order.deliveryPreference === 'pickup' || Boolean(order.selectedPostnetStore);
+                const isOrderPaid = Boolean(order.isPaid || order.paymentStatus === 'Paid');
                 // Mongoose supplies a default notice object even when no message was sent.
                 const latestMsg = [
                   order.latestAdminMessage,
@@ -261,43 +262,74 @@ export default function CustomerOrdersPage() {
                 return (
                   <div className="px-4 sm:px-6 md:px-8 py-5 bg-white/[0.015] border-b border-white/[0.05] space-y-4">
                     {/* Primary Order Delivery Status Banner */}
-                    <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className={`p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 border transition-all ${
+                      isOrderPaid
+                        ? "bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-amber-500/30"
+                        : "bg-gradient-to-r from-amber-950/40 via-amber-900/15 to-transparent border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.08)]"
+                    }`}>
                       <div className="flex items-start sm:items-center gap-3.5">
-                        <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 mt-0.5 sm:mt-0">
-                          {isPickup ? <MapPin size={20} /> : <Truck size={20} />}
+                        <div className={`p-2.5 rounded-xl border shrink-0 mt-0.5 sm:mt-0 ${
+                          isOrderPaid
+                            ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                            : "bg-amber-500/15 text-amber-300 border-amber-500/40"
+                        }`}>
+                          {isOrderPaid ? (isPickup ? <MapPin size={20} /> : <Truck size={20} />) : <Clock size={20} />}
                         </div>
                         <div>
-                          <div className="text-[11px] font-mono uppercase tracking-wider text-amber-400/90 font-semibold">
-                            Fulfillment Status
+                          <div className={`text-[11px] font-mono uppercase tracking-wider font-semibold flex items-center gap-1.5 ${
+                            isOrderPaid ? "text-amber-400/90" : "text-amber-400"
+                          }`}>
+                            {isOrderPaid ? "Fulfillment Status" : "Fulfillment On Hold • Payment Pending"}
                           </div>
                           <h4 className="text-sm sm:text-base font-serif font-bold text-white mt-0.5">
-                            {isPickup
-                              ? "Your order has been received — Arriving at your PostNet collection branch"
-                              : "Your order has been received — Delivery Soon"}
+                            {isOrderPaid
+                              ? (isPickup
+                                  ? "Your order has been received — Arriving at your PostNet collection branch"
+                                  : "Your order has been received — Delivery Soon")
+                              : "Payment Pending — Complete payment to confirm order and initiate dispatch"}
                           </h4>
                           <p className="text-xs text-white/70 mt-1">
                             {isPickup ? (
                               order.selectedPostnetStore ? (
                                 <>
                                   Collection Point: <span className="text-[var(--color-gold)] font-medium">{order.selectedPostnetStore.name}</span> ({order.selectedPostnetStore.address})
+                                  {!isOrderPaid && " — Dispatch preparation starts upon payment confirmation."}
                                 </>
                               ) : (
-                                "Your parcel will arrive at your designated PostNet counter. Real-time collection PIN will be dispatched via SMS & Email."
+                                isOrderPaid
+                                  ? "Your parcel will arrive at your designated PostNet counter. Real-time collection PIN will be dispatched via SMS & Email."
+                                  : "Parcel will be dispatched to your designated PostNet counter upon payment confirmation."
                               )
                             ) : (
                               <>
                                 Deliver to: <span className="text-white/90 font-medium">{order.shippingAddress?.address ? `${order.shippingAddress.address}, ${order.shippingAddress.city || ''}` : 'Your delivery address on record'}</span>
+                                {!isOrderPaid && " — Dispatch preparation starts upon payment confirmation."}
                               </>
                             )}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
-                        <span className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                          Order Received
-                        </span>
+                      <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-start md:self-center">
+                        {isOrderPaid ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            Order Received
+                          </span>
+                        ) : (
+                          <>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold px-3 py-1.5 rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)]">
+                              <Clock size={13} className="text-amber-400" />
+                              Awaiting Payment
+                            </span>
+                            <button
+                              onClick={() => navigate(`/customer/order/${order._id}`)}
+                              className="px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-[var(--color-gold)] text-black hover:opacity-90 transition-all flex items-center gap-1 shadow-md"
+                            >
+                              Pay Now <ChevronRight size={13} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -352,8 +384,10 @@ export default function CustomerOrdersPage() {
                             {order.selectedPostnetStore.hours && ` • ${order.selectedPostnetStore.hours}`}
                           </div>
                         </div>
-                        <span className="text-[11px] font-mono text-white/50 shrink-0 self-start sm:self-auto">
-                          Est. 2–3 Business Days
+                        <span className={`text-[11px] font-mono shrink-0 self-start sm:self-auto ${
+                          isOrderPaid ? "text-white/50" : "text-amber-400/90 font-semibold"
+                        }`}>
+                          {isOrderPaid ? "Est. 2–3 Business Days" : "Est. 2–3 Days Post-Payment"}
                         </span>
                       </div>
                     )}

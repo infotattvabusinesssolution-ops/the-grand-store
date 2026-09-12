@@ -426,7 +426,7 @@ const addOrderItems = async (req, res) => {
         customerShippingCharge: shp.selectedCourier ? shp.selectedCourier.cost : 0,
         actualShippingCost: actualCost,
         legs: internalLegs,
-        status: 'Order Confirmed' // We keep it Confirmed, or could change to 'Payment Pending'
+        status: order.isPaid ? 'Order Confirmed' : 'Payment Pending'
       });
 
       await newShipment.save();
@@ -613,6 +613,15 @@ const processOrderPayment = async (orderId) => {
   order.paidAt = Date.now();
   order.paymentStatus = 'Paid';
   await order.save();
+
+  // Transition all associated shipments to 'Order Confirmed' now that payment is cleared
+  if (Array.isArray(order.shipments) && order.shipments.length > 0) {
+    const Shipment = require('../models/Shipment');
+    await Shipment.updateMany(
+      { _id: { $in: order.shipments } },
+      { status: 'Order Confirmed' }
+    ).catch(err => console.error('Error updating shipment status to Order Confirmed:', err));
+  }
   
   // Reward the referrer if this was the customer's first order
   try {
