@@ -228,20 +228,22 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
 
-  // Auto-reverse port 5000 and 8081 for connected Android devices
-  try {
-    const { exec } = require('child_process');
-    const autoReverse = () => {
-      exec('adb reverse tcp:5000 tcp:5000', () => {});
-      exec('adb reverse tcp:8081 tcp:8081', () => {});
-    };
-    autoReverse();
-    setInterval(autoReverse, 10000);
-  } catch (e) {
-    // ignore if adb unavailable
+  // Auto-reverse port 5000 and 8081 for connected Android devices (local dev only)
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      const { exec } = require('child_process');
+      const autoReverse = () => {
+        exec('adb reverse tcp:5000 tcp:5000', () => {});
+        exec('adb reverse tcp:8081 tcp:8081', () => {});
+      };
+      autoReverse();
+      setInterval(autoReverse, 10000);
+    } catch (e) {
+      // ignore if adb unavailable
+    }
   }
 });
 
