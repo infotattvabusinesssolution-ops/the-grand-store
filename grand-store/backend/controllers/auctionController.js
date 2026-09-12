@@ -1033,6 +1033,10 @@ exports.getAuctionLotCertificate = async (req, res) => {
       return res.status(400).json({ message: 'Certificate of Acquisition is only available for awarded sold lots.' });
     }
 
+    if (lot.paymentStatus !== 'Paid') {
+      return res.status(403).json({ message: 'Certificate of Acquisition is only unlocked after settlement payment has cleared.' });
+    }
+
     const order = await Order.findOne({ 'orderItems.product': lot._id.toString() }).lean();
 
     const certBuffer = await generateAuctionCertificateBuffer(lot, lot.winner, order);
@@ -1306,6 +1310,17 @@ exports.cancelAuctionPayment = async (lotId, reason = 'Payment cancelled') => {
       transaction.status = 'cancelled';
       await transaction.save();
     }
+  }
+
+  // Update associated AuctionLedger entry if exists and still awaiting payment
+  try {
+    const ledger = await AuctionLedger.findOne({ lot: lot._id });
+    if (ledger && ledger.settlementStatus === 'AWAITING_PAYMENT') {
+      ledger.settlementStatus = 'REFUNDED';
+      await ledger.save();
+    }
+  } catch (ledgerErr) {
+    console.warn('cancelAuctionPayment: error syncing AuctionLedger:', ledgerErr.message);
   }
 
   lot.paymentStatus = 'Pending';
@@ -2143,7 +2158,7 @@ exports.getAuctionLedger = async (req, res) => {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
-    const ledger = await AuctionLedger.find()
+    const ledger = await AuctionLedger.find({ settlementStatus: { $in: ['HELD_IN_ESCROW', 'SETTLEMENT_RELEASED'] } })
       .populate('lot', 'title lotNumber')
       .populate('buyer', 'name email')
       .populate('vendor', 'name email storeName')

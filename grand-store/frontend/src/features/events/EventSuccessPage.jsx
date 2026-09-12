@@ -177,10 +177,10 @@ export default function EventSuccessPage() {
   }
 
   const isBankTransfer = booking.paymentMethod === 'Bank Transfer';
-  const isPaid = PAID_STATUSES.includes(booking.paymentStatus) || (!isBankTransfer && paymentResult === 'success');
+  const isPaid = PAID_STATUSES.includes(booking.paymentStatus) && booking.paymentStatus !== 'Cancelled' && booking.paymentStatus !== 'Failed';
   const bankStatus = booking.bankTransferStatus;
   const isRejected = booking.paymentStatus === 'Failed' || bankStatus === 'Rejected';
-  const isCancelled = !isPaid && (!isBankTransfer && (paymentResult === 'cancel' || booking.paymentStatus === 'Cancelled'));
+  const isCancelled = !isPaid && (paymentResult === 'cancel' || booking.paymentStatus === 'Cancelled');
 
   if (isCancelled) {
     return (

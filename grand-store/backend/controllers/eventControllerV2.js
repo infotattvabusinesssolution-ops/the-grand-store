@@ -620,8 +620,10 @@ const cancelEventPayment = async (bookingId, reason = "Payment cancelled") => {
         const { sendEmail } = require("../utils/emailService");
         const { paymentFailedEmailTemplate } = require("../utils/emailTemplates");
         const User = require("../models/User");
-        const user = booking.user ? await User.findById(booking.user) : null;
-        const recipientEmail = user?.email || booking.customerEmail;
+        const userId = booking.user?._id || (mongoose.Types.ObjectId.isValid(booking.user) ? booking.user : null);
+        const user = userId ? await User.findById(userId) : null;
+        const recipientEmail = booking.user?.email || user?.email || booking.customerEmail;
+        const customerName = booking.user?.name || user?.name || "Valued Patron";
         const event = await Event.findById(booking.event);
 
         if (recipientEmail) {
@@ -631,7 +633,7 @@ const cancelEventPayment = async (bookingId, reason = "Payment cancelled") => {
             to: recipientEmail,
             subject: `Payment Notice • Event Booking [${booking.ticketId || booking.gsReference}] Unsuccessful`,
             html: paymentFailedEmailTemplate({
-              customerName: user?.name || "Valued Patron",
+              customerName,
               reference: booking.ticketId || booking.gsReference || String(booking._id),
               itemName: `Event Ticket: ${event?.title || "Grand Store Event"} (${booking.quantity}x ${booking.ticketType})`,
               amount: booking.totalPrice,
@@ -667,6 +669,13 @@ const downloadTicketPdf = async (req, res) => {
       booking = await Booking.findOne({ $or: [{ ticketId: bookingId }, { gsReference: bookingId }] });
     }
     if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+    const isPaid = ["Paid", "Completed"].includes(booking.paymentStatus);
+    if (!isPaid) {
+      return res.status(403).json({
+        message: "VIP Admission pass and official PDF ticket are locked until payment is verified and cleared."
+      });
+    }
 
     const eventId = booking.event?._id || booking.event;
     const event = (booking.event && booking.event.title) ? booking.event : (eventId ? await Event.findById(eventId) : null);
@@ -746,7 +755,6 @@ const resendTicketEmail = async (req, res) => {
     }
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-    // Authorization check
     if (
       req.user &&
       booking.user &&
@@ -755,6 +763,13 @@ const resendTicketEmail = async (req, res) => {
       req.user.role !== "superadmin"
     ) {
       return res.status(403).json({ message: "Not authorized to resend tickets for this booking" });
+    }
+
+    const isPaid = ["Paid", "Completed"].includes(booking.paymentStatus);
+    if (!isPaid) {
+      return res.status(403).json({
+        message: "VIP Admission pass email is only available after payment has been verified."
+      });
     }
 
     const eventId = booking.event?._id || booking.event;

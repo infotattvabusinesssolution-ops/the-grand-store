@@ -584,7 +584,7 @@ exports.confirmOrderPayment = async (req, res) => {
       if (!booking) {
         return res.status(404).json({ message: 'Booking not found' });
       }
-      if (['Cancelled', 'Failed', 'Refunded'].includes(booking.paymentStatus)) {
+      if (['cancelled', 'failed', 'refunded'].includes((booking.paymentStatus || '').toLowerCase())) {
         return res.status(400).json({ message: `Cannot confirm a ${booking.paymentStatus.toLowerCase()} booking` });
       }
       await processEventPayment(booking._id, {
@@ -607,7 +607,7 @@ exports.confirmOrderPayment = async (req, res) => {
       if (!lot) {
         return res.status(404).json({ message: 'Auction lot not found' });
       }
-      if (['Cancelled', 'Failed'].includes(lot.paymentStatus)) {
+      if (['cancelled', 'failed'].includes((lot.paymentStatus || '').toLowerCase())) {
         return res.status(400).json({ message: `Cannot confirm a ${lot.paymentStatus.toLowerCase()} auction lot` });
       }
       await processAuctionPayment(lot._id);
@@ -623,12 +623,14 @@ exports.confirmOrderPayment = async (req, res) => {
         deposit = await BidderDeposit.findById(depositId);
       }
       if (!deposit) {
-        deposit = await BidderDeposit.findOne({ reference: depositId });
+        deposit = await BidderDeposit.findOne({
+          $or: [{ paymentReference: depositId }, { reference: depositId }]
+        });
       }
       if (!deposit) {
         return res.status(404).json({ message: 'Deposit record not found' });
       }
-      if (['cancelled', 'failed'].includes(deposit.paymentStatus)) {
+      if (['cancelled', 'failed'].includes((deposit.paymentStatus || '').toLowerCase())) {
         return res.status(400).json({ message: `Cannot confirm a ${deposit.paymentStatus.toLowerCase()} deposit` });
       }
       await processBidderDepositPayment(deposit._id, req.body.pfPaymentId || `PF-DEP-${Date.now()}`);

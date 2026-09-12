@@ -978,62 +978,68 @@ const vendorMaintenanceFeePaidTemplate = ({
 
 const paymentFailedEmailTemplate = ({ customerName, reference, itemName, amount, retryUrl, reason }) => {
   const content = `
-    <h1 style="color: #ff7675; margin-bottom: 8px;">Payment Unsuccessful</h1>
-    <p style="font-size: 15px; color: #ddd; margin-top: 0;">
-      Dear ${customerName || 'Valued Patron'},
-    </p>
-    <p style="color: #bbb; line-height: 1.6;">
-      We wanted to let you know that your recent payment attempt for <strong>${itemName || 'your selection'}</strong> was not completed.
-    </p>
-
-    <div style="background-color: rgba(255, 118, 117, 0.08); border: 1px solid rgba(255, 118, 117, 0.25); border-radius: 8px; padding: 18px 20px; margin: 25px 0;">
-      <p style="margin: 0 0 8px 0; color: #ff7675; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">
-        🛡️ No Funds Have Been Debited
-      </p>
-      <p style="margin: 0; color: #ccc; font-size: 13px; line-height: 1.5;">
-        ${reason || 'The transaction was cancelled or could not be verified by the payment gateway. No funds were debited from your account.'}
+    <div style="text-align: center; margin-bottom: 25px;">
+      <div style="display: inline-block; padding: 5px 16px; border: 1px solid #c9a35b; border-radius: 20px; background-color: #12100d; color: #f5d77f; font-size: 10px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px;">
+        ✦ PAYMENT NOTICE • THE GRAND STORE ✦
+      </div>
+      <h1 style="color: #f87171; font-family: 'Times New Roman', Times, serif; font-size: 26px; font-weight: normal; margin: 0 0 10px 0; letter-spacing: 0.5px;">
+        Payment Not Completed
+      </h1>
+      <p style="color: #cccccc; font-size: 14px; margin: 0; line-height: 1.6;">
+        Dear <strong>${customerName || 'Valued Patron'}</strong>, your recent payment attempt was not completed.
       </p>
     </div>
 
-    <div class="details-box">
-      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <!-- Reassurance Banner with Solid Hex Colors for Gmail Compatibility -->
+    <div style="background-color: #1a1212; border: 1px solid #991b1b; border-radius: 8px; padding: 18px 20px; margin: 20px 0;">
+      <div style="color: #f87171; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+        🛡️ No Funds Have Been Debited
+      </div>
+      <div style="color: #e5e5e5; font-size: 13px; line-height: 1.5;">
+        ${reason || 'The transaction was cancelled or could not be verified by the payment gateway. No funds were debited from your card or bank account.'}
+      </div>
+    </div>
+
+    <!-- Transaction Specification Box with Full Inline Styles -->
+    <div style="background-color: #111111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #dddddd;" cellpadding="0" cellspacing="0">
         <tr>
-          <td style="padding: 6px 0; color: #888;">Reference:</td>
-          <td style="padding: 6px 0; text-align: right; font-family: monospace; color: ${BRAND_COLOR_GOLD}; font-weight: bold;">${reference || 'N/A'}</td>
+          <td style="padding: 8px 0; color: #888888; width: 35%;">Reference:</td>
+          <td style="padding: 8px 0; text-align: right; font-family: monospace; color: #c9a35b; font-weight: bold;">${reference || 'N/A'}</td>
         </tr>
         <tr>
-          <td style="padding: 6px 0; color: #888;">Item / Service:</td>
-          <td style="padding: 6px 0; text-align: right; color: #eee;">${itemName || 'Grand Store Order'}</td>
+          <td style="padding: 8px 0; color: #888888;">Item / Service:</td>
+          <td style="padding: 8px 0; text-align: right; color: #ffffff; font-weight: 500;">${itemName || 'Grand Store Selection'}</td>
         </tr>
         ${amount ? `
         <tr>
-          <td style="padding: 6px 0; color: #888;">Amount:</td>
-          <td style="padding: 6px 0; text-align: right; color: #fff; font-weight: bold;">${formatRand(amount)}</td>
+          <td style="padding: 8px 0; color: #888888;">Amount:</td>
+          <td style="padding: 8px 0; text-align: right; color: #ffffff; font-weight: bold; font-size: 15px;">${formatRand(amount)}</td>
         </tr>
         ` : ''}
         <tr>
-          <td style="padding: 6px 0; color: #888;">Status:</td>
-          <td style="padding: 6px 0; text-align: right; color: #ff7675; font-weight: bold;">Cancelled / Unpaid</td>
+          <td style="padding: 8px 0; color: #888888;">Status:</td>
+          <td style="padding: 8px 0; text-align: right; color: #f87171; font-weight: bold;">Cancelled / Unpaid</td>
         </tr>
       </table>
     </div>
 
-    <p style="color: #bbb; line-height: 1.6; font-size: 14px;">
-      You can safely retry your payment whenever you are ready. If you need any assistance, our concierge team is always at your service.
+    <p style="color: #bbbbbb; line-height: 1.6; font-size: 14px; margin: 20px 0;">
+      You can safely retry your payment whenever you are ready. If you need any assistance or would like to arrange an alternative settlement method, our concierge team is always at your service.
     </p>
 
     ${retryUrl ? `
-    <div style="text-align: center; margin: 30px 0 10px 0;">
-      <a href="${retryUrl}" class="btn" style="background-color: ${BRAND_COLOR_GOLD}; color: #000; padding: 14px 32px; font-weight: bold; text-decoration: none; border-radius: 6px; display: inline-block;">
-        Retry Payment Now
+    <div style="text-align: center; margin: 30px 0 20px 0;">
+      <a href="${retryUrl}" target="_blank" style="background-color: #c9a35b; color: #000000; padding: 14px 32px; font-weight: bold; text-decoration: none; border-radius: 6px; display: inline-block; font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;">
+        Retry Payment Now &rarr;
       </a>
     </div>
     ` : ''}
 
-    <div class="divider"></div>
+    <div style="height: 1px; background-color: #222222; margin: 25px 0; border: none;"></div>
 
-    <p style="font-size: 12px; color: #777; margin-bottom: 0;">
-      Need help completing your acquisition? Contact us at <a href="mailto:concierge@grandstoreglobal.com" style="color: ${BRAND_COLOR_GOLD};">concierge@grandstoreglobal.com</a> or message our VIP Concierge on WhatsApp at +27 76 580 9522.
+    <p style="font-size: 12px; color: #777777; margin-bottom: 0; line-height: 1.5;">
+      Need assistance? Contact our concierge at <a href="mailto:concierge@grandstoreglobal.com" style="color: #c9a35b; text-decoration: none;">concierge@grandstoreglobal.com</a> or message our VIP Concierge on WhatsApp at +27 76 580 9522.
     </p>
   `;
 

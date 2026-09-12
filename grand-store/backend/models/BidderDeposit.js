@@ -62,6 +62,10 @@ const bidderDepositSchema = new mongoose.Schema({
   },
   adminNotes: {
     type: String
+  },
+  failureEmailDispatched: {
+    type: Boolean,
+    default: false
   }
 }, { timestamps: true });
 

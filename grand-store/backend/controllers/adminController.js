@@ -386,15 +386,15 @@ const getPendingBankTransfers = async (req, res) => {
     const [orders, eventBookings] = await Promise.all([
       Order.find({
         paymentMethod: "Bank Transfer",
-        paymentStatus: { $in: ["Awaiting_Approval", "Approved", "Rejected"] },
+        paymentStatus: { $in: ["Awaiting_Approval", "Approved", "Rejected"], $nin: ["Cancelled", "Failed", "cancelled", "failed"] },
       })
         .populate("user", "name email")
         .sort({ updatedAt: -1 })
         .lean(),
       Booking.find({
         paymentMethod: "Bank Transfer",
-        bankTransferStatus: { $in: ["Awaiting_Approval", "Approved", "Rejected"] },
-        paymentStatus: { $nin: ["Cancelled", "Failed"] },
+        bankTransferStatus: { $in: ["Awaiting_Approval", "Approved", "Rejected"], $nin: ["Cancelled", "Failed", "cancelled", "failed"] },
+        paymentStatus: { $nin: ["Cancelled", "Failed", "cancelled", "failed"] },
       })
         .populate("user", "name email")
         .populate("event", "title")
@@ -601,7 +601,8 @@ const getGuestVerifications = async (req, res) => {
     const { status } = req.query;
     const query = {
       isGuest: true,
-      'guestKyc.documentUrl': { $exists: true, $ne: '' }
+      'guestKyc.documentUrl': { $exists: true, $ne: '' },
+      paymentStatus: { $nin: ['Cancelled', 'Failed', 'cancelled', 'failed'] }
     };
 
     if (status && status !== 'all') {

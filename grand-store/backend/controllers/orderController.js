@@ -993,16 +993,35 @@ const cancelOrderPayment = async (orderId, reason = 'Payment cancelled') => {
 
       if (customerEmail) {
         const storeUrl = process.env.FRONTEND_URL || 'https://grandstoreglobal.com';
-        const retryUrl = order.isGuest
-          ? `${storeUrl}/order-success/${order._id}?payment=cancel&guest=true`
-          : `${storeUrl}/customer/order/${order._id}?payment=cancel`;
+        const isAuctionOrder = Boolean(
+          (order.transactionId && order.transactionId.includes('AUC')) ||
+          (order.orderItems || []).some(it => it.category === 'Auction' || (it.name && it.name.toLowerCase().includes('auction')))
+        );
+        const auctionLotId = isAuctionOrder && order.orderItems?.[0]?.product ? String(order.orderItems[0].product) : null;
+
+        let retryUrl = '';
+        let itemName = '';
+        let subject = '';
+
+        if (isAuctionOrder && auctionLotId) {
+          itemName = order.orderItems?.[0]?.name || 'Won Auction Lot';
+          retryUrl = `${storeUrl}/auction/checkout/${auctionLotId}?payment=cancel`;
+          subject = `Payment Notice • ${itemName} Checkout Unsuccessful`;
+        } else {
+          itemName = `Shop Order (${(order.orderItems || []).length} item${(order.orderItems || []).length === 1 ? '' : 's'})`;
+          retryUrl = order.isGuest
+            ? `${storeUrl}/order-success/${order._id}?payment=cancel&guest=true`
+            : `${storeUrl}/customer/order/${order._id}?payment=cancel`;
+          subject = `Payment Notice: Order #${order.invoiceNumber || order.orderId} Unsuccessful`;
+        }
+
         await sendEmail({
           to: customerEmail,
-          subject: `Payment Notice: Order #${order.invoiceNumber || order.orderId} Unsuccessful`,
+          subject,
           html: paymentFailedEmailTemplate({
             customerName,
             reference: order.orderId || order.invoiceNumber || String(order._id),
-            itemName: `Shop Order (${(order.orderItems || []).length} item${(order.orderItems || []).length === 1 ? '' : 's'})`,
+            itemName,
             amount: order.totalPrice,
             retryUrl,
             reason: reason || 'Your payment attempt was cancelled or could not be verified by PayFast. No funds were debited.'
@@ -1336,7 +1355,7 @@ const getAdminOrders = async (req, res) => {
     }
 
     // Strictly exclude cancelled, failed, and aborted payments from admin order list
-    query.paymentStatus = { $nin: ['Cancelled', 'Failed'] };
+    query.paymentStatus = { $nin: ['Cancelled', 'Failed', 'cancelled', 'failed'] };
 
     const rawOrders = await Order.find(query)
       .sort({ createdAt: -1 })
@@ -1364,7 +1383,7 @@ const getAdminOrders = async (req, res) => {
     }
 
     // Filter strictly excluding any cancelled or aborted orders
-    let filtered = enriched.filter(ord => ord.paymentStatus !== 'Cancelled' && ord.paymentStatus !== 'Failed');
+    let filtered = enriched.filter(ord => !['Cancelled', 'Failed', 'cancelled', 'failed'].includes(ord.paymentStatus));
     if (tab === 'paid') {
       filtered = filtered.filter(ord => ord.isPaid || ord.paymentStatus === 'Paid');
     } else if (tab === 'pending') {
