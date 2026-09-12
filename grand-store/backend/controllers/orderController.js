@@ -40,20 +40,38 @@ const addOrderItems = async (req, res) => {
       quote.selectedPostnetStore ||
       (quote.shipments || []).find((s) => s.selectedPickupStore)?.selectedPickupStore || null;
 
-    const isPostnetCollection = req.body.deliveryPreference === 'postnet' ||
-      Boolean(effectivePostnetStore) ||
-      quote.shipments.some((shp) => shp.selectedCourier?.deliveryType === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection') || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('postnet'));
+    // A shipment specifically requires store collection if its deliveryType is 'pickup' or service level states 'collection' or 'pudo'
+    const isPickupShipment = (shp) => {
+      const type = (shp.selectedCourier?.deliveryType || '').toLowerCase();
+      const service = (shp.selectedCourier?.serviceLevel || '').toLowerCase();
+      if (type === 'home' || service.includes('door') || service.includes('standard delivery') || service.includes('express delivery')) {
+        return false;
+      }
+      return type === 'pickup' || service.includes('collection') || service.includes('pickup') || service.includes('pudo');
+    };
 
-    if (isPostnetCollection && effectivePostnetStore) {
+    const isPickupOrder = req.body.deliveryPreference === 'postnet' || (quote.shipments || []).some(isPickupShipment);
+
+    if (isPickupOrder && effectivePostnetStore) {
       quote.shipments.forEach((shp) => {
-        if (!shp.selectedPickupStore) {
-          shp.selectedPickupStore = effectivePostnetStore;
+        if (isPickupShipment(shp) || req.body.deliveryPreference === 'postnet') {
+          if (!shp.selectedPickupStore) {
+            shp.selectedPickupStore = effectivePostnetStore;
+          }
         }
       });
     }
 
-    if (isPostnetCollection && quote.shipments.some((shp) => !shp.selectedPickupStore)) {
-      return res.status(400).json({ message: 'A PostNet branch must be selected for PostNet store collection' });
+    if (isPickupOrder) {
+      const missingPickup = quote.shipments.some((shp) => {
+        if (isPickupShipment(shp) || req.body.deliveryPreference === 'postnet') {
+          return !shp.selectedPickupStore;
+        }
+        return false;
+      });
+      if (missingPickup) {
+        return res.status(400).json({ message: 'A PostNet branch must be selected for PostNet store collection' });
+      }
     }
     
     // Check expiration
@@ -253,8 +271,18 @@ const addOrderItems = async (req, res) => {
     let allOrderItems = [];
     let vendorPayables = [];
 
-    const selectedPickupStore = req.body.selectedPostnetStore || quote.shipments?.find(s => s.selectedPickupStore)?.selectedPickupStore || null;
-    const deliveryPreference = req.body.deliveryPreference || (selectedPickupStore ? 'postnet' : 'home');
+    const isPickupSelected = (quote.shipments || []).some(shp => {
+      const type = (shp.selectedCourier?.deliveryType || '').toLowerCase();
+      const service = (shp.selectedCourier?.serviceLevel || '').toLowerCase();
+      if (type === 'home' || service.includes('door') || service.includes('standard delivery') || service.includes('express delivery')) return false;
+      return type === 'pickup' || service.includes('collection') || service.includes('pudo');
+    });
+
+    const isPickupModeGlobal = req.body.deliveryPreference === 'postnet' || isPickupSelected;
+    const selectedPickupStore = isPickupModeGlobal
+      ? (req.body.selectedPostnetStore || quote.selectedPostnetStore || quote.shipments?.find(s => s.selectedPickupStore)?.selectedPickupStore || null)
+      : null;
+    const deliveryPreference = isPickupModeGlobal ? 'postnet' : 'home';
 
     // Create the master order with isPaid: false
     const order = new Order({
@@ -371,8 +399,9 @@ const addOrderItems = async (req, res) => {
         actualCost = internalLegs.reduce((sum, leg) => sum + leg.cost, 0);
       }
 
-      const activePickupStore = shp.selectedPickupStore || selectedPickupStore;
-      const isPickupMode = deliveryPreference === 'postnet' || shp.selectedCourier?.deliveryType === 'pickup' || Boolean(activePickupStore);
+      const isShipmentPickup = shp.selectedCourier?.deliveryType === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection') || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('pudo');
+      const isPickupMode = deliveryPreference === 'postnet' || isShipmentPickup;
+      const activePickupStore = isPickupMode ? (shp.selectedPickupStore || selectedPickupStore) : null;
 
       const newShipment = new Shipment({
         shipmentId,

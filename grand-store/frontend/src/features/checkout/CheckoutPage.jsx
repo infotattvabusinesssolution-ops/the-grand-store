@@ -493,10 +493,12 @@ export default function CheckoutPage({
     )).filter(Boolean))]
   ), [postnetPreview.stores]);
 
-  const fetchQuote = async (shippingAddress = formData) => {
+  const fetchQuote = async (shippingAddress = formData, overridePostnetStore = null) => {
     setQuoteLoading(true);
 
     try {
+      const effectiveStore = overridePostnetStore || preferredPostnetStore || selectedPostnetBranch;
+
       const payload = {
         cartItems: vendorCartItems.map((item) => ({
           product: item.id || item._id,
@@ -506,26 +508,28 @@ export default function CheckoutPage({
           image: item.image
         })),
         shippingAddress: {
-          address: deliveryPreference === 'postnet' && preferredPostnetStore
-            ? preferredPostnetStore.address
+          address: deliveryPreference === 'postnet' && effectiveStore
+            ? effectiveStore.address
             : (shippingAddress.address || 'PostNet Pickup Branch'),
           city: shippingAddress.city,
-          postalCode: shippingAddress.postalCode || '0001',
+          postalCode: (deliveryPreference === 'postnet' && effectiveStore?.postalCode) || shippingAddress.postalCode || '0001',
           country: shippingAddress.country || 'South Africa',
           lat: shippingAddress.lat,
           lng: shippingAddress.lng
         },
         deliveryPreference,
-        preferredPostnetStore
+        preferredPostnetStore: deliveryPreference === 'postnet' ? effectiveStore : null,
+        selectedPostnetStore: deliveryPreference === 'postnet' ? effectiveStore : null
       };
 
       const res = await api.post('/checkout/quote', payload);
       const data = res.data;
 
-      if (preferredPostnetStore) {
-        data.shipments = data.shipments.map((shipment) => ({
+      if (effectiveStore && deliveryPreference === 'postnet') {
+        data.selectedPostnetStore = effectiveStore;
+        data.shipments = (data.shipments || []).map((shipment) => ({
           ...shipment,
-          selectedPickupStore: preferredPostnetStore
+          selectedPickupStore: shipment.selectedPickupStore || effectiveStore
         }));
       }
 
@@ -546,14 +550,16 @@ export default function CheckoutPage({
     const newShipments = [...quote.shipments];
     const isPickup = courierOption.deliveryType === 'pickup' ||
       (courierOption.serviceLevel || '').toLowerCase().includes('collection') ||
-      (courierOption.serviceLevel || '').toLowerCase().includes('postnet') ||
-      deliveryPreference === 'postnet';
+      (courierOption.serviceLevel || '').toLowerCase().includes('pickup') ||
+      (courierOption.serviceLevel || '').toLowerCase().includes('pudo');
+
+    const effectiveStore = preferredPostnetStore || selectedPostnetBranch;
 
     newShipments[shipmentIndex] = {
       ...newShipments[shipmentIndex],
       selectedCourier: courierOption,
       selectedPickupStore: isPickup
-        ? (newShipments[shipmentIndex].selectedPickupStore || preferredPostnetStore)
+        ? (newShipments[shipmentIndex].selectedPickupStore || effectiveStore)
         : null
     };
 
@@ -575,6 +581,7 @@ export default function CheckoutPage({
 
   const handleSelectBranchCandidate = (store) => {
     setSelectedPostnetBranch(store);
+    handleConfirmPostnetStore(store);
   };
 
   const handleConfirmPostnetStore = (storeToConfirm) => {
@@ -595,6 +602,7 @@ export default function CheckoutPage({
     if (quote) {
       setQuote((currentQuote) => ({
         ...currentQuote,
+        selectedPostnetStore: store,
         shipments: currentQuote.shipments.map((shipment) => ({
           ...shipment,
           selectedPickupStore: store
@@ -653,15 +661,16 @@ export default function CheckoutPage({
         onNotify('Please search for your city or suburb for PostNet collection.');
         return;
       }
-      if (!preferredPostnetStore && selectedPostnetBranch) {
-        handleConfirmPostnetStore(selectedPostnetBranch);
-      } else if (!preferredPostnetStore && !selectedPostnetBranch) {
+      const branchToConfirm = preferredPostnetStore || selectedPostnetBranch;
+      if (!branchToConfirm) {
         onNotify('Please select and confirm your preferred PostNet collection branch.');
         return;
       }
+      handleConfirmPostnetStore(branchToConfirm);
     }
 
-    const currentQuote = await fetchQuote();
+    const effectiveStore = preferredPostnetStore || selectedPostnetBranch;
+    const currentQuote = await fetchQuote(formData, effectiveStore);
     if (currentQuote) {
       setCheckoutStep(2);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -727,14 +736,24 @@ export default function CheckoutPage({
       const guestName = (formData.fullName || `${formData.firstName || ''} ${formData.lastName || ''}`).trim() || 'Valued Customer';
       const effectivePostnetBranch = preferredPostnetStore || selectedPostnetBranch;
 
-      const normalizedShipments = (quote.shipments || []).map((shp) => ({
-        ...shp,
-        selectedPickupStore: shp.selectedPickupStore || (deliveryPreference === 'postnet' ? effectivePostnetBranch : null)
-      }));
+      const isPickupOrder = deliveryPreference === 'postnet' || (quote.shipments || []).some(
+        shp => shp.selectedCourier?.deliveryType === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection')
+      );
+
+      const normalizedShipments = (quote.shipments || []).map((shp) => {
+        const isShpPickup = shp.selectedCourier?.deliveryType === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection');
+        return {
+          ...shp,
+          selectedPickupStore: (isShpPickup || deliveryPreference === 'postnet')
+            ? (shp.selectedPickupStore || effectivePostnetBranch || null)
+            : null
+        };
+      });
 
       const orderData = {
         quote: {
           ...quote,
+          selectedPostnetStore: isPickupOrder ? effectivePostnetBranch : null,
           shipments: normalizedShipments
         },
         isGuest,
@@ -759,7 +778,7 @@ export default function CheckoutPage({
           firstName: formData.firstName || guestName.split(' ')[0] || '',
           lastName: formData.lastName || guestName.split(' ').slice(1).join(' ') || '',
           email: formData.email,
-          address: deliveryPreference === 'postnet' && effectivePostnetBranch
+          address: isPickupOrder && effectivePostnetBranch
             ? effectivePostnetBranch.address
             : formData.address,
           city: formData.city,
@@ -767,9 +786,9 @@ export default function CheckoutPage({
           country: formData.country,
           ...phoneDetails
         },
-        deliveryPreference,
-        selectedPostnetStore: effectivePostnetBranch,
-        preferredPostnetStore: effectivePostnetBranch,
+        deliveryPreference: isPickupOrder ? 'postnet' : 'home',
+        selectedPostnetStore: isPickupOrder ? effectivePostnetBranch : null,
+        preferredPostnetStore: isPickupOrder ? effectivePostnetBranch : null,
         paymentMethod: paymentMethod === 'payfast' ? 'PayFast' : 'Bank Transfer',
         isGift,
         giftRecipientName,

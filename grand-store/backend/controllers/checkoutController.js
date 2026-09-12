@@ -185,7 +185,9 @@ const generateQuote = async (req, res) => {
         landedCostEstimates: shippingData.landedCostEstimates,
         // Default selected courier is the first one
         selectedCourier: availableQuotes[0] || null,
-        selectedPickupStore: req.body.preferredPostnetStore || null
+        selectedPickupStore: (deliveryPreference === 'postnet' || availableQuotes[0]?.deliveryType === 'pickup')
+          ? (req.body.preferredPostnetStore || req.body.selectedPostnetStore || null)
+          : null
       });
     }
 
