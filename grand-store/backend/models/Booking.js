@@ -37,9 +37,11 @@ const bookingSchema = new mongoose.Schema({
 
   paymentStatus: {
     type: String,
-    enum: ['Pending', 'Paid', 'Completed', 'Refunded', 'Failed'],
+    enum: ['Pending', 'Paid', 'Completed', 'Refunded', 'Failed', 'Cancelled'],
     default: 'Pending'
   },
+  cancellationReason: { type: String },
+  cancelledAt: { type: Date },
   ticketStatus: {
     type: String,
     enum: ['Pending', 'Valid', 'Used', 'Cancelled'],

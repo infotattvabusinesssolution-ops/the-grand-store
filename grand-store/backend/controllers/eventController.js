@@ -222,6 +222,11 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
   return await processEventPaymentV2(bookingId, gatewayDetails);
 };
 
+const cancelEventPayment = async (bookingId, reason) => {
+  const { cancelEventPayment: cancelEventPaymentV2 } = require("./eventControllerV2");
+  return await cancelEventPaymentV2(bookingId, reason);
+};
+
 // @desc    Get user's event bookings
 // @route   GET /api/events/bookings/my-tickets
 // @access  Private
@@ -417,6 +422,7 @@ module.exports = {
   getVendorEvents,
   bookEvent,
   processEventPayment,
+  cancelEventPayment,
   getUserBookings,
   getEventAttendees,
   verifyTicket,

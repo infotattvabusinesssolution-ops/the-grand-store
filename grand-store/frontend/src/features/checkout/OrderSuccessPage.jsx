@@ -339,27 +339,77 @@ export default function OrderSuccessPage({ onClearCart }) {
     };
   };
 
+  const isOrderPaid = Boolean(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success');
+  const isOrderCancelled = Boolean(order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || (paymentStatus === 'cancel' && !isOrderPaid));
+
+  if (isOrderCancelled) {
+    return (
+      <main className="min-h-screen bg-[#050505] text-[var(--color-ivory)] pt-20 pb-24 flex items-center justify-center">
+        <div className="max-w-2xl mx-auto px-6 w-full text-center animate-fadeIn">
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 bg-rose-500/15 border border-rose-500/30 shadow-[0_0_30px_rgba(244,63,94,0.2)]">
+            <AlertTriangle size={40} className="text-rose-400" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-serif mb-4 text-white">
+            Payment Cancelled
+          </h1>
+
+          <div className="space-y-4 max-w-md mx-auto mb-6">
+            <div className="p-4 bg-rose-950/30 border border-rose-500/40 rounded-2xl text-rose-200 text-sm leading-relaxed">
+              You cancelled your payment on PayFast. No funds were charged to your account, and this order has been cancelled.
+            </div>
+            <div className="flex flex-col items-center justify-center gap-3 pt-2">
+              {order.paymentMethod === 'PayFast' && (
+                <button
+                  type="button"
+                  onClick={handlePayWithPayFast}
+                  disabled={initiatingPayment}
+                  className="w-full py-3.5 px-8 rounded-full bg-gold-gradient text-black font-bold uppercase tracking-widest text-xs hover:opacity-95 shadow-[0_0_25px_rgba(212,175,55,0.35)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                >
+                  {initiatingPayment ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Connecting to PayFast...
+                    </>
+                  ) : (
+                    `Retry Payment with PayFast (${formatPrice(order.totalPrice)})`
+                  )}
+                </button>
+              )}
+              <div className="flex items-center justify-center gap-3 w-full">
+                <Link
+                  to="/cart"
+                  className="flex-1 py-3 px-4 rounded-full bg-white/10 hover:bg-white/15 text-white font-bold uppercase tracking-widest text-[11px] transition-all text-center border border-white/10"
+                >
+                  Return to Cart
+                </Link>
+                <Link
+                  to="/shop"
+                  className="flex-1 py-3 px-4 rounded-full bg-transparent hover:bg-white/5 border border-white/20 text-white font-bold uppercase tracking-widest text-[11px] transition-all text-center"
+                >
+                  Continue Shopping
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+        <PaymentForm paymentData={paymentData} payfastUrl={payfastUrl} />
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#050505] text-[var(--color-ivory)] pt-0 pb-24">
       <div className="max-w-4xl mx-auto px-6">
-        {/* Success / Pending / Cancelled Header */}
+        {/* Success / Pending Header */}
         {(() => {
-          const isOrderPaid = Boolean(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success');
-          const isOrderCancelled = Boolean(order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || (paymentStatus === 'cancel' && !isOrderPaid));
-
           return (
             <div className="text-center mb-16">
               <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
                 isOrderPaid
                   ? "bg-[var(--color-gold)]/10"
-                  : isOrderCancelled
-                  ? "bg-rose-500/15 border border-rose-500/30"
                   : "bg-amber-500/15 border border-amber-500/30"
               }`}>
                 {isOrderPaid ? (
                   <CheckCircle2 size={40} className="text-gold-gradient" />
-                ) : isOrderCancelled ? (
-                  <AlertTriangle size={40} className="text-rose-400" />
                 ) : (
                   <Clock size={40} className="text-amber-400" />
                 )}
@@ -367,43 +417,12 @@ export default function OrderSuccessPage({ onClearCart }) {
               <h1 className="text-4xl md:text-5xl font-serif mb-4">
                 {isOrderPaid
                   ? "Order Placed Successfully"
-                  : isOrderCancelled
-                  ? "Payment Cancelled"
                   : "Order Created — Payment Pending"}
               </h1>
 
               {isOrderPaid ? (
                 <div className="inline-block px-4 py-2 bg-green-900/30 border border-green-500/50 rounded-lg text-green-400 font-medium mb-4">
                   Payment completed successfully. Your order is confirmed and being prepared for fulfillment.
-                </div>
-              ) : isOrderCancelled ? (
-                <div className="space-y-4 max-w-lg mx-auto mb-4">
-                  <div className="p-4 bg-rose-950/30 border border-rose-500/40 rounded-2xl text-rose-200 text-sm leading-relaxed">
-                    You cancelled your payment on PayFast. No funds were charged to your account, and this order has been cancelled.
-                  </div>
-                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                    {order.paymentMethod === 'PayFast' && (
-                      <button
-                        onClick={handlePayWithPayFast}
-                        disabled={initiatingPayment}
-                        className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-gold-gradient text-black font-bold uppercase tracking-widest text-xs hover:opacity-95 shadow-[0_0_25px_rgba(212,175,55,0.35)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        {initiatingPayment ? <><Loader2 size={16} className="animate-spin" /> Connecting to PayFast...</> : `Retry Payment with PayFast (${formatPrice(order.totalPrice)})`}
-                      </button>
-                    )}
-                    <Link
-                      to="/cart"
-                      className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold uppercase tracking-widest text-xs transition-all text-center"
-                    >
-                      Return to Cart
-                    </Link>
-                    <Link
-                      to="/shop"
-                      className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-transparent hover:bg-white/5 border border-white/15 text-white/80 font-bold uppercase tracking-widest text-xs transition-all text-center"
-                    >
-                      Continue Shopping
-                    </Link>
-                  </div>
                 </div>
               ) : order.paymentMethod === "Bank Transfer" &&
                 order.paymentStatus === "Pending" ? (

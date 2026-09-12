@@ -1153,6 +1153,8 @@ exports.payAuction = async (req, res) => {
       if (isAwaitingApproval) {
         order.paymentStatus = 'Awaiting_Approval';
         order.proofUrl = proofUrl;
+      } else if (order.paymentStatus === 'Cancelled' || !order.paymentStatus) {
+        order.paymentStatus = 'Pending';
       }
     }
 
@@ -1263,6 +1265,64 @@ exports.processBidderDepositPayment = async (depositId, gatewayTransactionId) =>
       console.error('Notification error on deposit confirmation:', nErr);
     }
   }
+  return true;
+};
+
+/**
+ * Cancel an auction won lot payment.
+ * Cancels associated pending Order so that it does NOT appear in Admin Orders,
+ * leaves lot.paymentStatus as 'Pending' so winner can retry settlement.
+ */
+exports.cancelAuctionPayment = async (lotId, reason = 'Payment cancelled') => {
+  const lot = await AuctionLot.findById(lotId);
+  if (!lot) return false;
+  if (lot.paymentStatus === 'Paid') return true;
+
+  const order = await Order.findOne({ 'orderItems.product': lot._id });
+  if (order && !order.isPaid) {
+    const { cancelOrderPayment } = require('./orderController');
+    try {
+      await cancelOrderPayment(order._id, reason);
+    } catch (e) {
+      console.warn('cancelAuctionPayment: error cancelling order:', e.message);
+    }
+  }
+
+  // Cancel associated pending transaction if exists
+  if (order) {
+    const transaction = await Transaction.findOne({ order: order._id });
+    if (transaction && transaction.status === 'pending') {
+      transaction.status = 'cancelled';
+      await transaction.save();
+    }
+  }
+
+  lot.paymentStatus = 'Pending';
+  await lot.save();
+  console.log(`[AUCTION PAYMENT] Cancelled payment for lot ${lot._id} (${lot.lotNumber || ''}): ${reason}`);
+  return true;
+};
+
+/**
+ * Cancel a VIP Bidder Deposit payment.
+ */
+exports.cancelBidderDepositPayment = async (depositId, reason = 'Payment cancelled') => {
+  const BidderDeposit = require('../models/BidderDeposit');
+  let deposit = null;
+  if (mongoose.Types.ObjectId.isValid(depositId)) {
+    deposit = await BidderDeposit.findById(depositId);
+  }
+  if (!deposit) {
+    deposit = await BidderDeposit.findOne({
+      $or: [{ paymentReference: depositId }, { _id: depositId }]
+    });
+  }
+  if (!deposit) return false;
+  if (deposit.paymentStatus === 'paid') return true;
+
+  deposit.paymentStatus = 'cancelled';
+  await deposit.save();
+  console.log(`[VIP DEPOSIT] Cancelled deposit ${deposit._id}: ${reason}`);
   return true;
 };
 

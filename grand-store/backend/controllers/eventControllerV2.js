@@ -574,6 +574,52 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
   return { success: true, booking: result.booking, event: result.event };
 };
 
+const cancelEventPayment = async (bookingId, reason = "Payment cancelled") => {
+  try {
+    let booking = null;
+    if (mongoose.Types.ObjectId.isValid(bookingId)) {
+      booking = await Booking.findById(bookingId);
+    }
+    if (!booking) {
+      booking = await Booking.findOne({ $or: [{ ticketId: bookingId }, { gsReference: bookingId }] });
+    }
+    if (!booking) {
+      return { cancelled: false, message: "Event booking not found" };
+    }
+
+    if (["Paid", "Completed"].includes(booking.paymentStatus)) {
+      return { cancelled: false, message: "Paid booking cannot be cancelled via gateway cancel" };
+    }
+
+    // Release reserved seats from event tier
+    if (booking.inventoryStatus === "reserved") {
+      const event = await Event.findById(booking.event);
+      if (event && event.ticketTiers) {
+        const tier = booking.ticketTierId
+          ? event.ticketTiers.id(booking.ticketTierId)
+          : event.ticketTiers.find((item) => item.name === booking.ticketType);
+        if (tier) {
+          tier.reserved = Math.max(0, (tier.reserved || 0) - booking.quantity);
+          await event.save();
+        }
+      }
+      booking.inventoryStatus = "released";
+    }
+
+    booking.paymentStatus = "Cancelled";
+    booking.ticketStatus = "Cancelled";
+    booking.cancellationReason = reason;
+    booking.cancelledAt = new Date();
+    await booking.save();
+
+    console.log(`[EVENT TICKET] Successfully cancelled booking ${booking._id} (${booking.gsReference}): ${reason}`);
+    return { cancelled: true, booking };
+  } catch (err) {
+    console.error("Error in cancelEventPayment:", err);
+    throw err;
+  }
+};
+
 // Public/authenticated endpoint to download ticket pass as PDF
 const downloadTicketPdf = async (req, res) => {
   try {
@@ -1272,6 +1318,7 @@ module.exports = {
   joinWaitlist,
   normalizeEventInput,
   processEventPayment,
+  cancelEventPayment,
   rejectEventBankTransfer,
   rejectEvent,
   releaseExpiredReservations,
