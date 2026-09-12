@@ -10,6 +10,7 @@ const publicEnquiryLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many enquiries have been submitted. Please wait a few minutes and try again.' },
+  validate: { trustProxy: false, xForwardedForHeader: false },
 });
 
 // Wine enquiries are guest-accessible from the Millionaires Collection site.

@@ -16,7 +16,7 @@ const testimonialRoutes = require("./routes/testimonialRoutes");
 const attributeRoutes = require("./routes/attributeRoutes");
 const glossaryRoutes = require("./routes/glossaryRoutes");
 const app = express();
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 
 app.use((req, res, next) => {
   console.log(`[API] ${req.method} ${req.originalUrl}`);
@@ -97,10 +97,13 @@ const mongoSanitizeExpress5 = require("./middleware/mongoSanitizeExpress5");
 app.use(mongoSanitizeExpress5);
 
 // Global Rate Limiter
+const rateLimitValidateConfig = { trustProxy: false, xForwardedForHeader: false };
+
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1000,
-  message: 'Too many requests from this IP, please try again after 15 minutes'
+  message: 'Too many requests from this IP, please try again after 15 minutes',
+  validate: rateLimitValidateConfig,
 });
 app.use(globalLimiter);
 
@@ -108,14 +111,16 @@ app.use(globalLimiter);
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: 'Too many authentication attempts, please try again later'
+  message: 'Too many authentication attempts, please try again later',
+  validate: rateLimitValidateConfig,
 });
 
 const paymentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: 'Too many payment requests, please try again later',
-  skip: (req) => req.path === '/itn' || req.path === '/notify' || req.originalUrl?.includes('/api/payfast/itn') || req.originalUrl?.includes('/api/payfast/notify')
+  skip: (req) => req.path === '/itn' || req.path === '/notify' || req.originalUrl?.includes('/api/payfast/itn') || req.originalUrl?.includes('/api/payfast/notify'),
+  validate: rateLimitValidateConfig,
 });
 
 app.use("/uploads", express.static("uploads"));
