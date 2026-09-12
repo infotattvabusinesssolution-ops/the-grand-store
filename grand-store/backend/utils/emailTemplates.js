@@ -976,6 +976,70 @@ const vendorMaintenanceFeePaidTemplate = ({
   return generateEmailTemplate('Monthly Vendor Maintenance Fee Receipt', content);
 };
 
+const paymentFailedEmailTemplate = ({ customerName, reference, itemName, amount, retryUrl, reason }) => {
+  const content = `
+    <h1 style="color: #ff7675; margin-bottom: 8px;">Payment Unsuccessful</h1>
+    <p style="font-size: 15px; color: #ddd; margin-top: 0;">
+      Dear ${customerName || 'Valued Patron'},
+    </p>
+    <p style="color: #bbb; line-height: 1.6;">
+      We wanted to let you know that your recent payment attempt for <strong>${itemName || 'your selection'}</strong> was not completed.
+    </p>
+
+    <div style="background-color: rgba(255, 118, 117, 0.08); border: 1px solid rgba(255, 118, 117, 0.25); border-radius: 8px; padding: 18px 20px; margin: 25px 0;">
+      <p style="margin: 0 0 8px 0; color: #ff7675; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">
+        🛡️ No Funds Have Been Debited
+      </p>
+      <p style="margin: 0; color: #ccc; font-size: 13px; line-height: 1.5;">
+        ${reason || 'The transaction was cancelled or could not be verified by the payment gateway. No funds were debited from your account.'}
+      </p>
+    </div>
+
+    <div class="details-box">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="padding: 6px 0; color: #888;">Reference:</td>
+          <td style="padding: 6px 0; text-align: right; font-family: monospace; color: ${BRAND_COLOR_GOLD}; font-weight: bold;">${reference || 'N/A'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #888;">Item / Service:</td>
+          <td style="padding: 6px 0; text-align: right; color: #eee;">${itemName || 'Grand Store Order'}</td>
+        </tr>
+        ${amount ? `
+        <tr>
+          <td style="padding: 6px 0; color: #888;">Amount:</td>
+          <td style="padding: 6px 0; text-align: right; color: #fff; font-weight: bold;">${formatRand(amount)}</td>
+        </tr>
+        ` : ''}
+        <tr>
+          <td style="padding: 6px 0; color: #888;">Status:</td>
+          <td style="padding: 6px 0; text-align: right; color: #ff7675; font-weight: bold;">Cancelled / Unpaid</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="color: #bbb; line-height: 1.6; font-size: 14px;">
+      You can safely retry your payment whenever you are ready. If you need any assistance, our concierge team is always at your service.
+    </p>
+
+    ${retryUrl ? `
+    <div style="text-align: center; margin: 30px 0 10px 0;">
+      <a href="${retryUrl}" class="btn" style="background-color: ${BRAND_COLOR_GOLD}; color: #000; padding: 14px 32px; font-weight: bold; text-decoration: none; border-radius: 6px; display: inline-block;">
+        Retry Payment Now
+      </a>
+    </div>
+    ` : ''}
+
+    <div class="divider"></div>
+
+    <p style="font-size: 12px; color: #777; margin-bottom: 0;">
+      Need help completing your acquisition? Contact us at <a href="mailto:concierge@grandstoreglobal.com" style="color: ${BRAND_COLOR_GOLD};">concierge@grandstoreglobal.com</a> or message our VIP Concierge on WhatsApp at +27 76 580 9522.
+    </p>
+  `;
+
+  return generateEmailTemplate('Payment Unsuccessful Notice', content);
+};
+
 module.exports = {
   generateEmailTemplate,
   welcomeEmailTemplate,
@@ -983,6 +1047,7 @@ module.exports = {
   passwordResetTemplate,
   newsletterWelcomeTemplate,
   orderConfirmationTemplate,
+  paymentFailedEmailTemplate,
   bankTransferInstructionsTemplate,
   eventBankTransferInstructionsTemplate,
   vendorApprovalTemplate,

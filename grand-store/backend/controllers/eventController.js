@@ -281,7 +281,10 @@ const getEventAttendees = async (req, res) => {
         .json({ message: "Not authorized to view these attendees" });
     }
 
-    const attendees = await Booking.find({ event: eventId })
+    const attendees = await Booking.find({
+      event: eventId,
+      paymentStatus: { $in: ["Paid", "Completed"] }
+    })
       .populate("user", "name email")
       .sort({ bookingDate: -1 });
 

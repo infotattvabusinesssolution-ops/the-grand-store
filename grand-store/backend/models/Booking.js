@@ -58,6 +58,7 @@ const bookingSchema = new mongoose.Schema({
   ticketId: { type: String, required: true, unique: true },
   qrCodeData: { type: String }, // Base64 data URL for QR pass
   emailDispatched: { type: Boolean, default: false },
+  failureEmailDispatched: { type: Boolean, default: false },
   reminderSent: { type: Boolean, default: false },
   reminderSentAt: { type: Date },
   bookingDate: { type: Date, default: Date.now }

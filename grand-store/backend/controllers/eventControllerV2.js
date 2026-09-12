@@ -381,7 +381,9 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
     }
     if (!booking) throw new Error("Event booking not found");
 
-    if (booking.paymentStatus === "Refunded") throw new Error("Refunded bookings cannot be paid again");
+    if (["Refunded", "Cancelled", "Failed"].includes(booking.paymentStatus)) {
+      throw new Error(`Cannot process payment for ${booking.paymentStatus.toLowerCase()} booking`);
+    }
 
     const event = await Event.findById(booking.event);
     if (!event) throw new Error("Event not found for booking");
@@ -611,6 +613,39 @@ const cancelEventPayment = async (bookingId, reason = "Payment cancelled") => {
     booking.cancellationReason = reason;
     booking.cancelledAt = new Date();
     await booking.save();
+
+    // Dispatch payment failure notice to customer's Gmail
+    if (!booking.failureEmailDispatched) {
+      try {
+        const { sendEmail } = require("../utils/emailService");
+        const { paymentFailedEmailTemplate } = require("../utils/emailTemplates");
+        const User = require("../models/User");
+        const user = booking.user ? await User.findById(booking.user) : null;
+        const recipientEmail = user?.email || booking.customerEmail;
+        const event = await Event.findById(booking.event);
+
+        if (recipientEmail) {
+          const storeUrl = process.env.FRONTEND_URL || "https://grandstoreglobal.com";
+          const retryUrl = `${storeUrl}/customer/event-order/${booking._id}?payment=cancel`;
+          await sendEmail({
+            to: recipientEmail,
+            subject: `Payment Notice • Event Booking [${booking.ticketId || booking.gsReference}] Unsuccessful`,
+            html: paymentFailedEmailTemplate({
+              customerName: user?.name || "Valued Patron",
+              reference: booking.ticketId || booking.gsReference || String(booking._id),
+              itemName: `Event Ticket: ${event?.title || "Grand Store Event"} (${booking.quantity}x ${booking.ticketType})`,
+              amount: booking.totalPrice,
+              retryUrl,
+              reason: reason || "Your ticket payment attempt was cancelled or could not be completed on PayFast. Reserved tickets have been released.",
+            }),
+          });
+          booking.failureEmailDispatched = true;
+          await booking.save();
+        }
+      } catch (emailErr) {
+        console.warn("cancelEventPayment: failed to send payment failure email:", emailErr.message);
+      }
+    }
 
     console.log(`[EVENT TICKET] Successfully cancelled booking ${booking._id} (${booking.gsReference}): ${reason}`);
     return { cancelled: true, booking };

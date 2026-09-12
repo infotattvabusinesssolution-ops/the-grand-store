@@ -43,8 +43,8 @@ const getDashboardStats = async (req, res) => {
       status: "pending_approval",
     });
 
-    // Revenue calculations could be complex, doing a simple sum of completed orders
-    const orders = await Order.find({ isPaid: true });
+    // Revenue calculations: strictly completed and non-cancelled orders
+    const orders = await Order.find({ isPaid: true, paymentStatus: { $nin: ['Cancelled', 'Failed'] } });
     const totalOrderRevenue = orders.reduce(
       (sum, order) => sum + (order.totalPrice || 0),
       0,
@@ -54,7 +54,7 @@ const getDashboardStats = async (req, res) => {
       0,
     );
 
-    const bookings = await Booking.find({ paymentStatus: "Paid" });
+    const bookings = await Booking.find({ paymentStatus: { $in: ["Paid", "Completed"] } });
     const totalBookingRevenue = bookings.reduce(
       (sum, b) => sum + (b.totalPrice || 0),
       0,
@@ -386,7 +386,7 @@ const getPendingBankTransfers = async (req, res) => {
     const [orders, eventBookings] = await Promise.all([
       Order.find({
         paymentMethod: "Bank Transfer",
-        paymentStatus: { $ne: "Pending" },
+        paymentStatus: { $in: ["Awaiting_Approval", "Approved", "Rejected"] },
       })
         .populate("user", "name email")
         .sort({ updatedAt: -1 })
@@ -394,6 +394,7 @@ const getPendingBankTransfers = async (req, res) => {
       Booking.find({
         paymentMethod: "Bank Transfer",
         bankTransferStatus: { $in: ["Awaiting_Approval", "Approved", "Rejected"] },
+        paymentStatus: { $nin: ["Cancelled", "Failed"] },
       })
         .populate("user", "name email")
         .populate("event", "title")

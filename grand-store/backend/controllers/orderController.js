@@ -982,6 +982,40 @@ const cancelOrderPayment = async (orderId, reason = 'Payment cancelled') => {
     console.warn('CheckoutEngine appendEvent OrderCancelled warning:', evErr.message);
   }
 
+  // 4. Dispatch Payment Failed / Cancelled Notification to Customer's Gmail
+  if (!order.failureEmailDispatched) {
+    try {
+      const { sendEmail } = require('../utils/emailService');
+      const { paymentFailedEmailTemplate } = require('../utils/emailTemplates');
+      const user = order.user ? await User.findById(order.user) : null;
+      const customerEmail = user?.email || order.guestInfo?.email || order.shippingAddress?.email;
+      const customerName = user?.name || order.guestInfo?.name || order.shippingAddress?.fullName || 'Valued Patron';
+
+      if (customerEmail) {
+        const storeUrl = process.env.FRONTEND_URL || 'https://grandstoreglobal.com';
+        const retryUrl = order.isGuest
+          ? `${storeUrl}/order-success/${order._id}?payment=cancel&guest=true`
+          : `${storeUrl}/customer/order/${order._id}?payment=cancel`;
+        await sendEmail({
+          to: customerEmail,
+          subject: `Payment Notice: Order #${order.invoiceNumber || order.orderId} Unsuccessful`,
+          html: paymentFailedEmailTemplate({
+            customerName,
+            reference: order.orderId || order.invoiceNumber || String(order._id),
+            itemName: `Shop Order (${(order.orderItems || []).length} item${(order.orderItems || []).length === 1 ? '' : 's'})`,
+            amount: order.totalPrice,
+            retryUrl,
+            reason: reason || 'Your payment attempt was cancelled or could not be verified by PayFast. No funds were debited.'
+          })
+        });
+        order.failureEmailDispatched = true;
+        await order.save();
+      }
+    } catch (emailErr) {
+      console.warn('cancelOrderPayment: failed to send payment failure email:', emailErr.message);
+    }
+  }
+
   console.log(`Order ${order._id} successfully marked Cancelled. Reason: ${reason}`);
   return order;
 };

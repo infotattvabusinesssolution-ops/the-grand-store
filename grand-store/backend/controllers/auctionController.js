@@ -1186,15 +1186,21 @@ exports.payAuction = async (req, res) => {
 };
 
 /**
- * Process the ledger transactions and wallet updates after a successful auction payment
+ * Process auction payment upon successful PayFast callback.
  * This function will be called by the PayFast ITN Webhook Controller
  */
 exports.processAuctionPayment = async (lotId) => {
   const lot = await AuctionLot.findById(lotId);
   if (!lot) throw new Error('Lot not found');
   if (lot.paymentStatus === 'Paid') return true;
+  if (lot.paymentStatus === 'Cancelled' || lot.paymentStatus === 'Failed') {
+    throw new Error(`Cannot process payment for ${lot.paymentStatus.toLowerCase()} auction lot`);
+  }
 
   const order = await Order.findOne({ 'orderItems.product': lot._id });
+  if (order && (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed')) {
+    throw new Error('Cannot process payment for cancelled or failed auction order');
+  }
   const transaction = order ? await Transaction.findOne({ order: order._id }) : null;
 
   lot.paymentStatus = 'Paid';
@@ -1217,7 +1223,7 @@ exports.processAuctionPayment = async (lotId) => {
   if (lot.vendor) {
     let wallet = await Wallet.findOne({ vendorId: lot.vendor });
     if (!wallet) {
-       wallet = new Wallet({ vendorId: lot.vendor });
+      wallet = new Wallet({ vendorId: lot.vendor });
     }
     wallet.pendingBalance += lot.vendorPayable;
     wallet.totalEarned += lot.vendorPayable;
@@ -1234,6 +1240,9 @@ exports.processBidderDepositPayment = async (depositId, gatewayTransactionId) =>
   const deposit = await BidderDeposit.findById(depositId);
   if (!deposit) throw new Error('Deposit record not found');
   if (deposit.paymentStatus === 'paid') return true;
+  if (deposit.paymentStatus === 'cancelled' || deposit.paymentStatus === 'failed') {
+    throw new Error(`Cannot process payment for ${deposit.paymentStatus.toLowerCase()} deposit`);
+  }
 
   deposit.paymentStatus = 'paid';
   if (gatewayTransactionId) {
@@ -1253,10 +1262,11 @@ exports.processBidderDepositPayment = async (depositId, gatewayTransactionId) =>
     await user.save();
 
     try {
-      await createInAppNotification({
+      const Notification = require('../models/Notification');
+      await Notification.create({
         recipient: user._id,
         recipientType: 'customer',
-        title: '👑 VIP Bidding Privileges Activated!',
+        title: 'VIP Bidding Security Deposit Confirmed',
         message: `Your refundable deposit of R${deposit.amount.toLocaleString()} is confirmed. Your VIP bidding limit of R${vipLimit.toLocaleString()} is now active.`,
         type: 'auction',
         link: '/customer/auctions',
@@ -1322,6 +1332,36 @@ exports.cancelBidderDepositPayment = async (depositId, reason = 'Payment cancell
   deposit.paymentStatus = 'cancelled';
   await deposit.save();
   console.log(`[VIP DEPOSIT] Cancelled deposit ${deposit._id}: ${reason}`);
+
+  if (!deposit.failureEmailDispatched && deposit.bidder) {
+    try {
+      const { sendEmail } = require('../utils/emailService');
+      const { paymentFailedEmailTemplate } = require('../utils/emailTemplates');
+      const User = require('../models/User');
+      const user = await User.findById(deposit.bidder);
+      if (user && user.email) {
+        const storeUrl = process.env.FRONTEND_URL || 'https://grandstoreglobal.com';
+        const retryUrl = `${storeUrl}/auction/vip-checkout?payment=cancel&ref=${deposit.paymentReference}`;
+        await sendEmail({
+          to: user.email,
+          subject: 'Payment Notice • VIP Guarantee Deposit Unsuccessful',
+          html: paymentFailedEmailTemplate({
+            customerName: user.name || 'Valued Patron',
+            reference: deposit.paymentReference || String(deposit._id),
+            itemName: 'VIP Bidding Refundable Guarantee Deposit',
+            amount: deposit.amount,
+            retryUrl,
+            reason: reason || 'Your VIP deposit checkout on PayFast was cancelled. No funds were debited.'
+          })
+        });
+        deposit.failureEmailDispatched = true;
+        await deposit.save();
+      }
+    } catch (emailErr) {
+      console.warn('cancelBidderDepositPayment: failed to send failure email:', emailErr.message);
+    }
+  }
+
   return true;
 };
 
@@ -1893,7 +1933,9 @@ exports.getAdminDeposits = async (req, res) => {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
-    const deposits = await BidderDeposit.find()
+    const deposits = await BidderDeposit.find({
+      paymentStatus: { $nin: ['cancelled', 'failed'] }
+    })
       .populate('bidder', 'name email phone bidderNumber')
       .populate('lot', 'title lotNumber')
       .sort({ createdAt: -1 });

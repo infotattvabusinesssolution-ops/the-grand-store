@@ -14,12 +14,16 @@ const getAdminFinanceOverview = async (req, res) => {
   try {
     const requestedLimit = Number.parseInt(req.query.limit, 10);
     const limit = Math.min(Math.max(Number.isFinite(requestedLimit) ? requestedLimit : 250, 1), 2000);
-    const transactions = await Transaction.find()
+    const transactions = await Transaction.find({ status: { $nin: ['cancelled', 'failed'] } })
       .sort({ createdAt: -1 })
       .limit(limit)
       .populate('customer', 'name email')
       .populate('vendor', 'name email');
-    const rawShopOrders = await Order.find({ transactionId: { $regex: /SHP/ } })
+    const rawShopOrders = await Order.find({
+      transactionId: { $regex: /SHP/ },
+      paymentStatus: { $nin: ['Cancelled', 'Failed'] },
+      isPaid: true
+    })
       .sort({ createdAt: -1 })
       .limit(limit)
       .populate('user', 'name email')
@@ -64,9 +68,15 @@ const getAdminFinanceOverview = async (req, res) => {
         };
       }),
     }));
-    const auctionOrders = await Order.find({ transactionId: { $regex: /AUC/ } }).sort({ createdAt: -1 }).limit(limit).populate('user', 'name email');
-    const eventBookings = await Booking.find().sort({ createdAt: -1 }).limit(limit).populate('user', 'name email');
-    const vendorPayments = await Transaction.find({ module: 'vendor', type: 'payment' })
+    const auctionOrders = await Order.find({
+      transactionId: { $regex: /AUC/ },
+      paymentStatus: { $nin: ['Cancelled', 'Failed'] },
+      isPaid: true
+    }).sort({ createdAt: -1 }).limit(limit).populate('user', 'name email');
+    const eventBookings = await Booking.find({
+      paymentStatus: { $in: ['Paid', 'Completed'] }
+    }).sort({ createdAt: -1 }).limit(limit).populate('user', 'name email');
+    const vendorPayments = await Transaction.find({ module: 'vendor', type: 'payment', status: { $nin: ['cancelled', 'failed'] } })
       .sort({ createdAt: -1 })
       .limit(limit)
       .populate('customer', 'name email');

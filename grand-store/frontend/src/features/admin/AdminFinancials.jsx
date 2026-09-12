@@ -35,10 +35,10 @@ export default function AdminFinancials({ hideHeader = false }) {
 
         if (res.data) {
           setMetrics(res.data.metrics);
-          setTransactions(res.data.transactions);
-          setShopOrders(res.data.shopOrders || []);
-          setAuctionOrders(res.data.auctionOrders || []);
-          setEventBookings(res.data.eventBookings || []);
+          setTransactions(res.data.transactions || []);
+          setShopOrders((res.data.shopOrders || []).filter(o => o.paymentStatus !== 'Cancelled' && o.paymentStatus !== 'Failed'));
+          setAuctionOrders((res.data.auctionOrders || []).filter(o => o.paymentStatus !== 'Cancelled' && o.paymentStatus !== 'Failed'));
+          setEventBookings((res.data.eventBookings || []).filter(b => b.paymentStatus !== 'Cancelled' && b.paymentStatus !== 'Failed'));
           setVendorPayments(res.data.vendorPayments || []);
         }
       } catch (err) {
