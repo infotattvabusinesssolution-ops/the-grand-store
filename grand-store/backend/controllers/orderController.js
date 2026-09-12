@@ -13,6 +13,24 @@ const addOrderItems = async (req, res) => {
   try {
     const { quote, shippingAddress, paymentMethod, isGift, giftRecipientName, giftMessage } = req.body;
 
+    if (shippingAddress?.phoneCountry || shippingAddress?.phoneCountryCode) {
+      const { phoneCountry, phoneCountryCode } = shippingAddress;
+      const { isSupportedCountry, getCountryCallingCode } = require('libphonenumber-js/min');
+      if (phoneCountry && !isSupportedCountry(phoneCountry)) {
+        return res.status(400).json({ message: 'Invalid phone country code' });
+      }
+      if (phoneCountry && phoneCountryCode) {
+        try {
+          const expectedCode = `+${getCountryCallingCode(phoneCountry)}`;
+          if (phoneCountryCode !== expectedCode) {
+            return res.status(400).json({ message: 'Invalid phone country code' });
+          }
+        } catch {
+          return res.status(400).json({ message: 'Invalid phone country code' });
+        }
+      }
+    }
+
     if (!quote || !quote.shipments || quote.shipments.length === 0) {
       return res.status(400).json({ message: 'Valid quote with shipments is required' });
     }
@@ -1206,7 +1224,9 @@ const getAdminOrderById = async (req, res) => {
       retailSubtotal: retailItems.reduce((acc, it) => acc + (Number(it.price || 0) * Number(it.quantity || 1)), 0),
       customerName: order.guestInfo?.name || order.shippingAddress?.fullName || order.user?.name || 'Customer',
       customerEmail: order.guestInfo?.email || order.shippingAddress?.email || order.user?.email || '',
-      customerPhone: order.guestInfo?.phone || order.shippingAddress?.phone || order.shippingAddress?.phoneNumber || order.user?.phoneNumber || ''
+      customerPhone: order.guestInfo?.phone || order.shippingAddress?.phone || order.shippingAddress?.phoneNumber || order.user?.phoneNumber || '',
+      customerPhoneCountry: order.guestInfo?.phoneCountry || order.shippingAddress?.phoneCountry || '',
+      customerPhoneCountryCode: order.guestInfo?.phoneCountryCode || order.shippingAddress?.phoneCountryCode || ''
     });
   } catch (error) {
     console.error('Get Admin Order By Id Error:', error);

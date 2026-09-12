@@ -113,8 +113,9 @@ const authLimiter = rateLimit({
 
 const paymentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 50,
-  message: 'Too many payment requests, please try again later'
+  max: 100,
+  message: 'Too many payment requests, please try again later',
+  skip: (req) => req.path === '/itn' || req.path === '/notify' || req.originalUrl?.includes('/api/payfast/itn') || req.originalUrl?.includes('/api/payfast/notify')
 });
 
 app.use("/uploads", express.static("uploads"));

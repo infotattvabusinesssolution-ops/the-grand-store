@@ -1271,7 +1271,7 @@ const verifyOtp = async (req, res) => {
       const sanitizedPhone = cleanPhone.replace(/[^\d]/g, '');
       const defaultEmail = email
         ? String(email).trim().toLowerCase()
-        : `customer_${sanitizedPhone.slice(-8)}@grandstore.co.za`;
+        : `customer_${sanitizedPhone.slice(-8)}@grandstoreglobal.com`;
 
       user = await User.create({
         name: name || `Valued Patron ${sanitizedPhone.slice(-4)}`,
@@ -1611,7 +1611,7 @@ const appleAuth = async (req, res) => {
 
     if (!user) {
       const newReferralCode = await generateUniqueReferralCode();
-      const defaultEmail = resolvedEmail || `apple_${(resolvedAppleId || Date.now()).slice(-8)}@grandstore.co.za`;
+      const defaultEmail = resolvedEmail || `apple_${(resolvedAppleId || Date.now()).slice(-8)}@grandstoreglobal.com`;
 
       let referredByUser = null;
       if (referralCode) {

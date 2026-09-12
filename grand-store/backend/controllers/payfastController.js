@@ -38,7 +38,7 @@ const generateSignature = (data, passphrase = null) => {
   // 1. Create parameter string
   let pfOutput = '';
   for (const key in data) {
-    if (data.hasOwnProperty(key) && data[key] !== '') {
+    if (data.hasOwnProperty(key) && data[key] !== undefined && data[key] !== null && data[key] !== '') {
       pfOutput += `${key}=${payfastUrlEncode(data[key].toString().trim())}&`;
     }
   }
@@ -85,7 +85,7 @@ exports.generateShopPayment = async (req, res) => {
     const backendUrl = getBackendUrl(req);
 
     const customerName = order.user?.name || order.guestInfo?.name || order.shippingAddress?.name || order.shippingAddress?.fullName || 'Guest Customer';
-    const customerEmail = order.user?.email || order.guestInfo?.email || order.shippingAddress?.email || 'customer@grandstore.co.za';
+    const customerEmail = order.user?.email || order.guestInfo?.email || order.shippingAddress?.email || 'customer@grandstoreglobal.com';
     const nameParts = customerName.trim().split(/\s+/);
 
     let returnUrl = order.isGuest 
@@ -395,10 +395,13 @@ exports.itnWebhook = async (req, res) => {
     }
     
     // We will verify the ITN by doing a POST back to PayFast's validation endpoint
+    // NOTE: PayFast requires the signature field to be excluded when validating
     const axios = require('axios');
     let pfParamString = '';
     for (let key in payload) {
-      pfParamString += `${key}=${encodeURIComponent(payload[key].toString().trim()).replace(/%20/g, '+')}&`;
+      if (key !== 'signature' && payload[key] !== undefined && payload[key] !== null && payload[key] !== '') {
+        pfParamString += `${key}=${payfastUrlEncode(payload[key].toString().trim())}&`;
+      }
     }
     pfParamString = pfParamString.slice(0, -1);
 
