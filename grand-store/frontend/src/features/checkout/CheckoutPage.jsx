@@ -544,10 +544,15 @@ export default function CheckoutPage({
     if (!quote) return;
 
     const newShipments = [...quote.shipments];
+    const isPickup = courierOption.deliveryType === 'pickup' ||
+      (courierOption.serviceLevel || '').toLowerCase().includes('collection') ||
+      (courierOption.serviceLevel || '').toLowerCase().includes('postnet') ||
+      deliveryPreference === 'postnet';
+
     newShipments[shipmentIndex] = {
       ...newShipments[shipmentIndex],
       selectedCourier: courierOption,
-      selectedPickupStore: courierOption.deliveryType === 'pickup'
+      selectedPickupStore: isPickup
         ? (newShipments[shipmentIndex].selectedPickupStore || preferredPostnetStore)
         : null
     };
@@ -720,8 +725,18 @@ export default function CheckoutPage({
     try {
       const isGuest = !user;
       const guestName = (formData.fullName || `${formData.firstName || ''} ${formData.lastName || ''}`).trim() || 'Valued Customer';
+      const effectivePostnetBranch = preferredPostnetStore || selectedPostnetBranch;
+
+      const normalizedShipments = (quote.shipments || []).map((shp) => ({
+        ...shp,
+        selectedPickupStore: shp.selectedPickupStore || (deliveryPreference === 'postnet' ? effectivePostnetBranch : null)
+      }));
+
       const orderData = {
-        quote,
+        quote: {
+          ...quote,
+          shipments: normalizedShipments
+        },
         isGuest,
         guestEmail: formData.email,
         guestName: guestName,
@@ -744,8 +759,8 @@ export default function CheckoutPage({
           firstName: formData.firstName || guestName.split(' ')[0] || '',
           lastName: formData.lastName || guestName.split(' ').slice(1).join(' ') || '',
           email: formData.email,
-          address: deliveryPreference === 'postnet' && preferredPostnetStore
-            ? preferredPostnetStore.address
+          address: deliveryPreference === 'postnet' && effectivePostnetBranch
+            ? effectivePostnetBranch.address
             : formData.address,
           city: formData.city,
           postalCode: formData.postalCode,
@@ -753,7 +768,8 @@ export default function CheckoutPage({
           ...phoneDetails
         },
         deliveryPreference,
-        selectedPostnetStore: preferredPostnetStore,
+        selectedPostnetStore: effectivePostnetBranch,
+        preferredPostnetStore: effectivePostnetBranch,
         paymentMethod: paymentMethod === 'payfast' ? 'PayFast' : 'Bank Transfer',
         isGift,
         giftRecipientName,

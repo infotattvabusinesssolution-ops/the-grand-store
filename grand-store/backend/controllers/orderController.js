@@ -35,8 +35,22 @@ const addOrderItems = async (req, res) => {
       return res.status(400).json({ message: 'Valid quote with shipments is required' });
     }
 
+    const effectivePostnetStore = req.body.selectedPostnetStore ||
+      req.body.preferredPostnetStore ||
+      quote.selectedPostnetStore ||
+      (quote.shipments || []).find((s) => s.selectedPickupStore)?.selectedPickupStore || null;
+
     const isPostnetCollection = req.body.deliveryPreference === 'postnet' ||
-      quote.shipments.some((shp) => shp.selectedCourier?.deliveryType === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection'));
+      Boolean(effectivePostnetStore) ||
+      quote.shipments.some((shp) => shp.selectedCourier?.deliveryType === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection') || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('postnet'));
+
+    if (isPostnetCollection && effectivePostnetStore) {
+      quote.shipments.forEach((shp) => {
+        if (!shp.selectedPickupStore) {
+          shp.selectedPickupStore = effectivePostnetStore;
+        }
+      });
+    }
 
     if (isPostnetCollection && quote.shipments.some((shp) => !shp.selectedPickupStore)) {
       return res.status(400).json({ message: 'A PostNet branch must be selected for PostNet store collection' });
