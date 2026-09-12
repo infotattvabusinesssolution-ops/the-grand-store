@@ -45,6 +45,7 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
     // 1. DOMESTIC SA
     if (originSA && destSA) {
       // Check if vendor has free shipping threshold
+      const freeThreshold = vendor?.shippingProfile?.freeDeliveryThreshold;
       // Check admin shipping settings (supports both postnetStandardFee and global shippingFee)
       const hasCustomStandardFee = platformSettings?.postnetStandardFee !== undefined && platformSettings.postnetStandardFee !== 120;
       let postnetStandardCost = Number(
