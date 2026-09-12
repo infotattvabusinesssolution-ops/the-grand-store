@@ -238,7 +238,8 @@ const getUserBookings = async (req, res) => {
 
     const QRCode = require("qrcode");
     for (const b of bookings) {
-      if (!b.qrCodeData && b.ticketId) {
+      const isPaid = ["Paid", "Completed"].includes(b.paymentStatus);
+      if (isPaid && !b.qrCodeData && b.ticketId) {
         try {
           const qrPayload = JSON.stringify({
             ticketId: b.ticketId,
@@ -260,7 +261,19 @@ const getUserBookings = async (req, res) => {
       }
     }
 
-    res.json(bookings);
+    // STRICT PRIVACY & CREDENTIALS SECURITY:
+    // If not paid, strip ticketId and qrCodeData so unpaid users never receive any ticket credentials!
+    const sanitizedBookings = bookings.map((b) => {
+      const doc = b.toObject ? b.toObject() : { ...b };
+      const isPaid = ["Paid", "Completed"].includes(doc.paymentStatus);
+      if (!isPaid) {
+        delete doc.qrCodeData;
+        delete doc.ticketId;
+      }
+      return doc;
+    });
+
+    res.json(sanitizedBookings);
   } catch (error) {
     console.error("Error fetching user bookings:", error);
     res.status(500).json({ message: "Server error fetching tickets" });

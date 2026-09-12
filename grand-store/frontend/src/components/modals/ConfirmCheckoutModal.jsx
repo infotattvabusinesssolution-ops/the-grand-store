@@ -36,7 +36,7 @@ const resolveImageUrl = (src) => {
   }
 
   if (normalizedSrc.includes("uploads/")) {
-    const apiUrl = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
+    const apiUrl = (import.meta.env.VITE_API_URL || "http://localhost:5015").replace(/\/$/, "");
     const cleanPath = normalizedSrc.substring(normalizedSrc.indexOf("uploads/"));
     return `${apiUrl}/${cleanPath}`;
   }

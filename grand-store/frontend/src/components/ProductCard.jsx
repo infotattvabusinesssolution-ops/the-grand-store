@@ -61,7 +61,7 @@ const resolveImageUrl = (src) => {
   }
 
   if (normalizedSrc.includes("uploads/")) {
-    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5015";
     const cleanPath = normalizedSrc.substring(
       normalizedSrc.indexOf("uploads/"),
     );
@@ -90,7 +90,7 @@ function VendorProductImage({ src, alt }) {
 
     if (
       !resolvedSrc ||
-      (!resolvedSrc.includes(import.meta.env.VITE_API_URL || "http://localhost:5000") &&
+      (!resolvedSrc.includes(import.meta.env.VITE_API_URL || "http://localhost:5015") &&
         !resolvedSrc.includes("res.cloudinary.com")) ||
       trimmedUploadCache.has(cacheKey)
     ) {
