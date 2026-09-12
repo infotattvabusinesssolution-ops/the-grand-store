@@ -46,6 +46,9 @@ export default function AdminOrders() {
   }, [user, activeTab]);
 
   const filteredOrders = orders.filter((ord) => {
+    // Strictly exclude cancelled and aborted orders from admin dashboard view
+    if (ord.paymentStatus === "Cancelled" || ord.paymentStatus === "Failed") return false;
+
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase();
     const ref = String(ord.invoiceNumber || ord.orderId || ord._id).toLowerCase();

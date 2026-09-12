@@ -88,6 +88,7 @@ const shipmentSchema = new mongoose.Schema(
         "Delivered",
         "Delayed",
         "Failed",
+        "Cancelled",
       ],
       default: "Payment Pending",
     },

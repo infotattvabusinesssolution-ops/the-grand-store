@@ -4,7 +4,7 @@ const Order = require('../models/Order');
 const AuctionLot = require('../models/AuctionLot');
 const Booking = require('../models/Booking');
 const BidderDeposit = require('../models/BidderDeposit');
-const { processOrderPayment } = require('./orderController');
+const { processOrderPayment, cancelOrderPayment } = require('./orderController');
 const { processAuctionPayment, processBidderDepositPayment } = require('./auctionController');
 const { processEventPayment } = require('./eventControllerV2');
 const { processVendorPayment } = require('./vendorController');
@@ -462,6 +462,13 @@ exports.itnWebhook = async (req, res) => {
           });
           console.log(`Successfully processed vendor maintenance fee payment for ${vendorId}`);
        }
+    } else if (payload.payment_status === 'CANCELLED' || payload.payment_status === 'FAILED') {
+       const reference = payload.m_payment_id;
+       if (reference && reference.startsWith('SHP-')) {
+          const orderId = reference.replace('SHP-', '');
+          await cancelOrderPayment(orderId, `PayFast ITN status: ${payload.payment_status}`);
+          console.log(`Successfully cancelled shop order ${orderId} due to ITN status: ${payload.payment_status}`);
+       }
     }
 
     // Always respond 200 OK so PayFast knows we received it
@@ -572,6 +579,9 @@ exports.confirmOrderPayment = async (req, res) => {
 
     // Process payment ledger, wallet, events, isPaid
     if (!order.isPaid) {
+      if (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed') {
+        return res.status(400).json({ message: 'Cannot confirm a cancelled or failed order' });
+      }
       await processOrderPayment(order._id);
     }
 
@@ -609,6 +619,16 @@ exports.mobileReturnHandler = async (req, res) => {
           await processEventPayment(bookingId, req.query);
         } catch (e) {
           console.error('Error in mobileReturnHandler processEventPayment:', e);
+        }
+      }
+    } else {
+      // Payment was cancelled or failed on mobile gateway
+      if (type === 'shop' && orderId) {
+        try {
+          await cancelOrderPayment(orderId, 'Customer cancelled payment on mobile gateway');
+          console.log(`mobileReturnHandler: Cancelled shop order ${orderId} upon mobile gateway cancel return`);
+        } catch (e) {
+          console.error('Error in mobileReturnHandler cancelOrderPayment:', e);
         }
       }
     }

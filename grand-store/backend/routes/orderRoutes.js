@@ -9,7 +9,8 @@ const {
   markOrderAsPaid,
   getAdminOrders,
   getAdminOrderById,
-  sendAdminOrderMessage
+  sendAdminOrderMessage,
+  cancelOrderPaymentHandler
 } = require('../controllers/orderController');
 const { protect, optionalAuth, requireRoles, financeStaff } = require('../middleware/authMiddleware');
 
@@ -33,6 +34,7 @@ router.route('/:id/admin-message').post(
   sendAdminOrderMessage
 );
 
+router.route('/:id/cancel-payment').post(optionalAuth, cancelOrderPaymentHandler);
 router.route('/:id/pay').put(optionalAuth, markOrderAsPaid).post(optionalAuth, markOrderAsPaid);
 router.route('/vendor/sales').get(
   protect,

@@ -76,7 +76,22 @@ export default function OrderSuccessPage({ onClearCart }) {
     const fetchOrder = async () => {
       try {
         const res = await api.get(`/orders/${id}`);
-        const data = res.data;
+        let data = res.data;
+        if (paymentStatus === "cancel" && !data.isPaid && data.paymentStatus !== "Paid") {
+          try {
+            const cancelRes = await api.post(`/orders/${id}/cancel-payment`, {
+              reason: "Customer cancelled payment on PayFast"
+            });
+            if (cancelRes.data?.order) {
+              data = cancelRes.data.order;
+            } else {
+              data = { ...data, paymentStatus: "Cancelled" };
+            }
+          } catch (cancelErr) {
+            console.error("Failed to sync cancel-payment:", cancelErr);
+            data = { ...data, paymentStatus: "Cancelled" };
+          }
+        }
         setOrder(data);
         if (paymentStatus === "success" && onClearCart) {
           onClearCart();
@@ -327,45 +342,68 @@ export default function OrderSuccessPage({ onClearCart }) {
   return (
     <main className="min-h-screen bg-[#050505] text-[var(--color-ivory)] pt-0 pb-24">
       <div className="max-w-4xl mx-auto px-6">
-        {/* Success / Pending Header */}
+        {/* Success / Pending / Cancelled Header */}
         {(() => {
           const isOrderPaid = Boolean(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success');
+          const isOrderCancelled = Boolean(order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || (paymentStatus === 'cancel' && !isOrderPaid));
 
           return (
             <div className="text-center mb-16">
               <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
-                isOrderPaid ? "bg-[var(--color-gold)]/10" : "bg-amber-500/15 border border-amber-500/30"
+                isOrderPaid
+                  ? "bg-[var(--color-gold)]/10"
+                  : isOrderCancelled
+                  ? "bg-rose-500/15 border border-rose-500/30"
+                  : "bg-amber-500/15 border border-amber-500/30"
               }`}>
                 {isOrderPaid ? (
                   <CheckCircle2 size={40} className="text-gold-gradient" />
+                ) : isOrderCancelled ? (
+                  <AlertTriangle size={40} className="text-rose-400" />
                 ) : (
                   <Clock size={40} className="text-amber-400" />
                 )}
               </div>
               <h1 className="text-4xl md:text-5xl font-serif mb-4">
-                {isOrderPaid ? "Order Placed Successfully" : "Order Created — Payment Pending"}
+                {isOrderPaid
+                  ? "Order Placed Successfully"
+                  : isOrderCancelled
+                  ? "Payment Cancelled"
+                  : "Order Created — Payment Pending"}
               </h1>
 
               {isOrderPaid ? (
                 <div className="inline-block px-4 py-2 bg-green-900/30 border border-green-500/50 rounded-lg text-green-400 font-medium mb-4">
                   Payment completed successfully. Your order is confirmed and being prepared for fulfillment.
                 </div>
-              ) : paymentStatus === "cancel" ? (
+              ) : isOrderCancelled ? (
                 <div className="space-y-4 max-w-lg mx-auto mb-4">
-                  <div className="inline-block px-4 py-2 bg-amber-900/30 border border-amber-500/50 rounded-lg text-amber-300 font-medium text-sm">
-                    Payment was not completed. Your items are reserved on hold until payment is received.
+                  <div className="p-4 bg-rose-950/30 border border-rose-500/40 rounded-2xl text-rose-200 text-sm leading-relaxed">
+                    You cancelled your payment on PayFast. No funds were charged to your account, and this order has been cancelled.
                   </div>
-                  {order.paymentMethod === 'PayFast' && (
-                    <div>
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    {order.paymentMethod === 'PayFast' && (
                       <button
                         onClick={handlePayWithPayFast}
                         disabled={initiatingPayment}
-                        className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-gold-gradient text-black font-bold uppercase tracking-widest text-xs hover:opacity-95 shadow-[0_0_25px_rgba(212,175,55,0.35)] transition-all flex items-center justify-center gap-2 mx-auto disabled:opacity-50"
+                        className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-gold-gradient text-black font-bold uppercase tracking-widest text-xs hover:opacity-95 shadow-[0_0_25px_rgba(212,175,55,0.35)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         {initiatingPayment ? <><Loader2 size={16} className="animate-spin" /> Connecting to PayFast...</> : `Retry Payment with PayFast (${formatPrice(order.totalPrice)})`}
                       </button>
-                    </div>
-                  )}
+                    )}
+                    <Link
+                      to="/cart"
+                      className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold uppercase tracking-widest text-xs transition-all text-center"
+                    >
+                      Return to Cart
+                    </Link>
+                    <Link
+                      to="/shop"
+                      className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-transparent hover:bg-white/5 border border-white/15 text-white/80 font-bold uppercase tracking-widest text-xs transition-all text-center"
+                    >
+                      Continue Shopping
+                    </Link>
+                  </div>
                 </div>
               ) : order.paymentMethod === "Bank Transfer" &&
                 order.paymentStatus === "Pending" ? (
@@ -467,23 +505,37 @@ export default function OrderSuccessPage({ onClearCart }) {
               <div className={`p-4 rounded-2xl border space-y-2 ${
                 (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
                   ? "bg-emerald-950/20 border-emerald-500/30"
+                  : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel')
+                  ? "bg-rose-950/20 border-rose-500/30"
                   : "bg-amber-950/25 border-amber-500/40"
               }`}>
                 <div className={`flex items-center gap-2 text-sm font-semibold ${
                   (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
                     ? "text-emerald-400"
+                    : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel')
+                    ? "text-rose-400"
                     : "text-amber-400"
                 }`}>
-                  {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success') ? <FileCheck size={16} /> : <Clock size={16} />}
+                  {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success') ? (
+                    <FileCheck size={16} />
+                  ) : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel') ? (
+                    <AlertTriangle size={16} />
+                  ) : (
+                    <Clock size={16} />
+                  )}
                   <span>
                     {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
                       ? (order.guestKyc?.documentUrl ? "18+ Document Under Review" : "Order Dispatch Clearance")
+                      : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel')
+                      ? "Order Cancelled (No Dispatch)"
                       : "Fulfillment On Hold (Awaiting Payment)"}
                   </span>
                 </div>
                 <p className={`text-xs leading-relaxed ${
                   (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
                     ? "text-emerald-200/80"
+                    : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel')
+                    ? "text-rose-200/80"
                     : "text-amber-200/85"
                 }`}>
                   {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success') ? (
@@ -492,6 +544,8 @@ export default function OrderSuccessPage({ onClearCart }) {
                     ) : (
                       <>Your order and payment are confirmed. Standard fulfillment and courier dispatch preparation are underway without any document verification delays.</>
                     )
+                  ) : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel') ? (
+                    <>This order was cancelled because payment was aborted. No items will be dispatched or prepared. You may retry payment or place a new order at any time.</>
                   ) : (
                     <>Your order has been recorded and reserved in our system. Fulfillment, warehouse packaging, and courier dispatch will initiate as soon as payment is confirmed.</>
                   )}
@@ -499,12 +553,19 @@ export default function OrderSuccessPage({ onClearCart }) {
                 <div className={`text-[11px] pt-1 flex items-center gap-1.5 ${
                   (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
                     ? "text-emerald-400/70"
+                    : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel')
+                    ? "text-rose-400/80 font-medium"
                     : "text-amber-400/80 font-medium"
                 }`}>
                   {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success') ? (
                     <>
                       <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                       <span>Fulfillment in progress • No further customer action required</span>
+                    </>
+                  ) : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel') ? (
+                    <>
+                      <AlertTriangle size={13} className="text-rose-400" />
+                      <span>Order inactive • Zero fulfillment</span>
                     </>
                   ) : (
                     <>

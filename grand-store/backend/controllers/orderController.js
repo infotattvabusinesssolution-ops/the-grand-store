@@ -607,6 +607,9 @@ const processOrderPayment = async (orderId) => {
   const order = await Order.findById(orderId);
   if (!order) throw new Error('Order not found');
   if (order.isPaid) return true; // Already paid, idempotent
+  if (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed') {
+    throw new Error(`Cannot process payment for ${order.paymentStatus.toLowerCase()} order`);
+  }
 
   // Update order status
   order.isPaid = true;
@@ -903,6 +906,102 @@ const processOrderPayment = async (orderId) => {
   return true;
 };
 
+/**
+ * Global cancellation of an unpaid order payment
+ * Can be invoked by PayFast ITN (CANCELLED/FAILED), customer aborting on gateway, or admin.
+ */
+const cancelOrderPayment = async (orderId, reason = 'Payment cancelled') => {
+  const mongoose = require('mongoose');
+  const Order = require('../models/Order');
+  const Shipment = require('../models/Shipment');
+  const User = require('../models/User');
+  const SuperCoinLedger = require('../models/SuperCoinLedger');
+  const CheckoutEngine = require('../services/CheckoutEngine');
+
+  let order = null;
+  if (mongoose.Types.ObjectId.isValid(orderId)) {
+    order = await Order.findById(orderId);
+  }
+  if (!order) {
+    order = await Order.findOne({ $or: [{ orderId: orderId }, { invoiceNumber: orderId }] });
+  }
+  if (!order) {
+    console.warn(`cancelOrderPayment: Order ${orderId} not found`);
+    return null;
+  }
+
+  // Idempotent & safety guard: If order is already paid, do NOT cancel it!
+  if (order.isPaid || order.paymentStatus === 'Paid') {
+    console.warn(`cancelOrderPayment: Order ${order._id} is already paid. Cancellation skipped.`);
+    return order;
+  }
+
+  order.paymentStatus = 'Cancelled';
+  await order.save();
+
+  // 1. Transition all associated shipments to 'Cancelled'
+  if (Array.isArray(order.shipments) && order.shipments.length > 0) {
+    await Shipment.updateMany(
+      { _id: { $in: order.shipments } },
+      { $set: { status: 'Cancelled' } }
+    ).catch(err => console.error('Error updating shipments to Cancelled:', err));
+  }
+
+  // 2. Refund any SuperCoins redeemed by the user for this order
+  if (order.superCoinsUsed > 0 && order.user) {
+    try {
+      const user = await User.findById(order.user);
+      if (user) {
+        user.superCoinsBalance = (user.superCoinsBalance || 0) + order.superCoinsUsed;
+        await user.save();
+
+        await SuperCoinLedger.create({
+          userId: user._id,
+          amount: order.superCoinsUsed,
+          type: 'earned',
+          activity: 'order_discount',
+          status: 'completed',
+          orderId: order._id,
+          orderRef: order.invoiceNumber || order.orderId,
+          description: `Refunded ${order.superCoinsUsed} Super Coins for cancelled order #${order.invoiceNumber || order.orderId}`,
+          balanceSnapshot: user.superCoinsBalance
+        }).catch(err => console.error('Error recording SuperCoin refund ledger:', err));
+      }
+    } catch (scErr) {
+      console.error('Error refunding Super Coins on order cancellation:', scErr);
+    }
+  }
+
+  // 3. Append Event Sourcing: OrderCancelled
+  try {
+    await CheckoutEngine.appendEvent(order._id.toString(), 'OrderCancelled', {
+      reason,
+      cancelledAt: new Date()
+    }, order.user || null);
+  } catch (evErr) {
+    console.warn('CheckoutEngine appendEvent OrderCancelled warning:', evErr.message);
+  }
+
+  console.log(`Order ${order._id} successfully marked Cancelled. Reason: ${reason}`);
+  return order;
+};
+
+// Route controller for POST /api/orders/:id/cancel-payment
+const cancelOrderPaymentHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body || {};
+    const order = await cancelOrderPayment(id, reason || 'Customer cancelled payment on gateway');
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    res.json({ success: true, message: 'Order payment cancelled successfully', order });
+  } catch (error) {
+    console.error('Error in cancelOrderPaymentHandler:', error);
+    res.status(500).json({ message: 'Failed to cancel order payment', error: error.message });
+  }
+};
+
 // Helper to guarantee all order items have product images populated
 const ensureOrderItemsImages = async (ordersList) => {
   if (!ordersList) return ordersList;
@@ -1163,6 +1262,10 @@ const markOrderAsPaid = async (req, res) => {
       return res.json(order);
     }
 
+    if (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed') {
+      return res.status(400).json({ message: `Cannot mark a ${order.paymentStatus.toLowerCase()} order as paid` });
+    }
+
     // Process ledger, wallet, referrer rewards, events, and set isPaid=true
     await processOrderPayment(order._id);
 
@@ -1198,6 +1301,9 @@ const getAdminOrders = async (req, res) => {
       ];
     }
 
+    // Strictly exclude cancelled, failed, and aborted payments from admin order list
+    query.paymentStatus = { $nin: ['Cancelled', 'Failed'] };
+
     const rawOrders = await Order.find(query)
       .sort({ createdAt: -1 })
       .limit(Math.min(200, Number(limit) || 100))
@@ -1223,11 +1329,12 @@ const getAdminOrders = async (req, res) => {
       });
     }
 
-    let filtered = enriched;
+    // Filter strictly excluding any cancelled or aborted orders
+    let filtered = enriched.filter(ord => ord.paymentStatus !== 'Cancelled' && ord.paymentStatus !== 'Failed');
     if (tab === 'paid') {
-      filtered = enriched.filter(ord => ord.isPaid || ord.paymentStatus === 'Paid');
+      filtered = filtered.filter(ord => ord.isPaid || ord.paymentStatus === 'Paid');
     } else if (tab === 'pending') {
-      filtered = enriched.filter(ord => !ord.isPaid && ord.paymentStatus !== 'Paid');
+      filtered = filtered.filter(ord => !ord.isPaid && ord.paymentStatus !== 'Paid');
     }
 
     res.json(filtered);
@@ -1393,6 +1500,8 @@ module.exports = {
   getMyOrders,
   markOrderAsPaid,
   processOrderPayment, // Exported for ITN webhook
+  cancelOrderPayment,  // Exported for ITN webhook & cancellation flow
+  cancelOrderPaymentHandler, // Exported for route POST /api/orders/:id/cancel-payment
   getAdminOrders,
   getAdminOrderById,
   sendAdminOrderMessage

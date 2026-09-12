@@ -198,6 +198,11 @@ export default function CustomerOrdersPage() {
                             <Clock size={13} className="text-amber-400" />
                             Awaiting Verification
                           </span>
+                        ) : order.paymentStatus === "Cancelled" ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] sm:text-xs font-bold tracking-wider uppercase bg-rose-500/10 text-rose-400 border border-rose-500/25">
+                            <AlertCircle size={13} className="text-rose-400" />
+                            Cancelled
+                          </span>
                         ) : order.paymentStatus === "Failed" || order.paymentStatus === "Rejected" ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] sm:text-xs font-bold tracking-wider uppercase bg-rose-500/10 text-rose-400 border border-rose-500/25">
                             <AlertCircle size={13} className="text-rose-400" />
@@ -217,7 +222,9 @@ export default function CustomerOrdersPage() {
                     className={`w-full sm:w-auto min-h-11 px-5 sm:px-6 py-3 rounded-xl sm:rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
                       order.isPaid || order.paymentStatus === "Paid"
                         ? "bg-[var(--color-gold)]/10 text-gold-gradient border border-[var(--color-gold)]/30 hover:bg-gold-gradient hover:text-black shadow-[0_0_15px_rgba(212,175,55,0.1)]"
-                        : order.paymentStatus === "Awaiting_Approval"
+                        : order.paymentStatus === "Cancelled"
+                          ? "bg-rose-500/10 text-rose-300 border border-rose-500/30 hover:bg-rose-500/20"
+                          : order.paymentStatus === "Awaiting_Approval"
                           ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25"
                           : order.paymentStatus === "Failed" || order.paymentStatus === "Rejected"
                             ? "bg-rose-500/15 text-rose-300 border border-rose-500/30 hover:bg-rose-500/25"
@@ -228,6 +235,11 @@ export default function CustomerOrdersPage() {
                       <>
                         <CheckCircle2 size={14} />
                         View Receipt
+                      </>
+                    ) : order.paymentStatus === "Cancelled" ? (
+                      <>
+                        <AlertCircle size={14} />
+                        Order Details
                       </>
                     ) : order.paymentStatus === "Awaiting_Approval" ? (
                       <>
@@ -253,11 +265,42 @@ export default function CustomerOrdersPage() {
               {(() => {
                 const isPickup = order.deliveryPreference === 'pickup' || Boolean(order.selectedPostnetStore);
                 const isOrderPaid = Boolean(order.isPaid || order.paymentStatus === 'Paid');
+                const isOrderCancelled = Boolean(order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed');
                 // Mongoose supplies a default notice object even when no message was sent.
                 const latestMsg = [
                   order.latestAdminMessage,
                   ...(Array.isArray(order.adminMessages) ? [...order.adminMessages].reverse() : []),
                 ].find((notice) => typeof notice?.message === 'string' && notice.message.trim());
+
+                if (isOrderCancelled) {
+                  return (
+                    <div className="px-4 sm:px-6 md:px-8 py-5 bg-white/[0.015] border-b border-white/[0.05]">
+                      <div className="p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 border bg-rose-950/20 border-rose-500/30">
+                        <div className="flex items-start sm:items-center gap-3.5">
+                          <div className="p-2.5 rounded-xl border shrink-0 mt-0.5 sm:mt-0 bg-rose-500/15 text-rose-400 border-rose-500/30">
+                            <AlertCircle size={20} />
+                          </div>
+                          <div>
+                            <div className="text-[11px] font-mono uppercase tracking-wider font-semibold text-rose-400">
+                              Order Cancelled • Payment Aborted
+                            </div>
+                            <h4 className="text-sm sm:text-base font-serif font-bold text-white mt-0.5">
+                              Payment was not completed — Order Inactive
+                            </h4>
+                            <p className="text-xs text-white/70 mt-1">
+                              This payment transaction was cancelled. No money was charged and no shipment or fulfillment is scheduled.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold px-3 py-1.5 rounded-xl bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                            🚫 Cancelled
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <div className="px-4 sm:px-6 md:px-8 py-5 bg-white/[0.015] border-b border-white/[0.05] space-y-4">

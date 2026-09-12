@@ -145,12 +145,16 @@ export default function AdminOrderDetail({ onNotify }) {
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
               order.isPaid || order.paymentStatus === 'Paid'
                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                : order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed'
+                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
                 : order.paymentStatus === 'Awaiting_Approval'
                 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                : 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
+                : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
             }`}>
               {order.isPaid || order.paymentStatus === 'Paid'
                 ? '✓ Paid & Verified'
+                : order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed'
+                ? '🚫 Cancelled / Aborted'
                 : order.paymentStatus === 'Awaiting_Approval'
                 ? '⏳ Awaiting Approval (EFT)'
                 : '⚠️ Unpaid / Payment Pending'}
@@ -178,15 +182,27 @@ export default function AdminOrderDetail({ onNotify }) {
         </div>
       </div>
 
-      {/* Unpaid Warning Banner */}
-      {!(order.isPaid || order.paymentStatus === 'Paid') && (
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3.5 shadow-lg">
-          <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5 animate-pulse" />
+      {/* Cancelled / Unpaid Warning Banner */}
+      {(order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed') ? (
+        <div className="p-4 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-start gap-3.5 shadow-lg">
+          <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
           <div className="flex-1">
             <h4 className="text-sm font-bold text-rose-300 uppercase tracking-wider">
-              ⚠️ Fulfillment On Hold — Order Unpaid
+              🚫 ORDER CANCELLED — PAYMENT ABORTED
             </h4>
             <p className="text-xs text-rose-200/80 mt-1 leading-relaxed">
+              This payment transaction was cancelled by the customer or aborted on the gateway. The order is completely inactive. Do NOT pack, dispatch, or process fulfillment.
+            </p>
+          </div>
+        </div>
+      ) : !(order.isPaid || order.paymentStatus === 'Paid') && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3.5 shadow-lg">
+          <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
+          <div className="flex-1">
+            <h4 className="text-sm font-bold text-amber-300 uppercase tracking-wider">
+              ⚠️ Fulfillment On Hold — Order Unpaid
+            </h4>
+            <p className="text-xs text-amber-200/80 mt-1 leading-relaxed">
               This order has not been cleared for fulfillment. Do NOT pack, ship, or hand over items until payment has been confirmed via PayFast or manual EFT approval.
             </p>
           </div>
