@@ -358,7 +358,13 @@ const bookEvent = async (req, res) => {
       }
     }
 
-    return res.status(201).json(savedBooking);
+    const bookingResponse = savedBooking.toObject ? savedBooking.toObject() : { ...savedBooking };
+    if (!["Paid", "Completed"].includes(bookingResponse.paymentStatus)) {
+      delete bookingResponse.ticketId;
+      delete bookingResponse.qrCodeData;
+    }
+
+    return res.status(201).json(bookingResponse);
   } catch (error) {
     console.error("Error booking event:", error);
     return res.status(error.statusCode || 500).json({
@@ -610,6 +616,7 @@ const cancelEventPayment = async (bookingId, reason = "Payment cancelled") => {
 
     booking.paymentStatus = "Cancelled";
     booking.ticketStatus = "Cancelled";
+    booking.reservationExpiresAt = null;
     booking.cancellationReason = reason;
     booking.cancelledAt = new Date();
     await booking.save();
@@ -1197,6 +1204,7 @@ const releaseExpiredReservations = async (now = new Date()) => {
       booking.paymentStatus = "Failed";
       booking.ticketStatus = "Cancelled";
       booking.inventoryStatus = "released";
+      booking.reservationExpiresAt = null;
       await booking.save();
       released += 1;
     } catch (err) {
@@ -1211,7 +1219,18 @@ const getUserBookings = async (req, res) => {
     const bookings = await Booking.find({ user: req.user._id })
       .populate("event", "title date startTime endTime location image status")
       .sort({ bookingDate: -1 });
-    return res.json(bookings);
+
+    const sanitizedBookings = bookings.map((b) => {
+      const doc = b.toObject ? b.toObject() : { ...b };
+      const isPaid = ["Paid", "Completed"].includes(doc.paymentStatus);
+      if (!isPaid) {
+        delete doc.ticketId;
+        delete doc.qrCodeData;
+      }
+      return doc;
+    });
+
+    return res.json(sanitizedBookings);
   } catch (error) {
     console.error("Error fetching user bookings:", error);
     return res.status(500).json({ message: "Server error fetching tickets" });
