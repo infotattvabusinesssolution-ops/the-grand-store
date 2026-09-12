@@ -135,7 +135,7 @@ const generateQuote = async (req, res) => {
         shippingAddress, 
         group.subtotal, 
         group.totalWeightKg,
-        { postnetLookup }
+        { postnetLookup, settings }
       );
 
       if (shippingData.isInternational) hasInternational = true;

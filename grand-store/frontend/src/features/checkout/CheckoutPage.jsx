@@ -661,7 +661,7 @@ export default function CheckoutPage({
       }
     }
 
-    const currentQuote = quote || await fetchQuote();
+    const currentQuote = await fetchQuote();
     if (currentQuote) {
       setCheckoutStep(2);
       window.scrollTo({ top: 0, behavior: 'smooth' });

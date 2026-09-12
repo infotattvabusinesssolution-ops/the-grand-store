@@ -45,11 +45,16 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
     // 1. DOMESTIC SA
     if (originSA && destSA) {
       // Check if vendor has free shipping threshold
-      const freeThreshold = vendor?.shippingProfile?.freeDeliveryThreshold;
-      let postnetStandardCost = Number(platformSettings?.postnetStandardFee !== undefined ? platformSettings.postnetStandardFee : 120);
+      // Check admin shipping settings (supports both postnetStandardFee and global shippingFee)
+      const hasCustomStandardFee = platformSettings?.postnetStandardFee !== undefined && platformSettings.postnetStandardFee !== 120;
+      let postnetStandardCost = Number(
+        hasCustomStandardFee
+          ? platformSettings.postnetStandardFee
+          : (platformSettings?.shippingFee !== undefined ? platformSettings.shippingFee : (platformSettings?.postnetStandardFee || 120))
+      );
       let postnetExpressCost = Number(platformSettings?.postnetExpressFee !== undefined ? platformSettings.postnetExpressFee : 180);
       let postnetCollectionCost = Number(platformSettings?.postnetPickupFee !== undefined ? platformSettings.postnetPickupFee : 100);
-      let courierGuyCost = 150;
+      let courierGuyCost = Number(platformSettings?.shippingFee !== undefined ? platformSettings.shippingFee : 150);
 
       // Simple mock zone check
       if (vendor?.shippingProfile?.shippingZones?.length > 0) {
