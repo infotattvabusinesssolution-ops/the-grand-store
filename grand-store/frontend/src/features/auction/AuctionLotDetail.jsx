@@ -153,6 +153,18 @@ export default function AuctionLotDetail({ onNotify }) {
     };
   }, [id]);
 
+  useEffect(() => {
+    if (paymentStatus === 'success' && id) {
+      api.post('/payfast/confirm-order', { auctionId: id })
+        .then(() => fetchLot())
+        .catch(err => console.log('Auction confirm-order result:', err));
+    } else if (paymentStatus === 'cancel' && id) {
+      api.post('/payfast/cancel-payment', { auctionId: id })
+        .then(() => fetchLot())
+        .catch(err => console.log('Auction cancel-payment result:', err));
+    }
+  }, [paymentStatus, id]);
+
   const userInfo = (() => {
     try {
       return JSON.parse(localStorage.getItem('userInfo'));
@@ -472,6 +484,18 @@ export default function AuctionLotDetail({ onNotify }) {
 
         </div>
       </nav>
+      
+      {paymentStatus === 'cancel' && (
+        <div className="bg-rose-500/10 border-b border-rose-500/20 px-4 py-3 text-center text-xs font-mono text-rose-300 flex items-center justify-center gap-2">
+          <span>Checkout was cancelled. No funds were debited. You can resume and complete lot settlement anytime below.</span>
+        </div>
+      )}
+      {paymentStatus === 'success' && (
+        <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-4 py-3 text-center text-xs font-mono text-emerald-300 flex items-center justify-center gap-2">
+          <CheckCircle2 size={14} className="text-emerald-400" />
+          <span>Payment successful! Your acquisition of this lot is confirmed and logged in the Grand Store Vault.</span>
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row w-full min-h-[calc(100vh-80px)]">
         

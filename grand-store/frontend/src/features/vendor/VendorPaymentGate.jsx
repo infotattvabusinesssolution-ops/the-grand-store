@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
-import { CreditCard, CheckCircle, Store, ShieldCheck } from "lucide-react";
+import { CreditCard, CheckCircle, Store, ShieldCheck, AlertTriangle } from "lucide-react";
 import Price from "../../components/ui/Price";
 
 export default function VendorPaymentGate() {
@@ -10,6 +10,7 @@ export default function VendorPaymentGate() {
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [registrationFee, setRegistrationFee] = useState(0);
   const [couponCode, setCouponCode] = useState("");
@@ -35,7 +36,8 @@ export default function VendorPaymentGate() {
     if (params.get('success') === 'true') {
       handleSuccessRedirect();
     } else if (params.get('success') === 'false') {
-      alert("Payment was cancelled or failed. Please try again.");
+      setCancelled(true);
+      window.history.replaceState({}, '', window.location.pathname);
     }
 
     // Fetch fee
@@ -54,6 +56,10 @@ export default function VendorPaymentGate() {
 
   const handleSuccessRedirect = async () => {
     setVerifying(true);
+    try {
+      await api.post('/payfast/confirm-order', { vendorRegistration: true });
+    } catch (e) {}
+
     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
     
     let attempts = 0;
@@ -235,6 +241,46 @@ export default function VendorPaymentGate() {
           <p className="text-white/60 mb-8">
             Welcome to The Grand Store. Redirecting to your dashboard...
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (cancelled) {
+    return (
+      <div className="vendor-theme min-h-screen bg-[#050505] flex items-center justify-center p-4">
+        <div className="bg-[#0a0a0a] border border-rose-500/30 p-10 rounded-2xl max-w-md w-full text-center animate-fadeIn">
+          <div className="w-20 h-20 bg-rose-500/15 border border-rose-500/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(244,63,94,0.2)]">
+            <AlertTriangle size={40} className="text-rose-400" />
+          </div>
+          <h2 className="text-3xl font-serif text-white mb-3">
+            Payment Cancelled
+          </h2>
+          <div className="p-4 bg-rose-950/30 border border-rose-500/40 rounded-xl text-rose-200 text-sm leading-relaxed mb-6">
+            You cancelled your vendor onboarding payment on PayFast. No funds were debited. You can retry with PayFast or choose Bank Transfer EFT.
+          </div>
+          <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setCancelled(false);
+                setPaymentMethod('payfast');
+              }}
+              className="w-full py-3.5 px-6 rounded-full bg-gold-gradient text-black font-bold uppercase tracking-widest text-xs hover:opacity-95 shadow-[0_0_25px_rgba(212,175,55,0.35)] transition-all cursor-pointer"
+            >
+              Retry Payment with PayFast
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCancelled(false);
+                setPaymentMethod('eft');
+              }}
+              className="w-full py-3 px-6 rounded-full bg-white/10 hover:bg-white/15 text-white font-bold uppercase tracking-widest text-xs border border-white/15 transition-all cursor-pointer"
+            >
+              Pay via Bank Transfer (EFT)
+            </button>
+          </div>
         </div>
       </div>
     );

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const AuctionLot = require('../models/AuctionLot');
 const Bid = require('../models/Bid');
 const User = require('../models/User');
@@ -1313,9 +1314,7 @@ exports.cancelBidderDepositPayment = async (depositId, reason = 'Payment cancell
     deposit = await BidderDeposit.findById(depositId);
   }
   if (!deposit) {
-    deposit = await BidderDeposit.findOne({
-      $or: [{ paymentReference: depositId }, { _id: depositId }]
-    });
+    deposit = await BidderDeposit.findOne({ paymentReference: depositId });
   }
   if (!deposit) return false;
   if (deposit.paymentStatus === 'paid') return true;

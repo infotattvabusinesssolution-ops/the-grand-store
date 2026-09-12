@@ -5,8 +5,8 @@ const AuctionLot = require('../models/AuctionLot');
 const Booking = require('../models/Booking');
 const BidderDeposit = require('../models/BidderDeposit');
 const { processOrderPayment, cancelOrderPayment } = require('./orderController');
-const { processAuctionPayment, processBidderDepositPayment } = require('./auctionController');
-const { processEventPayment } = require('./eventControllerV2');
+const { processAuctionPayment, processBidderDepositPayment, cancelAuctionPayment, cancelBidderDepositPayment } = require('./auctionController');
+const { processEventPayment, cancelEventPayment } = require('./eventControllerV2');
 const { processVendorPayment } = require('./vendorController');
 
 const trimTrailingSlashes = (url) => url.replace(/\/+$/, '');
@@ -145,6 +145,17 @@ exports.generateAuctionPayment = async (req, res) => {
        return res.status(403).json({ message: 'Only the winner can pay for this lot' });
     }
 
+    if (lot.paymentStatus === 'Cancelled') {
+      lot.paymentStatus = 'Pending';
+      await lot.save();
+    }
+    const Order = require('../models/Order');
+    const linkedOrder = await Order.findOne({ 'orderItems.product': lot._id });
+    if (linkedOrder && (linkedOrder.paymentStatus === 'Cancelled' || linkedOrder.paymentStatus === 'Failed')) {
+      linkedOrder.paymentStatus = 'Pending';
+      await linkedOrder.save();
+    }
+
     const config = getPayfastConfig();
     const frontendUrl = getFrontendUrl(req);
     const backendUrl = getBackendUrl(req);
@@ -161,8 +172,8 @@ exports.generateAuctionPayment = async (req, res) => {
     const computedTotal = hammer + buyerPremium + barCharge + vat + shipping;
     const totalAmount = Number(lot.totalPaidByBuyer || computedTotal || hammer).toFixed(2);
 
-    let returnUrl = `${frontendUrl}/auction/${lot._id}?payment=success`;
-    let cancelUrl = `${frontendUrl}/auction/${lot._id}?payment=cancel`;
+    let returnUrl = `${frontendUrl}/auction/checkout/${lot._id}?payment=success`;
+    let cancelUrl = `${frontendUrl}/auction/checkout/${lot._id}?payment=cancel`;
     if (isMobile) {
       returnUrl = `${backendUrl}/api/payfast/mobile-return?type=auction&auctionId=${lot._id}&status=success`;
       cancelUrl = `${backendUrl}/api/payfast/mobile-return?type=auction&auctionId=${lot._id}&status=cancel`;
@@ -208,8 +219,32 @@ exports.generateEventPayment = async (req, res) => {
     if (booking.user._id.toString() !== req.user._id.toString()) {
        return res.status(403).json({ message: 'Only the ticket holder can pay for this booking' });
     }
-    if (booking.paymentStatus !== 'Pending' || (booking.reservationExpiresAt && booking.reservationExpiresAt <= new Date())) {
-      return res.status(410).json({ message: 'This ticket reservation has expired. Please book again.' });
+
+    const isExpired = Boolean(booking.reservationExpiresAt && booking.reservationExpiresAt <= new Date());
+    if (booking.paymentStatus === 'Cancelled' || booking.paymentStatus === 'Failed' || isExpired) {
+      const Event = require('../models/Event');
+      const event = await Event.findById(booking.event._id || booking.event);
+      if (!event) return res.status(404).json({ message: 'Event not found' });
+      const tier = booking.ticketTierId
+        ? event.ticketTiers.id(booking.ticketTierId)
+        : event.ticketTiers.find((t) => t.name === booking.ticketType);
+      if (!tier) return res.status(404).json({ message: 'Ticket tier not found' });
+
+      // If seats were released upon cancel/expiration, verify availability and re-reserve
+      if (booking.inventoryStatus === 'released') {
+        const available = (tier.quantity || 0) - (tier.sold || 0) - (tier.reserved || 0);
+        if (available < booking.quantity) {
+          return res.status(409).json({ message: 'Sorry, this ticket tier is now sold out. Please choose another tier.' });
+        }
+        tier.reserved = (tier.reserved || 0) + booking.quantity;
+        await event.save();
+        booking.inventoryStatus = 'reserved';
+      }
+
+      booking.paymentStatus = 'Pending';
+      booking.ticketStatus = 'Pending';
+      booking.reservationExpiresAt = new Date(Date.now() + 30 * 60 * 1000);
+      await booking.save();
     }
 
     const config = getPayfastConfig();
@@ -252,28 +287,43 @@ exports.generateEventPayment = async (req, res) => {
 // @access  Private
 exports.generateVendorPayment = async (req, res) => {
   try {
+    const { isMobile } = req.body;
     const Vendor = require('../models/Vendor');
+    const PlatformSettings = require('../models/PlatformSettings');
     const vendor = await Vendor.findOne({ userId: req.user._id }).populate('userId');
 
     if (!vendor) {
       return res.status(404).json({ message: 'Vendor application not found' });
     }
 
+    let fee = Number(vendor.registrationFee || 0);
+    if (!fee || fee <= 0) {
+      const settings = await PlatformSettings.findOne();
+      fee = settings?.vendorRegistrationFee || 500;
+    }
+
     const config = getPayfastConfig();
     const frontendUrl = getFrontendUrl(req);
     const backendUrl = getBackendUrl(req);
 
+    let returnUrl = `${frontendUrl}/vendor/payment?success=true`;
+    let cancelUrl = `${frontendUrl}/vendor/payment?success=false`;
+    if (isMobile) {
+      returnUrl = `${backendUrl}/api/payfast/mobile-return?type=vendor&vendorId=${vendor._id}&status=success`;
+      cancelUrl = `${backendUrl}/api/payfast/mobile-return?type=vendor&vendorId=${vendor._id}&status=cancel`;
+    }
+
     const data = {
       merchant_id: config.merchant_id,
       merchant_key: config.merchant_key,
-      return_url: `${frontendUrl}/vendor/payment?success=true`,
-      cancel_url: `${frontendUrl}/vendor/payment?success=false`,
+      return_url: returnUrl,
+      cancel_url: cancelUrl,
       notify_url: `${backendUrl}/api/payfast/itn`,
       name_first: vendor.userId.name.split(' ')[0],
       name_last: vendor.userId.name.split(' ').slice(1).join(' ') || 'Vendor',
       email_address: vendor.userId.email,
       m_payment_id: `VND-${vendor._id}`,
-      amount: (vendor.registrationFee || 0).toFixed(2),
+      amount: fee.toFixed(2),
       item_name: 'Vendor Registration Fee'
     };
 
@@ -292,6 +342,7 @@ exports.generateVendorPayment = async (req, res) => {
 // @access  Private
 exports.generateMaintenancePayment = async (req, res) => {
   try {
+    const { isMobile } = req.body;
     const Vendor = require('../models/Vendor');
     const PlatformSettings = require('../models/PlatformSettings');
     const vendor = await Vendor.findOne({ userId: req.user._id }).populate('userId');
@@ -315,11 +366,18 @@ exports.generateMaintenancePayment = async (req, res) => {
     const frontendUrl = getFrontendUrl(req);
     const backendUrl = getBackendUrl(req);
 
+    let returnUrl = `${frontendUrl}/vendor/dashboard?payment=success&fee=paid`;
+    let cancelUrl = `${frontendUrl}/vendor/dashboard?payment=cancelled`;
+    if (isMobile) {
+      returnUrl = `${backendUrl}/api/payfast/mobile-return?type=maintenance&vendorId=${vendor._id}&status=success`;
+      cancelUrl = `${backendUrl}/api/payfast/mobile-return?type=maintenance&vendorId=${vendor._id}&status=cancel`;
+    }
+
     const data = {
       merchant_id: config.merchant_id,
       merchant_key: config.merchant_key,
-      return_url: `${frontendUrl}/vendor/dashboard?payment=success&fee=paid`,
-      cancel_url: `${frontendUrl}/vendor/dashboard?payment=cancelled`,
+      return_url: returnUrl,
+      cancel_url: cancelUrl,
       notify_url: `${backendUrl}/api/payfast/itn`,
       name_first: vendor.userId?.name?.split(' ')[0] || 'Vendor',
       name_last: vendor.userId?.name?.split(' ').slice(1).join(' ') || 'Partner',
@@ -344,7 +402,7 @@ exports.generateMaintenancePayment = async (req, res) => {
 // @access  Private
 exports.generateDepositPayment = async (req, res) => {
   try {
-    const { depositId } = req.body;
+    const { depositId, isMobile } = req.body;
     const deposit = await BidderDeposit.findById(depositId).populate('bidder', 'name email');
 
     if (!deposit) return res.status(404).json({ message: 'Deposit record not found' });
@@ -357,11 +415,18 @@ exports.generateDepositPayment = async (req, res) => {
     const frontendUrl = getFrontendUrl(req);
     const backendUrl = getBackendUrl(req);
 
+    let returnUrl = `${frontendUrl}/auction/vip-checkout?payment=success&ref=${deposit._id}`;
+    let cancelUrl = `${frontendUrl}/auction/vip-checkout?payment=cancel&ref=${deposit._id}`;
+    if (isMobile) {
+      returnUrl = `${backendUrl}/api/payfast/mobile-return?type=deposit&depositId=${deposit._id}&status=success`;
+      cancelUrl = `${backendUrl}/api/payfast/mobile-return?type=deposit&depositId=${deposit._id}&status=cancel`;
+    }
+
     const data = {
       merchant_id: config.merchant_id,
       merchant_key: config.merchant_key,
-      return_url: `${frontendUrl}/auction/vip-checkout?payment=success&ref=${deposit._id}`,
-      cancel_url: `${frontendUrl}/auction/vip-checkout?payment=cancel&ref=${deposit._id}`,
+      return_url: returnUrl,
+      cancel_url: cancelUrl,
       notify_url: `${backendUrl}/api/payfast/itn`,
       name_first: deposit.bidder.name.split(' ')[0],
       name_last: deposit.bidder.name.split(' ').slice(1).join(' ') || 'Patron',
@@ -469,10 +534,24 @@ exports.itnWebhook = async (req, res) => {
        }
     } else if (payload.payment_status === 'CANCELLED' || payload.payment_status === 'FAILED') {
        const reference = payload.m_payment_id;
-       if (reference && reference.startsWith('SHP-')) {
-          const orderId = reference.replace('SHP-', '');
-          await cancelOrderPayment(orderId, `PayFast ITN status: ${payload.payment_status}`);
-          console.log(`Successfully cancelled shop order ${orderId} due to ITN status: ${payload.payment_status}`);
+       if (reference) {
+          if (reference.startsWith('SHP-')) {
+             const orderId = reference.replace('SHP-', '');
+             await cancelOrderPayment(orderId, `PayFast ITN status: ${payload.payment_status}`);
+             console.log(`Successfully cancelled shop order ${orderId} due to ITN status: ${payload.payment_status}`);
+          } else if (reference.startsWith('AUC-')) {
+             const auctionId = reference.replace('AUC-', '');
+             await cancelAuctionPayment(auctionId, `PayFast ITN status: ${payload.payment_status}`);
+             console.log(`Successfully cancelled auction payment for lot ${auctionId} due to ITN status: ${payload.payment_status}`);
+          } else if (reference.startsWith('EVT-')) {
+             const bookingId = reference.replace('EVT-', '');
+             await cancelEventPayment(bookingId, `PayFast ITN status: ${payload.payment_status}`);
+             console.log(`Successfully cancelled event booking ${bookingId} due to ITN status: ${payload.payment_status}`);
+          } else if (reference.startsWith('DEP-')) {
+             const depositId = reference.replace('DEP-', '');
+             await cancelBidderDepositPayment(depositId, `PayFast ITN status: ${payload.payment_status}`);
+             console.log(`Successfully cancelled VIP deposit ${depositId} due to ITN status: ${payload.payment_status}`);
+          }
        }
     }
 
@@ -568,6 +647,23 @@ exports.confirmOrderPayment = async (req, res) => {
       return res.json({ success: true, vendor: updatedVendor });
     }
 
+    // 4b. Vendor Registration Fee Confirmation
+    if (req.body.vendorRegistration || req.body.vendorId) {
+      const Vendor = require('../models/Vendor');
+      const vendor = await Vendor.findOne({
+        $or: [
+          ...(req.body.vendorId ? [{ _id: req.body.vendorId }] : []),
+          ...(req.user?._id ? [{ userId: req.user._id }] : [])
+        ]
+      });
+      if (!vendor) {
+        return res.status(404).json({ message: 'Vendor application not found' });
+      }
+      await processVendorPayment(vendor._id);
+      const updatedVendor = await Vendor.findById(vendor._id);
+      return res.json({ success: true, vendor: updatedVendor });
+    }
+
     // 5. Shop Order Confirmation
     let order = null;
     if (orderId) {
@@ -603,7 +699,7 @@ exports.confirmOrderPayment = async (req, res) => {
 // @access  Public
 exports.mobileReturnHandler = async (req, res) => {
   try {
-    const { type, status, orderId, auctionId, bookingId } = req.query;
+    const { type, status, orderId, auctionId, bookingId, depositId, vendorId } = req.query;
     const isSuccess = status === 'success';
 
     if (isSuccess) {
@@ -625,6 +721,28 @@ exports.mobileReturnHandler = async (req, res) => {
         } catch (e) {
           console.error('Error in mobileReturnHandler processEventPayment:', e);
         }
+      } else if (type === 'deposit' && depositId) {
+        try {
+          await processBidderDepositPayment(depositId, req.query.pf_payment_id || req.query.m_payment_id || `PF-MOB-DEP-${Date.now()}`);
+        } catch (e) {
+          console.error('Error in mobileReturnHandler processBidderDepositPayment:', e);
+        }
+      } else if (type === 'vendor' && vendorId) {
+        try {
+          await processVendorPayment(vendorId);
+        } catch (e) {
+          console.error('Error in mobileReturnHandler processVendorPayment:', e);
+        }
+      } else if (type === 'maintenance' && vendorId) {
+        try {
+          const { processMaintenanceFeePayment } = require('./vendorController');
+          await processMaintenanceFeePayment(vendorId, {
+            paymentMethod: 'PayFast',
+            reference: req.query.pf_payment_id || `PF-MOB-MNF-${Date.now()}`
+          });
+        } catch (e) {
+          console.error('Error in mobileReturnHandler processMaintenanceFeePayment:', e);
+        }
       }
     } else {
       // Payment was cancelled or failed on mobile gateway
@@ -634,6 +752,27 @@ exports.mobileReturnHandler = async (req, res) => {
           console.log(`mobileReturnHandler: Cancelled shop order ${orderId} upon mobile gateway cancel return`);
         } catch (e) {
           console.error('Error in mobileReturnHandler cancelOrderPayment:', e);
+        }
+      } else if (type === 'auction' && auctionId) {
+        try {
+          await cancelAuctionPayment(auctionId, 'Customer cancelled auction payment on mobile gateway');
+          console.log(`mobileReturnHandler: Cancelled auction lot ${auctionId} upon mobile gateway cancel return`);
+        } catch (e) {
+          console.error('Error in mobileReturnHandler cancelAuctionPayment:', e);
+        }
+      } else if (type === 'event' && bookingId) {
+        try {
+          await cancelEventPayment(bookingId, 'Customer cancelled event booking on mobile gateway');
+          console.log(`mobileReturnHandler: Cancelled event booking ${bookingId} upon mobile gateway cancel return`);
+        } catch (e) {
+          console.error('Error in mobileReturnHandler cancelEventPayment:', e);
+        }
+      } else if (type === 'deposit' && depositId) {
+        try {
+          await cancelBidderDepositPayment(depositId, 'Customer cancelled VIP deposit on mobile gateway');
+          console.log(`mobileReturnHandler: Cancelled VIP deposit ${depositId} upon mobile gateway cancel return`);
+        } catch (e) {
+          console.error('Error in mobileReturnHandler cancelBidderDepositPayment:', e);
         }
       }
     }
@@ -645,6 +784,8 @@ exports.mobileReturnHandler = async (req, res) => {
       orderId: orderId || null,
       auctionId: auctionId || null,
       bookingId: bookingId || null,
+      depositId: depositId || null,
+      vendorId: vendorId || null,
     });
 
     const html = `<!DOCTYPE html>
@@ -721,6 +862,38 @@ exports.mobileReturnHandler = async (req, res) => {
   } catch (err) {
     console.error('Error in mobileReturnHandler:', err);
     res.status(500).send('Internal Server Error');
+  }
+};
+
+// @desc    Explicitly cancel payment for any module (Shop, Auction, Event, VIP Deposit)
+// @route   POST /api/payfast/cancel-payment
+// @access  Public / OptionalAuth
+exports.cancelPayment = async (req, res) => {
+  try {
+    const { orderId, bookingId, auctionId, depositId, reason } = req.body;
+    const cancelReason = reason || 'Customer cancelled payment';
+
+    if (orderId) {
+      await cancelOrderPayment(orderId, cancelReason);
+      return res.json({ success: true, message: 'Order payment cancelled', orderId });
+    }
+    if (bookingId) {
+      const result = await cancelEventPayment(bookingId, cancelReason);
+      return res.json({ success: true, message: 'Event ticket payment cancelled', ...result });
+    }
+    if (auctionId) {
+      await cancelAuctionPayment(auctionId, cancelReason);
+      return res.json({ success: true, message: 'Auction payment cancelled', auctionId });
+    }
+    if (depositId) {
+      await cancelBidderDepositPayment(depositId, cancelReason);
+      return res.json({ success: true, message: 'VIP deposit payment cancelled', depositId });
+    }
+
+    return res.status(400).json({ message: 'Missing orderId, bookingId, auctionId, or depositId' });
+  } catch (error) {
+    console.error('Error cancelling payment:', error);
+    return res.status(500).json({ message: 'Error cancelling payment', error: error.message });
   }
 };
 

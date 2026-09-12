@@ -229,6 +229,51 @@ export default function AuctionVipCheckout({ onNotify }) {
     );
   }
 
+  useEffect(() => {
+    if (paymentQuery === 'cancel' && refQuery) {
+      api.post('/payfast/cancel-payment', { depositId: refQuery })
+        .catch(err => console.log('Cancel VIP deposit result:', err));
+    } else if (paymentQuery === 'success' && refQuery) {
+      api.post('/payfast/confirm-order', { depositId: refQuery })
+        .catch(err => console.log('Confirm VIP deposit result:', err));
+    }
+  }, [paymentQuery, refQuery]);
+
+  // If returning from PayFast with cancel
+  if (paymentQuery === 'cancel') {
+    return (
+      <main className="min-h-screen bg-[#050505] text-[var(--color-ivory)] py-16 px-6">
+        <div className="max-w-2xl mx-auto text-center space-y-6 bg-gradient-to-b from-[#15100a] to-[#0a0a0a] p-10 rounded-3xl border border-rose-500/30 shadow-[0_0_50px_rgba(225,29,72,0.15)]">
+          <div className="w-16 h-16 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto">
+            <X size={32} />
+          </div>
+          <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest bg-rose-500/10 text-rose-400 border border-rose-500/30">
+            Payment Cancelled • No Funds Deducted
+          </span>
+          <h1 className="text-3xl font-serif text-white">VIP Deposit Payment Cancelled</h1>
+          <p className="text-sm text-[var(--color-ivory-muted)] font-light leading-relaxed max-w-lg mx-auto">
+            Your PayFast deposit checkout was aborted. No funds were debited. You can safely retry your VIP upgrade whenever you are ready.
+          </p>
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button 
+              type="button"
+              onClick={() => navigate('/auction/vip-checkout')} 
+              className="w-full sm:w-auto px-8 py-3.5 bg-gold-gradient text-black font-bold uppercase tracking-widest text-xs rounded-xl hover:brightness-110 transition-all shadow-[0_0_20px_rgba(212,175,55,0.3)] cursor-pointer"
+            >
+              Retry VIP Upgrade
+            </button>
+            <Link 
+              to="/auction" 
+              className="w-full sm:w-auto px-8 py-3.5 bg-white/5 hover:bg-white/10 text-white font-medium uppercase tracking-widest text-xs rounded-xl border border-white/10 transition-all text-center"
+            >
+              Browse Auction Catalogue
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   // If returning from PayFast with success
   if (paymentQuery === 'success') {
     return (

@@ -690,7 +690,15 @@ function App() {
           element={<OrderSuccessPage onClearCart={clearCart} />}
         />
         <Route
+          path="/orders/:id"
+          element={<OrderSuccessPage onClearCart={clearCart} />}
+        />
+        <Route
           path="/customer/event-order/:id"
+          element={<EventSuccessPage />}
+        />
+        <Route
+          path="/events/booking-success/:id"
           element={<EventSuccessPage />}
         />
         <Route
@@ -889,6 +897,10 @@ function App() {
         <Route path="/auctions" element={<Navigate to="/auction" replace />} />
         <Route
           path="/auction/:id"
+          element={<AuctionLotDetail onNotify={showToast} />}
+        />
+        <Route
+          path="/auction/lot/:id"
           element={<AuctionLotDetail onNotify={showToast} />}
         />
         <Route

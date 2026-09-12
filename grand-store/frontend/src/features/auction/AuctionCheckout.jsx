@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import api from '../../api';
 import { 
   ChevronRight, ArrowRight, ShieldCheck, CreditCard, Loader2, 
-  Landmark, UploadCloud, CheckCircle2, Copy, FileText, X, ExternalLink, Clock, Sparkles, Phone, Eye
+  Landmark, UploadCloud, CheckCircle2, Copy, FileText, X, ExternalLink, Clock, Sparkles, Phone, Eye, AlertTriangle
 } from 'lucide-react';
 import LocationInput from '../../components/LocationInput';
 import PaymentForm from '../checkout/PaymentForm';
@@ -14,6 +14,8 @@ import StoreBankDetailsCard from '../../components/StoreBankDetailsCard';
 export default function AuctionCheckout({ onNotify }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const paymentQuery = searchParams.get('payment');
   const [lot, setLot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -53,62 +55,87 @@ export default function AuctionCheckout({ onNotify }) {
   const [paymentData, setPaymentData] = useState(null);
   const [payfastUrl, setPayfastUrl] = useState(null);
 
+  const fetchLot = async () => {
+    try {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+      const headers = userInfo?.token ? { Authorization: `Bearer ${userInfo.token}` } : {};
+      const res = await api.get(`/auction/${id}`, { headers });
+      const fetchedLot = res.data?.lot;
+
+      if (fetchedLot) {
+        setLot(fetchedLot);
+
+        // 1. Pre-fill address if previously saved
+        if (fetchedLot.shippingAddress) {
+          setFormData(prev => ({
+            ...prev,
+            address: fetchedLot.shippingAddress.address || prev.address,
+            city: fetchedLot.shippingAddress.city || prev.city,
+            postalCode: fetchedLot.shippingAddress.postalCode || prev.postalCode,
+            country: fetchedLot.shippingAddress.country || prev.country,
+            phone: fetchedLot.shippingAddress.phone || fetchedLot.shippingAddress.phoneNumber || prev.phone
+          }));
+        }
+
+        // 2. Shipping cost
+        if (fetchedLot.shippingCost) {
+          setDynamicShipping(fetchedLot.shippingCost);
+        }
+
+        // 3. Order reference
+        if (fetchedLot.order) {
+          setCreatedOrder(fetchedLot.order);
+        }
+
+        // 4. Proof of payment URL
+        if (fetchedLot.proofUrl) {
+          setProofUrl(fetchedLot.proofUrl);
+        }
+
+        // 5. If EFT proof was already submitted or is awaiting approval
+        if (fetchedLot.paymentStatus === 'Awaiting_Approval' || Boolean(fetchedLot.proofUrl)) {
+          setBankTransferSubmitted(true);
+          setPaymentMethod('bank_transfer');
+          setCheckoutStep(2);
+        }
+      }
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     document.title = 'Auction Checkout – The Grand Store';
     window.scrollTo({ top: 0, behavior: 'auto' });
-
-    const fetchLot = async () => {
-      try {
-        const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-        const headers = userInfo?.token ? { Authorization: `Bearer ${userInfo.token}` } : {};
-        const res = await api.get(`/auction/${id}`, { headers });
-        const fetchedLot = res.data?.lot;
-
-        if (fetchedLot) {
-          setLot(fetchedLot);
-
-          // 1. Pre-fill address if previously saved
-          if (fetchedLot.shippingAddress) {
-            setFormData(prev => ({
-              ...prev,
-              address: fetchedLot.shippingAddress.address || prev.address,
-              city: fetchedLot.shippingAddress.city || prev.city,
-              postalCode: fetchedLot.shippingAddress.postalCode || prev.postalCode,
-              country: fetchedLot.shippingAddress.country || prev.country,
-              phone: fetchedLot.shippingAddress.phone || fetchedLot.shippingAddress.phoneNumber || prev.phone
-            }));
-          }
-
-          // 2. Shipping cost
-          if (fetchedLot.shippingCost) {
-            setDynamicShipping(fetchedLot.shippingCost);
-          }
-
-          // 3. Order reference
-          if (fetchedLot.order) {
-            setCreatedOrder(fetchedLot.order);
-          }
-
-          // 4. Proof of payment URL
-          if (fetchedLot.proofUrl) {
-            setProofUrl(fetchedLot.proofUrl);
-          }
-
-          // 5. If EFT proof was already submitted or is awaiting approval
-          if (fetchedLot.paymentStatus === 'Awaiting_Approval' || Boolean(fetchedLot.proofUrl)) {
-            setBankTransferSubmitted(true);
-            setPaymentMethod('bank_transfer');
-            setCheckoutStep(2);
-          }
-        }
-        setLoading(false);
-      } catch (err) {
-        console.error(err);
-        setLoading(false);
-      }
-    };
     fetchLot();
-  }, [id]);
+
+    if (paymentQuery === 'success' && id) {
+      api.post('/payfast/confirm-order', { auctionId: id })
+        .then(() => fetchLot())
+        .catch(err => console.log('Confirm auction payment error:', err));
+    } else if (paymentQuery === 'cancel' && id) {
+      api.post('/payfast/cancel-payment', { auctionId: id, reason: 'Customer cancelled PayFast session' })
+        .then(() => fetchLot())
+        .catch(err => console.log('Cancel auction payment error:', err));
+    }
+  }, [id, paymentQuery]);
+
+  const handleRetryPayFast = async () => {
+    setProcessing(true);
+    try {
+      const pfRes = await api.post('/payfast/generate-auction', {
+        auctionId: id,
+        shippingCost: dynamicShipping
+      });
+      setPayfastUrl(pfRes.data.url);
+      setPaymentData(pfRes.data.data);
+    } catch (err) {
+      if (onNotify) onNotify(err.response?.data?.message || 'Failed to initialize PayFast retry');
+      setProcessing(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -215,6 +242,63 @@ export default function AuctionCheckout({ onNotify }) {
   const isAwaitingApproval = !isPaid && Boolean(bankTransferSubmitted || lot.paymentStatus === 'Awaiting_Approval' || lot.proofUrl);
   const total = (lot.winningBid || 0) + (lot.buyerPremiumAmount || 0) + (lot.barChargeAmount || 0) + (lot.vatAmount || 0) + dynamicShipping;
   const paymentReference = lot.order?.transactionId || lot.gsReference || `AUC-${lot.lotNumber || lot._id.slice(-6).toUpperCase()}`;
+
+  if (paymentQuery === 'cancel' && !isPaid) {
+    return (
+      <main className="min-h-screen bg-[#050505] text-[var(--color-ivory)] pt-20 pb-24 flex items-center justify-center">
+        <div className="max-w-2xl mx-auto px-6 w-full text-center animate-fadeIn">
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 bg-rose-500/15 border border-rose-500/30 shadow-[0_0_30px_rgba(244,63,94,0.2)]">
+            <AlertTriangle size={40} className="text-rose-400" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-serif mb-4 text-white">
+            Payment Cancelled
+          </h1>
+
+          <div className="space-y-4 max-w-md mx-auto mb-6">
+            <div className="p-4 bg-rose-950/30 border border-rose-500/40 rounded-2xl text-rose-200 text-sm leading-relaxed">
+              You cancelled your auction settlement payment on PayFast. No funds were debited, and this settlement draft has been cancelled.
+            </div>
+            <div className="flex flex-col items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleRetryPayFast}
+                disabled={processing}
+                className="w-full py-3.5 px-8 rounded-full bg-gold-gradient text-black font-bold uppercase tracking-widest text-xs hover:opacity-95 shadow-[0_0_25px_rgba(212,175,55,0.35)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                {processing ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" /> Connecting to PayFast...
+                  </>
+                ) : (
+                  `Retry Payment with PayFast (R${total.toLocaleString()})`
+                )}
+              </button>
+              <div className="flex items-center justify-center gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate(`/auction/checkout/${id}`);
+                    setCheckoutStep(2);
+                    setPaymentMethod('bank_transfer');
+                  }}
+                  className="flex-1 py-3 px-4 rounded-full bg-white/10 hover:bg-white/15 text-white font-bold uppercase tracking-widest text-[11px] transition-all text-center border border-white/10 cursor-pointer"
+                >
+                  Pay via Bank EFT
+                </button>
+                <Link
+                  to="/auction"
+                  className="flex-1 py-3 px-4 rounded-full bg-transparent hover:bg-white/5 border border-white/20 text-white font-bold uppercase tracking-widest text-[11px] transition-all text-center"
+                >
+                  Return to Auctions
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+        <PaymentForm paymentData={paymentData} payfastUrl={payfastUrl} />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#050505] text-[var(--color-ivory)] pt-0 pb-24">

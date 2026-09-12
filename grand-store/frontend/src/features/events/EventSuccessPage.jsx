@@ -67,6 +67,10 @@ export default function EventSuccessPage() {
       api.post('/payfast/confirm-order', { bookingId: id })
         .then(() => fetchBooking({ silent: true }))
         .catch((err) => console.log('Event confirm-order result:', err));
+    } else if (paymentResult === 'cancel' && id) {
+      api.post('/payfast/cancel-payment', { bookingId: id })
+        .then(() => fetchBooking({ silent: true }))
+        .catch((err) => console.log('Event cancel-payment result:', err));
     }
 
     fetchBooking({ silent: true });
@@ -176,7 +180,59 @@ export default function EventSuccessPage() {
   const isPaid = PAID_STATUSES.includes(booking.paymentStatus) || (!isBankTransfer && paymentResult === 'success');
   const bankStatus = booking.bankTransferStatus;
   const isRejected = booking.paymentStatus === 'Failed' || bankStatus === 'Rejected';
-  const isCancelled = !isBankTransfer && paymentResult === 'cancel' && !isPaid;
+  const isCancelled = !isPaid && (!isBankTransfer && (paymentResult === 'cancel' || booking.paymentStatus === 'Cancelled'));
+
+  if (isCancelled) {
+    return (
+      <main className="min-h-screen bg-[#050505] text-[var(--color-ivory)] pt-20 pb-24 flex items-center justify-center">
+        <div className="max-w-2xl mx-auto px-6 w-full text-center animate-fadeIn">
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 bg-rose-500/15 border border-rose-500/30 shadow-[0_0_30px_rgba(244,63,94,0.2)]">
+            <AlertTriangle size={40} className="text-rose-400" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-serif mb-4 text-white">
+            Ticket Payment Cancelled
+          </h1>
+
+          <div className="space-y-4 max-w-md mx-auto mb-6">
+            <div className="p-4 bg-rose-950/30 border border-rose-500/40 rounded-2xl text-rose-200 text-sm leading-relaxed">
+              You cancelled your event ticket payment on PayFast. No funds were debited, and this reservation has been cancelled.
+            </div>
+            <div className="flex flex-col items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={retryPayFast}
+                disabled={retrying}
+                className="w-full py-3.5 px-8 rounded-full bg-gold-gradient text-black font-bold uppercase tracking-widest text-xs hover:opacity-95 shadow-[0_0_25px_rgba(212,175,55,0.35)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                {retrying ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" /> Connecting to PayFast...
+                  </>
+                ) : (
+                  `Retry Payment with PayFast (R${Number(booking.totalPrice || 0).toLocaleString()})`
+                )}
+              </button>
+              <div className="flex items-center justify-center gap-3 w-full">
+                <Link
+                  to="/events"
+                  className="flex-1 py-3 px-4 rounded-full bg-white/10 hover:bg-white/15 text-white font-bold uppercase tracking-widest text-[11px] transition-all text-center border border-white/10"
+                >
+                  Browse Events
+                </Link>
+                <Link
+                  to="/shop"
+                  className="flex-1 py-3 px-4 rounded-full bg-transparent hover:bg-white/5 border border-white/20 text-white font-bold uppercase tracking-widest text-[11px] transition-all text-center"
+                >
+                  Continue Shopping
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+        <PaymentForm paymentData={paymentData} payfastUrl={payfastUrl} />
+      </main>
+    );
+  }
   const isVerifying = false; // We no longer block on polling, assume success if PayFast redirects
   const awaitingProof = isBankTransfer && bankStatus === 'Awaiting_Proof' && !isRejected;
   const awaitingApproval = isBankTransfer && bankStatus === 'Awaiting_Approval' && !isRejected;
@@ -187,12 +243,16 @@ export default function EventSuccessPage() {
         message: `You are going to ${booking.event?.title || 'the event'}! Your ticket is confirmed.`,
         tone: 'success',
       }
-    : isRejected || isCancelled
+    : isCancelled
       ? {
-          title: isRejected ? 'Payment Not Approved' : 'Payment Cancelled',
-          message: isRejected
-            ? (booking.paymentRejectionReason || 'The payment could not be approved and this ticket reservation was released.')
-            : 'No payment was taken. You can safely retry payment using the same ticket reservation.',
+          title: 'Ticket Booking Cancelled',
+          message: 'No funds were charged. Your ticket reservation was released. You can book again whenever you are ready.',
+          tone: 'error',
+        }
+    : isRejected
+      ? {
+          title: 'Payment Not Approved',
+          message: booking.paymentRejectionReason || 'The payment could not be approved and this ticket reservation was released.',
           tone: 'error',
         }
       : awaitingProof
@@ -307,10 +367,14 @@ export default function EventSuccessPage() {
                 <Link to="/customer/tickets" className="button button-dark mb-3 w-full text-center">View All My Tickets</Link>
                 <Link to="/events" className="button button-dark w-full text-center opacity-80 hover:opacity-100">Discover More Events</Link>
               </>
-            ) : isRejected ? (
+            ) : (isRejected || isCancelled) ? (
               <>
-                <p className="mb-6 text-sm text-[#888]">This reservation has been released. Create a new booking to select another payment method.</p>
-                <Link to={`/events/${booking.event?._id}`} className="button button-gold mb-3 w-full text-center">Book Again</Link>
+                <p className="mb-6 text-sm text-[#888]">
+                  {isCancelled 
+                    ? 'Your ticket reservation was safely cancelled and no money was deducted. You can book tickets again anytime.'
+                    : 'This reservation has been released. Create a new booking to select another payment method.'}
+                </p>
+                <Link to={`/events/${booking.event?._id || ''}`} className="button button-gold mb-3 w-full text-center">Book Again</Link>
                 <Link to="/events" className="button button-dark w-full text-center">Back to Events</Link>
               </>
             ) : (
