@@ -28,8 +28,14 @@ const hydrateProductMetadata = (product) => {
 };
 
 export const ProductProvider = ({ children }) => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState(() => {
+    try {
+      return catalogProducts.map(hydrateProductMetadata);
+    } catch (e) {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {

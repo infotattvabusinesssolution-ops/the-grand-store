@@ -256,7 +256,7 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const { wishlistCount, toggleWishlist } = useWishlist();
-  const { products, loading } = useProducts();
+  const { products } = useProducts();
 
   const [cartItems, setCartItems] = useState([]);
   const [compareItems, setCompareItems] = useState([]);
@@ -448,14 +448,6 @@ function App() {
   const isAuthRoute =
     location.pathname === "/login" || location.pathname === "/register" || location.pathname === "/verify-email" || location.pathname === "/forgot-password" || location.pathname.startsWith("/reset-password");
   const isEstateRoute = location.pathname.startsWith("/estate");
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0a0907] flex items-center justify-center text-[#e1bd70]">
-        Loading...
-      </div>
-    );
-  }
 
   return (
     <div className="app">
