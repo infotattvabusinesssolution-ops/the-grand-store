@@ -157,10 +157,13 @@ export default function EventSuccessPage() {
   };
 
   if (loading) {
+    const isCancel = paymentResult === 'cancel' || searchParams.get('status') === 'cancel';
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#0a0907] pt-20">
         <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-[#c9a35b]/30 border-t-[#c9a35b]" />
-        <p className="text-xs font-bold uppercase tracking-widest text-[#c9a35b]">Checking Ticket Status...</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-[#c9a35b]">
+          {isCancel ? 'Cancelling Ticket Reservation...' : 'Checking Ticket Status...'}
+        </p>
       </div>
     );
   }

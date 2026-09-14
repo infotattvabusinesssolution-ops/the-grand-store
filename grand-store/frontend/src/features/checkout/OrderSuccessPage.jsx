@@ -111,9 +111,33 @@ export default function OrderSuccessPage({ onClearCart }) {
   }, [id, paymentStatus]);
 
   if (loading) {
+    const isCancelFlow = paymentStatus === "cancel" || searchParams.get("status") === "cancel";
     return (
-      <main className="min-h-screen bg-[#050505] flex items-center justify-center text-gold-gradient">
-        Loading receipt...
+      <main className="min-h-screen bg-[#050505] flex flex-col items-center justify-center px-6 text-center">
+        <div className="relative mb-6">
+          <div
+            className={`w-16 h-16 rounded-full border-2 border-dashed ${
+              isCancelFlow ? "border-rose-500/40" : "border-[#c9a35b]/40"
+            } animate-spin flex items-center justify-center`}
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            {isCancelFlow ? (
+              <AlertTriangle size={24} className="text-rose-400 animate-pulse" />
+            ) : (
+              <Package size={24} className="text-[#c9a35b] animate-pulse" />
+            )}
+          </div>
+        </div>
+
+        <h2 className="text-2xl md:text-3xl font-serif text-white mb-2 tracking-wide">
+          {isCancelFlow ? "Cancelling Order..." : "Loading Order Details..."}
+        </h2>
+
+        <p className="text-sm text-white/50 max-w-sm tracking-wide leading-relaxed">
+          {isCancelFlow
+            ? "Updating payment records and releasing order..."
+            : "Retrieving official order summary..."}
+        </p>
       </main>
     );
   }

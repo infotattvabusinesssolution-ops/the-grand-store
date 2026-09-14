@@ -235,7 +235,17 @@ export default function AuctionCheckout({ onNotify }) {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-white bg-[#050505]">Loading Secure Checkout...</div>;
+  if (loading) {
+    const isCancel = paymentQuery === 'cancel' || searchParams.get('status') === 'cancel';
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-white bg-[#050505] px-6 text-center">
+        <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-[#c9a35b]/30 border-t-[#c9a35b]" />
+        <p className="text-xs font-bold uppercase tracking-widest text-[#c9a35b]">
+          {isCancel ? 'Cancelling Auction Checkout...' : 'Loading Secure Checkout...'}
+        </p>
+      </div>
+    );
+  }
   if (!lot) return <div className="min-h-screen flex items-center justify-center text-white bg-[#050505]">Lot not found</div>;
 
   const isPaid = Boolean(lot.isPaid || lot.paymentStatus === 'Paid');
