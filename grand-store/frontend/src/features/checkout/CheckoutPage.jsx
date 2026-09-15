@@ -963,7 +963,7 @@ export default function CheckoutPage({
   if (vendorCartItems.length === 0) {
     return (
       <main className="pt-32 pb-16 min-h-screen bg-[#050505]">
-        <div className="max-w-6xl mx-auto px-6 mb-12">
+        <div className="max-w-7xl mx-auto px-6 mb-12">
           <div className="flex flex-col items-center justify-center text-center space-y-6 py-20 border border-white/10 bg-black/40 rounded-3xl">
             <ShoppingCart size={48} className="text-white/20" />
             <div>
@@ -981,7 +981,7 @@ export default function CheckoutPage({
 
   return (
     <main className="pt-24 pb-36 min-h-screen bg-[#050505] md:pt-32 md:pb-16 text-white">
-      <div className="max-w-6xl mx-auto px-4 mb-8 sm:px-6 md:mb-12">
+      <div className="max-w-7xl mx-auto px-4 mb-8 sm:px-6 md:mb-12">
         {/* Top Breadcrumb & Step Indicator */}
         <div className="mb-6 flex items-center justify-between">
           <button
@@ -1277,105 +1277,113 @@ export default function CheckoutPage({
                   <button
                     type="button"
                     onClick={() => selectDeliveryMode('domestic_home')}
-                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer overflow-hidden ${
+                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                       destinationMode === 'domestic_sa' && deliveryPreference === 'home'
                         ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_20px_rgba(212,175,55,0.12)] ring-1 ring-[var(--color-gold)]/30'
                         : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
                     }`}
                   >
-                    <div className="flex items-center gap-3 mb-2 pr-7">
-                      <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'home' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
-                        <Truck size={18} />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-white truncate">SA Door Delivery</p>
-                        <p className="text-[10px] text-[var(--color-gold)] font-medium truncate">🇿🇦 South Africa Direct Courier</p>
+                    <div>
+                      <div className="flex items-center justify-between min-h-[32px] mb-3">
+                        <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'home' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
+                          <Truck size={18} />
+                        </span>
+                        {destinationMode === 'domestic_sa' && deliveryPreference === 'home' && (
+                          <CheckCircle2 size={16} className="text-[var(--color-gold)] shrink-0" />
+                        )}
+                      </div>
+                      <div className="mb-2">
+                        <p className="text-sm font-semibold text-white leading-snug">SA Door Delivery</p>
+                        <p className="text-[10px] text-[var(--color-gold)] font-medium leading-tight mt-0.5">🇿🇦 South Africa Direct Courier</p>
                       </div>
                     </div>
-                    <p className="text-[11px] text-[var(--color-ivory-muted)]">Door-to-door courier via Courier Guy & PostNet</p>
-                    {destinationMode === 'domestic_sa' && deliveryPreference === 'home' && (
-                      <CheckCircle2 size={16} className="absolute right-3.5 top-3.5 text-[var(--color-gold)] shrink-0" />
-                    )}
+                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Door-to-door courier via Courier Guy & PostNet</p>
                   </button>
 
                   {/* Card 2: PUDO Smart Locker (The Courier Guy) */}
                   <button
                     type="button"
                     onClick={() => selectDeliveryMode('domestic_pudo')}
-                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer overflow-hidden ${
+                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                       destinationMode === 'domestic_sa' && deliveryPreference === 'pudo'
                         ? 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.15)] ring-1 ring-emerald-400/30'
                         : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
                     }`}
                   >
-                    <div className="flex items-center gap-3 mb-2 pr-7">
-                      <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'pudo' ? 'bg-emerald-400 text-black' : 'bg-white/5 text-emerald-400/70'}`}>
-                        <Package size={18} />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-white truncate">PUDO Locker</p>
-                        <p className="text-[10px] text-emerald-400 font-medium truncate">🇿🇦 The Courier Guy 24/7</p>
+                    <div>
+                      <div className="flex items-center justify-between min-h-[32px] mb-3">
+                        <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'pudo' ? 'bg-emerald-400 text-black' : 'bg-white/5 text-emerald-400/70'}`}>
+                          <Package size={18} />
+                        </span>
+                        {destinationMode === 'domestic_sa' && deliveryPreference === 'pudo' && (
+                          <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                        )}
+                      </div>
+                      <div className="mb-2">
+                        <p className="text-sm font-semibold text-white leading-snug">PUDO Locker</p>
+                        <p className="text-[10px] text-emerald-400 font-medium leading-tight mt-0.5">🇿🇦 The Courier Guy 24/7</p>
                       </div>
                     </div>
-                    <p className="text-[11px] text-[var(--color-ivory-muted)]">Collect 24/7 at smart lockers across South Africa</p>
-                    {destinationMode === 'domestic_sa' && deliveryPreference === 'pudo' && (
-                      <CheckCircle2 size={16} className="absolute right-3.5 top-3.5 text-emerald-400 shrink-0" />
-                    )}
+                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Collect 24/7 at smart lockers across South Africa</p>
                   </button>
 
                   {/* Card 3: South Africa PostNet Store Collection */}
                   <button
                     type="button"
                     onClick={() => selectDeliveryMode('domestic_postnet')}
-                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer overflow-hidden ${
+                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                       destinationMode === 'domestic_sa' && deliveryPreference === 'postnet'
                         ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_20px_rgba(212,175,55,0.12)] ring-1 ring-[var(--color-gold)]/30'
                         : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
                     }`}
                   >
-                    <div className="flex items-center gap-3 mb-2 pr-7">
-                      <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'postnet' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
-                        <Store size={18} />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-white truncate">PostNet Collection</p>
-                        <p className="text-[10px] text-red-400 font-medium truncate">🇿🇦 PostNet-to-PostNet</p>
+                    <div>
+                      <div className="flex items-center justify-between min-h-[32px] mb-3">
+                        <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'postnet' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
+                          <Store size={18} />
+                        </span>
+                        {destinationMode === 'domestic_sa' && deliveryPreference === 'postnet' && (
+                          <CheckCircle2 size={16} className="text-[var(--color-gold)] shrink-0" />
+                        )}
+                      </div>
+                      <div className="mb-2">
+                        <p className="text-sm font-semibold text-white leading-snug">PostNet Collection</p>
+                        <p className="text-[10px] text-red-400 font-medium leading-tight mt-0.5">🇿🇦 PostNet-to-PostNet</p>
                       </div>
                     </div>
-                    <p className="text-[11px] text-[var(--color-ivory-muted)]">Collect at over 450+ PostNet branches nationwide</p>
-                    {destinationMode === 'domestic_sa' && deliveryPreference === 'postnet' && (
-                      <CheckCircle2 size={16} className="absolute right-3.5 top-3.5 text-[var(--color-gold)] shrink-0" />
-                    )}
+                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Collect at over 450+ PostNet branches nationwide</p>
                   </button>
 
-                  {/* Card 3: International Worldwide Delivery (DHL Express) */}
+                  {/* Card 4: International Worldwide Delivery (DHL Express) */}
                   <button
                     type="button"
                     onClick={() => selectDeliveryMode('international_dhl')}
-                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer overflow-hidden ${
+                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                       destinationMode === 'international_dhl'
                         ? 'border-amber-400 bg-amber-500/15 shadow-[0_0_25px_rgba(245,158,11,0.18)] ring-1 ring-amber-400/40'
                         : 'border-white/10 bg-[#0d0d0d] hover:border-amber-400/40'
                     }`}
                   >
-                    <div className="flex items-start gap-3 mb-2 pr-7">
-                      <span className={`p-2 rounded-xl shrink-0 mt-0.5 ${destinationMode === 'international_dhl' ? 'bg-amber-400 text-black' : 'bg-white/5 text-amber-400/80'}`}>
-                        <Globe size={18} />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <p className="text-sm font-semibold text-white truncate">DHL Express</p>
+                    <div>
+                      <div className="flex items-center justify-between min-h-[32px] mb-3">
+                        <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'international_dhl' ? 'bg-amber-400 text-black' : 'bg-white/5 text-amber-400/80'}`}>
+                          <Globe size={18} />
+                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono shrink-0 whitespace-nowrap">
                             Worldwide
                           </span>
+                          {destinationMode === 'international_dhl' && (
+                            <CheckCircle2 size={16} className="text-amber-400 shrink-0" />
+                          )}
                         </div>
-                        <p className="text-[10px] text-amber-300/90 font-medium truncate">✈️ International Courier</p>
+                      </div>
+                      <div className="mb-2">
+                        <p className="text-sm font-semibold text-white leading-snug">DHL Express</p>
+                        <p className="text-[10px] text-amber-300/90 font-medium leading-tight mt-0.5">✈️ International Courier</p>
                       </div>
                     </div>
-                    <p className="text-[11px] text-[var(--color-ivory-muted)]">Air express courier to UK, USA, Europe & 50+ countries</p>
-                    {destinationMode === 'international_dhl' && (
-                      <CheckCircle2 size={16} className="absolute right-3.5 top-3.5 text-amber-400 shrink-0" />
-                    )}
+                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Air express courier to UK, USA, Europe & 50+ countries</p>
                   </button>
                 </div>
 
