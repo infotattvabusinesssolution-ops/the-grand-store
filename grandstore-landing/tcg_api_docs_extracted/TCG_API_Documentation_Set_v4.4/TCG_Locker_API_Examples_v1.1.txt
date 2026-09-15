@@ -1,0 +1,73 @@
+THE COURIER GUY LOCKER API ? EXAMPLES
+
+Version 1.1 | A simpler companion to Locker API docs.pdf
+
+Use these examples as implementation patterns. Confirm the current base URL, authentication method, and service codes with integrations@tcglocker.co.za before production release.
+
+Support
+
+Locker, kiosk, and pickup-point integration support: integrations@tcglocker.co.za
+
+Core rule: addresses vs pickup points
+
+For a pickup-point field, send pickup_point_id and pickup_point_provider: "tcg-locker".
+
+Do not also send the matching collection_address or delivery_address for that side of the shipment.
+
+Collection can use a generic point because the sender may drop off at any locker or kiosk: CG0000 for a locker, K0000 for a kiosk.
+
+Delivery must use the specific selected locker or kiosk ID, for example CG341 or K120.
+
+1. Find lockers and kiosks
+
+Endpoint from the supplied PDF: GET https://api.shiplogic.com/pickup-points
+
+GET /pickup-points?type=locker
+
+GET /pickup-points?lat=-26.0048046&lng=27.9412084&order_closest=true
+
+GET /pickup-points?min_lat=-26.0752988&max_lat=-25.9674710&min_lng=27.8753945&max_lng=28.0134103
+
+GET /pickup-points?search=kya%20sands
+
+Use type=locker or type=counter to filter by locker or kiosk.
+
+Latitude/longitude queries search roughly within 20 km; order_closest=true sorts nearest first.
+
+2. Get a rate: locker collection to address
+
+Use the generic locker ID for collection. Do not send collection_address in this request.
+
+{  "collection_pickup_point_id": "CG0000",  "collection_pickup_point_provider": "tcg-locker",  "delivery_address": { "type": "business", "street_address": "37 Malta Road", "local_area": "Kya Sand", "city": "City of Johannesburg Metropolitan Municipality", "zone": "Gauteng", "country": "ZA", "code": "2163" },  "parcels": [{ "packaging": "Standard flyer", "parcel_description": "Test parcel", "submitted_length_cm": 40, "submitted_width_cm": 38, "submitted_height_cm": 5, "submitted_weight_kg": 2 }],  "collection_min_date": "2025-08-01", "delivery_min_date": "2025-08-01"}
+
+3. Get a rate: address to locker
+
+Use the exact pickup-point ID chosen by the customer. Do not send delivery_address in this request.
+
+{  "collection_address": { "type": "business", "street_address": "37 Malta Road", "local_area": "Kya Sand", "city": "City of Johannesburg Metropolitan Municipality", "zone": "Gauteng", "country": "ZA", "code": "2163" },  "delivery_pickup_point_id": "CG341",  "delivery_pickup_point_provider": "tcg-locker",  "parcels": [{ "packaging": "Standard flyer", "parcel_description": "Test parcel", "submitted_length_cm": 40, "submitted_width_cm": 38, "submitted_height_cm": 5, "submitted_weight_kg": 2 }],  "collection_min_date": "2025-08-01", "delivery_min_date": "2025-08-01"}
+
+4. Get a rate: pickup point to pickup point
+
+{  "collection_pickup_point_id": "K0000",  "collection_pickup_point_provider": "tcg-locker",  "delivery_pickup_point_id": "CG341",  "delivery_pickup_point_provider": "tcg-locker",  "parcels": [{ "packaging": "Standard flyer", "submitted_length_cm": 40, "submitted_width_cm": 38, "submitted_height_cm": 5, "submitted_weight_kg": 2 }],  "collection_min_date": "2025-08-01", "delivery_min_date": "2025-08-01"}
+
+5. Create a shipment
+
+Use the same pickup-point fields as the rate request: replace the relevant address with pickup_point_id plus pickup_point_provider.
+
+For generic locker/kiosk collection, do not send custom_tracking_reference; the system assigns one.
+
+Include contacts, parcels, date/time windows, and customer_reference as usual.
+
+{  "collection_pickup_point_id": "CG0000",  "collection_pickup_point_provider": "tcg-locker",  "collection_contact": { "name": "John Doe", "mobile_number": "0741234567", "email": "example@email.com" },  "delivery_pickup_point_id": "K120",  "delivery_pickup_point_provider": "tcg-locker",  "delivery_contact": { "name": "Jane Doe", "mobile_number": "0831234567", "email": "example@email.com" },  "parcels": [{ "packaging": "Standard flyer", "parcel_description": "Test parcel", "submitted_length_cm": 40, "submitted_width_cm": 38, "submitted_height_cm": 5, "submitted_weight_kg": 2 }],  "collection_min_date": "2025-08-01T00:00:00.000Z", "collection_after": "08:00", "collection_before": "16:00",  "delivery_min_date": "2025-08-01T00:00:00.000Z", "delivery_after": "10:00", "delivery_before": "17:00",  "customer_reference": "ORDERNO123", "service_level_code": "K2KS - ECO"}
+
+Service and validation notes
+
+PDF examples use L2DM - ECO, D2LXS - ECO, and K2KS - ECO. Treat them as examples and obtain the route-valid service from the current API flow.
+
+Locker/kiosk delivery limit: 60 ? 41 ? 69 cm and 20 kg.
+
+Do not mix a pickup-point ID with the corresponding address field.
+
+Use a specific selected point for delivery?not CG0000 or K0000.
+
+Note: PUDO Locker/Kiosk rates carry their own fuel-surcharge rule, separate from the standard delivery fuel levy. Routes that stay fully within the locker/kiosk network (Locker↔Locker, Locker/Kiosk↔Kiosk) carry no fuel surcharge, while routes touching a physical Door (Door↔Locker, Kiosk↔Door) carry half the standard fuel levy. Locker sizes range from XS through XL – see the current rate card for exact pricing.

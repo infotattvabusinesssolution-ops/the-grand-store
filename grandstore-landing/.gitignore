@@ -1,0 +1,8 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+.env
+references/catalog.json
+references/*.html
+artifacts/

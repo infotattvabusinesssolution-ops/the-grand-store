@@ -1,0 +1,53 @@
+THE COURIER GUY API — QUICK START
+
+Version 4.4 | Developer setup in four steps
+
+1. Create an API key
+
+Register a live account at https://portal.thecourierguy.co.za/register or a sandbox account at https://tcg-sandbox.shiplogic.com/register.
+
+Sign in as an Account Owner, open Integration menu on the left navigation, select + Create API key, name it something unique or leave it blank, then copy the Bearer token.
+
+Sandbox tokens work only against the sandbox endpoint (https://api.shiplogic.com); live tokens work only against the live endpoint (https://api.portal.thecourierguy.co.za). Do not mix a token with the wrong endpoint.
+
+2. Use the right API and endpoint
+
+Courier API (Can do lockers, kiosk and points as well)
+
+Sandbox rates: https://api.shiplogic.com/v2/rates
+
+Live rates: https://api.portal.thecourierguy.co.za/v2/rates
+
+Official docs: https://thecourierguy.co.za/api-docs/
+
+3. Test a rate request
+
+POST /v2/rates
+
+Authorization: Bearer YOUR_API_KEY
+
+Content-Type: application/json
+
+Include collection_address, delivery_address, parcels, and a valid service_level_code.
+
+4. Go live safely
+
+Sandbox prices are demo prices. Do not use sandbox service availability as live routing logic.
+
+For locker, kiosk, and pickup-point integration support, email integrations@tcglocker.co.za.
+
+On live, use a service valid for the route; ECO does not apply everywhere. PRI replaces OVN and PRIR replaces OVNR.
+
+Note: As of 1 September 2026, Economy Road services (ECO / ECOR) are tiered by weight — 6 bands (ECO/R 1 to ECO/R 6, from up to 2kg through to up to 35kg) — across 3 zones (National = ECO, Regional = ECOR, and Regional-to-Regional = ECORR), rather than a single flat rate. See the current rate card for exact pricing per tier and zone.
+
+Cancel all test shipments, including sandbox shipments.
+
+Pre-flight checklist
+
+Address contains street, suburb/local area, city, province/zone, country, and postal code.
+
+Parcel has description, length, width, height, and weight.
+
+Coordinates are left blank (omitted) when unknown—never null, never zero.
+
+Token, endpoint, and environment match.
