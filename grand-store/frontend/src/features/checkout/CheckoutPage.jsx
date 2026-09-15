@@ -612,6 +612,32 @@ export default function CheckoutPage({
         }));
       }
 
+      if (data && Array.isArray(data.shipments)) {
+        data.shipments = data.shipments.map((shipment) => {
+          const validQuotes = (shipment.shippingQuotes || []).filter(
+            (q) => q.serviceLevel !== 'PostNet Standard Delivery' && Number(q.cost) > 0
+          );
+          const validSelected = (shipment.selectedCourier && shipment.selectedCourier.serviceLevel !== 'PostNet Standard Delivery' && Number(shipment.selectedCourier.cost) > 0)
+            ? shipment.selectedCourier
+            : (validQuotes[0] || null);
+          return {
+            ...shipment,
+            shippingQuotes: validQuotes,
+            selectedCourier: validSelected
+          };
+        });
+
+        const totalShipping = data.shipments.reduce(
+          (sum, shp) => sum + (shp.selectedCourier ? Number(shp.selectedCourier.cost) : 0),
+          0
+        );
+        data.aggregatedTotals = {
+          ...data.aggregatedTotals,
+          shipping: totalShipping,
+          totalToPay: parseFloat((Number(data.globalSubtotal || 0) + totalShipping).toFixed(2))
+        };
+      }
+
       setQuote(data);
       return data;
     } catch (error) {
@@ -1142,15 +1168,15 @@ export default function CheckoutPage({
                   <div className="flex justify-between text-[var(--color-ivory-muted)]">
                     <span className="flex items-center gap-1.5">
                       <Truck size={13} className="text-[var(--color-gold)]" />
-                      {deliveryPreference === 'postnet' ? 'PostNet Collection' : 'PostNet Delivery'}
+                      {deliveryPreference === 'postnet'
+                        ? 'PostNet Collection'
+                        : deliveryPreference === 'pudo'
+                        ? 'PUDO Locker Collection'
+                        : 'The Courier Guy Delivery'}
                     </span>
-                    <span className="text-white">
+                    <span className="text-white font-mono">
                       {quote ? (
-                        quote.aggregatedTotals.shipping > 0 ? (
-                          <Price amount={quote.aggregatedTotals.shipping} />
-                        ) : (
-                          <span className="text-emerald-400 font-medium uppercase text-[10px]">Free</span>
-                        )
+                        <Price amount={Number(quote.aggregatedTotals?.shipping || 0)} />
                       ) : (
                         'Calculated next'
                       )}
@@ -2321,54 +2347,56 @@ export default function CheckoutPage({
                       )}
 
                       <div className="space-y-2.5">
-                        {shp.shippingQuotes.map((opt, optIndex) => {
-                          const isSelected = shp.selectedCourier?.serviceLevel === opt.serviceLevel;
-                          return (
-                            <label
-                              key={optIndex}
-                              className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
-                                isSelected
-                                  ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_15px_rgba(212,175,55,0.08)]'
-                                  : 'border-white/10 bg-black/40 hover:border-white/30'
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <input
-                                  type="radio"
-                                  name={`shipping-opt-${shpIndex}`}
-                                  checked={isSelected}
-                                  onChange={() => handleCourierSelect(shpIndex, opt)}
-                                  className="accent-[var(--color-gold)] w-4 h-4"
-                                />
-                                <div>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="text-sm font-semibold text-white">{opt.serviceLevel}</p>
-                                    {opt.courierName && (
-                                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                                        opt.courierName.includes('DHL')
-                                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-mono'
-                                          : opt.courierName.includes('PostNet')
-                                          ? 'bg-red-500/20 text-red-300 border-red-500/40'
-                                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                                      }`}>
-                                        {opt.courierName}
-                                      </span>
+                        {shp.shippingQuotes
+                          .filter((opt) => opt.serviceLevel !== 'PostNet Standard Delivery' && Number(opt.cost) > 0)
+                          .map((opt, optIndex) => {
+                            const isSelected = shp.selectedCourier?.serviceLevel === opt.serviceLevel;
+                            return (
+                              <label
+                                key={optIndex}
+                                className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
+                                  isSelected
+                                    ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_15px_rgba(212,175,55,0.08)]'
+                                    : 'border-white/10 bg-black/40 hover:border-white/30'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="radio"
+                                    name={`shipping-opt-${shpIndex}`}
+                                    checked={isSelected}
+                                    onChange={() => handleCourierSelect(shpIndex, opt)}
+                                    className="accent-[var(--color-gold)] w-4 h-4"
+                                  />
+                                  <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="text-sm font-semibold text-white">{opt.serviceLevel}</p>
+                                      {opt.courierName && (
+                                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                                          opt.courierName.includes('DHL')
+                                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-mono'
+                                            : opt.courierName.includes('PostNet')
+                                            ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                                            : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                        }`}>
+                                          {opt.courierName}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                                      Estimated delivery: {opt.estimatedDays}
+                                    </p>
+                                    {opt.description && (
+                                      <p className="text-[11px] text-white/50 mt-0.5">{opt.description}</p>
                                     )}
                                   </div>
-                                  <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
-                                    Estimated delivery: {opt.estimatedDays}
-                                  </p>
-                                  {opt.description && (
-                                    <p className="text-[11px] text-white/50 mt-0.5">{opt.description}</p>
-                                  )}
                                 </div>
-                              </div>
-                              <span className="text-sm font-bold text-[var(--color-gold)] font-serif">
-                                {opt.cost > 0 ? <Price amount={opt.cost} /> : 'FREE'}
-                              </span>
-                            </label>
-                          );
-                        })}
+                                <span className="text-sm font-bold text-[var(--color-gold)] font-serif">
+                                  <Price amount={Number(opt.cost || 0)} />
+                                </span>
+                              </label>
+                            );
+                          })}
                       </div>
                     </div>
                   ))}

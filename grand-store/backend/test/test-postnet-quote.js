@@ -33,16 +33,14 @@ async function runTests() {
   const quoteNames = result.quotes.map(q => `${q.courierName} - ${q.serviceLevel} (R${q.cost})`);
   console.log('Quotes:', quoteNames);
 
-  const postnetStandard = result.quotes.find(q => q.serviceLevel === 'PostNet Standard Delivery');
-  const postnetExpress = result.quotes.find(q => q.serviceLevel === 'PostNet Express Delivery');
   const postnetCollection = result.quotes.find(q => q.serviceLevel === 'PostNet Store Collection');
+  const postnetStandard = result.quotes.find(q => q.serviceLevel === 'PostNet Standard Delivery');
+  const tcgEco = result.quotes.find(q => q.serviceLevel === 'The Courier Guy - Economy Road');
 
-  assert(Boolean(postnetStandard), 'PostNet Standard Delivery should be available');
-  assert(Boolean(postnetExpress), 'PostNet Express Delivery should be available');
   assert(Boolean(postnetCollection), 'PostNet Store Collection should be available');
+  assert.strictEqual(Boolean(postnetStandard), false, 'PostNet Standard Home Delivery should be removed');
+  assert(Boolean(tcgEco), 'The Courier Guy Economy Road should be available for door delivery');
 
-  assert.strictEqual(postnetStandard.deliveryType, 'home', 'Standard should be home delivery');
-  assert.strictEqual(postnetExpress.deliveryType, 'home', 'Express should be home delivery');
   assert.strictEqual(postnetCollection.deliveryType, 'pickup', 'Collection should be pickup');
   assert(postnetCollection.stores.length === 2, 'Should attach PostNet stores');
 

@@ -46,9 +46,6 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
 
     // 1. DOMESTIC SA (The Courier Guy & PUDO Live Dynamic Engine + PostNet)
     if (originSA && destSA) {
-      const freeThreshold = vendor?.shippingProfile?.freeDeliveryThreshold;
-      const isFreeQualified = Boolean(freeThreshold && shipmentItemsSubtotal >= freeThreshold);
-
       // Estimate parcel box dimensions based on chargeable weight
       let parcelDims = { length: 35, width: 12, height: 12 };
       if (totalWeightKg > 10) {
@@ -122,16 +119,8 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
         if (livePri && Number(livePri.total) > 0) priTotalCost = Number(livePri.total);
       }
 
-      // Fallback PostNet pricing
-      let postnetCollectionCost = Number(platformSettings?.postnetPickupFee !== undefined ? platformSettings.postnetPickupFee : 100);
-      let postnetStandardCost = Number(platformSettings?.postnetStandardFee !== undefined ? platformSettings.postnetStandardFee : 120);
-
-      // Apply free delivery waiver to standard options if qualified
-      const finalEcoCost = isFreeQualified ? 0 : ecoTotalCost;
-      const finalPudoCost = isFreeQualified ? 0 : calculatedPudo.cost;
-      const finalPriCost = isFreeQualified ? Math.max(50, priTotalCost - ecoTotalCost) : priTotalCost;
-      const finalPostnetCost = isFreeQualified ? 0 : postnetStandardCost;
-      const finalPostnetPickupCost = isFreeQualified ? 0 : postnetCollectionCost;
+      // PostNet Store Collection fee
+      const postnetCollectionCost = Number(platformSettings?.postnetPickupFee !== undefined ? platformSettings.postnetPickupFee : 100);
 
       // 1A. The Courier Guy - Economy Road (Standard Door-to-Door)
       quotes.push({
@@ -139,9 +128,9 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
         serviceLevel: 'The Courier Guy - Economy Road',
         serviceCode: 'ECO',
         deliveryType: 'home',
-        cost: finalEcoCost,
+        cost: ecoTotalCost,
         originalCost: ecoTotalCost,
-        isFreeDelivery: isFreeQualified,
+        isFreeDelivery: false,
         estimatedDays: calculatedEco.estimatedDays,
         description: 'Direct door-to-door road courier across South Africa',
         legs: [
@@ -160,7 +149,7 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
         serviceLevel: 'The Courier Guy - Priority Overnight',
         serviceCode: 'PRI',
         deliveryType: 'home',
-        cost: finalPriCost,
+        cost: priTotalCost,
         originalCost: priTotalCost,
         isFreeDelivery: false,
         estimatedDays: calculatedPri.estimatedDays,
@@ -181,9 +170,9 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
         serviceLevel: 'PUDO Smart Locker Collection',
         serviceCode: 'D2L',
         deliveryType: 'pickup',
-        cost: finalPudoCost,
+        cost: calculatedPudo.cost,
         originalCost: calculatedPudo.cost,
-        isFreeDelivery: isFreeQualified,
+        isFreeDelivery: false,
         estimatedDays: calculatedPudo.estimatedDays,
         description: `Collect 24/7 at a secure PUDO smart locker station (Size: ${lockerSize})`,
         lockerSize,
@@ -203,9 +192,9 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
         courierName: 'PostNet',
         serviceLevel: 'PostNet Store Collection',
         deliveryType: 'pickup',
-        cost: finalPostnetPickupCost,
+        cost: postnetCollectionCost,
         originalCost: postnetCollectionCost,
-        isFreeDelivery: isFreeQualified,
+        isFreeDelivery: false,
         estimatedDays: '2–3 business days',
         description: 'Collect at your preferred PostNet branch counter',
         stores: postnetLookup.stores || [],
@@ -219,26 +208,6 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
             origin: originCountry,
             destination: customerAddress.city || 'Customer',
             cost: Number((postnetCollectionCost * 0.7).toFixed(2))
-          }
-        ]
-      });
-
-      // 1E. PostNet Standard Home Delivery
-      quotes.push({
-        courierName: 'PostNet',
-        serviceLevel: 'PostNet Standard Delivery',
-        deliveryType: 'home',
-        cost: finalPostnetCost,
-        originalCost: postnetStandardCost,
-        isFreeDelivery: isFreeQualified,
-        estimatedDays: '2–5 business days',
-        description: 'PostNet door-to-door delivery',
-        legs: [
-          {
-            courierName: 'PostNet Standard Courier',
-            origin: originCountry,
-            destination: customerAddress.city || destCountry,
-            cost: Number((postnetStandardCost * 0.7).toFixed(2))
           }
         ]
       });
