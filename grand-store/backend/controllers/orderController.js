@@ -40,21 +40,32 @@ const addOrderItems = async (req, res) => {
       quote.selectedPostnetStore ||
       (quote.shipments || []).find((s) => s.selectedPickupStore)?.selectedPickupStore || null;
 
-    // A shipment specifically requires store collection if its deliveryType is 'pickup' or service level states 'collection' or 'pudo'
-    const isPickupShipment = (shp) => {
-      const type = (shp.selectedCourier?.deliveryType || '').toLowerCase();
+    const effectiveLocker = req.body.selectedLocker ||
+      req.body.preferredLocker ||
+      req.body.selectedPickupPoint ||
+      quote.selectedLocker ||
+      (quote.shipments || []).find((s) => s.selectedLocker)?.selectedLocker || null;
+
+    const isPudoShipment = (shp) => {
+      const code = shp.selectedCourier?.serviceCode;
+      const courier = (shp.selectedCourier?.courierName || '').toLowerCase();
       const service = (shp.selectedCourier?.serviceLevel || '').toLowerCase();
-      if (type === 'home' || service.includes('door') || service.includes('standard delivery') || service.includes('express delivery')) {
-        return false;
-      }
-      return type === 'pickup' || service.includes('collection') || service.includes('pickup') || service.includes('pudo');
+      return code === 'D2L' || courier.includes('pudo') || service.includes('pudo') || service.includes('smart locker');
     };
 
-    const isPickupOrder = req.body.deliveryPreference === 'postnet' || (quote.shipments || []).some(isPickupShipment);
+    const isPostnetShipment = (shp) => {
+      const courier = (shp.selectedCourier?.courierName || '').toLowerCase();
+      const type = (shp.selectedCourier?.deliveryType || '').toLowerCase();
+      const service = (shp.selectedCourier?.serviceLevel || '').toLowerCase();
+      return courier.includes('postnet') && (type === 'pickup' || service.includes('collection') || service.includes('store'));
+    };
 
-    if (isPickupOrder && effectivePostnetStore) {
+    const isPostnetOrder = req.body.deliveryPreference === 'postnet' || (quote.shipments || []).some(isPostnetShipment);
+    const isPudoOrder = req.body.deliveryPreference === 'pudo' || req.body.deliveryPreference === 'locker' || (quote.shipments || []).some(isPudoShipment);
+
+    if (isPostnetOrder && effectivePostnetStore) {
       quote.shipments.forEach((shp) => {
-        if (isPickupShipment(shp) || req.body.deliveryPreference === 'postnet') {
+        if (isPostnetShipment(shp) || req.body.deliveryPreference === 'postnet') {
           if (!shp.selectedPickupStore) {
             shp.selectedPickupStore = effectivePostnetStore;
           }
@@ -62,15 +73,37 @@ const addOrderItems = async (req, res) => {
       });
     }
 
-    if (isPickupOrder) {
-      const missingPickup = quote.shipments.some((shp) => {
-        if (isPickupShipment(shp) || req.body.deliveryPreference === 'postnet') {
+    if (isPudoOrder && effectiveLocker) {
+      quote.shipments.forEach((shp) => {
+        if (isPudoShipment(shp) || req.body.deliveryPreference === 'pudo' || req.body.deliveryPreference === 'locker') {
+          if (!shp.selectedLocker) {
+            shp.selectedLocker = effectiveLocker;
+          }
+        }
+      });
+    }
+
+    if (isPostnetOrder) {
+      const missingPostnet = quote.shipments.some((shp) => {
+        if (isPostnetShipment(shp) || req.body.deliveryPreference === 'postnet') {
           return !shp.selectedPickupStore;
         }
         return false;
       });
-      if (missingPickup) {
+      if (missingPostnet) {
         return res.status(400).json({ message: 'A PostNet branch must be selected for PostNet store collection' });
+      }
+    }
+
+    if (isPudoOrder) {
+      const missingLocker = quote.shipments.some((shp) => {
+        if (isPudoShipment(shp) || req.body.deliveryPreference === 'pudo' || req.body.deliveryPreference === 'locker') {
+          return !shp.selectedLocker;
+        }
+        return false;
+      });
+      if (missingLocker) {
+        return res.status(400).json({ message: 'A PUDO smart locker station must be selected for locker collection' });
       }
     }
     
@@ -278,11 +311,10 @@ const addOrderItems = async (req, res) => {
       return type === 'pickup' || service.includes('collection') || service.includes('pudo');
     });
 
-    const isPickupModeGlobal = req.body.deliveryPreference === 'postnet' || isPickupSelected;
-    const selectedPickupStore = isPickupModeGlobal
-      ? (req.body.selectedPostnetStore || quote.selectedPostnetStore || quote.shipments?.find(s => s.selectedPickupStore)?.selectedPickupStore || null)
-      : null;
-    const deliveryPreference = isPickupModeGlobal ? 'postnet' : 'home';
+    let resolvedDeliveryPreference = 'home';
+    if (isPudoOrder) resolvedDeliveryPreference = 'pudo';
+    else if (isPostnetOrder) resolvedDeliveryPreference = 'postnet';
+    else if (req.body.deliveryPreference) resolvedDeliveryPreference = req.body.deliveryPreference;
 
     // Create the master order with isPaid: false
     const order = new Order({
@@ -308,8 +340,9 @@ const addOrderItems = async (req, res) => {
         confirmedAt: new Date()
       },
       shippingAddress,
-      deliveryPreference,
-      selectedPostnetStore: selectedPickupStore,
+      deliveryPreference: resolvedDeliveryPreference,
+      selectedPostnetStore: isPostnetOrder ? effectivePostnetStore : null,
+      selectedLocker: isPudoOrder ? effectiveLocker : null,
       paymentMethod,
       isGift: isGift || false,
       giftRecipientName: giftRecipientName || "",
@@ -399,9 +432,39 @@ const addOrderItems = async (req, res) => {
         actualCost = internalLegs.reduce((sum, leg) => sum + leg.cost, 0);
       }
 
-      const isShipmentPickup = shp.selectedCourier?.deliveryType === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection') || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('pudo');
-      const isPickupMode = deliveryPreference === 'postnet' || isShipmentPickup;
-      const activePickupStore = isPickupMode ? (shp.selectedPickupStore || selectedPickupStore) : null;
+      const isShipmentPudo = shp.selectedCourier?.serviceCode === 'D2L' ||
+        (shp.selectedCourier?.courierName || '').toLowerCase().includes('pudo') ||
+        (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('pudo');
+      const isShipmentPostnet = (shp.selectedCourier?.courierName || '').toLowerCase().includes('postnet') &&
+        ((shp.selectedCourier?.deliveryType || '') === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection'));
+
+      let shipmentDeliveryMethod = 'home_delivery';
+      if (shp.isInternational) {
+        shipmentDeliveryMethod = 'international_courier';
+      } else if (isShipmentPudo || resolvedDeliveryPreference === 'pudo') {
+        shipmentDeliveryMethod = 'pudo_locker';
+      } else if (isShipmentPostnet || resolvedDeliveryPreference === 'postnet') {
+        shipmentDeliveryMethod = 'postnet_pickup';
+      }
+
+      const activeLocker = (shipmentDeliveryMethod === 'pudo_locker') ? (shp.selectedLocker || effectiveLocker) : null;
+      const activePostnet = (shipmentDeliveryMethod === 'postnet_pickup') ? (shp.selectedPickupStore || effectivePostnetStore) : null;
+
+      const activePickupLocation = activeLocker
+        ? {
+            locationId: activeLocker.id || activeLocker.pickupPointId,
+            name: activeLocker.name,
+            address: activeLocker.address,
+            provider: 'tcg-locker'
+          }
+        : (activePostnet
+          ? {
+              locationId: activePostnet.id,
+              name: activePostnet.name,
+              address: activePostnet.address,
+              provider: 'postnet'
+            }
+          : undefined);
 
       const newShipment = new Shipment({
         shipmentId,
@@ -410,19 +473,11 @@ const addOrderItems = async (req, res) => {
         vendorId: shp.vendorId,
         customerId: user ? user._id : null,
         pickupAddress: { country: shp.originCountry },
-        deliveryAddress: activePickupStore
-          ? { ...shippingAddress, address: activePickupStore.address }
+        deliveryAddress: activePickupLocation
+          ? { ...shippingAddress, address: activePickupLocation.address }
           : shippingAddress,
-        deliveryMethod: isPickupMode
-          ? 'postnet_pickup'
-          : (shp.isInternational ? 'international_courier' : 'home_delivery'),
-        pickupLocation: activePickupStore
-          ? {
-              locationId: activePickupStore.id,
-              name: activePickupStore.name,
-              address: activePickupStore.address
-            }
-          : undefined,
+        deliveryMethod: shipmentDeliveryMethod,
+        pickupLocation: activePickupLocation,
         customerShippingCharge: shp.selectedCourier ? shp.selectedCourier.cost : 0,
         actualShippingCost: actualCost,
         legs: internalLegs,

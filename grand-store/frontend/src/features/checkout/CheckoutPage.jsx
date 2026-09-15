@@ -26,6 +26,7 @@ import {
   Coins,
   Store,
   Globe,
+  Package,
   UploadCloud,
   FileCheck,
   BadgeCheck
@@ -69,6 +70,17 @@ const POSTNET_AVAILABLE_CITIES = [
   { name: 'Gqeberha', postalCode: '6001', lat: -33.9608, lng: 25.6022 },
   { name: 'Bloemfontein', postalCode: '9301', lat: -29.0852, lng: 26.1596 },
   { name: 'East London', postalCode: '5201', lat: -33.0153, lng: 27.9116 }
+];
+
+const FALLBACK_PUDO_LOCKERS = [
+  { id: 'pudo-jhb-sandton', name: 'PUDO Locker Sandton City Mall', address: '83 Rivonia Rd, Sandhurst, Sandton', suburb: 'Sandton', city: 'Johannesburg', postalCode: '2196', distance: 2.1, lat: -26.1076, lng: 28.0567 },
+  { id: 'pudo-jhb-rosebank', name: 'PUDO Locker Rosebank Mall', address: '50 Bath Ave, Rosebank', suburb: 'Rosebank', city: 'Johannesburg', postalCode: '2196', distance: 3.4, lat: -26.1458, lng: 28.0416 },
+  { id: 'pudo-jhb-fourways', name: 'PUDO Locker Fourways Mall', address: 'Cnr William Nicol & Fourways Blvd', suburb: 'Fourways', city: 'Johannesburg', postalCode: '2055', distance: 5.8, lat: -26.0195, lng: 28.0065 },
+  { id: 'pudo-cpt-waterfront', name: 'PUDO Locker V&A Waterfront', address: '19 Breakwater Blvd, Victoria & Alfred Waterfront', suburb: 'Waterfront', city: 'Cape Town', postalCode: '8001', distance: 1.8, lat: -33.9036, lng: 18.4205 },
+  { id: 'pudo-cpt-canalwalk', name: 'PUDO Locker Canal Walk Shopping Centre', address: 'Century Blvd, Century City', suburb: 'Century City', city: 'Cape Town', postalCode: '7441', distance: 4.2, lat: -33.8928, lng: 18.5126 },
+  { id: 'pudo-dbn-gateway', name: 'PUDO Locker Gateway Theatre of Shopping', address: '1 Palm Blvd, Umhlanga Ridge', suburb: 'Umhlanga', city: 'Durban', postalCode: '4319', distance: 2.5, lat: -29.7259, lng: 31.0664 },
+  { id: 'pudo-pta-menlyn', name: 'PUDO Locker Menlyn Park Shopping Centre', address: 'Atterbury Rd & Lois Ave, Menlyn', suburb: 'Menlyn', city: 'Pretoria', postalCode: '0063', distance: 3.1, lat: -25.7828, lng: 28.2753 },
+  { id: 'pudo-cpt-stellenbosch', name: 'PUDO Locker Eikestad Mall', address: '43 Andringa St, Stellenbosch Central', suburb: 'Stellenbosch', city: 'Stellenbosch', postalCode: '7600', distance: 2.0, lat: -33.9372, lng: 18.8617 }
 ];
 
 export default function CheckoutPage({
@@ -251,6 +263,13 @@ export default function CheckoutPage({
   const [showAllPostnetBranches, setShowAllPostnetBranches] = useState(false);
   const [showAllPostnetCities, setShowAllPostnetCities] = useState(false);
 
+  // The Courier Guy PUDO Smart Locker states
+  const [pudoLockers, setPudoLockers] = useState(FALLBACK_PUDO_LOCKERS);
+  const [preferredLocker, setPreferredLocker] = useState(null);
+  const [isLoadingPudo, setIsLoadingPudo] = useState(false);
+  const [lockerSearch, setLockerSearch] = useState('');
+  const [showAllPudoLockers, setShowAllPudoLockers] = useState(false);
+
   const [paymentData, setPaymentData] = useState(null);
   const [payfastUrl, setPayfastUrl] = useState(null);
 
@@ -392,6 +411,7 @@ export default function CheckoutPage({
     }));
     setPreferredPostnetStore(null);
     setSelectedPostnetBranch(null);
+    setPreferredLocker(null);
     setIsChangingPostnetBranch(false);
     setPostnetPreview({
       loading: false,
@@ -410,7 +430,7 @@ export default function CheckoutPage({
     setDeliveryPreference(preference);
     setQuote(null);
     setDutiesAccepted(false);
-    if (preference === 'postnet') {
+    if (preference === 'postnet' || preference === 'pudo') {
       setFormData((current) => ({ ...current, country: 'South Africa' }));
     }
   };
@@ -421,6 +441,10 @@ export default function CheckoutPage({
     if (mode === 'domestic_home') {
       setDestinationMode('domestic_sa');
       setDeliveryPreference('home');
+      setFormData((current) => ({ ...current, country: 'South Africa' }));
+    } else if (mode === 'domestic_pudo') {
+      setDestinationMode('domestic_sa');
+      setDeliveryPreference('pudo');
       setFormData((current) => ({ ...current, country: 'South Africa' }));
     } else if (mode === 'domestic_postnet') {
       setDestinationMode('domestic_sa');
@@ -435,6 +459,52 @@ export default function CheckoutPage({
       setFormData((current) => ({ ...current, country: currentCountry }));
     }
   };
+
+  // PUDO Smart Locker Locator effect
+  useEffect(() => {
+    if (deliveryPreference !== 'pudo') return undefined;
+
+    let cancelled = false;
+    setIsLoadingPudo(true);
+
+    const fetchLockers = async () => {
+      try {
+        const queryParams = new URLSearchParams();
+        if (formData.city) queryParams.append('city', formData.city);
+        if (formData.lat) queryParams.append('lat', formData.lat);
+        if (formData.lng) queryParams.append('lng', formData.lng);
+
+        const res = await api.get(`/tcg/lockers?${queryParams.toString()}`);
+        if (!cancelled && res.data && Array.isArray(res.data.lockers) && res.data.lockers.length > 0) {
+          setPudoLockers(res.data.lockers);
+          return;
+        }
+      } catch (err) {
+        console.log('Failed to fetch live PUDO lockers:', err?.message || err);
+      }
+      if (!cancelled) {
+        setPudoLockers(FALLBACK_PUDO_LOCKERS);
+      }
+      setIsLoadingPudo(false);
+    };
+
+    fetchLockers();
+    return () => {
+      cancelled = true;
+    };
+  }, [deliveryPreference, formData.city, formData.lat, formData.lng]);
+
+  const filteredPudoLockers = useMemo(() => {
+    if (!lockerSearch.trim()) return pudoLockers;
+    const term = lockerSearch.toLowerCase();
+    return (pudoLockers || []).filter((l) =>
+      (l.name || '').toLowerCase().includes(term) ||
+      (l.address || '').toLowerCase().includes(term) ||
+      (l.suburb || '').toLowerCase().includes(term) ||
+      (l.city || '').toLowerCase().includes(term) ||
+      (l.postalCode || '').includes(term)
+    );
+  }, [pudoLockers, lockerSearch]);
 
   // PostNet Store Locator effect
   useEffect(() => {
@@ -508,16 +578,19 @@ export default function CheckoutPage({
           image: item.image
         })),
         shippingAddress: {
-          address: deliveryPreference === 'postnet' && effectiveStore
+          address: deliveryPreference === 'pudo' && preferredLocker
+            ? preferredLocker.address
+            : deliveryPreference === 'postnet' && effectiveStore
             ? effectiveStore.address
-            : (shippingAddress.address || 'PostNet Pickup Branch'),
-          city: shippingAddress.city,
-          postalCode: (deliveryPreference === 'postnet' && effectiveStore?.postalCode) || shippingAddress.postalCode || '0001',
+            : (shippingAddress.address || 'Collection Address'),
+          city: (deliveryPreference === 'pudo' && preferredLocker?.city) || shippingAddress.city,
+          postalCode: (deliveryPreference === 'pudo' && preferredLocker?.postalCode) || (deliveryPreference === 'postnet' && effectiveStore?.postalCode) || shippingAddress.postalCode || '0001',
           country: shippingAddress.country || 'South Africa',
           lat: shippingAddress.lat,
           lng: shippingAddress.lng
         },
         deliveryPreference,
+        selectedLocker: deliveryPreference === 'pudo' ? preferredLocker : null,
         preferredPostnetStore: deliveryPreference === 'postnet' ? effectiveStore : null,
         selectedPostnetStore: deliveryPreference === 'postnet' ? effectiveStore : null
       };
@@ -525,7 +598,13 @@ export default function CheckoutPage({
       const res = await api.post('/checkout/quote', payload);
       const data = res.data;
 
-      if (effectiveStore && deliveryPreference === 'postnet') {
+      if (preferredLocker && deliveryPreference === 'pudo') {
+        data.selectedLocker = preferredLocker;
+        data.shipments = (data.shipments || []).map((shipment) => ({
+          ...shipment,
+          selectedLocker: preferredLocker
+        }));
+      } else if (effectiveStore && deliveryPreference === 'postnet') {
         data.selectedPostnetStore = effectiveStore;
         data.shipments = (data.shipments || []).map((shipment) => ({
           ...shipment,
@@ -656,6 +735,13 @@ export default function CheckoutPage({
       return;
     }
 
+    if (deliveryPreference === 'pudo') {
+      if (!preferredLocker) {
+        onNotify('Please search and select your preferred PUDO Smart Locker.');
+        return;
+      }
+    }
+
     if (deliveryPreference === 'postnet') {
       if (!formData.city) {
         onNotify('Please search for your city or suburb for PostNet collection.');
@@ -736,6 +822,7 @@ export default function CheckoutPage({
       const guestName = (formData.fullName || `${formData.firstName || ''} ${formData.lastName || ''}`).trim() || 'Valued Customer';
       const effectivePostnetBranch = preferredPostnetStore || selectedPostnetBranch;
 
+      const isLockerOrder = deliveryPreference === 'pudo' || Boolean(preferredLocker);
       const isPickupOrder = deliveryPreference === 'postnet' || (quote.shipments || []).some(
         shp => shp.selectedCourier?.deliveryType === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection')
       );
@@ -744,8 +831,11 @@ export default function CheckoutPage({
         const isShpPickup = shp.selectedCourier?.deliveryType === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection');
         return {
           ...shp,
-          selectedPickupStore: (isShpPickup || deliveryPreference === 'postnet')
+          selectedPickupStore: (isShpPickup || isPickupOrder)
             ? (shp.selectedPickupStore || effectivePostnetBranch || null)
+            : null,
+          selectedLocker: isLockerOrder
+            ? (shp.selectedLocker || preferredLocker || null)
             : null
         };
       });
@@ -753,6 +843,7 @@ export default function CheckoutPage({
       const orderData = {
         quote: {
           ...quote,
+          selectedLocker: isLockerOrder ? preferredLocker : null,
           selectedPostnetStore: isPickupOrder ? effectivePostnetBranch : null,
           shipments: normalizedShipments
         },
@@ -778,15 +869,18 @@ export default function CheckoutPage({
           firstName: formData.firstName || guestName.split(' ')[0] || '',
           lastName: formData.lastName || guestName.split(' ').slice(1).join(' ') || '',
           email: formData.email,
-          address: isPickupOrder && effectivePostnetBranch
+          address: isLockerOrder && preferredLocker
+            ? preferredLocker.address
+            : isPickupOrder && effectivePostnetBranch
             ? effectivePostnetBranch.address
             : formData.address,
-          city: formData.city,
-          postalCode: formData.postalCode,
+          city: (isLockerOrder && preferredLocker?.city) || formData.city,
+          postalCode: (isLockerOrder && preferredLocker?.postalCode) || formData.postalCode,
           country: formData.country,
           ...phoneDetails
         },
-        deliveryPreference: isPickupOrder ? 'postnet' : 'home',
+        deliveryPreference: isLockerOrder ? 'pudo' : isPickupOrder ? 'postnet' : 'home',
+        selectedLocker: isLockerOrder ? preferredLocker : null,
         selectedPostnetStore: isPickupOrder ? effectivePostnetBranch : null,
         preferredPostnetStore: isPickupOrder ? effectivePostnetBranch : null,
         paymentMethod: paymentMethod === 'payfast' ? 'PayFast' : 'Bank Transfer',
@@ -1152,7 +1246,7 @@ export default function CheckoutPage({
                 )}
 
                 {/* Delivery Location & Fulfillment Mode */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                   {/* Card 1: South Africa Door Delivery */}
                   <button
                     type="button"
@@ -1178,7 +1272,32 @@ export default function CheckoutPage({
                     )}
                   </button>
 
-                  {/* Card 2: South Africa PostNet Store Collection */}
+                  {/* Card 2: PUDO Smart Locker (The Courier Guy) */}
+                  <button
+                    type="button"
+                    onClick={() => selectDeliveryMode('domestic_pudo')}
+                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer overflow-hidden ${
+                      destinationMode === 'domestic_sa' && deliveryPreference === 'pudo'
+                        ? 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.15)] ring-1 ring-emerald-400/30'
+                        : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 mb-2 pr-7">
+                      <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'pudo' ? 'bg-emerald-400 text-black' : 'bg-white/5 text-emerald-400/70'}`}>
+                        <Package size={18} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-white truncate">PUDO Locker</p>
+                        <p className="text-[10px] text-emerald-400 font-medium truncate">🇿🇦 The Courier Guy 24/7</p>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-ivory-muted)]">Collect 24/7 at smart lockers across South Africa</p>
+                    {destinationMode === 'domestic_sa' && deliveryPreference === 'pudo' && (
+                      <CheckCircle2 size={16} className="absolute right-3.5 top-3.5 text-emerald-400 shrink-0" />
+                    )}
+                  </button>
+
+                  {/* Card 3: South Africa PostNet Store Collection */}
                   <button
                     type="button"
                     onClick={() => selectDeliveryMode('domestic_postnet')}
@@ -1727,6 +1846,206 @@ export default function CheckoutPage({
                   </div>
                 )}
 
+                {/* If PUDO Smart Locker: Locker Search & Selection */}
+                {deliveryPreference === 'pudo' && (
+                  <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-semibold text-white">Choose Your 24/7 PUDO Smart Locker</h3>
+                          <span className="text-[10px] uppercase font-bold tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                            The Courier Guy
+                          </span>
+                        </div>
+                        <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                          Pick up your order 24/7 with a contact-free SMS PIN at any The Courier Guy smart locker.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">City / Suburb</label>
+                        <CityInput
+                          name="city"
+                          value={formData.city}
+                          onChange={handleCityChange}
+                          onCityDetails={({ city, postalCode, lat, lng }) => {
+                            setFormData((current) => ({
+                              ...current,
+                              city,
+                              postalCode: postalCode || current.postalCode,
+                              lat,
+                              lng
+                            }));
+                            setPreferredLocker(null);
+                            setQuote(null);
+                          }}
+                          restrictToSouthAfrica={true}
+                          required
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:outline-none transition-colors"
+                          placeholder="Search suburb or city..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Postal Code</label>
+                        <input
+                          type="text"
+                          name="postalCode"
+                          value={formData.postalCode}
+                          onChange={handleChange}
+                          placeholder="Postal code..."
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:outline-none transition-colors text-white placeholder:text-white/30"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Confirmed Locker Card */}
+                    {preferredLocker && (
+                      <div className="rounded-xl border border-emerald-500/50 bg-emerald-500/10 p-4 md:p-5 flex items-start justify-between gap-4 transition-all">
+                        <div className="flex items-start gap-3.5 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+                            <Package size={20} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="text-[10px] uppercase tracking-widest text-emerald-400 font-bold bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                <CheckCircle2 size={11} /> Selected PUDO Smart Locker
+                              </span>
+                              <span className="text-[11px] text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
+                                🕒 24/7 Access • SMS PIN
+                              </span>
+                              {preferredLocker.distance !== null && preferredLocker.distance !== undefined && (
+                                <span className="text-[11px] text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
+                                  📍 {preferredLocker.distance} km away
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-base font-bold text-white truncate">{preferredLocker.name}</p>
+                            <p className="text-xs text-[var(--color-ivory-muted)] mt-1 leading-relaxed">{preferredLocker.address}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Search filter for lockers */}
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold text-white uppercase tracking-wider">
+                          Available PUDO Lockers ({filteredPudoLockers.length})
+                        </p>
+                        {isLoadingPudo && (
+                          <div className="flex items-center gap-1.5 text-xs text-emerald-400">
+                            <Loader2 size={13} className="animate-spin" />
+                            <span>Locating lockers...</span>
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={lockerSearch}
+                        onChange={(e) => setLockerSearch(e.target.value)}
+                        placeholder="Filter lockers by mall, fuel stop, area or street..."
+                        className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:outline-none transition-colors text-white placeholder:text-white/30 mb-3"
+                      />
+
+                      {/* Lockers Grid */}
+                      {filteredPudoLockers.length > 0 ? (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {(showAllPudoLockers || lockerSearch.trim() ? filteredPudoLockers : filteredPudoLockers.slice(0, 4)).map((locker) => {
+                              const isSelected = preferredLocker?.id === locker.id || preferredLocker?.name === locker.name;
+                              return (
+                                <div
+                                  key={locker.id || locker.name}
+                                  onClick={() => {
+                                    setPreferredLocker(locker);
+                                    if (locker.postalCode) {
+                                      setFormData((prev) => ({ ...prev, postalCode: locker.postalCode }));
+                                    }
+                                    if (onNotify) onNotify(`Selected ${locker.name}`);
+                                    setQuote(null);
+                                  }}
+                                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                                    isSelected
+                                      ? 'border-emerald-400 bg-emerald-500/15 shadow-[0_0_15px_rgba(16,185,129,0.15)] ring-1 ring-emerald-400/40'
+                                      : 'border-white/10 bg-black/40 hover:border-white/30 hover:bg-white/[0.03]'
+                                  }`}
+                                >
+                                  <div>
+                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                      <p className="text-sm font-semibold text-white leading-snug">{locker.name}</p>
+                                      <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                                        isSelected ? 'bg-emerald-400 text-black' : 'border border-white/30 text-transparent'
+                                      }`}>
+                                        <CheckCircle2 size={13} className={isSelected ? 'text-black' : 'hidden'} />
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-[var(--color-ivory-muted)] line-clamp-2 mt-1 leading-relaxed">
+                                      {locker.address}
+                                    </p>
+                                    <div className="flex flex-wrap gap-2 mt-2.5 text-[10px] uppercase tracking-wider">
+                                      <span className="text-emerald-400">
+                                        🔓 24/7 Smart Locker
+                                      </span>
+                                      {locker.distance !== null && locker.distance !== undefined && (
+                                        <span className="text-white/60">📍 {locker.distance} km away</span>
+                                      )}
+                                      {locker.postalCode && (
+                                        <span className="text-white/40 font-mono">📮 {locker.postalCode}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div
+                                    className={`w-full py-2 px-3 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                      isSelected
+                                        ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
+                                        : 'bg-white/10 text-white/70'
+                                    }`}
+                                  >
+                                    {isSelected ? (
+                                      <>
+                                        <CheckCircle2 size={13} />
+                                        <span>Selected Locker</span>
+                                      </>
+                                    ) : (
+                                      'Choose This Locker'
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {filteredPudoLockers.length > 4 && !lockerSearch.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => setShowAllPudoLockers(!showAllPudoLockers)}
+                              className="w-full py-2.5 px-4 rounded-xl border border-white/10 hover:border-emerald-400/40 bg-white/5 hover:bg-white/10 text-xs font-semibold text-emerald-400 flex items-center justify-center gap-2 transition-all mt-1 cursor-pointer"
+                            >
+                              {showAllPudoLockers ? (
+                                <>
+                                  <span>Show Fewer Lockers</span>
+                                  <ChevronUp size={14} />
+                                </>
+                              ) : (
+                                <>
+                                  <span>Show All Available Lockers ({filteredPudoLockers.length} Available)</span>
+                                  <ChevronDown size={14} />
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-[var(--color-ivory-muted)] p-4 text-center">
+                          No PUDO Smart Lockers found matching "{lockerSearch}". Try typing a suburb or city name.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Send as Gift */}
                 <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
                   <div className="flex items-center justify-between">
@@ -2039,6 +2358,9 @@ export default function CheckoutPage({
                                   <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
                                     Estimated delivery: {opt.estimatedDays}
                                   </p>
+                                  {opt.description && (
+                                    <p className="text-[11px] text-white/50 mt-0.5">{opt.description}</p>
+                                  )}
                                 </div>
                               </div>
                               <span className="text-sm font-bold text-[var(--color-gold)] font-serif">
@@ -2144,14 +2466,16 @@ export default function CheckoutPage({
                 <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2 rounded-xl bg-white/5 border border-white/10 text-[var(--color-gold)] shrink-0">
-                      {deliveryPreference === 'postnet' ? <Store size={18} /> : <Truck size={18} />}
+                      {deliveryPreference === 'pudo' ? <Package size={18} className="text-emerald-400" /> : deliveryPreference === 'postnet' ? <Store size={18} /> : <Truck size={18} />}
                     </div>
                     <div className="min-w-0">
                       <p className="text-[10px] uppercase tracking-widest text-[var(--color-gold)] font-semibold">
-                        {deliveryPreference === 'postnet' ? 'PostNet Collection Point' : 'Delivery Destination'}
+                        {deliveryPreference === 'pudo' ? 'PUDO Smart Locker Collection' : deliveryPreference === 'postnet' ? 'PostNet Collection Point' : 'Delivery Destination'}
                       </p>
                       <p className="text-xs text-white font-medium truncate">
-                        {deliveryPreference === 'postnet' && preferredPostnetStore
+                        {deliveryPreference === 'pudo' && preferredLocker
+                          ? `${preferredLocker.name} — ${preferredLocker.address}`
+                          : deliveryPreference === 'postnet' && preferredPostnetStore
                           ? `${preferredPostnetStore.name} — ${preferredPostnetStore.address}`
                           : `${formData.address}, ${formData.city}, ${formData.country}`}
                       </p>

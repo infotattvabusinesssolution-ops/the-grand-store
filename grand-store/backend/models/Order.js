@@ -92,7 +92,7 @@ const orderSchema = new mongoose.Schema({
   superCoinsUsed: { type: Number, default: 0 },
   superCoinsDiscount: { type: Number, default: 0 },
   superCoinsEarned: { type: Number, default: 0 },
-  deliveryPreference: { type: String, enum: ['home', 'postnet'], default: 'home' },
+  deliveryPreference: { type: String, enum: ['home', 'postnet', 'pudo', 'locker'], default: 'home' },
   selectedPostnetStore: {
     id: { type: String },
     name: { type: String },
@@ -101,6 +101,16 @@ const orderSchema = new mongoose.Schema({
     telephone: { type: String },
     postalCode: { type: String },
     distance: { type: Number }
+  },
+  selectedLocker: {
+    id: { type: String },
+    name: { type: String },
+    address: { type: String },
+    city: { type: String },
+    postalCode: { type: String },
+    province: { type: String },
+    provider: { type: String, default: 'tcg-locker' },
+    pickupPointId: { type: String }
   },
   totalPrice: { type: Number, required: true, default: 0 }, // = subTotal + shipping + VAT + duties - discounts
 

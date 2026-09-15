@@ -32,14 +32,19 @@ const shipmentSchema = new mongoose.Schema(
     },
     deliveryMethod: {
       type: String,
-      enum: ["home_delivery", "postnet_pickup", "international_courier"],
+      enum: ["home_delivery", "postnet_pickup", "pudo_locker", "international_courier"],
       default: "home_delivery",
     },
     pickupLocation: {
       locationId: String,
       name: String,
       address: String,
+      provider: String, // 'postnet' or 'tcg-locker'
     },
+    tcgShipmentId: { type: String },
+    tcgWaybillNumber: { type: String },
+    tcgTrackingUrl: { type: String },
+    tcgLabelUrl: { type: String },
 
     packageDetails: {
       weight: Number,

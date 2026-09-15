@@ -24,12 +24,12 @@ const generateQuote = async (req, res) => {
     }
     const destinationCountry = shippingAddress.country.trim().toLowerCase();
     const isSouthAfricanDestination = ['south africa', 'za', 'rsa'].includes(destinationCountry);
-    if (deliveryPreference === 'postnet' && !isSouthAfricanDestination) {
-      return res.status(400).json({ message: 'PostNet pickup is only available within South Africa.' });
+    if ((deliveryPreference === 'postnet' || deliveryPreference === 'pudo' || deliveryPreference === 'locker') && !isSouthAfricanDestination) {
+      return res.status(400).json({ message: `${deliveryPreference === 'postnet' ? 'PostNet' : 'PUDO Smart Locker'} collection is only available within South Africa.` });
     }
 
     let postnetLookup = null;
-    if (isSouthAfricanDestination && deliveryPreference !== 'home') {
+    if (isSouthAfricanDestination && deliveryPreference === 'postnet') {
       const postnetSearchAddress = [
         shippingAddress.address,
         shippingAddress.city,
@@ -156,9 +156,12 @@ const generateQuote = async (req, res) => {
 
       const availableQuotes = shippingData.quotes.filter((shippingQuote) => {
         if (deliveryPreference === 'postnet') {
-          return shippingQuote.deliveryType === 'pickup' || shippingQuote.serviceLevel.includes('Collection');
+          return shippingQuote.courierName === 'PostNet' && (shippingQuote.deliveryType === 'pickup' || shippingQuote.serviceLevel.includes('Collection'));
         }
-        if (deliveryPreference === 'home') {
+        if (deliveryPreference === 'pudo' || deliveryPreference === 'locker') {
+          return shippingQuote.serviceCode === 'D2L' || shippingQuote.courierName?.includes('PUDO') || shippingQuote.serviceLevel?.includes('PUDO');
+        }
+        if (deliveryPreference === 'home' || deliveryPreference === 'courier') {
           return shippingQuote.deliveryType === 'home';
         }
         return true;
@@ -168,9 +171,19 @@ const generateQuote = async (req, res) => {
         return res.status(400).json({
           message: deliveryPreference === 'postnet'
             ? 'PostNet pickup is only available for deliveries within South Africa.'
-            : 'No delivery option is available for this destination.'
+            : (deliveryPreference === 'pudo' || deliveryPreference === 'locker')
+              ? 'PUDO Smart Locker collection is only available within South Africa.'
+              : 'No delivery option is available for this destination.'
         });
       }
+
+      const selectedLockerObj = (deliveryPreference === 'pudo' || deliveryPreference === 'locker' || availableQuotes[0]?.serviceCode === 'D2L')
+        ? (req.body.selectedLocker || req.body.preferredLocker || req.body.selectedPickupPoint || null)
+        : null;
+
+      const selectedPickupStoreObj = (deliveryPreference === 'postnet' || (availableQuotes[0]?.courierName === 'PostNet' && availableQuotes[0]?.deliveryType === 'pickup'))
+        ? (req.body.preferredPostnetStore || req.body.selectedPostnetStore || null)
+        : null;
 
       shipments.push({
         vendorId: group.vendorId,
@@ -185,9 +198,8 @@ const generateQuote = async (req, res) => {
         landedCostEstimates: shippingData.landedCostEstimates,
         // Default selected courier is the first one
         selectedCourier: availableQuotes[0] || null,
-        selectedPickupStore: (deliveryPreference === 'postnet' || availableQuotes[0]?.deliveryType === 'pickup')
-          ? (req.body.preferredPostnetStore || req.body.selectedPostnetStore || null)
-          : null
+        selectedPickupStore: selectedPickupStoreObj,
+        selectedLocker: selectedLockerObj
       });
     }
 

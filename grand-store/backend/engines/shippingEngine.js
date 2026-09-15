@@ -5,6 +5,8 @@
 
 const Vendor = require('../models/Vendor');
 const PlatformSettings = require('../models/PlatformSettings');
+const { tcgService } = require('../services/tcgService');
+const { calculateDoorDeliveryRate, calculatePudoLockerRate, determinePudoLockerSize } = require('./tcgRateCardEngine');
 
 const isSouthAfrica = (country) => {
   if (!country) return false;
@@ -42,102 +44,170 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
 
     // SIMULATED COURIER API LOGIC
 
-    // 1. DOMESTIC SA
+    // 1. DOMESTIC SA (The Courier Guy & PUDO Live Dynamic Engine + PostNet)
     if (originSA && destSA) {
-      // Check if vendor has free shipping threshold
       const freeThreshold = vendor?.shippingProfile?.freeDeliveryThreshold;
-      // Check admin shipping settings (supports both postnetStandardFee and global shippingFee)
-      const hasCustomStandardFee = platformSettings?.postnetStandardFee !== undefined && platformSettings.postnetStandardFee !== 120;
-      let postnetStandardCost = Number(
-        hasCustomStandardFee
-          ? platformSettings.postnetStandardFee
-          : (platformSettings?.shippingFee !== undefined ? platformSettings.shippingFee : (platformSettings?.postnetStandardFee || 120))
-      );
-      let postnetExpressCost = Number(platformSettings?.postnetExpressFee !== undefined ? platformSettings.postnetExpressFee : 180);
-      let postnetCollectionCost = Number(platformSettings?.postnetPickupFee !== undefined ? platformSettings.postnetPickupFee : 100);
-      let courierGuyCost = Number(platformSettings?.shippingFee !== undefined ? platformSettings.shippingFee : 150);
+      const isFreeQualified = Boolean(freeThreshold && shipmentItemsSubtotal >= freeThreshold);
 
-      // Simple mock zone check
-      if (vendor?.shippingProfile?.shippingZones?.length > 0) {
-        const zone = vendor.shippingProfile.shippingZones.find(z => 
-          z.name.toLowerCase().includes(customerAddress.city.toLowerCase())
-        );
-        if (zone) {
-          postnetStandardCost = zone.rate || 120;
-          postnetExpressCost = postnetStandardCost + 60;
-          postnetCollectionCost = Math.max(50, postnetStandardCost - 20);
-          courierGuyCost = postnetStandardCost + 30;
+      // Estimate parcel box dimensions based on chargeable weight
+      let parcelDims = { length: 35, width: 12, height: 12 };
+      if (totalWeightKg > 10) {
+        parcelDims = { length: 45, width: 35, height: 30 };
+      } else if (totalWeightKg > 5) {
+        parcelDims = { length: 38, width: 28, height: 24 };
+      } else if (totalWeightKg > 2) {
+        parcelDims = { length: 35, width: 24, height: 14 };
+      }
+
+      let tcgRates = null;
+
+      // 1. Attempt Live TCG REST API if configured
+      if (tcgService.isConfigured()) {
+        try {
+          const originAddr = vendor?.shippingProfile?.pickupAddress || { city: 'Stellenbosch', province: 'Western Cape', country: 'ZA' };
+          const tcgResponse = await tcgService.getRates({
+            collectionAddress: originAddr,
+            deliveryAddress: customerAddress,
+            parcels: [{
+              submitted_length_cm: parcelDims.length,
+              submitted_width_cm: parcelDims.width,
+              submitted_height_cm: parcelDims.height,
+              submitted_weight_kg: Math.max(0.5, totalWeightKg)
+            }],
+            declaredValue: shipmentItemsSubtotal
+          });
+
+          if (tcgResponse && Array.isArray(tcgResponse.rates)) {
+            tcgRates = tcgResponse.rates;
+          }
+        } catch (apiErr) {
+          console.warn('TCG Live API Quote notice (using contractual Rate Card fallback):', apiErr.message);
         }
       }
 
-      if (freeThreshold && shipmentItemsSubtotal >= freeThreshold) {
-        postnetStandardCost = 0;
-        postnetCollectionCost = 0;
+      // 2. Compute Contractual Rate Card Quotes (Zero-latency fallback & benchmark)
+      const calculatedEco = calculateDoorDeliveryRate({
+        originCity: vendor?.shippingProfile?.pickupAddress?.city || 'Stellenbosch',
+        destCity: customerAddress.city || 'Cape Town',
+        weightKg: totalWeightKg,
+        dimensions: parcelDims,
+        serviceCode: 'ECO',
+        declaredValue: shipmentItemsSubtotal
+      });
+
+      const calculatedPri = calculateDoorDeliveryRate({
+        originCity: vendor?.shippingProfile?.pickupAddress?.city || 'Stellenbosch',
+        destCity: customerAddress.city || 'Cape Town',
+        weightKg: totalWeightKg,
+        dimensions: parcelDims,
+        serviceCode: 'PRI',
+        declaredValue: shipmentItemsSubtotal
+      });
+
+      const lockerSize = determinePudoLockerSize(parcelDims, totalWeightKg) || 'M';
+      const calculatedPudo = calculatePudoLockerRate({
+        lockerSize,
+        deliveryType: 'doorToLocker',
+        declaredValue: shipmentItemsSubtotal
+      });
+
+      // Match live API rates if available, else use contractual calculation
+      let ecoTotalCost = calculatedEco.cost;
+      let priTotalCost = calculatedPri.cost;
+
+      if (tcgRates && tcgRates.length > 0) {
+        const liveEco = tcgRates.find(r => (r.service_level_code === 'ECO' || r.service_level_code === 'ECOR'));
+        const livePri = tcgRates.find(r => r.service_level_code === 'PRI');
+        if (liveEco && Number(liveEco.total) > 0) ecoTotalCost = Number(liveEco.total);
+        if (livePri && Number(livePri.total) > 0) priTotalCost = Number(livePri.total);
       }
 
-      // 1A. PostNet Standard Home Delivery
+      // Fallback PostNet pricing
+      let postnetCollectionCost = Number(platformSettings?.postnetPickupFee !== undefined ? platformSettings.postnetPickupFee : 100);
+      let postnetStandardCost = Number(platformSettings?.postnetStandardFee !== undefined ? platformSettings.postnetStandardFee : 120);
+
+      // Apply free delivery waiver to standard options if qualified
+      const finalEcoCost = isFreeQualified ? 0 : ecoTotalCost;
+      const finalPudoCost = isFreeQualified ? 0 : calculatedPudo.cost;
+      const finalPriCost = isFreeQualified ? Math.max(50, priTotalCost - ecoTotalCost) : priTotalCost;
+      const finalPostnetCost = isFreeQualified ? 0 : postnetStandardCost;
+      const finalPostnetPickupCost = isFreeQualified ? 0 : postnetCollectionCost;
+
+      // 1A. The Courier Guy - Economy Road (Standard Door-to-Door)
       quotes.push({
-        courierName: 'PostNet',
-        serviceLevel: 'PostNet Standard Delivery',
+        courierName: 'The Courier Guy',
+        serviceLevel: 'The Courier Guy - Economy Road',
+        serviceCode: 'ECO',
         deliveryType: 'home',
-        cost: postnetStandardCost,
-        estimatedDays: '2–5 business days',
-        description: 'PostNet door-to-door delivery',
+        cost: finalEcoCost,
+        originalCost: ecoTotalCost,
+        isFreeDelivery: isFreeQualified,
+        estimatedDays: calculatedEco.estimatedDays,
+        description: 'Direct door-to-door road courier across South Africa',
         legs: [
           {
-            courierName: 'PostNet Standard Courier',
+            courierName: 'The Courier Guy Road Network',
             origin: originCountry,
             destination: customerAddress.city || destCountry,
-            cost: postnetStandardCost > 0 ? postnetStandardCost * 0.7 : 70
+            cost: Number((ecoTotalCost * 0.75).toFixed(2))
           }
         ]
       });
 
-      // 1B. PostNet Express Home Delivery
+      // 1B. The Courier Guy - Priority Overnight (Next-Day Door Delivery)
       quotes.push({
-        courierName: 'PostNet',
-        serviceLevel: 'PostNet Express Delivery',
+        courierName: 'The Courier Guy',
+        serviceLevel: 'The Courier Guy - Priority Overnight',
+        serviceCode: 'PRI',
         deliveryType: 'home',
-        cost: postnetExpressCost,
-        estimatedDays: '1–2 business days',
-        description: 'Priority overnight door delivery',
+        cost: finalPriCost,
+        originalCost: priTotalCost,
+        isFreeDelivery: false,
+        estimatedDays: calculatedPri.estimatedDays,
+        description: 'Priority overnight express air delivery to your door',
         legs: [
           {
-            courierName: 'PostNet Express Air/Road',
+            courierName: 'The Courier Guy Express Air',
             origin: originCountry,
             destination: customerAddress.city || destCountry,
-            cost: postnetExpressCost * 0.75
+            cost: Number((priTotalCost * 0.75).toFixed(2))
           }
         ]
       });
 
-      // 1C. Courier Guy Alternative Door Delivery
+      // 1C. The Courier Guy (PUDO) - Smart Locker / Kiosk Collection
       quotes.push({
-        courierName: 'Courier Guy',
-        serviceLevel: 'Courier Guy Door Delivery',
-        deliveryType: 'home',
-        cost: courierGuyCost,
-        estimatedDays: '2–4 business days',
-        description: 'Direct courier delivery',
+        courierName: 'The Courier Guy (PUDO)',
+        serviceLevel: 'PUDO Smart Locker Collection',
+        serviceCode: 'D2L',
+        deliveryType: 'pickup',
+        cost: finalPudoCost,
+        originalCost: calculatedPudo.cost,
+        isFreeDelivery: isFreeQualified,
+        estimatedDays: calculatedPudo.estimatedDays,
+        description: `Collect 24/7 at a secure PUDO smart locker station (Size: ${lockerSize})`,
+        lockerSize,
         legs: [
           {
-            courierName: 'Courier Guy Primary',
+            courierName: 'The Courier Guy PUDO Locker Network',
             origin: originCountry,
-            destination: destCountry,
-            cost: courierGuyCost > 0 ? courierGuyCost * 0.6 : 80
+            destination: customerAddress.city || destCountry,
+            cost: Number((calculatedPudo.cost * 0.75).toFixed(2))
           }
         ]
       });
-      
+
       // 1D. PostNet Branch Collection (PostNet-to-PostNet)
       const postnetLookup = options.postnetLookup || {};
       quotes.push({
         courierName: 'PostNet',
         serviceLevel: 'PostNet Store Collection',
         deliveryType: 'pickup',
-        cost: postnetCollectionCost,
+        cost: finalPostnetPickupCost,
+        originalCost: postnetCollectionCost,
+        isFreeDelivery: isFreeQualified,
         estimatedDays: '2–3 business days',
-        description: 'Collect at your preferred PostNet branch',
+        description: 'Collect at your preferred PostNet branch counter',
         stores: postnetLookup.stores || [],
         searchedCity: postnetLookup.searchedCity || customerAddress.city || '',
         hasCityMatch: Boolean(postnetLookup.hasCityMatch),
@@ -145,10 +215,30 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
         storeLookupError: postnetLookup.error || '',
         legs: [
           {
-            courierName: 'PostNet PUDO Network',
+            courierName: 'PostNet Network',
             origin: originCountry,
             destination: customerAddress.city || 'Customer',
-            cost: postnetCollectionCost * 0.7
+            cost: Number((postnetCollectionCost * 0.7).toFixed(2))
+          }
+        ]
+      });
+
+      // 1E. PostNet Standard Home Delivery
+      quotes.push({
+        courierName: 'PostNet',
+        serviceLevel: 'PostNet Standard Delivery',
+        deliveryType: 'home',
+        cost: finalPostnetCost,
+        originalCost: postnetStandardCost,
+        isFreeDelivery: isFreeQualified,
+        estimatedDays: '2–5 business days',
+        description: 'PostNet door-to-door delivery',
+        legs: [
+          {
+            courierName: 'PostNet Standard Courier',
+            origin: originCountry,
+            destination: customerAddress.city || destCountry,
+            cost: Number((postnetStandardCost * 0.7).toFixed(2))
           }
         ]
       });
