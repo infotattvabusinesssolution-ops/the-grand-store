@@ -11,6 +11,12 @@ import {
   Link2,
   ArrowRight,
   X,
+  Truck,
+  ShieldCheck,
+  Package,
+  Clock,
+  Globe,
+  Sparkles,
 } from "lucide-react";
 import { useWishlist } from "../../wishlistContext";
 import { useGeoLocation } from "../../context/LocationContext";
@@ -74,10 +80,6 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomOrigin, setZoomOrigin] = useState("50% 50%");
   const [showCertificate, setShowCertificate] = useState(false);
-
-  // Shipping Estimation
-  const [deliveryCountry, setDeliveryCountry] = useState("South Africa");
-  const [shippingEstimate, setShippingEstimate] = useState(null);
 
   const [reviews, setReviews] = useState([]);
   const [reviewSummary, setReviewSummary] = useState({ averageRating: 0, reviewCount: 0 });
@@ -143,16 +145,6 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
     };
   }, [product?.id, product?._id]);
 
-  // Mock shipping estimate effect
-  useEffect(() => {
-    if (!product) return;
-    const isDomestic = deliveryCountry === "South Africa";
-    setShippingEstimate({
-      cost: isDomestic ? <Price amount={150} /> : <Price amount={450} />,
-      time: isDomestic ? "2-4 days" : "5-8 days",
-    });
-  }, [deliveryCountry, product, currency]);
-
   if (!product) return <Navigate to="/" replace />;
 
   const gallery = [...new Set(
@@ -184,6 +176,37 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   const taxonomySecondary = hasDistinctStyle
     ? { label: "Style", value: identity.style }
     : { label: "Origin", value: identity.origin || product.country };
+
+  // Dynamic Product Delivery & Provenance metadata
+  const fulfillmentSource = product.vendorName
+    ? product.vendorName
+    : product.brand
+      ? `The Grand Store Vault (${product.brand} Allocation)`
+      : "The Grand Store Private Cellar";
+
+  const provenanceOrigin = identity.origin
+    || product.identity?.origin
+    || product.country
+    || product.origin
+    || "Direct Bonded Cellars";
+
+  const isWineOrChampagne = /champagne|wine|sparkling|prosecco|cava/i.test(
+    `${product.category || ''} ${product.type || ''} ${product.name || ''}`
+  );
+  const isSpirits = /whisky|whiskey|cognac|brandy|vodka|gin|rum|tequila/i.test(
+    `${product.category || ''} ${product.type || ''} ${product.name || ''}`
+  );
+  const isCigar = /cigar/i.test(
+    `${product.category || ''} ${product.type || ''} ${product.name || ''}`
+  );
+
+  const packagingNote = isWineOrChampagne
+    ? "Climate-stable thermal packaging with shock-proof bottle protection."
+    : isCigar
+      ? "Humidity-sealed protective pack maintaining optimal 69% RH freshness."
+      : isSpirits
+        ? "Reinforced collector-grade protective buffer for glass & luxury gift boxes."
+        : "Specialized shock-absorbing luxury bottle packaging.";
 
   const productUrl = typeof window === "undefined" ? "" : window.location.href;
   const encodedUrl = encodeURIComponent(productUrl);
@@ -635,76 +658,101 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
             </div>
           </div>
 
-          {/* Fulfilled By Widget */}
-          <div className="mb-8 border border-white/10 bg-white/5 p-4 sm:p-5">
-            <h4 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.1em] text-gold-gradient">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="3" y1="9" x2="21" y2="9"></line>
-                <line x1="9" y1="21" x2="9" y2="9"></line>
-              </svg>
-              Delivery & Fulfillment
-            </h4>
-            <div className="mb-4 grid grid-cols-2 gap-4 text-sm">
+          {/* Delivery & Provenance Assurance Card */}
+          <div className="mb-8 border border-white/10 bg-[#0d0c0a] p-4 sm:p-5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+              <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-gold-gradient m-0">
+                <Truck size={15} className="text-[#dfbd72]" />
+                Delivery & Provenance Assurance
+              </h4>
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                {product.stock > 0 ? "Ready for Dispatch" : "Allocation Order"}
+              </span>
+            </div>
+
+            {/* Provenance & Fulfillment Grid */}
+            <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-black/40 p-3.5 border border-white/5">
               <div className="min-w-0">
-                <span className="mb-1.5 block text-xs uppercase tracking-[0.08em] text-[#918a7f]">
+                <span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[#918a7f]">
                   Fulfilled By
                 </span>
-                <span className="break-words font-medium">
-                  {product.vendorName || "ABC Winery"}
+                <span className="font-medium text-[#eee8dd] truncate block" title={fulfillmentSource}>
+                  {fulfillmentSource}
                 </span>
               </div>
               <div className="min-w-0">
-                <span className="mb-1.5 block text-xs uppercase tracking-[0.08em] text-[#918a7f]">
-                  Ships From
+                <span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[#918a7f]">
+                  Provenance
                 </span>
-                <span className="break-words font-medium">
-                  {product.origin || "South Africa"}
+                <span className="font-medium text-[#eee8dd] truncate block" title={provenanceOrigin}>
+                  {provenanceOrigin}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[#918a7f]">
+                  Dispatch Window
+                </span>
+                <span className="font-medium text-[#dfbd72] flex items-center gap-1">
+                  <Clock size={12} /> 24–48 Business Hours
                 </span>
               </div>
             </div>
 
-            <div className="border-t border-white/10 pt-4 mt-2">
-              <label className="mb-3 block text-xs uppercase tracking-[0.08em] text-[#918a7f]">
-                Estimate Delivery To
-              </label>
-              <div className="flex min-w-0 gap-2">
-                <select
-                  className="min-w-0 flex-1 border border-white/20 bg-[#0a0907] p-3 text-sm text-[#eee8dd] outline-none focus:border-[#c9a35b]"
-                  value={deliveryCountry}
-                  onChange={(e) => setDeliveryCountry(e.target.value)}
-                >
-                  <option value="South Africa">South Africa</option>
-                  <option value="United Arab Emirates">Dubai, UAE</option>
-                  <option value="France">France</option>
-                  <option value="United Kingdom">United Kingdom</option>
-                  <option value="United States">United States</option>
-                </select>
-              </div>
-              {shippingEstimate && (
-                <div className="mt-3 flex flex-col gap-2 border border-white/10 bg-[#0a0907] p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <span className="text-[#918a7f] mr-2">Est. Time:</span>
-                    <span className="font-medium">{shippingEstimate.time}</span>
+            {/* Courier Delivery Timelines */}
+            <div className="space-y-2 border-b border-white/10 pb-4">
+              <span className="block text-[10px] uppercase tracking-[0.12em] text-[#918a7f]">
+                Estimated Courier Timelines
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="p-2.5 bg-black/30 border border-white/5 text-left">
+                  <div className="flex items-center gap-1.5 text-white font-medium text-xs mb-0.5">
+                    <Truck size={13} className="text-[#dfbd72]" /> SA Door Courier
                   </div>
-                  <div>
-                    <span className="text-[#918a7f] mr-2">Cost:</span>
-                    <span className="font-medium text-gold-gradient">
-                      {shippingEstimate.cost}
-                    </span>
-                  </div>
+                  <div className="text-[11px] text-[#eee8dd]/80 font-mono">2–4 Business Days</div>
+                  <div className="text-[9px] text-[#918a7f] mt-0.5">The Courier Guy / Door-to-Door</div>
                 </div>
-              )}
+
+                <div className="p-2.5 bg-black/30 border border-white/5 text-left">
+                  <div className="flex items-center gap-1.5 text-white font-medium text-xs mb-0.5">
+                    <Package size={13} className="text-emerald-400" /> PostNet / PUDO
+                  </div>
+                  <div className="text-[11px] text-[#eee8dd]/80 font-mono">2–3 Business Days</div>
+                  <div className="text-[9px] text-[#918a7f] mt-0.5">Counter or 24/7 Smart Locker</div>
+                </div>
+
+                <div className="p-2.5 bg-black/30 border border-white/5 text-left">
+                  <div className="flex items-center gap-1.5 text-white font-medium text-xs mb-0.5">
+                    <Globe size={13} className="text-blue-400" /> DHL Express Int'l
+                  </div>
+                  <div className="text-[11px] text-[#eee8dd]/80 font-mono">3–6 Business Days</div>
+                  <div className="text-[9px] text-[#918a7f] mt-0.5">Insured Worldwide Air Freight</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Accurate Shipping Cost Notice */}
+            <div className="pt-3.5 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="text-[#918a7f] uppercase tracking-wider text-[10px] font-semibold">
+                  Shipping Cost
+                </span>
+                <span className="font-semibold text-gold-gradient text-xs">
+                  Calculated at Checkout via Live Courier API
+                </span>
+              </div>
+              <p className="text-[11px] text-[#918a7f] leading-relaxed m-0">
+                Live rates from The Courier Guy, PostNet, and DHL Express are computed at checkout based on destination address, parcel volumetric weight, and insurance value.
+              </p>
+
+              {/* Protective Packaging Assurance */}
+              <div className="mt-1 flex items-start gap-2 bg-[#17140f] p-2.5 border border-[#dfbd72]/20 text-[11px] text-[#eee8dd]/90">
+                <ShieldCheck size={16} className="text-[#dfbd72] shrink-0 mt-0.5" />
+                <div className="leading-snug">
+                  <span className="font-semibold text-[#dfbd72]">100% Transit Protection Included: </span>
+                  {packagingNote} Fully covered against loss, breakage, or temperature damage with adult signature verification (18+).
+                </div>
+              </div>
             </div>
           </div>
 

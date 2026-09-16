@@ -35,3 +35,11 @@ pnpm-debug.log*
 # chrome preview profiles & test screenshots
 .*preview*
 *preview*.png
+
+# AI Agent Skills & Configuration
+.agents/
+.agent/
+_agents/
+_agent/
+SKILL.md
+*.skill.md

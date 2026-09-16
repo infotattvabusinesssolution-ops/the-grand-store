@@ -141,3 +141,11 @@ TheGrandStore/
 .playwright-mcp/
 output/
 tmp/
+
+# AI Agent Skills & Configuration
+.agents/
+.agent/
+_agents/
+_agent/
+SKILL.md
+*.skill.md

@@ -1,61 +1,77 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import api from '../api';
-import { products as catalogProducts } from "../data";
 import { normalizeProductForDisplay } from "../utils/productTaxonomy";
 
 const ProductContext = createContext();
-const catalogProductsById = new Map(
-  catalogProducts.map((product) => [String(product.id), product]),
-);
 
 const hydrateProductMetadata = (product) => {
-  const catalogProduct = catalogProductsById.get(String(product.id));
-  const hydratedProduct = catalogProduct
-    ? { ...catalogProduct, ...product }
-    : product;
-  const firstOption = Array.isArray(hydratedProduct.options)
-    ? hydratedProduct.options.find(
+  if (!product) return null;
+  const firstOption = Array.isArray(product.options)
+    ? product.options.find(
         (option) => typeof option === "string" && option.trim(),
       )
     : null;
 
   return normalizeProductForDisplay({
-    ...hydratedProduct,
-    category: hydratedProduct.category || hydratedProduct.type,
-    brand: hydratedProduct.brand || hydratedProduct.storeName,
-    size: hydratedProduct.size || firstOption,
+    ...product,
+    category: product.category || product.type,
+    brand: product.brand || product.storeName,
+    size: product.size || firstOption,
   });
 };
 
 export const ProductProvider = ({ children }) => {
   const [products, setProducts] = useState(() => {
     try {
-      return catalogProducts.map(hydrateProductMetadata);
-    } catch (e) {
-      return [];
-    }
+      // Use clean cached live products from session to avoid flashing, strictly avoiding hardcoded seeded mock products
+      const cached = sessionStorage.getItem("gs_live_products_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(hydrateProductMetadata).filter(Boolean);
+        }
+      }
+    } catch (e) {}
+    return [];
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchProducts = async () => {
       try {
         const res = await api.get(`/products`);
-        const data = res.data;
-        // The API's legacy products only contain the fields in the database schema.
-        // Restore their catalog metadata and normalize newer vendor product fields.
-        const filteredData = data.filter((p) => p.id !== 'prod_1787641901446' && p._id !== 'prod_1787641901446');
-        setProducts(filteredData.map(hydrateProductMetadata));
-        setLoading(false);
+        const data = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.data)
+          ? res.data.data
+          : [];
+        const filteredData = data.filter(
+          (p) => p && p.id !== 'prod_1787641901446' && p._id !== 'prod_1787641901446'
+        );
+        const normalized = filteredData.map(hydrateProductMetadata).filter(Boolean);
+
+        if (isMounted) {
+          setProducts(normalized);
+          setLoading(false);
+        }
+        try {
+          sessionStorage.setItem("gs_live_products_cache", JSON.stringify(filteredData));
+        } catch (e) {}
       } catch (err) {
-        console.error(err);
-        setError(err.message);
-        setLoading(false);
+        console.error("Error fetching live products:", err);
+        if (isMounted) {
+          setError(err.message);
+          setLoading(false);
+        }
       }
     };
 
     fetchProducts();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (
