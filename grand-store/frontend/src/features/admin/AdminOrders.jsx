@@ -46,8 +46,15 @@ export default function AdminOrders() {
   }, [user, activeTab]);
 
   const filteredOrders = orders.filter((ord) => {
-    // Strictly exclude cancelled and aborted orders from admin dashboard view
-    if (ord.paymentStatus === "Cancelled" || ord.paymentStatus === "Failed") return false;
+    // Strictly exclude cancelled, failed, and pending/unpaid orders from admin dashboard view
+    const pStatus = String(ord.paymentStatus || '').toLowerCase();
+    if (pStatus === "cancelled" || pStatus === "failed" || pStatus === "pending") return false;
+    if (!ord.isPaid && ord.paymentStatus !== "Paid" && ord.paymentStatus !== "Awaiting_Approval") return false;
+
+    // Filter by activeTab
+    if (activeTab === "paid" && !(ord.isPaid || ord.paymentStatus === "Paid")) return false;
+    if (activeTab === "unfulfilled" && ord.isDelivered) return false;
+    if (activeTab === "delivered" && !ord.isDelivered) return false;
 
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase();
@@ -98,9 +105,10 @@ export default function AdminOrders() {
       {/* Filter Tabs */}
       <div className="flex flex-wrap items-center gap-3 border-b border-white/5 pb-4">
         {[
-          { id: 'all', label: 'All Customer Orders' },
+          { id: 'all', label: 'All Confirmed Orders' },
           { id: 'paid', label: '✓ Paid Orders' },
-          { id: 'pending', label: '⏳ Pending Payment' },
+          { id: 'unfulfilled', label: '📦 To Fulfill' },
+          { id: 'delivered', label: '🚚 Delivered' },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -182,17 +190,17 @@ export default function AdminOrders() {
                             ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
                             : ord.paymentStatus === "Awaiting_Approval"
                             ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
-                            : "bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                            : "bg-blue-500/15 text-blue-400 border border-blue-500/30"
                         }`}>
                           {ord.isPaid || ord.paymentStatus === "Paid"
                             ? "✓ Paid"
                             : ord.paymentStatus === "Awaiting_Approval"
                             ? "⏳ Awaiting Approval"
-                            : "⚠️ Unpaid / Pending"}
+                            : ord.paymentStatus || "Confirmed"}
                         </span>
-                        {!(ord.isPaid || ord.paymentStatus === "Paid") && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">
-                            Hold
+                        {!(ord.isPaid || ord.paymentStatus === "Paid") && ord.paymentStatus === "Awaiting_Approval" && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            Bank Review
                           </span>
                         )}
                       </div>

@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight, Calendar, Clock } from 'lucide-react'
+import api from '../../../api'
 
-const blogPosts = [
+const DEFAULT_BLOG_POSTS = [
   {
     slug: 'top-10-must-try-premium-liquors-available-at-the-grand-store',
     title: 'Top 10 Must-Try Premium Liquors Available at The Grand Store',
@@ -41,6 +43,25 @@ const blogPosts = [
 ]
 
 export default function LatestBlogs() {
+  const [posts, setPosts] = useState(DEFAULT_BLOG_POSTS)
+
+  useEffect(() => {
+    let isMounted = true
+    api.get('/blogs')
+      .then(res => {
+        if (isMounted && Array.isArray(res.data) && res.data.length > 0) {
+          setPosts(res.data)
+        }
+      })
+      .catch(err => {
+        console.warn('Using default blog posts:', err.message)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   return (
     <section
       className="relative overflow-hidden border-y border-white/10 bg-[#0b0907] py-7 text-[#f3ede2] md:py-9"
@@ -66,13 +87,14 @@ export default function LatestBlogs() {
           </div>
         </header>
         <div>
-          {blogPosts.map((post, index) => {
+          {posts.map((post, index) => {
             const imageFirst = index % 2 === 0
+            const hasAccent = Boolean(post.titleAccent)
 
             return (
               <article
                 className="group/story grid grid-cols-1 items-center gap-4 border-b border-[#d8b56c]/18 py-5 transition-colors duration-500 hover:bg-[#d8b56c]/[0.025] md:gap-5 md:py-6 lg:grid-cols-2 lg:gap-[clamp(28px,3.5vw,52px)]"
-                key={post.slug}
+                key={post.slug || post._id || index}
               >
                 <Link
                   className={`relative block overflow-hidden bg-[#17130e] shadow-[0_20px_55px_rgba(0,0,0,0.28)] ring-1 ring-inset ring-[#e0be70]/10 transition-[box-shadow] duration-500 group-hover/story:shadow-[0_24px_70px_rgba(0,0,0,0.42)] ${imageFirst ? '' : 'lg:order-2'}`}
@@ -111,11 +133,17 @@ export default function LatestBlogs() {
 
                   <h3 className="mb-0 mt-2.5 max-w-[640px] font-serif text-[clamp(29px,2.9vw,44px)] font-medium leading-[1.08] tracking-[-0.03em] text-[#f3ede2]">
                     <Link className="transition-colors duration-300" to={`/blog/${post.slug}`} aria-label={post.title}>
-                      {post.titleBefore}
-                      <span className="inline text-[#dfbd72]">
-                        {post.titleAccent}
-                      </span>
-                      {post.titleAfter}
+                      {hasAccent ? (
+                        <>
+                          {post.titleBefore}
+                          <span className="inline text-[#dfbd72]">
+                            {post.titleAccent}
+                          </span>
+                          {post.titleAfter}
+                        </>
+                      ) : (
+                        post.title
+                      )}
                     </Link>
                   </h3>
 

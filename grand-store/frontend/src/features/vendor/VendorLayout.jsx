@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Building2, Package, PlusCircle, User, LayoutDashboard, Wallet, Landmark, Megaphone, GraduationCap, Menu, X, ShoppingBag, Calendar, Settings, Truck, LogOut, Store, Gavel, MapPin } from 'lucide-react';
+import { Building2, Package, PlusCircle, User, LayoutDashboard, Wallet, Landmark, Megaphone, GraduationCap, Menu, X, ShoppingBag, Calendar, Settings, Truck, LogOut, Store, Gavel, MapPin, Home, ArrowLeft } from 'lucide-react';
 import NotificationBell from '../../components/NotificationBell';
 
 export default function VendorLayout() {
@@ -90,13 +90,13 @@ export default function VendorLayout() {
     <div className="vendor-theme min-h-screen bg-[#050505] text-[var(--color-ivory)] flex flex-col font-sans">
       
       {/* Standalone Dashboard Header */}
-      <header className="h-20 bg-black/60 backdrop-blur-xl border-b border-white/[0.05] flex items-center justify-between px-8 sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <button className="md:hidden text-[var(--color-ivory)] hover:text-[#e1bd70] transition-colors" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+      <header className="h-20 bg-black/60 backdrop-blur-xl border-b border-white/[0.05] flex items-center justify-between px-4 sm:px-8 sticky top-0 z-50">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <button className="md:hidden text-[var(--color-ivory)] hover:text-[#e1bd70] transition-colors p-1" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Toggle menu">
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
-          <div className="flex items-center gap-4 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="text-xl md:text-2xl font-serif text-[var(--color-ivory)] tracking-widest uppercase">
+          <div className="flex items-center gap-3 sm:gap-4 cursor-pointer group" onClick={() => navigate('/')} title="Return to Store Home">
+            <div className="text-lg sm:text-xl md:text-2xl font-serif text-[var(--color-ivory)] group-hover:text-[#e1bd70] transition-colors tracking-widest uppercase whitespace-nowrap">
               The Grand Store
             </div>
             <div className="hidden md:block h-4 w-px bg-white/20 mx-2"></div>
@@ -105,14 +105,23 @@ export default function VendorLayout() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-4 sm:gap-6">
+        <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-white/[0.05] border border-white/10 hover:border-[#e1bd70]/40 hover:bg-[#e1bd70]/10 text-xs text-[var(--color-ivory)] hover:text-[#e1bd70] transition-all active:scale-95 shadow-sm"
+            title="Return to Store Home"
+          >
+            <Home size={15} className="text-[#e1bd70]" />
+            <span className="text-[11px] font-medium tracking-wider uppercase">Home</span>
+          </button>
+
           <NotificationBell isVendor={true} />
           <div className="flex items-center gap-3">
             <div className="text-right hidden md:block">
               <div className="text-sm font-serif">{user.name}</div>
               <div className="text-xs text-[#e1bd70] tracking-widest uppercase">{user?.role === 'admin' ? 'System Administrator' : 'Level 1 - New Vendor'}</div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-[#c9a35b] p-[1px]">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#c9a35b] p-[1px] shrink-0">
               <div className="w-full h-full bg-[#0a0a0a] rounded-full flex items-center justify-center">
                 <Building2 size={18} className="text-[#e1bd70]" />
               </div>
@@ -133,6 +142,13 @@ export default function VendorLayout() {
         <aside className={`w-64 bg-[#0a0a0a]/95 backdrop-blur-xl border-r border-white/[0.02] flex flex-col fixed top-20 bottom-0 left-0 z-50 overflow-y-auto transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
           <nav className="flex flex-col flex-1 p-6 gap-2 mt-2">
             
+            <button
+              onClick={() => handleNavigate('/')}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl w-full text-xs uppercase tracking-widest font-semibold text-[#e1bd70] bg-[#e1bd70]/10 hover:bg-[#e1bd70]/20 border border-[#e1bd70]/30 transition-all mb-2 shadow-[0_0_15px_rgba(225,189,112,0.08)]"
+            >
+              <Home size={16} /> Return to Store
+            </button>
+
             <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-2 mt-2 pl-2">Overview</div>
             <button onClick={() => handleNavigate('/vendor/dashboard')} className={navItemClass('/vendor/dashboard')}>
               <LayoutDashboard size={16} /> Overview
@@ -206,7 +222,21 @@ export default function VendorLayout() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 w-full md:ml-64 p-4 md:p-8 lg:p-12 flex flex-col z-10 min-h-[calc(100vh-5rem)] relative">
+        <main className="flex-1 w-full md:ml-64 p-3 sm:p-6 md:p-8 lg:p-12 flex flex-col z-10 min-h-[calc(100vh-5rem)] relative">
+          {/* Mobile Quick Return to Home bar */}
+          <div className="md:hidden flex items-center justify-between pb-3 border-b border-white/[0.06] mb-4">
+            <button
+              onClick={() => navigate("/")}
+              className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] hover:text-[#e1bd70] transition-colors py-1.5 px-3 rounded-lg bg-white/[0.04] border border-white/10 active:scale-95"
+            >
+              <ArrowLeft size={14} className="text-[#e1bd70]" />
+              <span>Back to Store Home</span>
+            </button>
+            <span className="text-[10px] uppercase tracking-widest text-[#e1bd70] font-medium">
+              Vendor Portal
+            </span>
+          </div>
+
           <Outlet />
 
           {user.role === 'vendor_approved_unpaid' && location.pathname !== '/vendor/payment' && (

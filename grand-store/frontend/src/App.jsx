@@ -114,6 +114,8 @@ import AdminCoupons from './features/admin/AdminCoupons'
 import AdminExpertReviews from './features/admin/AdminExpertReviews'
 import AdminSettings from './features/admin/AdminSettings'
 import AdminTestimonials from './features/admin/AdminTestimonials'
+import AdminPartnerDestinations from './features/admin/AdminPartnerDestinations'
+import AdminBlogs from './features/admin/AdminBlogs'
 import AdminFinancials from './features/admin/AdminFinancials'
 import AdminBankTransfers from './features/admin/AdminBankTransfers'
 import AdminAccessories from './features/admin/AdminAccessories'
@@ -840,6 +842,14 @@ function App() {
           <Route path="expert-reviews" element={<AdminExpertReviews />} />
           <Route path="accessories" element={<AdminAccessories />} />
           <Route path="testimonials" element={<AdminTestimonials />} />
+          <Route
+            path="partner-destinations"
+            element={<AdminPartnerDestinations onNotify={showToast} />}
+          />
+          <Route
+            path="blogs"
+            element={<AdminBlogs onNotify={showToast} />}
+          />
           <Route path="attributes" element={<AdminAttributes />} />
           <Route path="host-applications" element={<AdminHostApplications />} />
           <Route
@@ -860,7 +870,6 @@ function App() {
           />
           <Route path="events" element={<AdminEventsPanel onNotify={showToast} />} />
           <Route path="settings" element={<AdminSettings />} />
-          <Route path="testimonials" element={<AdminTestimonials />} />
           <Route path="trade-enquiries" element={<AdminTradeEnquiries />} />
           <Route path="cigar-enquiries" element={<AdminCigarEnquiries />} />
           <Route path="cigar-enquiries/:id" element={<AdminCigarEnquiryDetail />} />

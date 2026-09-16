@@ -1,11 +1,12 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowUpRight } from 'lucide-react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import api from '../../../api'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const destinations = [
+const DEFAULT_DESTINATIONS = [
   {
     href: 'https://cigar.yogapranafitness.com/',
     image: '/assets/partners/cigar-connoisseur.webp',
@@ -26,6 +27,24 @@ const destinations = [
 
 export default function PartnerDestinations() {
   const sectionRef = useRef(null)
+  const [destinations, setDestinations] = useState(DEFAULT_DESTINATIONS)
+
+  useEffect(() => {
+    let isMounted = true
+    api.get('/partners')
+      .then(res => {
+        if (isMounted && Array.isArray(res.data) && res.data.length > 0) {
+          setDestinations(res.data)
+        }
+      })
+      .catch(err => {
+        console.warn('Using default partner destinations:', err.message)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   useEffect(() => {
     const ctx = gsap.context(() => {

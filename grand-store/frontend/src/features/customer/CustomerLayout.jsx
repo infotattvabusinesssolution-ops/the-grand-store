@@ -17,6 +17,8 @@ import {
   Landmark,
   Calendar,
   Coins,
+  Home,
+  ArrowLeft,
 } from "lucide-react";
 import api from '../../api';
 
@@ -46,6 +48,15 @@ export default function CustomerLayout() {
 
   const NavLinks = () => (
     <>
+      <button
+        onClick={() => {
+          navigate("/");
+          setMobileMenuOpen(false);
+        }}
+        className="flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-left text-xs uppercase tracking-widest font-semibold text-[#d4af37] bg-[#d4af37]/10 hover:bg-[#d4af37]/20 border border-[#d4af37]/30 mb-2 shadow-[0_0_15px_rgba(212,175,55,0.08)] active:scale-[0.98]"
+      >
+        <Home size={16} /> Return to Store
+      </button>
       <button
         onClick={() => {
           navigate("/customer/profile");
@@ -183,19 +194,21 @@ export default function CustomerLayout() {
   return (
     <div className="min-h-screen bg-[#050505] text-[var(--color-ivory)] flex flex-col font-sans overflow-x-hidden">
       {/* Standalone Dashboard Header */}
-      <header className="h-16 md:h-20 bg-black/60 backdrop-blur-xl border-b border-white/[0.05] flex items-center justify-between px-4 md:px-8 sticky top-0 z-50">
-        <div className="flex items-center gap-3 md:gap-4">
+      <header className="h-16 md:h-20 bg-black/60 backdrop-blur-xl border-b border-white/[0.05] flex items-center justify-between px-3 sm:px-4 md:px-8 sticky top-0 z-50">
+        <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
           <button
-            className="lg:hidden text-[var(--color-ivory-muted)] hover:text-white"
+            className="lg:hidden text-[var(--color-ivory-muted)] hover:text-white p-1 rounded-lg hover:bg-white/5 shrink-0"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
           <div
-            className="flex items-center gap-2 md:gap-4 cursor-pointer"
+            className="flex items-center gap-2 md:gap-4 cursor-pointer group shrink-0"
             onClick={() => navigate("/")}
+            title="Return to Store Home"
           >
-            <div className="text-lg md:text-2xl font-serif text-[var(--color-ivory)] tracking-widest uppercase truncate max-w-[120px] sm:max-w-none">
+            <div className="text-base sm:text-xl md:text-2xl font-serif text-[var(--color-ivory)] group-hover:text-[var(--color-gold)] transition-colors tracking-widest uppercase whitespace-nowrap">
               Grand Store
             </div>
             <div className="h-4 w-px bg-white/20 mx-1 md:mx-2 hidden sm:block"></div>
@@ -205,10 +218,20 @@ export default function CustomerLayout() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 md:gap-6">
+        <div className="flex items-center gap-2 sm:gap-4 md:gap-6 shrink-0">
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-white/[0.05] border border-white/10 hover:border-[#d4af37]/40 hover:bg-[#d4af37]/10 text-xs text-[var(--color-ivory)] hover:text-[#d4af37] transition-all active:scale-95 shadow-sm"
+            title="Return to Store Home"
+          >
+            <Home size={15} className="text-[#d4af37]" />
+            <span className="text-[11px] font-medium tracking-wider uppercase">Home</span>
+          </button>
+
           <button
             onClick={() => navigate("/customer/cart")}
-            className="relative text-[var(--color-ivory-muted)] hover:text-[var(--color-ivory)] transition-colors"
+            className="relative text-[var(--color-ivory-muted)] hover:text-[var(--color-ivory)] transition-colors p-1.5"
+            title="Shopping Bag"
           >
             <Package size={20} />
           </button>
@@ -221,7 +244,11 @@ export default function CustomerLayout() {
                 Private Client
               </div>
             </div>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-[var(--color-gold)] to-yellow-700 p-[1px] shrink-0">
+            <div 
+              onClick={() => navigate("/customer/profile")}
+              className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-[var(--color-gold)] to-yellow-700 p-[1px] shrink-0 cursor-pointer"
+              title="Profile Settings"
+            >
               <div className="w-full h-full bg-[#0a0a0a] rounded-full flex items-center justify-center">
                 <User
                   size={14}
@@ -310,7 +337,21 @@ export default function CustomerLayout() {
         </AnimatePresence>
 
         {/* Main Content Area */}
-        <main className="flex-1 lg:ml-64 p-3 sm:p-6 lg:p-8 xl:p-10 flex flex-col gap-6 md:gap-10 z-10 w-full overflow-x-hidden min-h-0">
+        <main className="flex-1 lg:ml-64 p-3 sm:p-6 lg:p-8 xl:p-10 flex flex-col gap-5 md:gap-10 z-10 w-full overflow-x-hidden min-h-0">
+          {/* Mobile Quick Return to Home bar */}
+          <div className="lg:hidden flex items-center justify-between pb-3 border-b border-white/[0.06] mb-1">
+            <button
+              onClick={() => navigate("/")}
+              className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] hover:text-[#d4af37] transition-colors py-1.5 px-3 rounded-lg bg-white/[0.04] border border-white/10 active:scale-95"
+            >
+              <ArrowLeft size={14} className="text-[#d4af37]" />
+              <span>Back to Store Home</span>
+            </button>
+            <span className="text-[10px] uppercase tracking-widest text-gold-gradient font-medium">
+              Client Portal
+            </span>
+          </div>
+
           <Outlet />
         </main>
       </div>

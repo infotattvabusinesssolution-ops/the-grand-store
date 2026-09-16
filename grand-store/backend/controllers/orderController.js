@@ -1409,8 +1409,12 @@ const getAdminOrders = async (req, res) => {
       ];
     }
 
-    // Strictly exclude cancelled, failed, and aborted payments from admin order list
-    query.paymentStatus = { $nin: ['Cancelled', 'Failed', 'cancelled', 'failed'] };
+    // Strictly exclude cancelled, failed, aborted, and pending/unpaid orders from admin order list
+    query.paymentStatus = { $nin: ['Cancelled', 'Failed', 'cancelled', 'failed', 'Pending', 'pending'] };
+    query.$or = [
+      { isPaid: true },
+      { paymentStatus: { $in: ['Paid', 'Allocated', 'Settled', 'Authorised', 'Awaiting_Approval'] } }
+    ];
 
     const rawOrders = await Order.find(query)
       .sort({ createdAt: -1 })
@@ -1437,12 +1441,22 @@ const getAdminOrders = async (req, res) => {
       });
     }
 
-    // Filter strictly excluding any cancelled or aborted orders
-    let filtered = enriched.filter(ord => !['Cancelled', 'Failed', 'cancelled', 'failed'].includes(ord.paymentStatus));
+    // Filter strictly excluding any cancelled, failed, or pending/unpaid orders
+    let filtered = enriched.filter(ord => {
+      const pStatus = String(ord.paymentStatus || '').toLowerCase();
+      if (['cancelled', 'failed', 'pending'].includes(pStatus)) return false;
+      if (!ord.isPaid && ord.paymentStatus !== 'Paid' && ord.paymentStatus !== 'Awaiting_Approval') return false;
+      return true;
+    });
+
     if (tab === 'paid') {
       filtered = filtered.filter(ord => ord.isPaid || ord.paymentStatus === 'Paid');
-    } else if (tab === 'pending') {
-      filtered = filtered.filter(ord => !ord.isPaid && ord.paymentStatus !== 'Paid');
+    } else if (tab === 'awaiting_approval') {
+      filtered = filtered.filter(ord => ord.paymentStatus === 'Awaiting_Approval');
+    } else if (tab === 'unfulfilled') {
+      filtered = filtered.filter(ord => !ord.isDelivered);
+    } else if (tab === 'delivered') {
+      filtered = filtered.filter(ord => ord.isDelivered);
     }
 
     res.json(filtered);
