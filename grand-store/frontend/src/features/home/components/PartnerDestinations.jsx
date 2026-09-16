@@ -34,7 +34,12 @@ export default function PartnerDestinations() {
     api.get('/partners')
       .then(res => {
         if (isMounted && Array.isArray(res.data) && res.data.length > 0) {
-          setDestinations(res.data)
+          const valid = res.data.filter(
+            d => d.isVisible !== false && d.title && d.image && !d.title.toLowerCase().includes('chillar')
+          )
+          if (valid.length > 0) {
+            setDestinations(valid)
+          }
         }
       })
       .catch(err => {
@@ -106,9 +111,9 @@ export default function PartnerDestinations() {
               key={destination.title}
               aria-label={`${destination.label} (opens in a new tab)`}
             >
-              <div className="relative w-full overflow-hidden border-b border-[#d8b56c]/20 bg-[#0c0a08]">
+              <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden border-b border-[#d8b56c]/20 bg-[#0c0a08]">
                 <img
-                  className="block w-full h-auto transition-transform duration-700 ease-out group-hover:scale-[1.015]"
+                  className="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
                   src={destination.image}
                   alt={destination.title}
                   loading="lazy"
