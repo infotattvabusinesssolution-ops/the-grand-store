@@ -134,8 +134,8 @@ const addOrderItems = async (req, res) => {
     const gatewayFeePct = settings.gatewayFeePct || 2.5;
 
     // === RECONSTRUCT ACCOUNTING FROM QUOTE ===
-    const subTotal = Number(quote.globalSubtotal || quote.subTotal || 0);
-    const shippingCost = Number(quote.aggregatedTotals?.shipping || quote.shippingCost || 0);
+    const rawShipping = Number(quote.aggregatedTotals?.shipping || quote.shippingCost || 0);
+    const shippingCost = rawShipping <= 0.01 ? 0 : rawShipping;
     const vatAmount = Number(quote.aggregatedTotals?.vat || quote.vatAmount || 0);
     const importDuties = Number(quote.aggregatedTotals?.estimatedImportDuties || quote.importDuties || 0);
     const importTaxes = Number(quote.aggregatedTotals?.estimatedImportTaxes || quote.importTaxes || 0);

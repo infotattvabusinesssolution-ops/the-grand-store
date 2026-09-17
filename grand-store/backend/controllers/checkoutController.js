@@ -210,8 +210,12 @@ const generateQuote = async (req, res) => {
       });
     }
 
-    // Calculate aggregated totals based on default selections
-    let defaultShippingTotal = shipments.reduce((sum, shp) => sum + (shp.selectedCourier ? shp.selectedCourier.cost : 0), 0);
+    // Calculate aggregated totals based on default selections (promo costs <= 0.01 are treated as 0 / Free)
+    let defaultShippingTotal = shipments.reduce((sum, shp) => {
+      const c = shp.selectedCourier ? Number(shp.selectedCourier.cost) : 0;
+      return sum + (c <= 0.01 ? 0 : c);
+    }, 0);
+    defaultShippingTotal = parseFloat(defaultShippingTotal.toFixed(2));
     let defaultVatTotal = shipments.reduce((sum, shp) => sum + shp.taxData.vatAmount, 0);
     
     // Note: Duties/Taxes are usually DAP (Customer pays at customs). If we wanted DDP, we'd add it to total.

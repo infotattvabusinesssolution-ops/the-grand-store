@@ -123,13 +123,14 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
       const postnetCollectionCost = Number(platformSettings?.postnetPickupFee !== undefined ? platformSettings.postnetPickupFee : 100);
 
       // 1A. The Courier Guy - Economy Road (Standard Door-to-Door)
-      // Hardcoded to 0 (Free Delivery) per platform policy
+      // Uses 0.001 so legacy client filters checking `cost > 0` pass, while displaying R0.00 / Free
+      const promoEcoCost = 0.001;
       quotes.push({
         courierName: 'The Courier Guy',
         serviceLevel: 'The Courier Guy - Economy Road',
         serviceCode: 'ECO',
         deliveryType: 'home',
-        cost: 0,
+        cost: promoEcoCost,
         originalCost: ecoTotalCost,
         isFreeDelivery: true,
         estimatedDays: calculatedEco.estimatedDays,
