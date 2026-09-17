@@ -155,7 +155,11 @@ const generateQuote = async (req, res) => {
       }
 
       const availableQuotes = shippingData.quotes.filter((shippingQuote) => {
-        if (shippingQuote.serviceLevel === 'PostNet Standard Delivery' || Number(shippingQuote.cost) <= 0) {
+        if (shippingQuote.serviceLevel === 'PostNet Standard Delivery') {
+          return false;
+        }
+        const isFree = shippingQuote.isFreeDelivery || (shippingQuote.serviceLevel && shippingQuote.serviceLevel.includes('Economy Road'));
+        if (Number(shippingQuote.cost) <= 0 && !isFree) {
           return false;
         }
         if (deliveryPreference === 'postnet') {

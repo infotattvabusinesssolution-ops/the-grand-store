@@ -615,9 +615,9 @@ export default function CheckoutPage({
       if (data && Array.isArray(data.shipments)) {
         data.shipments = data.shipments.map((shipment) => {
           const validQuotes = (shipment.shippingQuotes || []).filter(
-            (q) => q.serviceLevel !== 'PostNet Standard Delivery' && Number(q.cost) > 0
+            (q) => q.serviceLevel !== 'PostNet Standard Delivery' && (Number(q.cost) >= 0 || q.isFreeDelivery || (q.serviceLevel && q.serviceLevel.includes('Economy Road')))
           );
-          const validSelected = (shipment.selectedCourier && shipment.selectedCourier.serviceLevel !== 'PostNet Standard Delivery' && Number(shipment.selectedCourier.cost) > 0)
+          const validSelected = (shipment.selectedCourier && shipment.selectedCourier.serviceLevel !== 'PostNet Standard Delivery' && (Number(shipment.selectedCourier.cost) >= 0 || shipment.selectedCourier.isFreeDelivery || (shipment.selectedCourier.serviceLevel && shipment.selectedCourier.serviceLevel.includes('Economy Road'))))
             ? shipment.selectedCourier
             : (validQuotes[0] || null);
           return {
@@ -2356,9 +2356,10 @@ export default function CheckoutPage({
 
                       <div className="space-y-2.5">
                         {shp.shippingQuotes
-                          .filter((opt) => opt.serviceLevel !== 'PostNet Standard Delivery' && Number(opt.cost) > 0)
+                          .filter((opt) => opt.serviceLevel !== 'PostNet Standard Delivery' && (Number(opt.cost) >= 0 || opt.isFreeDelivery || (opt.serviceLevel && opt.serviceLevel.includes('Economy Road'))))
                           .map((opt, optIndex) => {
                             const isSelected = shp.selectedCourier?.serviceLevel === opt.serviceLevel;
+                            const isFree = Number(opt.cost || 0) === 0 || opt.isFreeDelivery;
                             return (
                               <label
                                 key={optIndex}
@@ -2400,7 +2401,13 @@ export default function CheckoutPage({
                                   </div>
                                 </div>
                                 <span className="text-sm font-bold text-[var(--color-gold)] font-serif">
-                                  <Price amount={Number(opt.cost || 0)} />
+                                  {isFree ? (
+                                    <span className="text-emerald-400 font-sans tracking-wide uppercase text-xs font-extrabold px-2.5 py-1 rounded bg-emerald-500/10 border border-emerald-500/30">
+                                      FREE
+                                    </span>
+                                  ) : (
+                                    <Price amount={Number(opt.cost || 0)} />
+                                  )}
                                 </span>
                               </label>
                             );

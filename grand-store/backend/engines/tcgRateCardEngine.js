@@ -350,7 +350,9 @@ function calculateDoorDeliveryRate(params = {}) {
       subtotalExclVat,
       vatAmount
     },
-    cost: totalCost,
+    cost: (serviceCode === 'ECO' || serviceCode === 'ECOR' || serviceCode === 'ECORR') ? 0 : totalCost,
+    originalCost: totalCost,
+    isFreeDelivery: (serviceCode === 'ECO' || serviceCode === 'ECOR' || serviceCode === 'ECORR'),
     currency: 'ZAR'
   };
 }

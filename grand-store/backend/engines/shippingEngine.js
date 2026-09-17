@@ -123,14 +123,15 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
       const postnetCollectionCost = Number(platformSettings?.postnetPickupFee !== undefined ? platformSettings.postnetPickupFee : 100);
 
       // 1A. The Courier Guy - Economy Road (Standard Door-to-Door)
+      // Hardcoded to 0 (Free Delivery) per platform policy
       quotes.push({
         courierName: 'The Courier Guy',
         serviceLevel: 'The Courier Guy - Economy Road',
         serviceCode: 'ECO',
         deliveryType: 'home',
-        cost: ecoTotalCost,
+        cost: 0,
         originalCost: ecoTotalCost,
-        isFreeDelivery: false,
+        isFreeDelivery: true,
         estimatedDays: calculatedEco.estimatedDays,
         description: 'Direct door-to-door road courier across South Africa',
         legs: [
@@ -138,7 +139,7 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
             courierName: 'The Courier Guy Road Network',
             origin: originCountry,
             destination: customerAddress.city || destCountry,
-            cost: Number((ecoTotalCost * 0.75).toFixed(2))
+            cost: 0
           }
         ]
       });
