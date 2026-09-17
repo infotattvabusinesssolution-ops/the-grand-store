@@ -138,6 +138,7 @@ Grandstore-web-main (1)/
 grandsto_codedb.sql
 
 TheGrandStore/
+grand-storelocal/
 .playwright-mcp/
 output/
 tmp/
