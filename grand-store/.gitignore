@@ -43,3 +43,6 @@ _agents/
 _agent/
 SKILL.md
 *.skill.md
+
+# Database dumps
+*.sql

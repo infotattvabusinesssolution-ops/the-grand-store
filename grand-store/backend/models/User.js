@@ -222,6 +222,17 @@ const userSchema = new mongoose.Schema({
   totalReferrals: {
     type: Number,
     default: 0
+  },
+  legacyCustId: {
+    type: Number,
+    index: true,
+    sparse: true
+  },
+  legacyCustCode: {
+    type: String
+  },
+  legacySource: {
+    type: String
   }
 }, { timestamps: true });
 

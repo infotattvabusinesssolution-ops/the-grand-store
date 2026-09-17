@@ -22,6 +22,25 @@ const findReferrer = async (value) => {
   return User.findOne({ referralCode: code }).select('_id name referralCode');
 };
 
+const verifyPasswordAndCheckUpgrade = async (candidatePassword, user) => {
+  if (!candidatePassword || !user || !user.password) return { isMatch: false, needsUpgrade: false };
+
+  if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
+    const isMatch = await bcrypt.compare(candidatePassword, user.password);
+    return { isMatch, needsUpgrade: false };
+  }
+
+  // Legacy MD5 hash support from migrated customers (32 hex characters)
+  if (/^[a-f0-9]{32}$/i.test(user.password)) {
+    const md5 = crypto.createHash('md5').update(candidatePassword).digest('hex');
+    if (md5.toLowerCase() === user.password.toLowerCase()) {
+      return { isMatch: true, needsUpgrade: true };
+    }
+  }
+
+  return { isMatch: false, needsUpgrade: false };
+};
+
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const generateToken = (id) => {
@@ -171,7 +190,17 @@ const loginUser = async (req, res) => {
       ]
     });
 
-    if (user && user.password && (await bcrypt.compare(password, user.password))) {
+    const { isMatch, needsUpgrade } = await verifyPasswordAndCheckUpgrade(password, user);
+
+    if (user && isMatch) {
+      if (needsUpgrade) {
+        try {
+          user.password = await bcrypt.hash(password, 10);
+          await user.save();
+        } catch (upgradeErr) {
+          console.warn('Auto-upgrade to bcrypt hash failed:', upgradeErr.message);
+        }
+      }
       // Disallow administrative accounts on this standard endpoint
       const adminRoles = ['admin', 'super_admin', 'accountant', 'product_manager'];
       if (adminRoles.includes(user.role)) {
@@ -218,8 +247,17 @@ const adminLogin = async (req, res) => {
     const normalizedEmail = email.toLowerCase().trim();
     const user = await User.findOne({ email: normalizedEmail });
 
-    if (!user || !user.password || !(await bcrypt.compare(password, user.password))) {
+    const { isMatch, needsUpgrade } = await verifyPasswordAndCheckUpgrade(password, user);
+    if (!user || !user.password || !isMatch) {
       return res.status(401).json({ message: 'Invalid administrative credentials' });
+    }
+    if (needsUpgrade) {
+      try {
+        user.password = await bcrypt.hash(password, 10);
+        await user.save();
+      } catch (upgradeErr) {
+        console.warn('Auto-upgrade to bcrypt hash failed:', upgradeErr.message);
+      }
     }
 
     // Strict role check: allow only administrative and authorized staff roles
@@ -430,7 +468,7 @@ const updateUserProfile = async (req, res) => {
             return res.status(400).json({ message: 'Current password is required to change password' });
           }
           
-          const isMatch = await bcrypt.compare(req.body.currentPassword, user.password);
+          const { isMatch } = await verifyPasswordAndCheckUpgrade(req.body.currentPassword, user);
           if (!isMatch) {
             return res.status(401).json({ message: 'Incorrect current password' });
           }
@@ -1727,9 +1765,17 @@ const convertGuestToAccount = async (req, res) => {
       }
     } else {
       if (user.password) {
-        const isMatch = await bcrypt.compare(password, user.password);
+        const { isMatch, needsUpgrade } = await verifyPasswordAndCheckUpgrade(password, user);
         if (!isMatch) {
           return res.status(400).json({ message: 'An account with this email already exists. Please enter your existing password to link this order.' });
+        }
+        if (needsUpgrade) {
+          try {
+            user.password = await bcrypt.hash(password, 10);
+            await user.save();
+          } catch (upgradeErr) {
+            console.warn('Auto-upgrade to bcrypt hash failed in convertGuestOrder:', upgradeErr.message);
+          }
         }
       } else {
         const salt = await bcrypt.genSalt(10);
