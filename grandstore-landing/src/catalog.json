@@ -17,7 +17,7 @@
       "curatorQuote": "A soulful Cape red blend with deep terroir character and warmth.",
       "image": "/assets/products/tshireletso-red-750ml.webp",
       "sourceImage": "https://res.cloudinary.com/oioqrgj0/image/upload/v1788160625/grand-store/products/wine-grandstore/tshireletso-red.png",
-      "href": "https://grandstoreglobal.com/product/tshireletso-red-750ml",
+      "href": "http://localhost:5173/product/tshireletso-red-750ml",
       "imageSmall": "/assets/products/tshireletso-red-750ml-sm.webp"
     },
     {
@@ -37,7 +37,7 @@
       "curatorQuote": "Pioneering indigenous fynbos botanicals distilled along the southern coastline.",
       "image": "/assets/products/inverroche-strata-750ml.webp",
       "sourceImage": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1787994800/grand-store/catalog-originals/66280aa8-0ecd-4a9c-8ca0-3086a068caef.png",
-      "href": "https://grandstoreglobal.com/product/inverroche-strata-750ml",
+      "href": "http://localhost:5173/product/inverroche-strata-750ml",
       "imageSmall": "/assets/products/inverroche-strata-750ml-sm.webp"
     },
     {
@@ -57,7 +57,7 @@
       "curatorQuote": "Royal poise and layered complexity from premier high-altitude vineyards.",
       "image": "/assets/products/queen-mother-mathokoana-mopeli-chardonnay-750ml.webp",
       "sourceImage": "https://res.cloudinary.com/oioqrgj0/image/upload/v1788160634/grand-store/products/wine-grandstore/queen-mother-mathokoana-mopeli.png",
-      "href": "https://grandstoreglobal.com/product/queen-mother-mathokoana-mopeli-chardonnay-750ml",
+      "href": "http://localhost:5173/product/queen-mother-mathokoana-mopeli-chardonnay-750ml",
       "imageSmall": "/assets/products/queen-mother-mathokoana-mopeli-chardonnay-750ml-sm.webp"
     },
     {
@@ -77,7 +77,7 @@
       "curatorQuote": "A masterwork of Karoo potstill distilling, aged gently in oak casks.",
       "image": "/assets/products/six-dogs-xo-pot-still-brandy-750ml.webp",
       "sourceImage": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1787994984/grand-store/catalog-originals/prod-1787653275364-601.png",
-      "href": "https://grandstoreglobal.com/product/six-dogs-xo-pot-still-brandy-750ml",
+      "href": "http://localhost:5173/product/six-dogs-xo-pot-still-brandy-750ml",
       "imageSmall": "/assets/products/six-dogs-xo-pot-still-brandy-750ml-sm.webp"
     },
     {
@@ -97,7 +97,7 @@
       "curatorQuote": "Artisanal single malt shaped by dramatic day-night Karoo temperature shifts.",
       "image": "/assets/products/metanoia-klein-karoo-single-malt-whisky-750ml.webp",
       "sourceImage": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1787994912/grand-store/catalog-originals/prod-1787654844395-592.png",
-      "href": "https://grandstoreglobal.com/product/metanoia-klein-karoo-single-malt-whisky-750ml",
+      "href": "http://localhost:5173/product/metanoia-klein-karoo-single-malt-whisky-750ml",
       "imageSmall": "/assets/products/metanoia-klein-karoo-single-malt-whisky-750ml-sm.webp"
     },
     {
@@ -117,7 +117,7 @@
       "curatorQuote": "Hand-harvested Karoo blue agave slowly roasted and double distilled.",
       "image": "/assets/products/inzalo-batch-one-agave-spirit-750ml.webp",
       "sourceImage": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1787994802/grand-store/catalog-originals/8e10c165-b268-4c9e-a30d-a578ba4e2a57.png",
-      "href": "https://grandstoreglobal.com/product/inzalo-batch-one-agave-spirit-750ml",
+      "href": "http://localhost:5173/product/inzalo-batch-one-agave-spirit-750ml",
       "imageSmall": "/assets/products/inzalo-batch-one-agave-spirit-750ml-sm.webp"
     }
   ],
@@ -139,7 +139,7 @@
       "curatorQuote": "The legendary prestige cuvée illuminated with vibrant precision and timeless poise.",
       "image": "/assets/products/dom-perignon-luminous-750ml.webp",
       "sourceImage": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1787994711/grand-store/catalog-originals/prod-1787653190237-573.png",
-      "href": "https://grandstoreglobal.com/product/dom-perignon-luminous-750ml",
+      "href": "http://localhost:5173/product/dom-perignon-luminous-750ml",
       "imageSmall": "/assets/products/dom-perignon-luminous-750ml-sm.webp"
     },
     {
@@ -159,7 +159,7 @@
       "curatorQuote": "The harmonious marriage of American and European sherry-seasoned oak casks.",
       "image": "/assets/products/macallan-12-year-old-double-cask-750ml.webp",
       "sourceImage": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1787994892/grand-store/catalog-originals/prod-1787654843000-829.png",
-      "href": "https://grandstoreglobal.com/product/macallan-12-year-old-double-cask-750ml",
+      "href": "http://localhost:5173/product/macallan-12-year-old-double-cask-750ml",
       "imageSmall": "/assets/products/macallan-12-year-old-double-cask-750ml-sm.webp"
     },
     {
@@ -179,7 +179,7 @@
       "curatorQuote": "A delicate symphony of malt and grain whiskies expressing the 24 Japanese seasons.",
       "image": "/assets/products/hibiki-japanese-harmony-whisky-750ml-1.webp",
       "sourceImage": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1787994784/grand-store/catalog-originals/prod-1787654843905-690.png",
-      "href": "https://grandstoreglobal.com/product/hibiki-japanese-harmony-whisky-750ml-1",
+      "href": "http://localhost:5173/product/hibiki-japanese-harmony-whisky-750ml-1",
       "imageSmall": "/assets/products/hibiki-japanese-harmony-whisky-750ml-1-sm.webp"
     },
     {
@@ -199,7 +199,7 @@
       "curatorQuote": "Handcrafted in small batches and aged for a minimum of two and a half years.",
       "image": "/assets/products/don-julio-1942-750ml.webp",
       "sourceImage": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1787994713/grand-store/catalog-originals/6c66ea77-6445-4559-89e1-2e0ecf684665.png",
-      "href": "https://grandstoreglobal.com/product/don-julio-1942-750ml",
+      "href": "http://localhost:5173/product/don-julio-1942-750ml",
       "imageSmall": "/assets/products/don-julio-1942-750ml-sm.webp"
     },
     {
@@ -219,7 +219,7 @@
       "curatorQuote": "The original Extra Old cognac, blending over one hundred mature eaux-de-vie.",
       "image": "/assets/products/hennessy-xo-cognac-750ml.webp",
       "sourceImage": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1787994779/grand-store/catalog-originals/prod-1787653274721-32.png",
-      "href": "https://grandstoreglobal.com/product/hennessy-xo-cognac-750ml",
+      "href": "http://localhost:5173/product/hennessy-xo-cognac-750ml",
       "imageSmall": "/assets/products/hennessy-xo-cognac-750ml-sm.webp"
     },
     {
@@ -239,10 +239,10 @@
       "curatorQuote": "Naturally aged in bourbon barrels at the base of the San Cristóbal volcano.",
       "image": "/assets/products/flor-de-cana-18-year-old-750ml.webp",
       "sourceImage": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1787994728/grand-store/catalog-originals/4246573a-7b97-41fa-9598-81094f634526.png",
-      "href": "https://grandstoreglobal.com/product/flor-de-cana-18-year-old-750ml",
+      "href": "http://localhost:5173/product/flor-de-cana-18-year-old-750ml",
       "imageSmall": "/assets/products/flor-de-cana-18-year-old-750ml-sm.webp"
     }
   ],
-  "internationalHref": "https://grandstoreglobal.com/shop?country=Argentina&country=Armenia&country=Belgium&country=Canada&country=China&country=France&country=Germany&country=INDIA&country=India&country=Ireland&country=Israel&country=Italy&country=Jamaica&country=Japan&country=Mexico&country=Netherlands&country=New+Zealand&country=Nicaragua&country=Portugal&country=Scotland&country=Spain&country=Taiwan&country=USA&country=Wales&country=india",
-  "localHref": "https://grandstoreglobal.com/shop?country=South%20Africa"
+  "internationalHref": "http://localhost:5173/shop?country=Argentina&country=Armenia&country=Belgium&country=Canada&country=China&country=France&country=Germany&country=INDIA&country=India&country=Ireland&country=Israel&country=Italy&country=Jamaica&country=Japan&country=Mexico&country=Netherlands&country=New+Zealand&country=Nicaragua&country=Portugal&country=Scotland&country=Spain&country=Taiwan&country=USA&country=Wales&country=india",
+  "localHref": "http://localhost:5173/shop?country=South%20Africa"
 }
