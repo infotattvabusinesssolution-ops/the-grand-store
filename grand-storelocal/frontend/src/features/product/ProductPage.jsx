@@ -763,7 +763,7 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                 <span className="block text-[10px] uppercase tracking-[0.12em] text-[#8a8376]">
                   Estimated Courier Timelines
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="p-2.5 bg-black/30 border border-white/5 rounded text-left">
                     <div className="flex items-center gap-1.5 text-white font-medium text-xs mb-0.5">
                       <Truck size={13} className="text-[#c9a35b]" /> SA Door Courier
@@ -779,14 +779,6 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                     <div className="text-[11px] text-[#eee8dd]/80 font-mono">2–3 Business Days</div>
                     <div className="text-[9px] text-[#8a8376] mt-0.5">Counter or 24/7 Smart Locker</div>
                   </div>
-
-                  <div className="p-2.5 bg-black/30 border border-white/5 rounded text-left">
-                    <div className="flex items-center gap-1.5 text-white font-medium text-xs mb-0.5">
-                      <Globe size={13} className="text-blue-400" /> DHL Express Int'l
-                    </div>
-                    <div className="text-[11px] text-[#eee8dd]/80 font-mono">3–6 Business Days</div>
-                    <div className="text-[9px] text-[#8a8376] mt-0.5">Insured Worldwide Air Freight</div>
-                  </div>
                 </div>
               </div>
 
@@ -801,7 +793,7 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                   </span>
                 </div>
                 <p className="text-[11px] text-[#8a8376] leading-relaxed m-0">
-                  Live rates from The Courier Guy, PostNet, and DHL Express are computed at checkout based on destination address, parcel volumetric weight, and insurance value.
+                  Live rates from The Courier Guy and PostNet are computed at checkout based on destination address, parcel volumetric weight, and insurance value.
                 </p>
 
                 {/* Protective Packaging Assurance */}

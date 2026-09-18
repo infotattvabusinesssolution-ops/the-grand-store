@@ -106,8 +106,8 @@ export default function CheckoutPage({
   const [checkoutStep, setCheckoutStep] = useState(1);
   const [quote, setQuote] = useState(null);
   const [dutiesAccepted, setDutiesAccepted] = useState(false);
-  const [deliveryPreference, setDeliveryPreference] = useState('home'); // 'home' or 'postnet'
-  const [destinationMode, setDestinationMode] = useState('domestic_sa'); // 'domestic_sa' or 'international_dhl'
+  const [deliveryPreference, setDeliveryPreference] = useState('home'); // 'home', 'pudo', or 'postnet'
+  const [destinationMode, setDestinationMode] = useState('domestic_sa'); // South African nationwide delivery
   const [applyRewards, setApplyRewards] = useState(false);
   const [useSuperCoins, setUseSuperCoins] = useState(true);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
@@ -450,13 +450,6 @@ export default function CheckoutPage({
       setDestinationMode('domestic_sa');
       setDeliveryPreference('postnet');
       setFormData((current) => ({ ...current, country: 'South Africa' }));
-    } else if (mode === 'international_dhl') {
-      setDestinationMode('international_dhl');
-      setDeliveryPreference('home');
-      const currentCountry = formData.country && !['south africa', 'za', 'rsa'].includes(formData.country.trim().toLowerCase())
-        ? formData.country
-        : 'United Kingdom';
-      setFormData((current) => ({ ...current, country: currentCountry }));
     }
   };
 
@@ -1272,7 +1265,7 @@ export default function CheckoutPage({
                 )}
 
                 {/* Delivery Location & Fulfillment Mode */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   {/* Card 1: South Africa Door Delivery */}
                   <button
                     type="button"
@@ -1352,38 +1345,6 @@ export default function CheckoutPage({
                       </div>
                     </div>
                     <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Collect at over 450+ PostNet branches nationwide</p>
-                  </button>
-
-                  {/* Card 4: International Worldwide Delivery (DHL Express) */}
-                  <button
-                    type="button"
-                    onClick={() => selectDeliveryMode('international_dhl')}
-                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                      destinationMode === 'international_dhl'
-                        ? 'border-amber-400 bg-amber-500/15 shadow-[0_0_25px_rgba(245,158,11,0.18)] ring-1 ring-amber-400/40'
-                        : 'border-white/10 bg-[#0d0d0d] hover:border-amber-400/40'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between min-h-[32px] mb-3">
-                        <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'international_dhl' ? 'bg-amber-400 text-black' : 'bg-white/5 text-amber-400/80'}`}>
-                          <Globe size={18} />
-                        </span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono shrink-0 whitespace-nowrap">
-                            Worldwide
-                          </span>
-                          {destinationMode === 'international_dhl' && (
-                            <CheckCircle2 size={16} className="text-amber-400 shrink-0" />
-                          )}
-                        </div>
-                      </div>
-                      <div className="mb-2">
-                        <p className="text-sm font-semibold text-white leading-snug">DHL Express</p>
-                        <p className="text-[10px] text-amber-300/90 font-medium leading-tight mt-0.5">✈️ International Courier</p>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Air express courier to UK, USA, Europe & 50+ countries</p>
                   </button>
                 </div>
 
@@ -2382,9 +2343,7 @@ export default function CheckoutPage({
                                       <p className="text-sm font-semibold text-white">{opt.serviceLevel}</p>
                                       {opt.courierName && (
                                         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                                          opt.courierName.includes('DHL')
-                                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-mono'
-                                            : opt.courierName.includes('PostNet')
+                                          opt.courierName.includes('PostNet')
                                             ? 'bg-red-500/20 text-red-300 border-red-500/40'
                                             : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                                         }`}>

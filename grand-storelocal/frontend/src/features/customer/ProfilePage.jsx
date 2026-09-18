@@ -257,7 +257,7 @@ export default function ProfilePage() {
                 className="w-full bg-transparent border-b border-white/20 px-0 py-2 text-white focus:border-[var(--color-gold)] focus:outline-none transition-colors font-light text-lg placeholder:text-white/20"
               />
               <p className="text-xs text-[var(--color-ivory-muted)] mt-2 font-light leading-relaxed">
-                Your saved phone number is automatically populated in checkout and shared with couriers (Courier Guy / DHL) for delivery alerts, gate access, and collection pin codes.
+                Your saved phone number is automatically populated in checkout and shared with couriers (The Courier Guy / PostNet / PUDO) for delivery alerts, gate access, and collection pin codes.
               </p>
             </div>
           </div>
