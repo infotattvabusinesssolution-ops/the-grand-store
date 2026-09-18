@@ -189,7 +189,7 @@ export default function WhyChooseUs() {
             <video 
               className="absolute inset-0 w-full h-full object-cover scale-[1.02] transition-transform duration-700 group-hover:scale-105 opacity-85" 
               ref={videoRef} 
-              src="/assets/media/why-choose-us.mp4" 
+              src="/assets/media/why-choose-us.mp4?v=2" 
               autoPlay
               muted 
               loop 
