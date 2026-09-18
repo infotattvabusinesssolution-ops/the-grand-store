@@ -29,6 +29,7 @@ temp_docx/
 *.csv
 *.docx
 *.mp4
+!public/assets/media/*.mp4
 *.py
 refactorImports.cjs
 removeInlineGradients.cjs

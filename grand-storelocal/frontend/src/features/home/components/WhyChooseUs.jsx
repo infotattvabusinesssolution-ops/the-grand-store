@@ -15,12 +15,24 @@ export default function WhyChooseUs() {
     const video = videoRef.current
     if (!section || !video) return undefined
 
+    video.muted = true
+    video.defaultMuted = true
+    video.playsInline = true
     video.playbackRate = 0.94
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    const playVideo = () => {
+      if (!reduceMotion && video.paused) {
+        video.play().catch(() => undefined)
+      }
+    }
+
+    playVideo()
+
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && !reduceMotion) video.play().catch(() => undefined)
+      if (entry.isIntersecting && !reduceMotion) playVideo()
       else video.pause()
-    }, { rootMargin: '100px 0px', threshold: 0.08 })
+    }, { rootMargin: '120px 0px', threshold: 0.05 })
 
     observer.observe(section)
     const ctx = gsapLib.context(() => {
@@ -175,14 +187,16 @@ export default function WhyChooseUs() {
           {/* Video & Dynamic Highlight Frame (Vendor Health / Intelligence style) */}
           <div className="group relative flex min-h-[420px] flex-col justify-between overflow-hidden rounded-xl border border-white/10 bg-[#11100d] p-5 shadow-2xl transition-all hover:border-[#c9a35b]/40 sm:p-6 lg:col-span-5 lg:min-h-0">
             <video 
-              className="absolute inset-0 w-full h-full object-cover scale-[1.02] transition-transform duration-700 group-hover:scale-105 opacity-80" 
+              className="absolute inset-0 w-full h-full object-cover scale-[1.02] transition-transform duration-700 group-hover:scale-105 opacity-85" 
               ref={videoRef} 
               src="/assets/media/why-choose-us.mp4" 
+              autoPlay
               muted 
               loop 
               playsInline 
               disablePictureInPicture
-              preload="metadata"
+              preload="auto"
+              poster="/assets/hero-bar-bg.jpg"
               aria-label="Friends enjoying wine together"
             />
             {/* Ambient Darkened Gradient Overlays */}
