@@ -81,37 +81,31 @@ export default function TequilaShowcase({ onAdd, onWish, onCompare, compareItems
                 Reposado warmth, crystalline clarity and rare extra añejo—selected for the modern cabinet.
               </p>
             </div>
-            <aside className="flex shrink-0 flex-col items-end gap-4">
+            <aside className="hidden lg:flex shrink-0 flex-col items-end gap-3 mt-1 md:mt-0">
               <button
                 type="button"
                 onClick={() => document.getElementById('partners')?.scrollIntoView({ behavior: 'smooth' })}
-                className="cigar-conversation group relative hidden h-[152px] w-[400px] items-start justify-end overflow-visible border-0 bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#e1bd70] lg:flex"
+                className="cigar-conversation group relative h-[140px] w-[380px] flex items-start justify-end overflow-visible border-0 bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#e1bd70]"
                 aria-label="Explore our private cigar collection"
               >
-                <span className="relative z-10 mt-3 flex w-[272px] flex-col rounded-[18px_18px_4px_18px] bg-[#171512] px-5 py-4">
-                  <span className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-[#c9a35b]">Private Collection</span>
-                  <span className="font-serif text-[20px] leading-[1.12] text-[#f4eee1]">Looking for a truly exceptional cigar?</span>
-                  <span className="mt-3 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#d9ad5f]">
+                <span className="relative z-10 mt-2 flex w-[260px] flex-col rounded-[18px_18px_4px_18px] bg-[#171512] px-4 py-3.5 border border-white/10">
+                  <span className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#c9a35b]">Private Collection</span>
+                  <span className="font-serif text-[18px] leading-[1.15] text-[#f4eee1]">Looking for a truly exceptional cigar?</span>
+                  <span className="mt-2.5 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#d9ad5f]">
                     Explore collection
                     <ArrowRight size={13} className="transition-transform duration-200 group-hover:translate-x-1" />
                   </span>
                   <span className="absolute right-[-8px] top-[25px] h-4 w-4 rotate-45 bg-[#171512]" aria-hidden="true" />
                 </span>
 
-                <span className="relative -ml-10 h-[152px] w-[112px] shrink-0 overflow-hidden" aria-hidden="true">
+                <span className="relative -ml-10 h-[140px] w-[110px] shrink-0 overflow-hidden" aria-hidden="true">
                   <img
                     src="/assets/images/cigar_character_full.png"
                     alt=""
-                    className="absolute left-1/2 top-0 h-auto w-[230px] max-w-none -translate-x-1/2"
+                    className="absolute left-1/2 top-0 h-auto w-[220px] max-w-none -translate-x-1/2"
                   />
                 </span>
               </button>
-
-              <Link className="text-link arrow-link flex items-center gap-1" to="/shop?category=Tequila">
-                <span className="hidden md:inline">View all tequila</span>
-                <span className="inline md:hidden">View all</span>
-                <ArrowRight size={16} />
-              </Link>
             </aside>
           </div>
 

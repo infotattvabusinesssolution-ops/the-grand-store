@@ -856,8 +856,14 @@ const getCustomerCalendarActivities = async (req, res) => {
       }
     }
 
-    // 2. Orders and Courier Deliveries (consolidate multiple events for the same order)
+    // 2. Orders and Courier Deliveries (strictly for paid and confirmed orders)
     orders.forEach((order) => {
+      // Never show cancelled, failed, or unpaid pending orders in delivery calendar
+      const isCancelled = ['cancelled', 'failed'].includes((order.paymentStatus || '').toLowerCase());
+      if (isCancelled || !order.isPaid) {
+        return;
+      }
+
       const orderRef = order.orderId || order.transactionId?.slice(-8) || order._id.toString().slice(-6);
 
       if (order.shipments && order.shipments.length > 0) {

@@ -381,6 +381,12 @@ export default function OrderSuccessPage({ onClearCart }) {
             <div className="p-4 bg-rose-950/30 border border-rose-500/40 rounded-2xl text-rose-200 text-sm leading-relaxed">
               You cancelled your payment on PayFast. No funds were charged to your account, and this order has been cancelled.
             </div>
+            {order.superCoinsUsed > 0 && (
+              <div className="p-3.5 bg-emerald-950/30 border border-emerald-500/40 rounded-2xl text-emerald-300 text-xs flex items-center justify-center gap-2">
+                <Coins size={16} className="text-emerald-400 shrink-0" />
+                <span><strong>{order.superCoinsUsed} SuperCoins</strong> have been safely refunded back to your wallet.</span>
+              </div>
+            )}
             <div className="flex flex-col items-center justify-center gap-3 pt-2">
               {order.paymentMethod === 'PayFast' && (
                 <button

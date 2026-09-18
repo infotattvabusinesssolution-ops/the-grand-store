@@ -111,11 +111,11 @@ export default function TequilaShowcase({ onAdd, onWish, onCompare, compareItems
                 <span className="text-[14px] group-hover:translate-x-1 transition-transform">→</span>
               </Link>
             </div>
-            <aside className="flex shrink-0 flex-col items-end gap-3 mt-1 md:mt-0">
+            <aside className="hidden lg:flex shrink-0 flex-col items-end gap-3 mt-1 md:mt-0">
               <button
                 type="button"
                 onClick={() => document.getElementById('partners')?.scrollIntoView({ behavior: 'smooth' })}
-                className="cigar-conversation group relative hidden h-[140px] w-[380px] items-start justify-end overflow-visible border-0 bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#e1bd70] lg:flex"
+                className="cigar-conversation group relative h-[140px] w-[380px] flex items-start justify-end overflow-visible border-0 bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#e1bd70]"
                 aria-label="Explore our private cigar collection"
               >
                 <span className="relative z-10 mt-2 flex w-[260px] flex-col rounded-[18px_18px_4px_18px] bg-[#171512] px-4 py-3.5 border border-white/10">
@@ -136,14 +136,6 @@ export default function TequilaShowcase({ onAdd, onWish, onCompare, compareItems
                   />
                 </span>
               </button>
-
-              <Link
-                to="/shop?category=Tequila"
-                className="inline-flex items-center gap-2 text-[#caa458] hover:text-[#e5c378] text-[12px] font-semibold tracking-widest uppercase transition-colors duration-200 group"
-              >
-                <span>View all tequila</span>
-                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform duration-200" />
-              </Link>
             </aside>
           </div>
 

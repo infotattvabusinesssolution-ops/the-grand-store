@@ -92,6 +92,7 @@ const orderSchema = new mongoose.Schema({
   superCoinsUsed: { type: Number, default: 0 },
   superCoinsDiscount: { type: Number, default: 0 },
   superCoinsEarned: { type: Number, default: 0 },
+  superCoinsRefunded: { type: Boolean, default: false },
   deliveryPreference: { type: String, enum: ['home', 'postnet', 'pudo', 'locker'], default: 'home' },
   selectedPostnetStore: {
     id: { type: String },

@@ -280,12 +280,8 @@ const addOrderItems = async (req, res) => {
       await user.save();
     }
 
-    // Calculate potential coins earned on eligible product subtotal
+    // Calculate potential coins earned on eligible product subtotal (credited upon payment confirmation)
     superCoinsEarned = SuperCoinEngine.calculateEarnedCoins(superCoinEligibleSubtotal, settings);
-    if (superCoinsEarned > 0 && user) {
-      user.pendingSuperCoins = (user.pendingSuperCoins || 0) + superCoinsEarned;
-      await user.save();
-    }
 
     if (shippingAddress && (shippingAddress.phone || shippingAddress.phoneNumber) && user && !user.phone) {
       user.phone = (shippingAddress.phone || shippingAddress.phoneNumber).trim();
@@ -521,24 +517,7 @@ const addOrderItems = async (req, res) => {
       }).catch(err => console.error('Error logging SuperCoin redemption ledger:', err));
     }
 
-    if (superCoinsEarned > 0 && user) {
-      const expiryMonths = settings?.superCoinsExpiryMonths || 12;
-      const expiryDate = new Date();
-      expiryDate.setMonth(expiryDate.getMonth() + expiryMonths);
-
-      await SuperCoinLedger.create({
-        userId: user._id,
-        amount: superCoinsEarned,
-        type: 'earned',
-        activity: 'purchase',
-        status: 'pending',
-        orderId: order._id,
-        orderRef: order.invoiceNumber || order.orderId,
-        expiryDate,
-        description: `Earned ${superCoinsEarned} Super Coins on order #${order.invoiceNumber || order.orderId} (Pending delivery clearance)`,
-        balanceSnapshot: user.superCoinsBalance
-      }).catch(err => console.error('Error logging SuperCoin earning ledger:', err));
-    }
+    // Note: superCoinsEarned will be credited and logged to ledger once payment is confirmed in processOrderPayment
     const createdOrder = order;
     
     // === EVENT SOURCING: Log the initial sequence of events ===
@@ -741,28 +720,33 @@ const processOrderPayment = async (orderId) => {
       const User = require('../models/User');
       const user = await User.findById(order.user);
       if (user) {
-        // Move from pending to balance
-        if ((user.pendingSuperCoins || 0) >= order.superCoinsEarned) {
-          user.pendingSuperCoins -= order.superCoinsEarned;
-        } else {
-          user.pendingSuperCoins = 0;
-        }
+        user.pendingSuperCoins = Math.max(0, (user.pendingSuperCoins || 0) - order.superCoinsEarned);
         user.superCoinsBalance = (user.superCoinsBalance || 0) + order.superCoinsEarned;
         await user.save();
         console.log(`Credited ${order.superCoinsEarned} Super Coins to user ${user.email} after payment.`);
         
-        // Ledger entry update
+        // Ledger entry update or insert
         const SuperCoinLedger = require('../models/SuperCoinLedger');
-        await SuperCoinLedger.updateOne(
-          { orderId: order._id, type: 'earned', status: 'pending' },
-          { 
-            $set: { 
-              status: 'completed', 
-              description: `Earned ${order.superCoinsEarned} Super Coins on order #${order.invoiceNumber || order.orderId} (Payment Confirmed)`,
-              balanceSnapshot: user.superCoinsBalance
-            } 
-          }
-        );
+        const existingEarnLedger = await SuperCoinLedger.findOne({ orderId: order._id, type: 'earned' });
+        if (existingEarnLedger) {
+          existingEarnLedger.status = 'completed';
+          existingEarnLedger.amount = order.superCoinsEarned;
+          existingEarnLedger.description = `Earned ${order.superCoinsEarned} Super Coins on order #${order.invoiceNumber || order.orderId} (Payment Confirmed)`;
+          existingEarnLedger.balanceSnapshot = user.superCoinsBalance;
+          await existingEarnLedger.save();
+        } else {
+          await SuperCoinLedger.create({
+            userId: user._id,
+            amount: order.superCoinsEarned,
+            type: 'earned',
+            activity: 'purchase',
+            status: 'completed',
+            orderId: order._id,
+            orderRef: order.invoiceNumber || order.orderId,
+            description: `Earned ${order.superCoinsEarned} Super Coins on order #${order.invoiceNumber || order.orderId} (Payment Confirmed)`,
+            balanceSnapshot: user.superCoinsBalance
+          });
+        }
       }
     }
   } catch (err) {
@@ -1000,6 +984,7 @@ const cancelOrderPayment = async (orderId, reason = 'Payment cancelled') => {
   }
 
   order.paymentStatus = 'Cancelled';
+  order.deliveryStatusText = 'Cancelled';
   await order.save();
 
   // 1. Transition all associated shipments to 'Cancelled'
@@ -1010,25 +995,48 @@ const cancelOrderPayment = async (orderId, reason = 'Payment cancelled') => {
     ).catch(err => console.error('Error updating shipments to Cancelled:', err));
   }
 
-  // 2. Refund any SuperCoins redeemed by the user for this order
-  if (order.superCoinsUsed > 0 && order.user) {
+  // 2. Refund any SuperCoins redeemed by the user and reverse any pending earned coins
+  if (order.user) {
     try {
       const user = await User.findById(order.user);
       if (user) {
-        user.superCoinsBalance = (user.superCoinsBalance || 0) + order.superCoinsUsed;
-        await user.save();
+        let userModified = false;
 
-        await SuperCoinLedger.create({
-          userId: user._id,
-          amount: order.superCoinsUsed,
-          type: 'earned',
-          activity: 'order_discount',
-          status: 'completed',
-          orderId: order._id,
-          orderRef: order.invoiceNumber || order.orderId,
-          description: `Refunded ${order.superCoinsUsed} Super Coins for cancelled order #${order.invoiceNumber || order.orderId}`,
-          balanceSnapshot: user.superCoinsBalance
-        }).catch(err => console.error('Error recording SuperCoin refund ledger:', err));
+        // Refund redeemed SuperCoins if not yet refunded
+        if (order.superCoinsUsed > 0 && !order.superCoinsRefunded) {
+          user.superCoinsBalance = (user.superCoinsBalance || 0) + order.superCoinsUsed;
+          order.superCoinsRefunded = true;
+          userModified = true;
+
+          await SuperCoinLedger.create({
+            userId: user._id,
+            amount: order.superCoinsUsed,
+            type: 'earned',
+            activity: 'order_discount',
+            status: 'completed',
+            orderId: order._id,
+            orderRef: order.invoiceNumber || order.orderId,
+            description: `Refunded ${order.superCoinsUsed} Super Coins for cancelled order #${order.invoiceNumber || order.orderId}`,
+            balanceSnapshot: user.superCoinsBalance
+          }).catch(err => console.error('Error recording SuperCoin refund ledger:', err));
+        }
+
+        // Deduct any pending earned coins from this cancelled order
+        if (order.superCoinsEarned > 0 && (user.pendingSuperCoins || 0) > 0) {
+          user.pendingSuperCoins = Math.max(0, (user.pendingSuperCoins || 0) - order.superCoinsEarned);
+          userModified = true;
+        }
+
+        if (userModified) {
+          await user.save();
+          await order.save();
+        }
+
+        // Mark any pending earned ledger entries for this cancelled order as cancelled
+        await SuperCoinLedger.updateMany(
+          { orderId: order._id, status: 'pending' },
+          { $set: { status: 'cancelled' } }
+        ).catch(err => console.error('Error cancelling pending SuperCoin ledger:', err));
       }
     } catch (scErr) {
       console.error('Error refunding Super Coins on order cancellation:', scErr);
@@ -1222,6 +1230,41 @@ const getMyOrders = async (req, res) => {
       } else {
         orders.push(order);
       }
+    }
+
+    // Safety Net: Reconcile any unrefunded SuperCoins on cancelled/failed orders
+    try {
+      const User = require('../models/User');
+      const SuperCoinLedger = require('../models/SuperCoinLedger');
+      let coinsToRefund = 0;
+
+      for (const ord of orders) {
+        const isCancelled = ['cancelled', 'failed'].includes((ord.paymentStatus || '').toLowerCase());
+        if (isCancelled && ord.superCoinsUsed > 0 && !ord.superCoinsRefunded) {
+          ord.superCoinsRefunded = true;
+          coinsToRefund += ord.superCoinsUsed;
+          await ord.save();
+
+          await SuperCoinLedger.create({
+            userId: req.user._id,
+            amount: ord.superCoinsUsed,
+            type: 'earned',
+            activity: 'order_discount',
+            status: 'completed',
+            orderId: ord._id,
+            orderRef: ord.invoiceNumber || ord.orderId,
+            description: `Refunded ${ord.superCoinsUsed} Super Coins for cancelled order #${ord.invoiceNumber || ord.orderId}`,
+          }).catch(() => {});
+        }
+      }
+
+      if (coinsToRefund > 0) {
+        await User.findByIdAndUpdate(req.user._id, {
+          $inc: { superCoinsBalance: coinsToRefund }
+        });
+      }
+    } catch (scCheckErr) {
+      console.warn('SuperCoin auto-reconcile in getMyOrders warning:', scCheckErr.message);
     }
 
     await ensureOrderItemsImages(orders);

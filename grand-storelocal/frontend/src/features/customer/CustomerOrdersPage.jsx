@@ -24,6 +24,8 @@ import {
   MessageSquare,
   Bell,
   Gift,
+  XCircle,
+  Loader2,
 } from "lucide-react";
 import Price from "../../components/ui/Price";
 
@@ -35,6 +37,8 @@ export default function CustomerOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusTab, setStatusTab] = useState("active");
+  const [cancellingId, setCancellingId] = useState(null);
 
   useEffect(() => {
     if (!user) {
@@ -70,15 +74,43 @@ export default function CustomerOrdersPage() {
     navigate("/login");
   };
 
-  const filteredOrders = orders.filter(
-    (order) =>
-      String(order.invoiceNumber || order._id)
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      order.orderItems?.some((item) =>
-        item?.name?.toLowerCase().includes(searchTerm.toLowerCase()),
-      ),
-  );
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm("Cancel this unpaid order? Any redeemed SuperCoins will be immediately refunded to your wallet.")) return;
+    setCancellingId(orderId);
+    try {
+      await api.post(`/orders/${orderId}/cancel-payment`, { reason: 'Cancelled by customer' });
+      await fetchOrders(true);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to cancel order');
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  const activeOrdersCount = orders.filter(o => o.isPaid || o.paymentStatus === 'Paid').length;
+  const pendingOrdersCount = orders.filter(o => !o.isPaid && !['cancelled', 'failed'].includes((o.paymentStatus || '').toLowerCase())).length;
+  const cancelledOrdersCount = orders.filter(o => ['cancelled', 'failed'].includes((o.paymentStatus || '').toLowerCase())).length;
+
+  const filteredOrders = orders
+    .filter((order) => {
+      const isPaid = Boolean(order.isPaid || order.paymentStatus === 'Paid');
+      const isCancelled = ['cancelled', 'failed'].includes((order.paymentStatus || '').toLowerCase());
+      const isPending = !isPaid && !isCancelled;
+
+      if (statusTab === 'active') return isPaid;
+      if (statusTab === 'pending') return isPending;
+      if (statusTab === 'cancelled') return isCancelled;
+      return true;
+    })
+    .filter(
+      (order) =>
+        String(order.invoiceNumber || order._id)
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        order.orderItems?.some((item) =>
+          item?.name?.toLowerCase().includes(searchTerm.toLowerCase()),
+        ),
+    );
 
   return (
     <div className="customer-orders-page w-full max-w-5xl mx-auto flex flex-col gap-6 md:gap-12">
@@ -122,6 +154,57 @@ export default function CustomerOrdersPage() {
             />
           </div>
         </div>
+      </div>
+
+      {/* Status Filter Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
+        <button
+          onClick={() => setStatusTab('active')}
+          className={`px-4 py-2 rounded-xl text-xs font-mono uppercase tracking-wider font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+            statusTab === 'active'
+              ? 'bg-[var(--color-gold)] text-black shadow-md'
+              : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white border border-white/10'
+          }`}
+        >
+          <CheckCircle2 size={13} /> Active Purchases ({activeOrdersCount})
+        </button>
+
+        {pendingOrdersCount > 0 && (
+          <button
+            onClick={() => setStatusTab('pending')}
+            className={`px-4 py-2 rounded-xl text-xs font-mono uppercase tracking-wider font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+              statusTab === 'pending'
+                ? 'bg-amber-500 text-black shadow-md'
+                : 'bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border border-amber-500/30'
+            }`}
+          >
+            <Clock size={13} /> Awaiting Payment ({pendingOrdersCount})
+          </button>
+        )}
+
+        {cancelledOrdersCount > 0 && (
+          <button
+            onClick={() => setStatusTab('cancelled')}
+            className={`px-4 py-2 rounded-xl text-xs font-mono uppercase tracking-wider font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+              statusTab === 'cancelled'
+                ? 'bg-rose-500 text-white shadow-md'
+                : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white border border-white/10'
+            }`}
+          >
+            <AlertCircle size={13} /> Cancelled ({cancelledOrdersCount})
+          </button>
+        )}
+
+        <button
+          onClick={() => setStatusTab('all')}
+          className={`px-4 py-2 rounded-xl text-xs font-mono uppercase tracking-wider font-semibold transition-all shrink-0 cursor-pointer ${
+            statusTab === 'all'
+              ? 'bg-white/20 text-white border border-white/30'
+              : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white border border-white/10'
+          }`}
+        >
+          All ({orders.length})
+        </button>
       </div>
 
       {loading ? (
@@ -217,47 +300,58 @@ export default function CustomerOrdersPage() {
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => navigate(`/customer/order/${order._id}`)}
-                    className={`w-full sm:w-auto min-h-11 px-5 sm:px-6 py-3 rounded-xl sm:rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
-                      order.isPaid || order.paymentStatus === "Paid"
-                        ? "bg-[var(--color-gold)]/10 text-gold-gradient border border-[var(--color-gold)]/30 hover:bg-gold-gradient hover:text-black shadow-[0_0_15px_rgba(212,175,55,0.1)]"
-                        : order.paymentStatus === "Cancelled"
-                          ? "bg-rose-500/10 text-rose-300 border border-rose-500/30 hover:bg-rose-500/20"
-                          : order.paymentStatus === "Awaiting_Approval"
-                          ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25"
-                          : order.paymentStatus === "Failed" || order.paymentStatus === "Rejected"
-                            ? "bg-rose-500/15 text-rose-300 border border-rose-500/30 hover:bg-rose-500/25"
-                            : "bg-gold-gradient text-black hover:opacity-90 shadow-[0_0_20px_rgba(212,175,55,0.25)]"
-                    }`}
-                  >
-                    {order.isPaid || order.paymentStatus === "Paid" ? (
-                      <>
-                        <CheckCircle2 size={14} />
-                        View Receipt
-                      </>
-                    ) : order.paymentStatus === "Cancelled" ? (
-                      <>
-                        <AlertCircle size={14} />
-                        Order Details
-                      </>
-                    ) : order.paymentStatus === "Awaiting_Approval" ? (
-                      <>
-                        <Clock size={14} />
-                        View Status
-                      </>
-                    ) : order.paymentStatus === "Failed" || order.paymentStatus === "Rejected" ? (
-                      <>
-                        <AlertCircle size={14} />
-                        Resubmit Proof
-                      </>
-                    ) : (
-                      <>
+                  {order.isPaid || order.paymentStatus === "Paid" ? (
+                    <button
+                      onClick={() => navigate(`/customer/order/${order._id}`)}
+                      className="w-full sm:w-auto min-h-11 px-5 sm:px-6 py-3 rounded-xl sm:rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all bg-[var(--color-gold)]/10 text-gold-gradient border border-[var(--color-gold)]/30 hover:bg-gold-gradient hover:text-black shadow-[0_0_15px_rgba(212,175,55,0.1)] cursor-pointer"
+                    >
+                      <CheckCircle2 size={14} />
+                      View Receipt
+                    </button>
+                  ) : order.paymentStatus === "Cancelled" ? (
+                    <button
+                      onClick={() => navigate(`/customer/order/${order._id}`)}
+                      className="w-full sm:w-auto min-h-11 px-5 sm:px-6 py-3 rounded-xl sm:rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all bg-rose-500/10 text-rose-300 border border-rose-500/30 hover:bg-rose-500/20 cursor-pointer"
+                    >
+                      <AlertCircle size={14} />
+                      Order Details
+                    </button>
+                  ) : order.paymentStatus === "Awaiting_Approval" ? (
+                    <button
+                      onClick={() => navigate(`/customer/order/${order._id}`)}
+                      className="w-full sm:w-auto min-h-11 px-5 sm:px-6 py-3 rounded-xl sm:rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 cursor-pointer"
+                    >
+                      <Clock size={14} />
+                      View Status
+                    </button>
+                  ) : order.paymentStatus === "Failed" || order.paymentStatus === "Rejected" ? (
+                    <button
+                      onClick={() => navigate(`/customer/order/${order._id}`)}
+                      className="w-full sm:w-auto min-h-11 px-5 sm:px-6 py-3 rounded-xl sm:rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all bg-rose-500/15 text-rose-300 border border-rose-500/30 hover:bg-rose-500/25 cursor-pointer"
+                    >
+                      <AlertCircle size={14} />
+                      Resubmit Proof
+                    </button>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                      <button
+                        onClick={() => navigate(`/customer/order/${order._id}`)}
+                        className="w-full sm:w-auto min-h-11 px-5 sm:px-6 py-3 rounded-xl sm:rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all bg-gold-gradient text-black hover:opacity-90 shadow-[0_0_20px_rgba(212,175,55,0.25)] cursor-pointer"
+                      >
                         Complete Payment
                         <ChevronRight size={14} />
-                      </>
-                    )}
-                  </button>
+                      </button>
+                      <button
+                        onClick={() => handleCancelOrder(order._id)}
+                        disabled={cancellingId === order._id}
+                        className="w-full sm:w-auto min-h-11 px-4 py-3 rounded-xl sm:rounded-full text-[10px] sm:text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all text-stone-400 hover:text-rose-400 border border-white/10 hover:border-rose-500/30 bg-white/[0.02] cursor-pointer disabled:opacity-50"
+                        title="Cancel this unpaid order and refund any redeemed coins"
+                      >
+                        {cancellingId === order._id ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
+                        Cancel Order
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -322,14 +416,14 @@ export default function CustomerOrdersPage() {
                           <div className={`text-[11px] font-mono uppercase tracking-wider font-semibold flex items-center gap-1.5 ${
                             isOrderPaid ? "text-amber-400/90" : "text-amber-400"
                           }`}>
-                            {isOrderPaid ? "Fulfillment Status" : "Fulfillment On Hold • Payment Pending"}
+                            {isOrderPaid ? "Fulfillment Status" : "Awaiting Payment"}
                           </div>
                           <h4 className="text-sm sm:text-base font-serif font-bold text-white mt-0.5">
                             {isOrderPaid
                               ? (isPickup
                                   ? "Your order has been received — Arriving at your PostNet collection branch"
                                   : "Your order has been received — Delivery Soon")
-                              : "Payment Pending — Complete payment to confirm order and initiate dispatch"}
+                              : "Complete payment to confirm order and initiate dispatch"}
                           </h4>
                           <p className="text-xs text-white/70 mt-1">
                             {isPickup ? (
@@ -367,7 +461,7 @@ export default function CustomerOrdersPage() {
                             </span>
                             <button
                               onClick={() => navigate(`/customer/order/${order._id}`)}
-                              className="px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-[var(--color-gold)] text-black hover:opacity-90 transition-all flex items-center gap-1 shadow-md"
+                              className="px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-[var(--color-gold)] text-black hover:opacity-90 transition-all flex items-center gap-1 shadow-md cursor-pointer"
                             >
                               Pay Now <ChevronRight size={13} />
                             </button>
@@ -427,25 +521,29 @@ export default function CustomerOrdersPage() {
                             {order.selectedPostnetStore.hours && ` • ${order.selectedPostnetStore.hours}`}
                           </div>
                         </div>
-                        <span className={`text-[11px] font-mono shrink-0 self-start sm:self-auto ${
-                          isOrderPaid ? "text-white/50" : "text-amber-400/90 font-semibold"
-                        }`}>
-                          {isOrderPaid ? "Est. 2–3 Business Days" : "Est. 2–3 Days Post-Payment"}
-                        </span>
+                        {isOrderPaid && (
+                          <span className="text-[11px] font-mono shrink-0 self-start sm:self-auto text-white/50">
+                            Est. 2–3 Business Days
+                          </span>
+                        )}
                       </div>
                     )}
 
                     {/* Super Coins Badges */}
                     {(order.superCoinsEarned > 0 || order.superCoinsUsed > 0) && (
                       <div className="flex flex-wrap items-center gap-2 pt-1">
-                        {order.superCoinsEarned > 0 && (
+                        {order.superCoinsEarned > 0 && !isOrderCancelled && (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium bg-[var(--color-gold)]/10 text-[var(--color-gold)] border border-[var(--color-gold)]/20">
-                            <Coins size={12} /> +{order.superCoinsEarned} Super Coins ({order.isDelivered ? 'Credited to Wallet' : 'Pending Clearance on Delivery'})
+                            <Coins size={12} /> +{order.superCoinsEarned} Super Coins {order.isDelivered ? '(Credited to Wallet)' : ''}
                           </span>
                         )}
                         {order.superCoinsUsed > 0 && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium bg-white/[0.04] text-white/70 border border-white/10">
-                            🪙 {order.superCoinsUsed} Coins Redeemed (-R{Number(order.superCoinsDiscount || 0).toFixed(2)})
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium border ${
+                            isOrderCancelled
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                              : "bg-white/[0.04] text-white/70 border border-white/10"
+                          }`}>
+                            🪙 {order.superCoinsUsed} Coins {isOrderCancelled ? 'Refunded to Wallet' : `Redeemed (-R${Number(order.superCoinsDiscount || 0).toFixed(2)})`}
                           </span>
                         )}
                       </div>
