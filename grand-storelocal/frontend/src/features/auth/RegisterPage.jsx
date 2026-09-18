@@ -20,8 +20,14 @@ export default function RegisterPage() {
   
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchParams] = useSearchParams();
-  const [referralCode, setReferralCode] = useState((searchParams.get('ref') || '').trim().toUpperCase());
+  const [referralCode, setReferralCode] = useState(() => {
+    const urlRef = searchParams.get('ref');
+    if (urlRef) {
+      try { localStorage.setItem('grandstore_referral_code', urlRef.trim().toUpperCase()); } catch (_) {}
+      return urlRef.trim().toUpperCase();
+    }
+    try { return (localStorage.getItem('grandstore_referral_code') || '').trim().toUpperCase(); } catch (_) { return ''; }
+  });
   const { register, googleLogin, appleLogin } = useAuth();
   const navigate = useNavigate();
 

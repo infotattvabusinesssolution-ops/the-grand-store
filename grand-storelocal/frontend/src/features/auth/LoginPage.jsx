@@ -73,6 +73,14 @@ export default function LoginPage() {
   const [error, setError] = useState(null);
   const [infoMsg, setInfoMsg] = useState(null);
 
+  // Persist referral code from URL
+  useEffect(() => {
+    const urlRef = searchParams.get('ref');
+    if (urlRef) {
+      try { localStorage.setItem('grandstore_referral_code', urlRef.trim().toUpperCase()); } catch (_) {}
+    }
+  }, [searchParams]);
+
   // Auto-verify Magic Link from URL (?magicToken=...&email=...)
   useEffect(() => {
     const magicToken = searchParams.get('magicToken');
@@ -221,7 +229,11 @@ export default function LoginPage() {
         }
       }
 
-      const userData = await verifyMobileOtp(fullPhone, otp.trim(), { firebaseIdToken: firebaseToken });
+      const activeReferral = searchParams.get('ref') || localStorage.getItem('grandstore_referral_code') || undefined;
+      const userData = await verifyMobileOtp(fullPhone, otp.trim(), { 
+        firebaseIdToken: firebaseToken,
+        referralCode: activeReferral 
+      });
       handleAuthSuccess(userData);
     } catch (err) {
       setError(err.message);
@@ -240,8 +252,9 @@ export default function LoginPage() {
     setError(null);
     setInfoMsg(null);
     try {
+      const activeReferral = searchParams.get('ref') || localStorage.getItem('grandstore_referral_code') || undefined;
       const userCredential = await signInWithPopup(auth, googleProvider);
-      const userData = await googleLogin(userCredential, 'customer');
+      const userData = await googleLogin(userCredential, 'customer', activeReferral);
       handleAuthSuccess(userData);
     } catch (err) {
       console.error('Google sign-in error:', err);

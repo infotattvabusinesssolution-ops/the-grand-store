@@ -1305,6 +1305,15 @@ const verifyOtp = async (req, res) => {
 
     if (!user) {
       // Auto-register new customer
+      const submittedReferralCode = req.body.referralCode ?? req.body.referredBy;
+      let referredBy = null;
+      if (normalizeReferralCode(submittedReferralCode)) {
+        const referringUser = await findReferrer(submittedReferralCode);
+        if (referringUser) {
+          referredBy = referringUser._id;
+        }
+      }
+
       const newReferralCode = await generateUniqueReferralCode();
       const sanitizedPhone = cleanPhone.replace(/[^\d]/g, '');
       const defaultEmail = email
@@ -1322,10 +1331,26 @@ const verifyOtp = async (req, res) => {
         role: 'customer',
         isEmailVerified: true, // Phone verified accounts are considered verified
         referralCode: newReferralCode,
+        referredBy,
       });
+
+      if (referredBy) {
+        await User.findByIdAndUpdate(referredBy, { $inc: { totalReferrals: 1 } });
+      }
     } else {
       // If user exists, ensure phone and verified status are updated
       let modified = false;
+      if (!user.referredBy) {
+        const submittedReferralCode = req.body.referralCode ?? req.body.referredBy;
+        if (normalizeReferralCode(submittedReferralCode)) {
+          const referringUser = await findReferrer(submittedReferralCode);
+          if (referringUser && String(referringUser._id) !== String(user._id)) {
+            user.referredBy = referringUser._id;
+            modified = true;
+            await User.findByIdAndUpdate(referringUser._id, { $inc: { totalReferrals: 1 } });
+          }
+        }
+      }
       if (!user.phone || user.phone !== cleanPhone) {
         user.phone = cleanPhone;
         user.phoneNumber = cleanPhone;
