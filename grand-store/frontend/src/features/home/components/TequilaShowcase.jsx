@@ -6,10 +6,7 @@ import { useProducts } from '../../../context/ProductContext'
 import { useCategories } from '../../../context/CategoryContext'
 import ProductCard from '../../../components/ProductCard'
 import ProductQuickView from '../../../components/ProductQuickView'
-import ProteaEmblem from './ProteaEmblem'
-import ArrivalsMandala from './ArrivalsMandala'
 import { tequilaBrands } from '../../../data'
-import { isSouthAfricanProduct } from '../../../utils/productTaxonomy'
 
 export default function TequilaShowcase({ onAdd, onWish, onCompare, compareItems }) {
   const { products } = useProducts()
@@ -32,10 +29,6 @@ export default function TequilaShowcase({ onAdd, onWish, onCompare, compareItems
       return category === 'tequila'
     })
     .sort((a, b) => {
-      const saA = isSouthAfricanProduct(a)
-      const saB = isSouthAfricanProduct(b)
-      if (saA && !saB) return -1
-      if (!saA && saB) return 1
       const orderA = productOrder[a.id || a._id] || 0
       const orderB = productOrder[b.id || b._id] || 0
       return orderA - orderB
@@ -78,71 +71,46 @@ export default function TequilaShowcase({ onAdd, onWish, onCompare, compareItems
 
   return (
     <>
-      <section className="arrivals-section showcase-section relative w-full bg-[#0a0c0e] text-white pt-4 pb-6 md:pt-6 md:pb-8 overflow-hidden select-none" id="tequila" ref={sectionRef}>
-        {/* Sacred African Sun / Chakra Background Engraving */}
-        <ArrivalsMandala gradientId="mandala-tequila" position="top-right" />
-
-        <div className="shell relative z-10 max-w-[1520px] mx-auto px-4 sm:px-6 md:px-10">
-          <div className="flex flex-col items-start gap-4 mb-5 md:mb-7 text-left md:flex-row md:items-start md:justify-between md:gap-8">
-            <div className="flex w-full flex-col items-start md:min-w-0 md:flex-1 max-w-xl">
-              <div className="inline-flex items-center gap-2 mb-2">
-                <span className="text-[11px] font-semibold tracking-[0.22em] uppercase text-[#caa458]">
-                  FROM THE HEART OF AGAVE COUNTRY
-                </span>
-                <ProteaEmblem className="w-3.5 h-3.5 text-[#caa458]" />
-              </div>
-
-              <h2 
-                className="text-4xl sm:text-5xl lg:text-[54px] font-normal tracking-[-0.02em] leading-tight m-0 text-white font-serif"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-              >
-                Top Tequila
-              </h2>
-
-              <p className="text-[14px] sm:text-[15px] leading-relaxed text-[#a0a4a8] mt-3.5 mb-5 max-w-md font-sans">
+      <section className="section tequila-showcase home-product-editorial" id="tequila" ref={sectionRef}>
+        <div className="shell relative">
+          <div className="section-heading flex flex-col items-start gap-3 text-left md:flex-row md:items-start md:justify-between md:gap-8">
+            <div className="flex w-full flex-col items-start md:min-w-0 md:flex-1">
+              <p className="eyebrow hidden md:block">From the heart of agave country</p>
+              <h2>Top Tequila</h2>
+              <p className="section-intro hidden md:block">
                 Reposado warmth, crystalline clarity and rare extra añejo—selected for the modern cabinet.
               </p>
-
-              <Link 
-                to="/shop?category=Tequila" 
-                className="inline-flex items-center gap-2 text-[11px] font-semibold tracking-[0.18em] uppercase text-[#caa458] hover:text-[#f7e1a0] transition-colors group mb-2"
-              >
-                <span>VIEW ALL TEQUILA</span>
-                <span className="text-[14px] group-hover:translate-x-1 transition-transform">→</span>
-              </Link>
             </div>
-            <aside className="flex shrink-0 flex-col items-end gap-3 mt-1 md:mt-0">
+            <aside className="flex shrink-0 flex-col items-end gap-4">
               <button
                 type="button"
                 onClick={() => document.getElementById('partners')?.scrollIntoView({ behavior: 'smooth' })}
-                className="cigar-conversation group relative hidden h-[140px] w-[380px] items-start justify-end overflow-visible border-0 bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#e1bd70] lg:flex"
+                className="cigar-conversation group relative hidden h-[152px] w-[400px] items-start justify-end overflow-visible border-0 bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#e1bd70] lg:flex"
                 aria-label="Explore our private cigar collection"
               >
-                <span className="relative z-10 mt-2 flex w-[260px] flex-col rounded-[18px_18px_4px_18px] bg-[#171512] px-4 py-3.5 border border-white/10">
-                  <span className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#c9a35b]">Private Collection</span>
-                  <span className="font-serif text-[18px] leading-[1.15] text-[#f4eee1]">Looking for a truly exceptional cigar?</span>
-                  <span className="mt-2.5 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#d9ad5f]">
+                <span className="relative z-10 mt-3 flex w-[272px] flex-col rounded-[18px_18px_4px_18px] bg-[#171512] px-5 py-4">
+                  <span className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-[#c9a35b]">Private Collection</span>
+                  <span className="font-serif text-[20px] leading-[1.12] text-[#f4eee1]">Looking for a truly exceptional cigar?</span>
+                  <span className="mt-3 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#d9ad5f]">
                     Explore collection
                     <ArrowRight size={13} className="transition-transform duration-200 group-hover:translate-x-1" />
                   </span>
                   <span className="absolute right-[-8px] top-[25px] h-4 w-4 rotate-45 bg-[#171512]" aria-hidden="true" />
                 </span>
 
-                <span className="relative -ml-10 h-[140px] w-[110px] shrink-0 overflow-hidden" aria-hidden="true">
+                <span className="relative -ml-10 h-[152px] w-[112px] shrink-0 overflow-hidden" aria-hidden="true">
                   <img
                     src="/assets/images/cigar_character_full.png"
                     alt=""
-                    className="absolute left-1/2 top-0 h-auto w-[220px] max-w-none -translate-x-1/2"
+                    className="absolute left-1/2 top-0 h-auto w-[230px] max-w-none -translate-x-1/2"
                   />
                 </span>
               </button>
 
-              <Link
-                to="/shop?category=Tequila"
-                className="inline-flex items-center gap-2 text-[#caa458] hover:text-[#e5c378] text-[12px] font-semibold tracking-widest uppercase transition-colors duration-200 group"
-              >
-                <span>View all tequila</span>
-                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform duration-200" />
+              <Link className="text-link arrow-link flex items-center gap-1" to="/shop?category=Tequila">
+                <span className="hidden md:inline">View all tequila</span>
+                <span className="inline md:hidden">View all</span>
+                <ArrowRight size={16} />
               </Link>
             </aside>
           </div>
@@ -161,9 +129,7 @@ export default function TequilaShowcase({ onAdd, onWish, onCompare, compareItems
               />
             ))}
           </div>
-          <p className="flex md:hidden items-center justify-center gap-2 text-[11px] text-white/50 tracking-wider uppercase mt-6">
-            <ArrowRight size={13} /> Swipe to explore collection
-          </p>
+          <p className="swipe-hint"><ArrowRight size={15} /> Swipe to explore</p>
         </div>
       </section>
 

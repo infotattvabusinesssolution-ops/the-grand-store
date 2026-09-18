@@ -8,7 +8,6 @@ import LuxuryAuctionHero from './LuxuryAuctionHero';
 import Price from '../../components/ui/Price';
 import SEO from '../../components/SEO';
 import { getAuctionPhase, isPastAuctionPhase } from './auctionPhase';
-import ProteaEmblem from '../home/components/ProteaEmblem';
 
 export default function AuctionPage({ onNotify }) {
   const [lots, setLots] = useState([]);
@@ -138,10 +137,7 @@ export default function AuctionPage({ onNotify }) {
         <div className="shell max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <ProteaEmblem className="w-3.5 h-3.5 text-[#caa458]" />
-                <p className="text-[10px] uppercase tracking-widest text-gold-gradient font-bold">Live catalogue</p>
-              </div>
+              <p className="text-[10px] uppercase tracking-widest text-gold-gradient font-bold mb-2">Live catalogue</p>
               <h2 id="current-auctions-title" className="text-4xl md:text-5xl font-serif text-[var(--color-ivory)]">Current Auctions</h2>
             </div>
             <p className="text-[var(--color-ivory-muted)] text-sm md:text-base max-w-md font-light leading-relaxed">
@@ -183,15 +179,7 @@ export default function AuctionPage({ onNotify }) {
 
       <section className="past-auctions section" aria-labelledby="past-auctions-title">
         <div className="shell">
-           <div className="auction-section-heading">
-             <div>
-               <div className="flex items-center gap-2 mb-1">
-                 <ProteaEmblem className="w-3.5 h-3.5 text-[#caa458]" />
-                 <p className="eyebrow !mb-0">Previous results</p>
-               </div>
-               <h2 id="past-auctions-title">Past Auctions</h2>
-             </div>
-           </div>
+           <div className="auction-section-heading"><div><p className="eyebrow">Previous results</p><h2 id="past-auctions-title">Past Auctions</h2></div></div>
            <div className="past-auction-grid">
               {pastLots.map((lot) => (
                  <article key={lot._id} className="relative group block">
@@ -218,15 +206,7 @@ export default function AuctionPage({ onNotify }) {
       
       <section className="auction-process section">
          <div className="shell">
-           <div className="auction-section-heading">
-             <div>
-               <div className="flex items-center gap-2 mb-1">
-                 <ProteaEmblem className="w-3.5 h-3.5 text-[#caa458]" />
-                 <p className="eyebrow !mb-0">Simple & secure</p>
-               </div>
-               <h2>Your Path to Premium Bottles</h2>
-             </div>
-           </div>
+           <div className="auction-section-heading"><div><p className="eyebrow">Simple & secure</p><h2>Your Path to Premium Bottles</h2></div></div>
            <div className="auction-step-grid">
               {steps.map(([title, text], index) => <article key={title}><span>0{index + 1}</span><h3>{title}</h3><p>{text}</p></article>)}
            </div>

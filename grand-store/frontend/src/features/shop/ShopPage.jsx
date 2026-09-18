@@ -6,7 +6,6 @@ import ProductCard from "../../components/ProductCard";
 import FilterGroup from "./FilterGroup";
 import Price from "../../components/ui/Price";
 import { getCountryDisplayName } from "../../utils/countryHelpers";
-import { isSouthAfricanProduct } from "../../utils/productTaxonomy";
 
 const isVisibleFilterValue = (value) =>
   typeof value === "string" &&
@@ -97,11 +96,7 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
         )
       : shopProducts;
 
-  const countryOptions = getFilterOptions(productsForCountries, "country").sort((a, b) => {
-    if (a.toLowerCase() === "south africa") return -1;
-    if (b.toLowerCase() === "south africa") return 1;
-    return a.localeCompare(b);
-  });
+  const countryOptions = getFilterOptions(productsForCountries, "country");
 
   const productsForSubcategories =
     selectedCountries.length > 0
@@ -175,12 +170,6 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
   });
 
   filteredProducts = [...filteredProducts].sort((a, b) => {
-    // ALWAYS prioritize South African products first
-    const saA = isSouthAfricanProduct(a);
-    const saB = isSouthAfricanProduct(b);
-    if (saA && !saB) return -1;
-    if (!saA && saB) return 1;
-
     if (sortBy === "price-low") return priceValue(a) - priceValue(b);
     if (sortBy === "price-high") return priceValue(b) - priceValue(a);
     if (sortBy === "name") return a.name.localeCompare(b.name);

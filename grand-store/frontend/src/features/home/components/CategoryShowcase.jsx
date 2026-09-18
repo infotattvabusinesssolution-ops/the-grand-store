@@ -6,10 +6,6 @@ import { useProducts } from '../../../context/ProductContext'
 import { useCategories } from '../../../context/CategoryContext'
 import ProductCard from '../../../components/ProductCard'
 import ProductQuickView from '../../../components/ProductQuickView'
-import ProteaEmblem from './ProteaEmblem'
-import ArrivalsMandala from './ArrivalsMandala'
-import { brands as defaultBrands } from '../../../data'
-import { isSouthAfricanProduct } from '../../../utils/productTaxonomy'
 
 export default function CategoryShowcase({ 
   categoryId, 
@@ -19,7 +15,7 @@ export default function CategoryShowcase({
   onAdd, 
   onWish, 
   onCompare, 
-  compareItems, 
+  compareItems,
   brands = [] 
 }) {
   const { products } = useProducts()
@@ -42,10 +38,6 @@ export default function CategoryShowcase({
       return cat === categoryId.toLowerCase()
     })
     .sort((a, b) => {
-      const saA = isSouthAfricanProduct(a)
-      const saB = isSouthAfricanProduct(b)
-      if (saA && !saB) return -1
-      if (!saA && saB) return 1
       const orderA = productOrder[a.id || a._id] || 0
       const orderB = productOrder[b.id || b._id] || 0
       return orderA - orderB
@@ -81,43 +73,19 @@ export default function CategoryShowcase({
 
   return (
     <>
-      <section className="arrivals-section showcase-section relative w-full bg-[#0a0c0e] text-white pt-4 pb-6 md:pt-6 md:pb-8 overflow-hidden select-none" id={categoryId.toLowerCase()} ref={sectionRef}>
-        {/* Sacred African Sun / Chakra Background Engraving */}
-        <ArrivalsMandala gradientId={`mandala-${categoryId.toLowerCase()}`} position="top-right" />
-
-        <div className="shell relative z-10 max-w-[1520px] mx-auto px-4 sm:px-6 md:px-10">
-          {/* Section Heading matching Arrivals */}
-          <div className="flex flex-col md:flex-row md:items-start justify-between mb-5 md:mb-7 gap-4 relative">
-            {/* Left: Eyebrow with King Protea + Title + Description */}
-            <div className="max-w-xl">
-              <div className="inline-flex items-center gap-2 mb-2">
-                <span className="text-[11px] font-semibold tracking-[0.22em] uppercase text-[#caa458]">
-                  {eyebrow || "CURATED CELLAR RESERVE"}
-                </span>
-                <ProteaEmblem className="w-3.5 h-3.5 text-[#caa458]" />
-              </div>
-
-              <h2 
-                className="text-4xl sm:text-5xl lg:text-[54px] font-normal tracking-[-0.02em] leading-tight m-0 text-white font-serif"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-              >
-                {title}
-              </h2>
-
-              {description && (
-                <p className="text-[14px] sm:text-[15px] leading-relaxed text-[#a0a4a8] mt-3.5 mb-5 max-w-md font-sans">
-                  {description}
-                </p>
-              )}
-
-              <Link 
-                to={`/shop?category=${encodeURIComponent(categoryId)}`}
-                className="inline-flex items-center gap-2 text-[11px] font-semibold tracking-[0.18em] uppercase text-[#caa458] hover:text-[#f7e1a0] transition-colors group"
-              >
-                <span>VIEW ALL {categoryId.toUpperCase()}</span>
-                <span className="text-[14px] group-hover:translate-x-1 transition-transform">→</span>
-              </Link>
+      <section className="section tequila-showcase home-product-editorial" id={categoryId.toLowerCase()} ref={sectionRef}>
+        <div className="shell">
+          <div className="section-heading flex flex-col items-start text-left md:flex-row md:text-left md:justify-between md:items-end gap-3 md:gap-0">
+            <div className="flex flex-col items-start md:items-start w-full">
+              <p className="eyebrow hidden md:block">{eyebrow}</p>
+              <h2>{title}</h2>
+              <p className="section-intro hidden md:block">{description}</p>
             </div>
+            <Link className="text-link arrow-link flex items-center gap-1" to={`/shop?category=${encodeURIComponent(categoryId)}`}>
+              <span className="hidden md:inline">View all {categoryId.toLowerCase()}</span>
+              <span className="inline md:hidden">View all</span> 
+              <ArrowRight size={16} />
+            </Link>
           </div>
 
           <div className="tequila-product-rail">
@@ -134,9 +102,7 @@ export default function CategoryShowcase({
               />
             ))}
           </div>
-          <p className="flex md:hidden items-center justify-center gap-2 text-[11px] text-white/50 tracking-wider uppercase mt-6">
-            <ArrowRight size={13} /> Swipe to explore collection
-          </p>
+          <p className="swipe-hint"><ArrowRight size={15} /> Swipe to explore</p>
         </div>
       </section>
 

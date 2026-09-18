@@ -2,200 +2,84 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 
-const mobileSlides = [
-  {
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/c_pad,w_768,h_1376,b_gen_fill/v1789646474/grand-store/hero/grand_store_celebration_gathering.jpg",
-    alt: "Friends celebrating at an evening gathering",
-    badge: "Shared Moments & Fine Spirits",
-    eyebrow: "Every Gathering.",
-    title: "Celebrated.",
-    sub: "Curated fine spirits, rare vintages & private cellar selections.",
-    cta: "Explore Collection",
-    link: "#arrivals"
-  },
-  {
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/c_pad,w_768,h_1376,b_gen_fill/v1789646759/grand-store/hero/south_african_wine_clean.jpg",
-    alt: "South African Wine - Sourced From Farm",
-    badge: "Estate Direct Cellar",
-    eyebrow: "South Africa's Best.",
-    title: "Sourced From Farm.",
-    sub: "Direct allocations from premier Stellenbosch & Franschhoek estates.",
-    cta: "Explore Wine Collection",
-    link: "/shop?category=Wine"
-  },
-  {
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/c_pad,w_768,h_1376,b_gen_fill/v1789646476/grand-store/hero/grand_store_events_toast.png",
-    alt: "Exclusive Tastings & Events Toast",
-    badge: "Private Tastings & Masterclasses",
-    eyebrow: "Exclusive Tastings.",
-    title: "Private Events.",
-    sub: "Sommelier-led masterclasses & bespoke cellar tastings.",
-    cta: "Discover Events",
-    link: "/events"
-  },
-  {
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1788172728/grand-store/mobile-hero/n9uovcqrpnvvvnr0cxnj.jpg",
-    alt: "Rare Vintages Live Auctions",
-    badge: "Live Premier Bidding",
-    eyebrow: "Rare Vintages.",
-    title: "Live Auctions.",
-    sub: "Verified provenance & global collector live bidding.",
-    cta: "Explore Live Auctions",
-    link: "/auction"
-  },
-  {
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1788172726/grand-store/mobile-hero/y9huqamz2qmi19eztxvv.jpg",
-    alt: "Handcrafted Cigars & Spirits",
-    badge: "Handcrafted Heritage",
-    eyebrow: "Handcrafted Luxury.",
-    title: "Cigars & Lounge.",
-    sub: "Hand-rolled heritage cigars paired with aged reserve spirits.",
-    cta: "Explore Cigars",
-    link: "https://cigar.yogapranafitness.com"
-  }
+const images = [
+  "https://res.cloudinary.com/oioqrgj0/image/upload/v1788172726/grand-store/mobile-hero/y9huqamz2qmi19eztxvv.jpg",
+  "https://res.cloudinary.com/oioqrgj0/image/upload/v1788172727/grand-store/mobile-hero/yxgydyne6gxvictqucig.jpg",
+  "https://res.cloudinary.com/oioqrgj0/image/upload/v1788172728/grand-store/mobile-hero/n9uovcqrpnvvvnr0cxnj.jpg"
 ];
 
 export default function HeroMobile() {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [progress, setProgress] = useState(0);
+  const [currentImage, setCurrentImage] = useState(0);
 
   useEffect(() => {
-    setProgress(0);
-    const durationMs = 6000;
-    const startTime = Date.now();
-
     const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const pct = Math.min(100, (elapsed / durationMs) * 100);
-      setProgress(pct);
-
-      if (elapsed >= durationMs) {
-        clearInterval(interval);
-        setCurrentSlide((prev) => (prev + 1) % mobileSlides.length);
-      }
-    }, 50);
-
+      setCurrentImage((prev) => (prev + 1) % images.length);
+    }, 4000);
     return () => clearInterval(interval);
-  }, [currentSlide]);
-
-  const slide = mobileSlides[currentSlide];
+  }, []);
 
   return (
-    <section className="relative w-full min-h-[90vh] py-12 flex flex-col justify-center items-center bg-[#050505] overflow-hidden select-none">
+    <section className="relative w-full min-h-[85vh] py-16 flex flex-col justify-center items-center bg-[#050505] overflow-hidden select-none">
       
-      {/* Background Images */}
+      {/* Background Images covering the whole container */}
       <div className="absolute inset-0 w-full h-full bg-black">
-        {mobileSlides.map((s, index) => (
+        {images.map((img, index) => (
           <img 
-            key={s.image}
-            src={s.image} 
-            alt={s.alt} 
-            className={`absolute inset-0 w-full h-full object-cover object-center transition-all duration-1000 ease-in-out ${
-              index === currentSlide ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
-            }`}
+            key={img}
+            src={img} 
+            alt={`Luxury Bar Atmosphere ${index + 1}`} 
+            className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-1000 ease-in-out ${index === currentImage ? 'opacity-100' : 'opacity-0'}`}
             loading={index === 0 ? "eager" : "lazy"}
           />
         ))}
-        {/* Balanced Vignette Overlay */}
-        <div className="absolute inset-0 bg-radial-gradient from-black/30 via-black/45 to-black/80" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-black/40 to-black/50" />
+        {/* Deep dark gradient overlay so text on top is perfectly readable */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/60 to-black/20" />
       </div>
       
       {/* Sparkle accents */}
-      <div className="absolute top-[18%] left-[8%] text-[#ffeaa7] text-base opacity-40 animate-pulse">✧</div>
-      <div className="absolute top-[22%] right-[10%] text-[#ffd700] text-xs opacity-40 animate-pulse">✦</div>
+      <div className="absolute top-[25%] left-[10%] text-[#ffeaa7] text-lg opacity-60 animate-luxury-glitter">✧</div>
+      <div className="absolute top-[15%] right-[15%] text-[#ffd700] text-sm opacity-50 animate-luxury-glitter-delay-1">✦</div>
 
-      {/* Centralized Frosted Content Plaque */}
-      <div className="relative z-10 w-full max-w-[340px] sm:max-w-md mx-auto px-4 flex flex-col items-center text-center mt-6">
+      {/* Content overlaid on image at the bottom */}
+      <div className="relative z-10 w-full flex flex-col items-center text-center px-6 mx-auto mt-16">
         
-        <div className="w-full px-5 py-6 rounded-3xl bg-black/45 backdrop-blur-md border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.6)] flex flex-col items-center text-center">
-          {/* Eyebrow Badge */}
-          {slide.badge && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 mb-3 rounded-full border border-[#e5a93c]/35 bg-black/60 backdrop-blur-md text-[9.5px] font-semibold tracking-[0.2em] uppercase text-[#f3cf7a] shadow-md">
-              <span className="text-[#e5a93c]">✧</span>
-              <span>{slide.badge}</span>
-              <span className="text-[#e5a93c]">✧</span>
-            </div>
-          )}
+        {/* Master Brand Headline */}
+        <h1 
+          className="font-serif not-italic text-center select-none m-0 p-0 mb-5 flex flex-col items-center"
+          style={{ fontFamily: "'Cinzel', 'Playfair Display', serif" }}
+        >
+          <span className="block text-sm tracking-[0.4em] text-[#e5a93c] mb-2 font-medium uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
+            The
+          </span>
+          <span className="block text-5xl sm:text-6xl font-extrabold uppercase tracking-widest leading-tight text-transparent bg-clip-text bg-gradient-to-b from-[#fff2c8] via-[#e5a93c] to-[#a86c0c] drop-shadow-[0_0_15px_rgba(229,169,60,0.4)]">
+            Grand Store
+          </span>
+        </h1>
 
-          {/* Centralized & Scaled Down Headline */}
-          <h1 
-            className="font-serif not-italic text-center select-none m-0 p-0 mb-2.5 flex flex-col items-center"
-            key={slide.title}
-          >
-            <span 
-              className="block text-lg sm:text-xl font-bold uppercase tracking-[0.14em] text-white leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
-              style={{ fontFamily: "'Cinzel', 'Playfair Display', serif" }}
-            >
-              {slide.eyebrow}
-            </span>
-            <span 
-              className="block text-xl sm:text-2xl font-serif italic tracking-wide leading-tight text-transparent bg-clip-text bg-gradient-to-r from-[#fff2c8] via-[#e5a93c] to-[#c9a35b] mt-0.5 drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)]"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-            >
-              {slide.title}
-            </span>
-          </h1>
+        {/* Sub-label Luxury Curated Accent */}
+        <p 
+          className="text-[12px] font-semibold tracking-[0.3em] uppercase text-white/90 mb-8 drop-shadow-[0_4px_8px_rgba(0,0,0,1)]"
+          style={{ 
+            fontFamily: "'Montserrat', 'Inter', sans-serif",
+          }}
+        >
+          <span className="text-[#e5a93c]">Curated</span> Rare Spirits & Wine
+        </p>
 
-          {/* Sub-label */}
-          <p className="text-[11.5px] sm:text-xs font-sans font-light text-white/85 mb-4 leading-relaxed max-w-xs drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
-            {slide.sub}
-          </p>
-
-          {/* Minimal & Creative CTA Button */}
-          {slide.link.startsWith('http') || slide.link.startsWith('#') ? (
-            <a 
-              href={slide.link}
-              target={slide.link.startsWith('http') ? '_blank' : '_self'}
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-[10.5px] font-semibold tracking-[0.18em] uppercase bg-gradient-to-r from-[#e5a93c] via-[#f7d383] to-[#c9a35b] text-[#120f09] shadow-[0_4px_18px_rgba(229,169,60,0.35)] active:scale-95 transition-transform"
-            >
-              <span>{slide.cta}</span>
-              <ChevronRight size={14} />
-            </a>
-          ) : (
-            <Link 
-              to={slide.link}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-[10.5px] font-semibold tracking-[0.18em] uppercase bg-gradient-to-r from-[#e5a93c] via-[#f7d383] to-[#c9a35b] text-[#120f09] shadow-[0_4px_18px_rgba(229,169,60,0.35)] active:scale-95 transition-transform"
-            >
-              <span>{slide.cta}</span>
-              <ChevronRight size={14} />
-            </Link>
-          )}
-        </div>
-
-        {/* Auto-Slide Progress Counter & Dots */}
-        <div className="flex flex-col items-center gap-2 mt-5">
-          <div className="flex items-center gap-2.5 bg-black/50 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 shadow-md">
-            <span className="font-mono text-[10px] font-semibold text-[#e5a93c]">
-              0{currentSlide + 1}
-            </span>
-            <div className="w-16 h-[2px] bg-white/20 rounded-full overflow-hidden relative">
-              <div 
-                className="h-full bg-gradient-to-r from-[#e5a93c] to-[#fff3cc] rounded-full transition-all duration-100 ease-linear"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <span className="font-mono text-[10px] font-semibold text-white/50">
-              0{mobileSlides.length}
-            </span>
+        {/* Minimal & Creative CTA Button */}
+        <Link 
+          to="/shop"
+          className="group relative flex items-center gap-4 bg-white/5 backdrop-blur-md border border-[#c9a35b]/30 hover:border-[#c9a35b] text-white py-2.5 pl-7 pr-2.5 rounded-full overflow-hidden transition-all duration-500 shadow-[0_4px_20px_rgba(0,0,0,0.6)] hover:shadow-[0_0_25px_rgba(229,169,60,0.4)]"
+        >
+          <span className="font-semibold uppercase tracking-[0.2em] text-[11px] z-10 mt-[1px]">Enter the Cellar</span>
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#e5a93c] to-[#a86c0c] flex items-center justify-center z-10 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_15px_rgba(229,169,60,0.5)]">
+            <ChevronRight size={16} className="text-black ml-[1px]" />
           </div>
-
-          <div className="flex items-center gap-1.5">
-            {mobileSlides.map((_, idx) => (
-              <button
-                key={idx}
-                type="button"
-                className={`h-1 rounded-full transition-all duration-300 ${
-                  idx === currentSlide ? 'w-5 bg-[#e5a93c]' : 'w-1.5 bg-white/30'
-                }`}
-                onClick={() => setCurrentSlide(idx)}
-                aria-label={`Slide ${idx + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-
+          
+          {/* Sweep animation effect */}
+          <div className="absolute inset-0 -z-10 bg-gradient-to-r from-transparent via-[#c9a35b]/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
+        </Link>
+        
       </div>
       
     </section>

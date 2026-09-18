@@ -7,8 +7,6 @@ import { getAuctionPhase, getAuctionTargetTime } from './auctionPhase';
 import Price from '../../components/ui/Price';
 import { useCurrency, getCountryForCurrency, CURRENCY_SYMBOLS, ZERO_DECIMAL_CURRENCIES } from '../../context/CurrencyContext';
 import { CountryFlag } from '../../components/CountryCodeSelect';
-import ArrivalsMandala from '../home/components/ArrivalsMandala';
-import ProteaEmblem from '../home/components/ProteaEmblem';
 
 export default function LuxuryAuctionHero({ lots, now, onNotify, onRefresh }) {
   if (!lots || lots.length === 0) return null;
@@ -136,13 +134,6 @@ function LuxuryAuctionSlide({ lot, now, index, total, onNotify, onRefresh }) {
       <div className="absolute top-1/4 -left-1/4 w-[50%] h-[50%] rounded-full bg-[var(--color-gold)]/5 blur-[150px] mix-blend-screen pointer-events-none" />
       <div className="absolute bottom-1/4 -right-1/4 w-[50%] h-[50%] rounded-full bg-red-500/5 blur-[150px] mix-blend-screen pointer-events-none" />
       
-      {/* Subtle South African Heritage Mandala Watermark */}
-      <ArrivalsMandala 
-        className="!opacity-[0.05] !w-[600px] sm:!w-[750px] md:!w-[900px] pointer-events-none" 
-        gradientId={`auction-slide-mandala-${lot._id || index}`} 
-        position="top-right" 
-      />
-      
       <div className="w-full max-w-[1400px] mx-auto px-6 py-24 flex flex-col lg:flex-row items-center gap-12 lg:gap-24 relative z-10">
         
         {/* Left: Product Image */}
@@ -170,9 +161,8 @@ function LuxuryAuctionSlide({ lot, now, index, total, onNotify, onRefresh }) {
 
         {/* Right: Auction Details & Bidding Console */}
         <div className="flex-1 w-full flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-4">
-             <ProteaEmblem className="w-3.5 h-3.5 text-[#caa458] shrink-0" />
-             <div className="h-px w-10 bg-gold-gradient" />
+          <div className="flex items-center gap-4 mb-4">
+             <div className="h-px w-12 bg-gold-gradient" />
              <span className="text-gold-gradient text-[10px] uppercase tracking-widest font-bold">Featured Collection {index + 1}/{total}</span>
           </div>
           

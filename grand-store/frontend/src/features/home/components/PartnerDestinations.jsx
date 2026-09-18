@@ -3,8 +3,6 @@ import { ArrowUpRight } from 'lucide-react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import api from '../../../api'
-import ArrivalsMandala from './ArrivalsMandala'
-import ProteaEmblem from './ProteaEmblem'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -85,25 +83,11 @@ export default function PartnerDestinations() {
       ref={sectionRef}
       aria-labelledby="partner-title"
     >
-      {/* Subtle South African Sacred Mandala Watermark */}
-      <ArrivalsMandala 
-        gradientId="mandala-partners" 
-        position="top-right" 
-        className="!opacity-15 md:!opacity-20 max-w-[520px] pointer-events-none -top-20 -right-20" 
-      />
-
       <div className="pointer-events-none absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(201,163,91,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(201,163,91,0.07)_1px,transparent_1px)] [background-size:72px_72px]" />
       <div className="pointer-events-none absolute -left-32 top-1/2 h-80 w-80 -translate-y-1/2 rounded-full bg-[#8e642e]/10 blur-[110px]" />
 
       <div className="relative z-10 mx-auto max-w-[1240px] px-5 sm:px-7 xl:px-10">
         <header className="mx-auto mb-5 max-w-2xl text-center lg:mb-6">
-          <div className="inline-flex items-center justify-center gap-2 mb-2">
-            <ProteaEmblem className="w-3.5 h-3.5 text-[#dfbd72]" />
-            <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#dfbd72]">
-              Curated Alliances
-            </span>
-          </div>
-
           <h2
             id="partner-title"
             className="m-0 font-serif text-[clamp(34px,3.7vw,52px)] font-medium leading-[0.98] tracking-[-0.035em] text-[#f5efe4]"

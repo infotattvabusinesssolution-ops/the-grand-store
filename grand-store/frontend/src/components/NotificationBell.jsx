@@ -31,16 +31,8 @@ export default function NotificationBell({ className = "", isVendor = false }) {
     try {
       const res = await api.get('/notifications?limit=25');
       if (res.data) {
-        const notifs = Array.isArray(res.data)
-          ? res.data
-          : Array.isArray(res.data.notifications)
-          ? res.data.notifications
-          : [];
-        const unread = typeof res.data.unreadCount === 'number'
-          ? res.data.unreadCount
-          : notifs.filter(n => !n.isRead).length;
-        setNotifications(notifs);
-        setUnreadCount(unread);
+        setNotifications(res.data.notifications || []);
+        setUnreadCount(res.data.unreadCount || 0);
       }
     } catch (err) {
       // Silently catch in polling
@@ -135,7 +127,6 @@ export default function NotificationBell({ className = "", isVendor = false }) {
   const formatRelativeTime = (dateStr) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return '';
     const now = new Date();
     const diffSec = Math.floor((now - date) / 1000);
     if (diffSec < 60) return 'Just now';
