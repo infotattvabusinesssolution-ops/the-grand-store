@@ -17,9 +17,16 @@ const payfastUrlEncode = (value) => encodeURIComponent(String(value))
   .replace(/[!'()*~]/g, (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
   .replace(/%20/g, '+');
 
-const getFrontendUrl = (req) => trimTrailingSlashes(
-  process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:5173'
-);
+const getFrontendUrl = (req) => {
+  const origin = req.headers.origin || req.headers.referer;
+  if (origin) {
+    try {
+      const parsed = new URL(origin);
+      return trimTrailingSlashes(`${parsed.protocol}//${parsed.host}`);
+    } catch (_) {}
+  }
+  return trimTrailingSlashes(process.env.FRONTEND_URL || 'https://grandstoreglobal.com');
+};
 
 const getBackendUrl = (req) => {
   if (process.env.BACKEND_URL) {

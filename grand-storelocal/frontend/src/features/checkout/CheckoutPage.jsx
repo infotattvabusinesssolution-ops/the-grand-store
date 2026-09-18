@@ -1,0 +1,2831 @@
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import {
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  ArrowRight,
+  ArrowUpRight,
+  ShieldCheck,
+  Lock,
+  CreditCard,
+  Loader2,
+  Truck,
+  AlertTriangle,
+  CheckCircle2,
+  ShoppingCart,
+  MapPin,
+  FileText,
+  Download,
+  Plus,
+  Minus,
+  Trash2,
+  Phone,
+  Sparkles,
+  Gift,
+  Coins,
+  Store,
+  Globe,
+  Package,
+  UploadCloud,
+  FileCheck,
+  BadgeCheck
+} from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { getProductPrice } from '../../data';
+import LocationInput from '../../components/LocationInput';
+import CityInput from '../../components/CityInput';
+import PostalCodeInput from '../../components/PostalCodeInput';
+import PaymentForm from './PaymentForm';
+import SecurePaymentBadges from '../../components/checkout/SecurePaymentBadges';
+import Price from '../../components/ui/Price';
+import StoreBankDetailsCard from '../../components/StoreBankDetailsCard';
+import api from '../../api';
+import CountryCodeSelect from '../../components/CountryCodeSelect';
+import { PHONE_COUNTRIES, getCheckoutPhone, splitPhoneNumber } from '../../utils/phoneNumbers';
+
+const POPULAR_INTERNATIONAL_COUNTRIES = [
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'US', name: 'United States', flag: '🇺🇸' },
+  { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪' },
+  { code: 'DE', name: 'Germany', flag: '🇩🇪' },
+  { code: 'FR', name: 'France', flag: '🇫🇷' },
+  { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+  { code: 'CH', name: 'Switzerland', flag: '🇨🇭' },
+  { code: 'IT', name: 'Italy', flag: '🇮🇹' },
+  { code: 'NL', name: 'Netherlands', flag: '🇳🇱' },
+  { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
+  { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+  { code: 'JP', name: 'Japan', flag: '🇯🇵' },
+];
+
+const POSTNET_AVAILABLE_CITIES = [
+  { name: 'Sandton', postalCode: '2196', lat: -26.1076, lng: 28.0567 },
+  { name: 'Johannesburg', postalCode: '2000', lat: -26.2041, lng: 28.0473 },
+  { name: 'Cape Town', postalCode: '8001', lat: -33.9249, lng: 18.4241 },
+  { name: 'Durban', postalCode: '4001', lat: -29.8587, lng: 31.0218 },
+  { name: 'Pretoria', postalCode: '0002', lat: -25.7479, lng: 28.2293 },
+  { name: 'Stellenbosch', postalCode: '7600', lat: -33.9321, lng: 18.8602 },
+  { name: 'Centurion', postalCode: '0157', lat: -25.8603, lng: 28.1895 },
+  { name: 'Gqeberha', postalCode: '6001', lat: -33.9608, lng: 25.6022 },
+  { name: 'Bloemfontein', postalCode: '9301', lat: -29.0852, lng: 26.1596 },
+  { name: 'East London', postalCode: '5201', lat: -33.0153, lng: 27.9116 }
+];
+
+const FALLBACK_PUDO_LOCKERS = [
+  { id: 'pudo-jhb-sandton', name: 'PUDO Locker Sandton City Mall', address: '83 Rivonia Rd, Sandhurst, Sandton', suburb: 'Sandton', city: 'Johannesburg', postalCode: '2196', distance: 2.1, lat: -26.1076, lng: 28.0567 },
+  { id: 'pudo-jhb-rosebank', name: 'PUDO Locker Rosebank Mall', address: '50 Bath Ave, Rosebank', suburb: 'Rosebank', city: 'Johannesburg', postalCode: '2196', distance: 3.4, lat: -26.1458, lng: 28.0416 },
+  { id: 'pudo-jhb-fourways', name: 'PUDO Locker Fourways Mall', address: 'Cnr William Nicol & Fourways Blvd', suburb: 'Fourways', city: 'Johannesburg', postalCode: '2055', distance: 5.8, lat: -26.0195, lng: 28.0065 },
+  { id: 'pudo-cpt-waterfront', name: 'PUDO Locker V&A Waterfront', address: '19 Breakwater Blvd, Victoria & Alfred Waterfront', suburb: 'Waterfront', city: 'Cape Town', postalCode: '8001', distance: 1.8, lat: -33.9036, lng: 18.4205 },
+  { id: 'pudo-cpt-canalwalk', name: 'PUDO Locker Canal Walk Shopping Centre', address: 'Century Blvd, Century City', suburb: 'Century City', city: 'Cape Town', postalCode: '7441', distance: 4.2, lat: -33.8928, lng: 18.5126 },
+  { id: 'pudo-dbn-gateway', name: 'PUDO Locker Gateway Theatre of Shopping', address: '1 Palm Blvd, Umhlanga Ridge', suburb: 'Umhlanga', city: 'Durban', postalCode: '4319', distance: 2.5, lat: -29.7259, lng: 31.0664 },
+  { id: 'pudo-pta-menlyn', name: 'PUDO Locker Menlyn Park Shopping Centre', address: 'Atterbury Rd & Lois Ave, Menlyn', suburb: 'Menlyn', city: 'Pretoria', postalCode: '0063', distance: 3.1, lat: -25.7828, lng: 28.2753 },
+  { id: 'pudo-cpt-stellenbosch', name: 'PUDO Locker Eikestad Mall', address: '43 Andringa St, Stellenbosch Central', suburb: 'Stellenbosch', city: 'Stellenbosch', postalCode: '7600', distance: 2.0, lat: -33.9372, lng: 18.8617 }
+];
+
+export default function CheckoutPage({
+  cartItems,
+  updateCartQuantity,
+  removeFromCart,
+  onClearCart,
+  clearVendorCart,
+  onNotify
+}) {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const vendorId = searchParams.get('vendor');
+  const vendorCartItems = vendorId
+    ? cartItems.filter((item) => (item.storeId || item.vendorId || 'grand-store') === vendorId)
+    : cartItems;
+
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+
+  // 4-Step Wizard: 1 = Details, 2 = Delivery Method, 3 = Payment, 4 = Proof Upload
+  const [checkoutStep, setCheckoutStep] = useState(1);
+  const [quote, setQuote] = useState(null);
+  const [dutiesAccepted, setDutiesAccepted] = useState(false);
+  const [deliveryPreference, setDeliveryPreference] = useState('home'); // 'home' or 'postnet'
+  const [destinationMode, setDestinationMode] = useState('domestic_sa'); // 'domestic_sa' or 'international_dhl'
+  const [applyRewards, setApplyRewards] = useState(false);
+  const [useSuperCoins, setUseSuperCoins] = useState(true);
+  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+  const [isAgeConfirmed, setIsAgeConfirmed] = useState(false);
+  // Guest 18+ KYC and Document Verification state
+  const [guestIdType, setGuestIdType] = useState('national_id');
+  const [guestIdNumber, setGuestIdNumber] = useState('');
+  const [guestDob, setGuestDob] = useState('');
+  const [guestDocumentUrl, setGuestDocumentUrl] = useState('');
+  const [guestDocumentName, setGuestDocumentName] = useState('');
+  const [isUploadingGuestDoc, setIsUploadingGuestDoc] = useState(false);
+  const [guestDocError, setGuestDocError] = useState('');
+
+  const handleIdNumberChange = (e) => {
+    const val = e.target.value;
+    setGuestIdNumber(val);
+
+    // Auto-extract Date of Birth if South African National ID (13 digits: YYMMDD...)
+    if (guestIdType === 'national_id') {
+      const clean = val.replace(/\D/g, '');
+      if (clean.length >= 6) {
+        const yy = parseInt(clean.substring(0, 2), 10);
+        const mm = clean.substring(2, 4);
+        const dd = clean.substring(4, 6);
+        const monthNum = parseInt(mm, 10);
+        const dayNum = parseInt(dd, 10);
+
+        if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
+          const currentYear = new Date().getFullYear();
+          const currentYY = currentYear % 100;
+          const fullYear = yy <= currentYY ? 2000 + yy : 1900 + yy;
+          const calculatedAge = currentYear - fullYear;
+          if (calculatedAge >= 18 && calculatedAge <= 110) {
+            setGuestDob(`${fullYear}-${mm}-${dd}`);
+          }
+        }
+      }
+    }
+  };
+
+  const guestAge = useMemo(() => {
+    if (!guestDob) return null;
+    const b = new Date(guestDob);
+    if (isNaN(b.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - b.getFullYear();
+    const m = today.getMonth() - b.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < b.getDate())) {
+      age--;
+    }
+    return age;
+  }, [guestDob]);
+
+  const handleUploadGuestDocument = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!validTypes.includes(file.type) && !file.name.match(/\.(jpg|jpeg|png|webp|pdf)$/i)) {
+      setGuestDocError('Please upload an official ID image (JPG, PNG, WEBP) or PDF document.');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setGuestDocError('File size exceeds 10MB limit. Please upload a smaller file.');
+      return;
+    }
+
+    setIsUploadingGuestDoc(true);
+    setGuestDocError('');
+
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('document', file);
+
+      const res = await api.post('/checkout/upload-guest-document', formDataUpload, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (res.data && res.data.url) {
+        setGuestDocumentUrl(res.data.url);
+        setGuestDocumentName(file.name);
+        onNotify('Identification document uploaded successfully.');
+      } else {
+        throw new Error('No document URL returned');
+      }
+    } catch (err) {
+      console.error('Guest document upload error:', err);
+      const errMsg = err.response?.data?.message || err.message || 'Failed to upload document. Please retry.';
+      setGuestDocError(errMsg);
+      onNotify(errMsg);
+    } finally {
+      setIsUploadingGuestDoc(false);
+    }
+  };
+
+  const resolveUserFullName = (u) => {
+    if (!u) return '';
+    if (typeof u === 'string') return u.trim();
+    return (
+      u.name ||
+      u.fullName ||
+      u.displayName ||
+      [u.firstName, u.lastName].filter(Boolean).join(' ') ||
+      ''
+    ).trim();
+  };
+
+  const getStoredUser = () => {
+    try {
+      const raw = localStorage.getItem('userInfo');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const activeUser = user || getStoredUser();
+  const userFullName = resolveUserFullName(activeUser);
+
+  const [formData, setFormData] = useState(() => {
+    const u = user || getStoredUser();
+    const resolvedName = resolveUserFullName(u);
+    const parts = resolvedName.split(/\s+/).filter(Boolean);
+    const phoneInfo = splitPhoneNumber(u?.phone || u?.phoneNumber || '');
+    return {
+      email: u?.email || '',
+      fullName: resolvedName,
+      firstName: parts[0] || '',
+      lastName: parts.slice(1).join(' ') || '',
+      phone: phoneInfo.phone || '',
+      phoneCountry: phoneInfo.phoneCountry || 'South Africa',
+      address: '',
+      city: '',
+      postalCode: '',
+      country: 'South Africa',
+      lat: null,
+      lng: null
+    };
+  });
+
+  const [postnetPreview, setPostnetPreview] = useState({
+    loading: false,
+    stores: [],
+    searchedCity: '',
+    hasCityMatch: false,
+    usingNearestCity: false,
+    error: ''
+  });
+  const [preferredPostnetStore, setPreferredPostnetStore] = useState(null);
+  const [selectedPostnetBranch, setSelectedPostnetBranch] = useState(null);
+  const [isChangingPostnetBranch, setIsChangingPostnetBranch] = useState(false);
+  const [showAllPostnetBranches, setShowAllPostnetBranches] = useState(false);
+  const [showAllPostnetCities, setShowAllPostnetCities] = useState(false);
+
+  // The Courier Guy PUDO Smart Locker states
+  const [pudoLockers, setPudoLockers] = useState(FALLBACK_PUDO_LOCKERS);
+  const [preferredLocker, setPreferredLocker] = useState(null);
+  const [isLoadingPudo, setIsLoadingPudo] = useState(false);
+  const [lockerSearch, setLockerSearch] = useState('');
+  const [showAllPudoLockers, setShowAllPudoLockers] = useState(false);
+
+  const [paymentData, setPaymentData] = useState(null);
+  const [payfastUrl, setPayfastUrl] = useState(null);
+
+  const cartSubtotal = vendorCartItems.reduce(
+    (sum, item) => sum + getProductPrice(item.price) * item.quantity,
+    0
+  );
+  const cartItemCount = vendorCartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Super Coin discount calculation
+  const superCoinDiscount = useSuperCoins && quote?.superCoins
+    ? (quote.superCoins.maxDiscountRand || 0)
+    : 0;
+
+  const placeOrderBaseTotal = quote ? quote.aggregatedTotals.totalToPay : cartSubtotal;
+  const userRewardCredit = quote?.rewardBalance !== undefined
+    ? Number(quote.rewardBalance)
+    : Number(user?.rewardBalance || 0);
+
+  const cartCoinsEligibleSubtotal = vendorCartItems
+    .filter((item) => !(item.isSuperCoinEligible === false || item.isSuperCoinEligible === 'false' || item.isSuperCoinEligible === 0 || item.isSuperCoinEligible === '0'))
+    .reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+
+  const cartReferralEligibleSubtotal = vendorCartItems
+    .filter((item) => !(item.isReferralEligible === false || item.isReferralEligible === 'false' || item.isReferralEligible === 0 || item.isReferralEligible === '0'))
+    .reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+
+  const referralEligibleBase = quote?.referralEligibleSubtotal !== undefined
+    ? Number(quote.referralEligibleSubtotal)
+    : cartReferralEligibleSubtotal;
+  const referralRewardDiscount = applyRewards && userRewardCredit > 0
+    ? Math.min(userRewardCredit, Math.max(0, referralEligibleBase - superCoinDiscount))
+    : 0;
+  const displayedTotal = Math.max(0, parseFloat((placeOrderBaseTotal - superCoinDiscount - referralRewardDiscount).toFixed(2)));
+
+  useEffect(() => {
+    const isCoinsEligible = quote?.superCoins
+      ? ((quote.superCoins.maxDiscountRand || 0) > 0 || (quote.superCoins.eligibleSubtotal || 0) > 0)
+      : cartCoinsEligibleSubtotal > 0;
+    if (!isCoinsEligible && useSuperCoins) {
+      setUseSuperCoins(false);
+    }
+  }, [quote, useSuperCoins, cartCoinsEligibleSubtotal]);
+
+  useEffect(() => {
+    const isReferralEligible = (quote?.referralEligibleSubtotal !== undefined ? Number(quote.referralEligibleSubtotal) : cartReferralEligibleSubtotal) > 0;
+    if (!isReferralEligible && applyRewards) {
+      setApplyRewards(false);
+    }
+  }, [quote, applyRewards, cartReferralEligibleSubtotal]);
+
+  const handleUpdateQuantity = (productId, option, newQuantity) => {
+    if (updateCartQuantity) updateCartQuantity(productId, option, newQuantity);
+    setQuote(null);
+    setDutiesAccepted(false);
+    if (checkoutStep > 1) {
+      setCheckoutStep(1);
+      if (onNotify) onNotify('Cart updated. Please review delivery details to recalculate shipping.');
+    }
+  };
+
+  const handleRemoveItem = (item) => {
+    if (removeFromCart) removeFromCart(item);
+    setQuote(null);
+    setDutiesAccepted(false);
+    if (checkoutStep > 1) {
+      setCheckoutStep(1);
+      if (onNotify) onNotify('Item removed from cart. Please review delivery details.');
+    }
+  };
+
+  useEffect(() => {
+    document.title = 'Checkout – The Grand Store';
+    window.scrollTo({ top: 0, behavior: 'auto' });
+
+    if (user && user.role && (user.role.startsWith('vendor') || user.role === 'admin')) {
+      onNotify('Vendors and admins cannot checkout. Please login as a customer to buy.');
+      navigate('/register');
+    }
+  }, [user, navigate, onNotify]);
+
+  useEffect(() => {
+    const u = user || getStoredUser();
+    if (u) {
+      const resolvedName = resolveUserFullName(u);
+      const nameParts = resolvedName.split(/\s+/).filter(Boolean);
+      const phoneInfo = splitPhoneNumber(u.phone || u.phoneNumber || '');
+      setFormData((prev) => {
+        const effectiveFullName = prev.fullName || resolvedName;
+        const parts = effectiveFullName.split(/\s+/).filter(Boolean);
+        return {
+          ...prev,
+          email: prev.email || u.email || '',
+          fullName: effectiveFullName,
+          firstName: prev.firstName || parts[0] || '',
+          lastName: prev.lastName || parts.slice(1).join(' ') || '',
+          ...(prev.phone ? { phone: prev.phone, phoneCountry: prev.phoneCountry } : phoneInfo)
+        };
+      });
+    }
+  }, [user]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'fullName') {
+      const parts = value.trim().split(/\s+/).filter(Boolean);
+      setFormData((current) => ({
+        ...current,
+        fullName: value,
+        firstName: parts[0] || value.trim(),
+        lastName: parts.slice(1).join(' ')
+      }));
+    } else if (name === 'firstName' || name === 'lastName') {
+      setFormData((current) => {
+        const next = { ...current, [name]: value };
+        next.fullName = `${next.firstName || ''} ${next.lastName || ''}`.trim();
+        return next;
+      });
+    } else if (name === 'phone') {
+      setFormData((current) => ({ ...current, phone: value.replace(/[^0-9]/g, '') }));
+    } else {
+      setFormData((current) => ({ ...current, [name]: value }));
+    }
+
+    if (['address', 'city', 'postalCode', 'country'].includes(name)) {
+      setQuote(null);
+      setDutiesAccepted(false);
+    }
+  };
+
+  const handleCityChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((current) => ({
+      ...current,
+      [name]: value,
+      postalCode: '',
+      lat: null,
+      lng: null
+    }));
+    setPreferredPostnetStore(null);
+    setSelectedPostnetBranch(null);
+    setPreferredLocker(null);
+    setIsChangingPostnetBranch(false);
+    setPostnetPreview({
+      loading: false,
+      stores: [],
+      searchedCity: value,
+      hasCityMatch: false,
+      usingNearestCity: false,
+      error: ''
+    });
+    setQuote(null);
+    setDutiesAccepted(false);
+  };
+
+  const selectDeliveryPreference = (preference) => {
+    if (deliveryPreference === preference) return;
+    setDeliveryPreference(preference);
+    setQuote(null);
+    setDutiesAccepted(false);
+    if (preference === 'postnet' || preference === 'pudo') {
+      setFormData((current) => ({ ...current, country: 'South Africa' }));
+    }
+  };
+
+  const selectDeliveryMode = (mode) => {
+    setQuote(null);
+    setDutiesAccepted(false);
+    if (mode === 'domestic_home') {
+      setDestinationMode('domestic_sa');
+      setDeliveryPreference('home');
+      setFormData((current) => ({ ...current, country: 'South Africa' }));
+    } else if (mode === 'domestic_pudo') {
+      setDestinationMode('domestic_sa');
+      setDeliveryPreference('pudo');
+      setFormData((current) => ({ ...current, country: 'South Africa' }));
+    } else if (mode === 'domestic_postnet') {
+      setDestinationMode('domestic_sa');
+      setDeliveryPreference('postnet');
+      setFormData((current) => ({ ...current, country: 'South Africa' }));
+    } else if (mode === 'international_dhl') {
+      setDestinationMode('international_dhl');
+      setDeliveryPreference('home');
+      const currentCountry = formData.country && !['south africa', 'za', 'rsa'].includes(formData.country.trim().toLowerCase())
+        ? formData.country
+        : 'United Kingdom';
+      setFormData((current) => ({ ...current, country: currentCountry }));
+    }
+  };
+
+  // PUDO Smart Locker Locator effect
+  useEffect(() => {
+    if (deliveryPreference !== 'pudo') return undefined;
+
+    let cancelled = false;
+    setIsLoadingPudo(true);
+
+    const fetchLockers = async () => {
+      try {
+        const queryParams = new URLSearchParams();
+        if (formData.city) queryParams.append('city', formData.city);
+        if (formData.lat) queryParams.append('lat', formData.lat);
+        if (formData.lng) queryParams.append('lng', formData.lng);
+
+        const res = await api.get(`/tcg/lockers?${queryParams.toString()}`);
+        if (!cancelled && res.data && Array.isArray(res.data.lockers) && res.data.lockers.length > 0) {
+          setPudoLockers(res.data.lockers);
+          return;
+        }
+      } catch (err) {
+        console.log('Failed to fetch live PUDO lockers:', err?.message || err);
+      }
+      if (!cancelled) {
+        setPudoLockers(FALLBACK_PUDO_LOCKERS);
+      }
+      setIsLoadingPudo(false);
+    };
+
+    fetchLockers();
+    return () => {
+      cancelled = true;
+    };
+  }, [deliveryPreference, formData.city, formData.lat, formData.lng]);
+
+  const filteredPudoLockers = useMemo(() => {
+    if (!lockerSearch.trim()) return pudoLockers;
+    const term = lockerSearch.toLowerCase();
+    return (pudoLockers || []).filter((l) =>
+      (l.name || '').toLowerCase().includes(term) ||
+      (l.address || '').toLowerCase().includes(term) ||
+      (l.suburb || '').toLowerCase().includes(term) ||
+      (l.city || '').toLowerCase().includes(term) ||
+      (l.postalCode || '').includes(term)
+    );
+  }, [pudoLockers, lockerSearch]);
+
+  // PostNet Store Locator effect
+  useEffect(() => {
+    const isSouthAfricanCity = ['south africa', 'za', 'rsa'].includes(String(formData.country || '').trim().toLowerCase());
+    const shouldFindPostnet = deliveryPreference === 'postnet'
+      && isSouthAfricanCity
+      && formData.city;
+
+    if (!shouldFindPostnet) return undefined;
+
+    let cancelled = false;
+    setPostnetPreview((current) => ({ ...current, loading: true, error: '', stores: [], searchedCity: formData.city }));
+
+    api.get('/postnet/locator', {
+      params: {
+        address: `${formData.city}, South Africa`,
+        city: formData.city,
+        lat: formData.lat,
+        lng: formData.lng
+      }
+    }).then((response) => {
+      if (cancelled) return;
+      const stores = response.data?.stores || [];
+      setPostnetPreview({
+        loading: false,
+        stores,
+        searchedCity: response.data?.searchedCity || formData.city,
+        hasCityMatch: Boolean(response.data?.hasCityMatch),
+        usingNearestCity: Boolean(response.data?.usingNearestCity),
+        error: ''
+      });
+      // Do NOT auto-select stores[0]. Allow user to see all branches and pick their preferred branch.
+      if (preferredPostnetStore && stores.length > 0 && !stores.some((s) => s.id === preferredPostnetStore.id)) {
+        setPreferredPostnetStore(null);
+      }
+    }).catch((error) => {
+      if (cancelled) return;
+      setPostnetPreview({
+        loading: false,
+        stores: [],
+        searchedCity: formData.city,
+        hasCityMatch: false,
+        usingNearestCity: false,
+        error: error.response?.data?.message || 'PostNet branches could not be loaded. Please try again.'
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [deliveryPreference, formData.city, formData.country, formData.lat, formData.lng]);
+
+  const postnetPostalCodes = useMemo(() => (
+    [...new Set(postnetPreview.stores.filter((store) => store.isInSelectedCity).map((store) => (
+      store.postalCode || String(store.address || '').match(/\b\d{4}\b/)?.[0]
+    )).filter(Boolean))]
+  ), [postnetPreview.stores]);
+
+  const fetchQuote = async (shippingAddress = formData, overridePostnetStore = null) => {
+    setQuoteLoading(true);
+
+    try {
+      const effectiveStore = overridePostnetStore || preferredPostnetStore || selectedPostnetBranch;
+
+      const payload = {
+        cartItems: vendorCartItems.map((item) => ({
+          product: item.id || item._id,
+          name: item.fullName || item.name,
+          quantity: item.quantity,
+          option: item.option,
+          image: item.image
+        })),
+        shippingAddress: {
+          address: deliveryPreference === 'pudo' && preferredLocker
+            ? preferredLocker.address
+            : deliveryPreference === 'postnet' && effectiveStore
+            ? effectiveStore.address
+            : (shippingAddress.address || 'Collection Address'),
+          city: (deliveryPreference === 'pudo' && preferredLocker?.city) || shippingAddress.city,
+          postalCode: (deliveryPreference === 'pudo' && preferredLocker?.postalCode) || (deliveryPreference === 'postnet' && effectiveStore?.postalCode) || shippingAddress.postalCode || '0001',
+          country: shippingAddress.country || 'South Africa',
+          lat: shippingAddress.lat,
+          lng: shippingAddress.lng
+        },
+        deliveryPreference,
+        selectedLocker: deliveryPreference === 'pudo' ? preferredLocker : null,
+        preferredPostnetStore: deliveryPreference === 'postnet' ? effectiveStore : null,
+        selectedPostnetStore: deliveryPreference === 'postnet' ? effectiveStore : null
+      };
+
+      const res = await api.post('/checkout/quote', payload);
+      const data = res.data;
+
+      if (preferredLocker && deliveryPreference === 'pudo') {
+        data.selectedLocker = preferredLocker;
+        data.shipments = (data.shipments || []).map((shipment) => ({
+          ...shipment,
+          selectedLocker: preferredLocker
+        }));
+      } else if (effectiveStore && deliveryPreference === 'postnet') {
+        data.selectedPostnetStore = effectiveStore;
+        data.shipments = (data.shipments || []).map((shipment) => ({
+          ...shipment,
+          selectedPickupStore: shipment.selectedPickupStore || effectiveStore
+        }));
+      }
+
+      if (data && Array.isArray(data.shipments)) {
+        data.shipments = data.shipments.map((shipment) => {
+          const validQuotes = (shipment.shippingQuotes || []).filter(
+            (q) => q.serviceLevel !== 'PostNet Standard Delivery' && (Number(q.cost) >= 0 || q.isFreeDelivery || (q.serviceLevel && q.serviceLevel.includes('Economy Road')))
+          );
+          const validSelected = (shipment.selectedCourier && shipment.selectedCourier.serviceLevel !== 'PostNet Standard Delivery' && (Number(shipment.selectedCourier.cost) >= 0 || shipment.selectedCourier.isFreeDelivery || (shipment.selectedCourier.serviceLevel && shipment.selectedCourier.serviceLevel.includes('Economy Road'))))
+            ? shipment.selectedCourier
+            : (validQuotes[0] || null);
+          return {
+            ...shipment,
+            shippingQuotes: validQuotes,
+            selectedCourier: validSelected
+          };
+        });
+
+        const totalShipping = data.shipments.reduce(
+          (sum, shp) => sum + (shp.selectedCourier ? Number(shp.selectedCourier.cost) : 0),
+          0
+        );
+        data.aggregatedTotals = {
+          ...data.aggregatedTotals,
+          shipping: totalShipping,
+          totalToPay: parseFloat((Number(data.globalSubtotal || 0) + totalShipping).toFixed(2))
+        };
+      }
+
+      setQuote(data);
+      return data;
+    } catch (error) {
+      console.error('Quote fetch error:', error);
+      onNotify(error.response?.data?.message || error.message || 'Failed to get shipping quote. Check address details.');
+      return null;
+    } finally {
+      setQuoteLoading(false);
+    }
+  };
+
+  const handleCourierSelect = (shipmentIndex, courierOption) => {
+    if (!quote) return;
+
+    const newShipments = [...quote.shipments];
+    const isPickup = courierOption.deliveryType === 'pickup' ||
+      (courierOption.serviceLevel || '').toLowerCase().includes('collection') ||
+      (courierOption.serviceLevel || '').toLowerCase().includes('pickup') ||
+      (courierOption.serviceLevel || '').toLowerCase().includes('pudo');
+
+    const effectiveStore = preferredPostnetStore || selectedPostnetBranch;
+
+    newShipments[shipmentIndex] = {
+      ...newShipments[shipmentIndex],
+      selectedCourier: courierOption,
+      selectedPickupStore: isPickup
+        ? (newShipments[shipmentIndex].selectedPickupStore || effectiveStore)
+        : null
+    };
+
+    const newShippingTotal = newShipments.reduce(
+      (sum, shp) => sum + (shp.selectedCourier ? shp.selectedCourier.cost : 0),
+      0
+    );
+
+    setQuote({
+      ...quote,
+      shipments: newShipments,
+      aggregatedTotals: {
+        ...quote.aggregatedTotals,
+        shipping: newShippingTotal,
+        totalToPay: parseFloat((quote.globalSubtotal + newShippingTotal).toFixed(2))
+      }
+    });
+  };
+
+  const handleSelectBranchCandidate = (store) => {
+    setSelectedPostnetBranch(store);
+    handleConfirmPostnetStore(store);
+  };
+
+  const handleConfirmPostnetStore = (storeToConfirm) => {
+    const store = storeToConfirm || selectedPostnetBranch;
+    if (!store) {
+      onNotify('Please choose a PostNet branch from the list.');
+      return;
+    }
+    setPreferredPostnetStore(store);
+    setSelectedPostnetBranch(store);
+    setIsChangingPostnetBranch(false);
+    if (store?.postalCode) {
+      setFormData((current) => ({
+        ...current,
+        postalCode: store.postalCode
+      }));
+    }
+    if (quote) {
+      setQuote((currentQuote) => ({
+        ...currentQuote,
+        selectedPostnetStore: store,
+        shipments: currentQuote.shipments.map((shipment) => ({
+          ...shipment,
+          selectedPickupStore: store
+        }))
+      }));
+    }
+  };
+
+  // Step 1 -> Step 2 validation
+  const handleProceedToDeliveryMethod = async (e) => {
+    if (e) e.preventDefault();
+
+    const effectiveFullName = (formData.fullName || `${formData.firstName || ''} ${formData.lastName || ''}`).trim();
+    if (!effectiveFullName || !formData.phone || !formData.email) {
+      onNotify('Please fill in your recipient contact details including full name and email address.');
+      return;
+    }
+    if (!getCheckoutPhone(formData.phone, formData.phoneCountry)) {
+      onNotify('Please select a country code and enter a valid phone number for that country.');
+      return;
+    }
+
+    /*
+    ========================================================================================
+    [COMMENTED OUT FOR NOW - 18+ DOCUMENT VERIFICATION IS ONLY REQUIRED FOR AUCTIONS, NOT NORMAL CHECKOUT]
+    ========================================================================================
+    if (!isAgeConfirmed) {
+      onNotify('You must certify that you are 18 years of age or older to purchase alcoholic beverages.');
+      return;
+    }
+
+    if (!user) {
+      if (!guestIdNumber.trim()) {
+        onNotify("Please provide your official ID, Passport, or Driver's License number.");
+        return;
+      }
+      if (!guestDob) {
+        onNotify('Please select your Date of Birth for mandatory 18+ age verification.');
+        return;
+      }
+      if (!guestDocumentUrl) {
+        onNotify('Please upload a photo or scan of your official ID document to proceed.');
+        return;
+      }
+    }
+    ========================================================================================
+    */
+
+    if (deliveryPreference === 'home' && (!formData.address || !formData.city || !formData.postalCode)) {
+      onNotify('Please provide your complete street address, city, and postal code for door delivery.');
+      return;
+    }
+
+    if (deliveryPreference === 'pudo') {
+      if (!preferredLocker) {
+        onNotify('Please search and select your preferred PUDO Smart Locker.');
+        return;
+      }
+    }
+
+    if (deliveryPreference === 'postnet') {
+      if (!formData.city) {
+        onNotify('Please search for your city or suburb for PostNet collection.');
+        return;
+      }
+      const branchToConfirm = preferredPostnetStore || selectedPostnetBranch;
+      if (!branchToConfirm) {
+        onNotify('Please select and confirm your preferred PostNet collection branch.');
+        return;
+      }
+      handleConfirmPostnetStore(branchToConfirm);
+    }
+
+    const effectiveStore = preferredPostnetStore || selectedPostnetBranch;
+    const currentQuote = await fetchQuote(formData, effectiveStore);
+    if (currentQuote) {
+      setCheckoutStep(2);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Step 2 -> Step 3 validation
+  const handleProceedToPayment = () => {
+    if (!quote) {
+      onNotify('Please calculate your delivery quote first.');
+      return;
+    }
+
+    if (deliveryPreference === 'postnet' && !preferredPostnetStore) {
+      onNotify('Please select a PostNet collection store.');
+      return;
+    }
+
+    if (quote.hasInternational && !dutiesAccepted) {
+      onNotify('Please accept the International Duties acknowledgment.');
+      return;
+    }
+
+    setCheckoutStep(3);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const [paymentMethod, setPaymentMethod] = useState('payfast');
+  const [createdOrderId, setCreatedOrderId] = useState(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
+  const [proofUrl, setProofUrl] = useState('');
+
+  const [isGift, setIsGift] = useState(false);
+  const [giftRecipientName, setGiftRecipientName] = useState('');
+  const [giftMessage, setGiftMessage] = useState('');
+
+  // Submit Final Order
+  const handlePlaceOrder = async (e) => {
+    e.preventDefault();
+
+    const phoneDetails = getCheckoutPhone(formData.phone, formData.phoneCountry);
+    if (!phoneDetails) {
+      onNotify('Please select a country code and enter a valid phone number for that country.');
+      return;
+    }
+
+    if (!quote) {
+      onNotify('Please calculate and select a delivery option first.');
+      return;
+    }
+
+    /*
+    if (!isAgeConfirmed) {
+      onNotify('You must confirm that you are 18 years of age or older to purchase alcoholic beverages.');
+      return;
+    }
+    */
+
+    setLoading(true);
+
+    try {
+      const isGuest = !user;
+      const guestName = (formData.fullName || `${formData.firstName || ''} ${formData.lastName || ''}`).trim() || 'Valued Customer';
+      const effectivePostnetBranch = preferredPostnetStore || selectedPostnetBranch;
+
+      const isLockerOrder = deliveryPreference === 'pudo' || Boolean(preferredLocker);
+      const isPickupOrder = deliveryPreference === 'postnet' || (quote.shipments || []).some(
+        shp => shp.selectedCourier?.deliveryType === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection')
+      );
+
+      const normalizedShipments = (quote.shipments || []).map((shp) => {
+        const isShpPickup = shp.selectedCourier?.deliveryType === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection');
+        return {
+          ...shp,
+          selectedPickupStore: (isShpPickup || isPickupOrder)
+            ? (shp.selectedPickupStore || effectivePostnetBranch || null)
+            : null,
+          selectedLocker: isLockerOrder
+            ? (shp.selectedLocker || preferredLocker || null)
+            : null
+        };
+      });
+
+      const orderData = {
+        quote: {
+          ...quote,
+          selectedLocker: isLockerOrder ? preferredLocker : null,
+          selectedPostnetStore: isPickupOrder ? effectivePostnetBranch : null,
+          shipments: normalizedShipments
+        },
+        isGuest,
+        guestEmail: formData.email,
+        guestName: guestName,
+        guestPhone: phoneDetails.phone,
+        isAgeConfirmed: isAgeConfirmed,
+        guestKyc: isGuest ? {
+          idType: guestIdType,
+          idNumber: guestIdNumber.trim(),
+          dateOfBirth: guestDob,
+          documentUrl: guestDocumentUrl
+        } : (guestDocumentUrl ? {
+          idType: guestIdType,
+          idNumber: guestIdNumber.trim(),
+          dateOfBirth: guestDob,
+          documentUrl: guestDocumentUrl
+        } : undefined),
+        shippingAddress: {
+          name: guestName,
+          fullName: guestName,
+          firstName: formData.firstName || guestName.split(' ')[0] || '',
+          lastName: formData.lastName || guestName.split(' ').slice(1).join(' ') || '',
+          email: formData.email,
+          address: isLockerOrder && preferredLocker
+            ? preferredLocker.address
+            : isPickupOrder && effectivePostnetBranch
+            ? effectivePostnetBranch.address
+            : formData.address,
+          city: (isLockerOrder && preferredLocker?.city) || formData.city,
+          postalCode: (isLockerOrder && preferredLocker?.postalCode) || formData.postalCode,
+          country: formData.country,
+          ...phoneDetails
+        },
+        deliveryPreference: isLockerOrder ? 'pudo' : isPickupOrder ? 'postnet' : 'home',
+        selectedLocker: isLockerOrder ? preferredLocker : null,
+        selectedPostnetStore: isPickupOrder ? effectivePostnetBranch : null,
+        preferredPostnetStore: isPickupOrder ? effectivePostnetBranch : null,
+        paymentMethod: paymentMethod === 'payfast' ? 'PayFast' : 'Bank Transfer',
+        isGift,
+        giftRecipientName,
+        giftMessage,
+        applyRewards,
+        useSuperCoins
+      };
+
+      const res = await api.post('/orders', orderData);
+      const data = res.data;
+      setCreatedOrderId(data._id);
+
+      if (paymentMethod === 'payfast') {
+        const pfRes = await api.post('/payfast/generate-shop', { orderId: data._id });
+        setPayfastUrl(pfRes.data.url);
+        setPaymentData(pfRes.data.data);
+      } else {
+        // Step 4: Bank Transfer Proof Upload Screen
+        setCheckoutStep(4);
+      }
+    } catch (error) {
+      console.error(error);
+      const msg = error.response?.data?.message || error.message || 'Failed to place order';
+      onNotify(msg);
+      if (msg.includes('expired')) {
+        setCheckoutStep(1);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUploadProof = async (e) => {
+    e.preventDefault();
+    if (!proofUrl) {
+      onNotify('Please provide a link to the proof of payment document.');
+      return;
+    }
+    setUploadingProof(true);
+    try {
+      await api.post(`/orders/${createdOrderId}/bank-transfer/upload`, { proofUrl });
+      onNotify('Proof uploaded successfully. Awaiting verification.');
+      if (onClearCart) onClearCart(vendorId);
+      navigate(user ? `/customer/order/${createdOrderId}` : `/order-success/${createdOrderId}`);
+    } catch (error) {
+      onNotify(error.response?.data?.message || error.message || 'Failed to upload proof');
+    } finally {
+      setUploadingProof(false);
+    }
+  };
+
+  if (vendorCartItems.length === 0) {
+    return (
+      <main className="pt-32 pb-16 min-h-screen bg-[#050505]">
+        <div className="max-w-7xl mx-auto px-6 mb-12">
+          <div className="flex flex-col items-center justify-center text-center space-y-6 py-20 border border-white/10 bg-black/40 rounded-3xl">
+            <ShoppingCart size={48} className="text-white/20" />
+            <div>
+              <h2 className="text-3xl font-serif text-white mb-2">Your cart is empty</h2>
+              <p className="text-sm text-[var(--color-ivory-muted)]">Discover our curated reserve of luxury bottles.</p>
+            </div>
+            <Link to="/shop" className="px-8 py-3 bg-[var(--color-gold)] text-black font-bold uppercase tracking-widest text-xs rounded-xl hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all">
+              Explore Collection
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="pt-24 pb-36 min-h-screen bg-[#050505] md:pt-32 md:pb-16 text-white">
+      <div className="max-w-7xl mx-auto px-4 mb-8 sm:px-6 md:mb-12">
+        {/* Top Breadcrumb & Step Indicator */}
+        <div className="mb-6 flex items-center justify-between">
+          <button
+            onClick={() => {
+              if (checkoutStep > 1 && checkoutStep < 4) setCheckoutStep(checkoutStep - 1);
+              else navigate(-1);
+            }}
+            className="flex items-center gap-2 text-gray-400 hover:text-[var(--color-gold)] transition-colors text-xs font-medium uppercase tracking-wider"
+          >
+            <ArrowRight size={14} className="rotate-180" /> Back
+          </button>
+          <div className="hidden sm:flex items-center gap-2 text-[10px] text-emerald-400 font-medium tracking-widest uppercase bg-emerald-950/40 px-3 py-1 rounded-full border border-emerald-500/20">
+            <Lock size={11} /> 256-Bit Encrypted Luxury Checkout
+          </div>
+        </div>
+
+        {/* 4-Step Progress Indicator */}
+        {checkoutStep !== 4 && (
+          <nav aria-label="Checkout Progress" className="mb-8 overflow-x-auto pb-2">
+            <div className="flex items-center min-w-max justify-between gap-2 border-b border-white/10 pb-4">
+              {[
+                { step: 1, label: 'Delivery Details', icon: MapPin },
+                { step: 2, label: 'Delivery Method', icon: Truck },
+                { step: 3, label: 'Payment', icon: CreditCard },
+                { step: 4, label: 'Confirmation', icon: CheckCircle2 }
+              ].map((item) => {
+                const ItemIcon = item.icon;
+                const isActive = checkoutStep === item.step;
+                const isCompleted = checkoutStep > item.step;
+                return (
+                  <button
+                    key={item.step}
+                    type="button"
+                    disabled={item.step > checkoutStep && item.step !== 2}
+                    onClick={() => {
+                      if (item.step < checkoutStep) setCheckoutStep(item.step);
+                    }}
+                    className={`flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all ${
+                      isActive
+                        ? 'bg-[var(--color-gold)]/10 text-[var(--color-gold)] border border-[var(--color-gold)]/30 font-medium'
+                        : isCompleted
+                        ? 'text-white/80 hover:text-white cursor-pointer'
+                        : 'text-white/30 cursor-not-allowed'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                        isCompleted
+                          ? 'bg-[var(--color-gold)] text-black'
+                          : isActive
+                          ? 'border border-[var(--color-gold)] text-[var(--color-gold)]'
+                          : 'bg-white/10 text-white/40'
+                      }`}
+                    >
+                      {isCompleted ? <CheckCircle2 size={14} /> : item.step}
+                    </span>
+                    <span className="text-xs uppercase tracking-wider">{item.label}</span>
+                    {item.step < 4 && <ChevronRight size={14} className="text-white/20 ml-2" />}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+        )}
+
+        <div className="flex flex-col lg:flex-row-reverse lg:items-start gap-8 w-full md:gap-12 xl:gap-16">
+          {/* Right Column - Itemised Order Summary */}
+          {checkoutStep !== 4 && (
+            <div className="w-full lg:w-[420px] xl:w-[450px] lg:sticky lg:top-32 shrink-0">
+              <div className="w-full bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-7 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-gold)] to-transparent opacity-60"></div>
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-gold)] mb-1">Your Order</p>
+                    <h2 className="text-xl font-serif text-white">Summary</h2>
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-black/40 px-3 py-1 text-xs text-[var(--color-ivory-muted)]">
+                    {cartItemCount} {cartItemCount === 1 ? 'item' : 'items'}
+                  </span>
+                </div>
+
+                {/* Mobile Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setMobileSummaryOpen(!mobileSummaryOpen)}
+                  className="mb-4 flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-xs text-white md:hidden"
+                >
+                  <span>{mobileSummaryOpen ? 'Hide bottle details' : 'Show bottle details'}</span>
+                  {mobileSummaryOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+
+                {/* Items List */}
+                <div className={`${mobileSummaryOpen ? 'block' : 'hidden'} md:block space-y-3 border-b border-white/10 pb-4`}>
+                  {vendorCartItems.map((item) => {
+                    const itemId = item.id || item._id;
+                    const unitPrice = getProductPrice(item.price);
+                    const itemTotal = unitPrice * item.quantity;
+                    return (
+                      <div
+                        key={`${itemId}-${item.option || ''}`}
+                        className="bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 hover:border-white/10 p-3 rounded-xl transition-all space-y-2.5"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-12 h-12 rounded-lg border border-white/10 bg-black/50 p-1 flex items-center justify-center shrink-0">
+                              <img src={item.image} alt={item.fullName || item.name} className="max-w-full max-h-full object-contain" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-white truncate font-medium" title={item.fullName || item.name}>
+                                {item.fullName || item.name}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[11px] text-[var(--color-gold)] font-serif">
+                                  <Price amount={unitPrice} />
+                                </span>
+                                {item.option && (
+                                  <span className="text-[10px] text-white/40 uppercase tracking-wider">
+                                    · {item.option}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-xs font-serif font-bold text-white">
+                              <Price amount={itemTotal} />
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Quantity Stepper & Removal Controls */}
+                        <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                          <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-lg p-0.5">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateQuantity(itemId, item.option, item.quantity - 1)}
+                              aria-label={`Decrease ${item.fullName || item.name} quantity`}
+                              className="w-6 h-6 rounded flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                            >
+                              <Minus size={11} />
+                            </button>
+                            <span className="text-xs font-semibold text-white px-2 min-w-[20px] text-center select-none">
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateQuantity(itemId, item.option, item.quantity + 1)}
+                              aria-label={`Increase ${item.fullName || item.name} quantity`}
+                              className="w-6 h-6 rounded flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                            >
+                              <Plus size={11} />
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(item)}
+                            aria-label={`Remove ${item.fullName || item.name}`}
+                            className="flex items-center gap-1 text-[11px] text-white/40 hover:text-rose-400 transition-colors py-1 px-2 rounded hover:bg-rose-500/10"
+                          >
+                            <Trash2 size={12} />
+                            <span>Remove</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Financial Breakdown */}
+                <div className="space-y-3 pt-4 text-xs">
+                  <div className="flex justify-between text-[var(--color-ivory-muted)]">
+                    <span>Merchandise Subtotal</span>
+                    <span className="text-white"><Price amount={cartSubtotal} /></span>
+                  </div>
+
+                  <div className="flex justify-between text-[11px] text-white/50 pl-2">
+                    <span>Includes 15% South African VAT:</span>
+                    <span className="text-white/70 font-mono">
+                      <Price amount={(cartSubtotal * 0.15).toFixed(2)} />
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between text-[var(--color-ivory-muted)]">
+                    <span className="flex items-center gap-1.5">
+                      <Truck size={13} className="text-[var(--color-gold)]" />
+                      {deliveryPreference === 'postnet'
+                        ? 'PostNet Collection'
+                        : deliveryPreference === 'pudo'
+                        ? 'PUDO Locker Collection'
+                        : 'The Courier Guy Delivery'}
+                    </span>
+                    <span className="text-white font-mono">
+                      {quote ? (
+                        <Price amount={Number(quote.aggregatedTotals?.shipping || 0)} />
+                      ) : (
+                        'Calculated next'
+                      )}
+                    </span>
+                  </div>
+
+                  {/* Super Coins Deduction in Summary */}
+                  {superCoinDiscount > 0 && (
+                    <div className="flex justify-between items-center text-amber-300 bg-amber-400/10 px-2.5 py-1.5 rounded-lg border border-amber-400/20">
+                      <span className="flex items-center gap-1">
+                        <Coins size={12} /> Super Coins Applied
+                      </span>
+                      <span>-<Price amount={superCoinDiscount} /></span>
+                    </div>
+                  )}
+
+                  {/* Referral Rewards Deduction */}
+                  {referralRewardDiscount > 0 && (
+                    <div className="flex justify-between items-center text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded-lg border border-emerald-500/20">
+                      <span>Referral Credits</span>
+                      <span>-<Price amount={referralRewardDiscount} /></span>
+                    </div>
+                  )}
+
+                  {/* Gift Packaging & Note Tag */}
+                  {isGift && (
+                    <div className="flex justify-between items-center text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2.5 py-1.5 rounded-lg border border-[var(--color-gold)]/20">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <Gift size={12} /> Gift Packaging & Note
+                      </span>
+                      <span className="text-[10px] uppercase font-bold text-emerald-400">Complimentary</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Total To Pay */}
+                <div className="flex items-end justify-between border-t border-white/10 pt-4 mt-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)]">Total to Pay</p>
+                    <p className="text-[10px] text-white/40">Includes VAT & delivery</p>
+                  </div>
+                  <span className="text-2xl font-serif text-gold-gradient">
+                    <Price amount={displayedTotal} />
+                  </span>
+                </div>
+
+                {/* Potential Super Coins Earned Banner */}
+                {quote?.superCoins?.potentialCoinsToEarn > 0 && (
+                  <div className="mt-4 rounded-xl border border-[var(--color-gold)]/20 bg-[var(--color-gold)]/5 p-3 text-[11px] text-[var(--color-ivory)] flex items-center gap-2.5">
+                    <Sparkles size={16} className="text-[var(--color-gold)] shrink-0" />
+                    <span>
+                      Earn <strong className="text-[var(--color-gold)]">+{quote.superCoins.potentialCoinsToEarn} Super Coins</strong> (R{(quote.superCoins.potentialCoinsToEarn * 0.1).toFixed(2)}) upon order delivery!
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Left Column - 4-Step Content */}
+          <div className="w-full lg:w-auto flex-1 flex flex-col min-w-0">
+            {/* ========================================================================= */}
+            {/* STEP 1: DELIVERY DETAILS & LOCATION CHOICE                               */}
+            {/* ========================================================================= */}
+            {checkoutStep === 1 && (
+              <div className="space-y-6 animate-fadeIn">
+                <div>
+                  <h2 className="text-2xl font-serif text-white mb-1">1. Delivery Location</h2>
+                  <p className="text-xs text-[var(--color-ivory-muted)]">Choose how and where you want your luxury order delivered.</p>
+                </div>
+
+                {/* Express Guest Checkout Banner */}
+                {!user && (
+                  <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                        <Sparkles size={18} />
+                      </span>
+                      <div>
+                        <p className="text-xs font-semibold text-white">Express Guest Checkout</p>
+                        <p className="text-[11px] text-[var(--color-ivory-muted)]">
+                          No password required to order. You can claim 100 Super Coins in 1 click after payment.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/login?redirect=/customer/checkout"
+                      className="text-xs text-[var(--color-gold)] hover:underline shrink-0 font-medium tracking-wider uppercase flex items-center gap-1"
+                    >
+                      Already have an account? Log in <ChevronRight size={12} />
+                    </Link>
+                  </div>
+                )}
+
+                {/* Delivery Location & Fulfillment Mode */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                  {/* Card 1: South Africa Door Delivery */}
+                  <button
+                    type="button"
+                    onClick={() => selectDeliveryMode('domestic_home')}
+                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      destinationMode === 'domestic_sa' && deliveryPreference === 'home'
+                        ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_20px_rgba(212,175,55,0.12)] ring-1 ring-[var(--color-gold)]/30'
+                        : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between min-h-[32px] mb-3">
+                        <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'home' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
+                          <Truck size={18} />
+                        </span>
+                        {destinationMode === 'domestic_sa' && deliveryPreference === 'home' && (
+                          <CheckCircle2 size={16} className="text-[var(--color-gold)] shrink-0" />
+                        )}
+                      </div>
+                      <div className="mb-2">
+                        <p className="text-sm font-semibold text-white leading-snug">SA Door Delivery</p>
+                        <p className="text-[10px] text-[var(--color-gold)] font-medium leading-tight mt-0.5">🇿🇦 South Africa Direct Courier</p>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Door-to-door courier via Courier Guy & PostNet</p>
+                  </button>
+
+                  {/* Card 2: PUDO Smart Locker (The Courier Guy) */}
+                  <button
+                    type="button"
+                    onClick={() => selectDeliveryMode('domestic_pudo')}
+                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      destinationMode === 'domestic_sa' && deliveryPreference === 'pudo'
+                        ? 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.15)] ring-1 ring-emerald-400/30'
+                        : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between min-h-[32px] mb-3">
+                        <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'pudo' ? 'bg-emerald-400 text-black' : 'bg-white/5 text-emerald-400/70'}`}>
+                          <Package size={18} />
+                        </span>
+                        {destinationMode === 'domestic_sa' && deliveryPreference === 'pudo' && (
+                          <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                        )}
+                      </div>
+                      <div className="mb-2">
+                        <p className="text-sm font-semibold text-white leading-snug">PUDO Locker</p>
+                        <p className="text-[10px] text-emerald-400 font-medium leading-tight mt-0.5">🇿🇦 The Courier Guy 24/7</p>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Collect 24/7 at smart lockers across South Africa</p>
+                  </button>
+
+                  {/* Card 3: South Africa PostNet Store Collection */}
+                  <button
+                    type="button"
+                    onClick={() => selectDeliveryMode('domestic_postnet')}
+                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      destinationMode === 'domestic_sa' && deliveryPreference === 'postnet'
+                        ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_20px_rgba(212,175,55,0.12)] ring-1 ring-[var(--color-gold)]/30'
+                        : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between min-h-[32px] mb-3">
+                        <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'postnet' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
+                          <Store size={18} />
+                        </span>
+                        {destinationMode === 'domestic_sa' && deliveryPreference === 'postnet' && (
+                          <CheckCircle2 size={16} className="text-[var(--color-gold)] shrink-0" />
+                        )}
+                      </div>
+                      <div className="mb-2">
+                        <p className="text-sm font-semibold text-white leading-snug">PostNet Collection</p>
+                        <p className="text-[10px] text-red-400 font-medium leading-tight mt-0.5">🇿🇦 PostNet-to-PostNet</p>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Collect at over 450+ PostNet branches nationwide</p>
+                  </button>
+
+                  {/* Card 4: International Worldwide Delivery (DHL Express) */}
+                  <button
+                    type="button"
+                    onClick={() => selectDeliveryMode('international_dhl')}
+                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      destinationMode === 'international_dhl'
+                        ? 'border-amber-400 bg-amber-500/15 shadow-[0_0_25px_rgba(245,158,11,0.18)] ring-1 ring-amber-400/40'
+                        : 'border-white/10 bg-[#0d0d0d] hover:border-amber-400/40'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between min-h-[32px] mb-3">
+                        <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'international_dhl' ? 'bg-amber-400 text-black' : 'bg-white/5 text-amber-400/80'}`}>
+                          <Globe size={18} />
+                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono shrink-0 whitespace-nowrap">
+                            Worldwide
+                          </span>
+                          {destinationMode === 'international_dhl' && (
+                            <CheckCircle2 size={16} className="text-amber-400 shrink-0" />
+                          )}
+                        </div>
+                      </div>
+                      <div className="mb-2">
+                        <p className="text-sm font-semibold text-white leading-snug">DHL Express</p>
+                        <p className="text-[10px] text-amber-300/90 font-medium leading-tight mt-0.5">✈️ International Courier</p>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Air express courier to UK, USA, Europe & 50+ countries</p>
+                  </button>
+                </div>
+
+                {/* Recipient Details */}
+                <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
+                  <h3 className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-medium">Recipient Information</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70">Full Name *</label>
+                        {userFullName && formData.fullName === userFullName && (
+                          <span className="text-[10px] text-[var(--color-gold)] font-medium flex items-center gap-1 bg-[var(--color-gold)]/10 px-2.5 py-0.5 rounded-full border border-[var(--color-gold)]/25">
+                            <CheckCircle2 size={11} /> Auto-filled from profile
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        name="fullName"
+                        value={formData.fullName}
+                        onChange={handleChange}
+                        required
+                        placeholder="e.g. Johnathan Smith"
+                        className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors text-white placeholder:text-white/30"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Email Address (For Invoices & Tracking Updates) *</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        required
+                        placeholder="e.g. yourname@example.com"
+                        className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label htmlFor="checkout-phone" className="text-[11px] uppercase tracking-wider text-white/70 flex items-center gap-1.5">
+                          <Phone size={12} className="text-[var(--color-gold)]" /> Mobile Number (Required for PostNet SMS alerts) *
+                        </label>
+                      </div>
+                      <div className="flex min-w-0 rounded-xl border border-white/10 bg-black/60 focus-within:border-[var(--color-gold)] transition-colors relative overflow-visible">
+                        <CountryCodeSelect
+                          value={formData.phoneCountry}
+                          onChange={(dialCode, country) => {
+                            setFormData((current) => ({
+                              ...current,
+                              phoneCountry: country?.country || dialCode
+                            }));
+                          }}
+                          id="checkout-phone-country"
+                          buttonClassName="py-3 px-2.5 sm:px-3.5 rounded-l-xl bg-[#191712] hover:bg-[#232019] text-xs text-[var(--color-gold)] border-r border-white/10 shrink-0"
+                          showName={true}
+                        />
+                        <input
+                          id="checkout-phone"
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel-national"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleChange}
+                          required
+                          maxLength={17}
+                          placeholder="Mobile number"
+                          className="w-full min-w-0 bg-transparent rounded-r-xl px-3 py-3 text-sm focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* If Home Delivery: Street Address Inputs */}
+                {deliveryPreference === 'home' && (
+                  <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
+                    <h3 className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-medium">Delivery Address Details</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* 1. Street Address (Above) */}
+                      <div className="sm:col-span-2">
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Street Address *</label>
+                        <LocationInput
+                          name="address"
+                          value={formData.address}
+                          onChange={handleChange}
+                          onPlaceDetails={({ address, city, postalCode, country, lat, lng }) => {
+                            setFormData((current) => ({
+                              ...current,
+                              address: address || current.address,
+                              city: city || current.city,
+                              postalCode: postalCode || current.postalCode,
+                              country: country || current.country,
+                              lat: lat ?? current.lat,
+                              lng: lng ?? current.lng
+                            }));
+                            setQuote(null);
+                          }}
+                          required
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                          placeholder="Street number and name..."
+                        />
+                      </div>
+
+                      {/* 2. City / Suburb (Above) */}
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">City / Suburb *</label>
+                        <CityInput
+                          name="city"
+                          value={formData.city}
+                          onChange={handleCityChange}
+                          onCityDetails={({ city, postalCode, country, lat, lng }) => {
+                            const matchedCity = POSTNET_AVAILABLE_CITIES.find(
+                              (c) => c.name.toLowerCase() === city.toLowerCase()
+                            );
+                            const targetPostalCode = postalCode || matchedCity?.postalCode || '';
+                            setFormData((current) => ({
+                              ...current,
+                              city,
+                              postalCode: targetPostalCode || current.postalCode,
+                              country: country || current.country,
+                              lat,
+                              lng
+                            }));
+                            setQuote(null);
+                          }}
+                          required
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                          placeholder="e.g. Sandton or London"
+                        />
+                      </div>
+
+                      {/* 3. Postal Code (Above) */}
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Postal Code *</label>
+                        <PostalCodeInput
+                          name="postalCode"
+                          value={formData.postalCode}
+                          city={formData.city}
+                          cityLat={formData.lat}
+                          cityLng={formData.lng}
+                          suggestedPostalCodes={postnetPostalCodes}
+                          onChange={handleChange}
+                          onPostalDetails={({ postalCode }) => {
+                            setFormData((current) => ({ ...current, postalCode }));
+                            setQuote(null);
+                          }}
+                          required
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                          placeholder="e.g. 2196 or SW1A 2AA"
+                        />
+                      </div>
+
+                      {/* 4. Country */}
+                      <div className="sm:col-span-2">
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Country *</label>
+                        <input
+                          type="text"
+                          name="country"
+                          value={formData.country}
+                          onChange={handleChange}
+                          required
+                          placeholder="e.g. South Africa, United Kingdom, United States..."
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors text-white placeholder:text-white/30"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* If PostNet Store Collection: Branch Search & Selection */}
+                {deliveryPreference === 'postnet' && (
+                  <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold text-white">Choose Your Preferred PostNet Store</h3>
+                        <p className="text-xs text-[var(--color-ivory-muted)]">Search your suburb or city to find the nearest collection point.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">City / Suburb</label>
+                        <CityInput
+                          name="city"
+                          value={formData.city}
+                          onChange={handleCityChange}
+                          onCityDetails={({ city, postalCode, lat, lng }) => {
+                            const matchedCity = POSTNET_AVAILABLE_CITIES.find(
+                              (c) => c.name.toLowerCase() === city.toLowerCase()
+                            );
+                            const targetPostalCode = postalCode || matchedCity?.postalCode || '';
+                            setFormData((current) => ({
+                              ...current,
+                              city,
+                              postalCode: targetPostalCode || current.postalCode,
+                              lat,
+                              lng
+                            }));
+                            setQuote(null);
+                          }}
+                          restrictToSouthAfrica={true}
+                          required
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                          placeholder="Search suburb or city..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Postal Code</label>
+                        <PostalCodeInput
+                          name="postalCode"
+                          value={formData.postalCode}
+                          city={formData.city}
+                          cityLat={formData.lat}
+                          cityLng={formData.lng}
+                          suggestedPostalCodes={postnetPostalCodes}
+                          onChange={handleChange}
+                          onPostalDetails={({ postalCode }) => {
+                            setFormData((current) => ({ ...current, postalCode }));
+                            setQuote(null);
+                          }}
+                          restrictToSouthAfrica={true}
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                          placeholder="Postal code..."
+                        />
+                      </div>
+                    </div>
+
+                    {/* Popular SA Cities Quick Chips */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase tracking-wider text-white/50">Popular Cities:</span>
+                        {POSTNET_AVAILABLE_CITIES.length > 6 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllPostnetCities(!showAllPostnetCities)}
+                            className="text-[10px] text-[var(--color-gold)] hover:underline"
+                          >
+                            {showAllPostnetCities ? 'Show fewer' : 'Show all'}
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(showAllPostnetCities ? POSTNET_AVAILABLE_CITIES : POSTNET_AVAILABLE_CITIES.slice(0, 6)).map((city) => {
+                          const isSelected = String(formData.city || '').trim().toLowerCase() === city.name.toLowerCase();
+                          return (
+                            <button
+                              key={city.name}
+                              type="button"
+                              onClick={() => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  city: city.name,
+                                  postalCode: city.postalCode,
+                                  lat: city.lat,
+                                  lng: city.lng
+                                }));
+                                setPreferredPostnetStore(null);
+                                setIsChangingPostnetBranch(false);
+                                setQuote(null);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                                isSelected
+                                  ? 'bg-[var(--color-gold)] text-black font-bold shadow-md'
+                                  : 'bg-white/5 hover:bg-white/10 text-white/80 border border-white/10'
+                              }`}
+                            >
+                              📍 {city.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Confirmed Collection Point Card (shown when a store is confirmed and not currently changing) */}
+                    {preferredPostnetStore && !isChangingPostnetBranch && (
+                      <div className="rounded-xl border border-[var(--color-gold)] bg-[var(--color-gold)]/10 p-4 md:p-5 flex items-start justify-between gap-4 transition-all">
+                        <div className="flex items-start gap-3.5 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-[var(--color-gold)]/20 border border-[var(--color-gold)]/40 flex items-center justify-center text-[var(--color-gold)] shrink-0 mt-0.5">
+                            <Store size={20} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="text-[10px] uppercase tracking-widest text-emerald-400 font-bold bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                <CheckCircle2 size={11} /> Confirmed Collection Point
+                              </span>
+                              {preferredPostnetStore.distance !== null && preferredPostnetStore.distance !== undefined && (
+                                <span className="text-[11px] text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
+                                  📍 {preferredPostnetStore.distance} km away
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-base font-bold text-white truncate">{preferredPostnetStore.name}</p>
+                            <p className="text-xs text-[var(--color-ivory-muted)] mt-1 leading-relaxed">{preferredPostnetStore.address}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsChangingPostnetBranch(true);
+                            setSelectedPostnetBranch(preferredPostnetStore);
+                          }}
+                          className="px-3.5 py-2 rounded-lg border border-[var(--color-gold)]/50 bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)] hover:text-black text-xs font-bold text-[var(--color-gold)] uppercase tracking-wider transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
+                        >
+                          Change Branch
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Nearby Stores List (shown if no store selected or actively changing branch) */}
+                    {(!preferredPostnetStore || isChangingPostnetBranch) && (
+                      <div className="space-y-3 mt-4">
+                        {/* If actively changing, offer option to keep current selection */}
+                        {isChangingPostnetBranch && preferredPostnetStore && (
+                          <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                            <div className="text-xs text-white truncate pr-2">
+                              <span className="text-[var(--color-ivory-muted)]">Current branch: </span>
+                              <strong className="text-white">{preferredPostnetStore.name}</strong>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsChangingPostnetBranch(false);
+                                setSelectedPostnetBranch(preferredPostnetStore);
+                              }}
+                              className="text-[11px] text-[var(--color-gold)] hover:text-white uppercase font-bold tracking-wider underline shrink-0 cursor-pointer"
+                            >
+                              Keep Current Branch
+                            </button>
+                          </div>
+                        )}
+
+                        {!formData.city ? (
+                          <div className="text-center py-6 px-4 rounded-xl border border-dashed border-white/15 bg-black/20">
+                            <MapPin size={24} className="text-[var(--color-gold)]/60 mx-auto mb-2" />
+                            <p className="text-xs font-medium text-white">Enter your city or suburb above</p>
+                            <p className="text-[11px] text-[var(--color-ivory-muted)] mt-0.5">We will locate nearby PostNet branches for you to pick your collection point.</p>
+                          </div>
+                        ) : postnetPreview.loading ? (
+                          <div className="flex items-center justify-center p-6 bg-black/40 rounded-xl border border-white/5">
+                            <Loader2 size={24} className="animate-spin text-[var(--color-gold)] mr-3" />
+                            <span className="text-xs text-[var(--color-ivory-muted)]">Locating nearest PostNet branches near {formData.city}...</span>
+                          </div>
+                        ) : postnetPreview.error ? (
+                          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-300">
+                            {postnetPreview.error}
+                          </div>
+                        ) : postnetPreview.stores.length > 0 ? (
+                          <div className="space-y-3">
+                            {postnetPreview.usingNearestCity && (
+                              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5 flex items-start gap-3">
+                                <span className="text-base shrink-0 mt-0.5">📍</span>
+                                <div>
+                                  <p className="text-xs font-bold text-amber-400">Nearest Regional Hub</p>
+                                  <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                                    No direct PostNet branch found in "{postnetPreview.searchedCity}". Showing nearest available branches in <strong className="text-white">{postnetPreview.stores[0]?.city || 'the nearest regional hub'}</strong>.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between pt-1">
+                              <p className="text-xs font-semibold text-white uppercase tracking-wider">
+                                {isChangingPostnetBranch ? 'Select a different PostNet branch:' : 'Choose your PostNet collection branch:'}
+                              </p>
+                              <span className="text-[11px] text-[var(--color-ivory-muted)]">
+                                {postnetPreview.stores.length} {postnetPreview.stores.length === 1 ? 'branch' : 'branches'} found
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {(showAllPostnetBranches ? postnetPreview.stores : postnetPreview.stores.slice(0, 4)).map((store) => {
+                                const isSelected = (selectedPostnetBranch?.id || preferredPostnetStore?.id) === store.id;
+                                return (
+                                  <div
+                                    key={store.id}
+                                    onClick={() => handleSelectBranchCandidate(store)}
+                                    className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                                      isSelected
+                                        ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15 shadow-[0_0_15px_rgba(212,175,55,0.15)] ring-1 ring-[var(--color-gold)]/40'
+                                        : 'border-white/10 bg-black/40 hover:border-white/30 hover:bg-white/[0.03]'
+                                    }`}
+                                  >
+                                    <div>
+                                      <div className="flex items-start justify-between gap-2 mb-1">
+                                        <p className="text-sm font-semibold text-white leading-snug">{store.name}</p>
+                                        <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                                          isSelected ? 'bg-[var(--color-gold)] text-black' : 'border border-white/30 text-transparent'
+                                        }`}>
+                                          <CheckCircle2 size={13} className={isSelected ? 'text-black' : 'hidden'} />
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-[var(--color-ivory-muted)] line-clamp-2 mt-1 leading-relaxed">
+                                        {store.address}
+                                      </p>
+                                      <div className="flex flex-wrap gap-2 mt-2.5 text-[10px] uppercase tracking-wider">
+                                        <span className={store.isNearestAlternative ? 'text-amber-300' : 'text-emerald-300'}>
+                                          {store.isNearestAlternative ? `Nearest alternative${store.city ? ` · ${store.city}` : ''}` : `In ${formData.city}`}
+                                        </span>
+                                        {store.distance !== null && store.distance !== undefined && (
+                                          <span className="text-white/60">📍 {store.distance} km away</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div
+                                      className={`w-full py-2 px-3 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                        isSelected
+                                          ? 'bg-[var(--color-gold)]/25 text-[#f7dc94] border border-[var(--color-gold)]/40'
+                                          : 'bg-white/10 text-white/70'
+                                      }`}
+                                    >
+                                      {isSelected ? (
+                                        <>
+                                          <CheckCircle2 size={13} />
+                                          <span>Selected</span>
+                                        </>
+                                      ) : (
+                                        'Select'
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Final Selection Action */}
+                            <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-black/40 p-4 rounded-xl border border-white/5">
+                              <div className="text-xs">
+                                {selectedPostnetBranch ? (
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-emerald-400 font-bold">Selected:</span>
+                                    <span className="text-white font-semibold">{selectedPostnetBranch.name}</span>
+                                    {selectedPostnetBranch.distance !== null && (
+                                      <span className="text-white/50 text-[11px]">(📍 {selectedPostnetBranch.distance} km away)</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-white/50">Click on a branch card above to choose your pickup store.</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {isChangingPostnetBranch && preferredPostnetStore && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsChangingPostnetBranch(false);
+                                      setSelectedPostnetBranch(preferredPostnetStore);
+                                    }}
+                                    className="px-4 py-2.5 rounded-lg border border-white/10 text-white/70 hover:text-white text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  disabled={!selectedPostnetBranch}
+                                  onClick={() => handleConfirmPostnetStore(selectedPostnetBranch)}
+                                  className="px-5 py-2.5 rounded-lg bg-[var(--color-gold)] text-black text-xs font-bold uppercase tracking-wider hover:shadow-[0_0_15px_rgba(212,175,55,0.4)] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                  <CheckCircle2 size={14} />
+                                  <span>Confirm Collection Point</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {postnetPreview.stores.length > 4 && (
+                              <button
+                                type="button"
+                                onClick={() => setShowAllPostnetBranches(!showAllPostnetBranches)}
+                                className="w-full py-2.5 px-4 rounded-xl border border-white/10 hover:border-[var(--color-gold)]/40 bg-white/5 hover:bg-white/10 text-xs font-semibold text-[var(--color-gold)] flex items-center justify-center gap-2 transition-all mt-1"
+                              >
+                                {showAllPostnetBranches ? (
+                                  <>
+                                    <span>Show Fewer Branches</span>
+                                    <ChevronUp size={14} />
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>Show More Branches (+{postnetPreview.stores.length - 4} more)</span>
+                                    <ChevronDown size={14} />
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-[var(--color-ivory-muted)] p-4 text-center">
+                            No PostNet branches found for "{formData.city}". Try searching a nearby major suburb or city.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* If PUDO Smart Locker: Locker Search & Selection */}
+                {deliveryPreference === 'pudo' && (
+                  <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-semibold text-white">Choose Your 24/7 PUDO Smart Locker</h3>
+                          <span className="text-[10px] uppercase font-bold tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                            The Courier Guy
+                          </span>
+                        </div>
+                        <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                          Pick up your order 24/7 with a contact-free SMS PIN at any The Courier Guy smart locker.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">City / Suburb</label>
+                        <CityInput
+                          name="city"
+                          value={formData.city}
+                          onChange={handleCityChange}
+                          onCityDetails={({ city, postalCode, lat, lng }) => {
+                            setFormData((current) => ({
+                              ...current,
+                              city,
+                              postalCode: postalCode || current.postalCode,
+                              lat,
+                              lng
+                            }));
+                            setPreferredLocker(null);
+                            setQuote(null);
+                          }}
+                          restrictToSouthAfrica={true}
+                          required
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:outline-none transition-colors"
+                          placeholder="Search suburb or city..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Postal Code</label>
+                        <input
+                          type="text"
+                          name="postalCode"
+                          value={formData.postalCode}
+                          onChange={handleChange}
+                          placeholder="Postal code..."
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:outline-none transition-colors text-white placeholder:text-white/30"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Confirmed Locker Card */}
+                    {preferredLocker && (
+                      <div className="rounded-xl border border-emerald-500/50 bg-emerald-500/10 p-4 md:p-5 flex items-start justify-between gap-4 transition-all">
+                        <div className="flex items-start gap-3.5 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+                            <Package size={20} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="text-[10px] uppercase tracking-widest text-emerald-400 font-bold bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                <CheckCircle2 size={11} /> Selected PUDO Smart Locker
+                              </span>
+                              <span className="text-[11px] text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
+                                🕒 24/7 Access • SMS PIN
+                              </span>
+                              {preferredLocker.distance !== null && preferredLocker.distance !== undefined && (
+                                <span className="text-[11px] text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
+                                  📍 {preferredLocker.distance} km away
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-base font-bold text-white truncate">{preferredLocker.name}</p>
+                            <p className="text-xs text-[var(--color-ivory-muted)] mt-1 leading-relaxed">{preferredLocker.address}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Search filter for lockers */}
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold text-white uppercase tracking-wider">
+                          Available PUDO Lockers ({filteredPudoLockers.length})
+                        </p>
+                        {isLoadingPudo && (
+                          <div className="flex items-center gap-1.5 text-xs text-emerald-400">
+                            <Loader2 size={13} className="animate-spin" />
+                            <span>Locating lockers...</span>
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={lockerSearch}
+                        onChange={(e) => setLockerSearch(e.target.value)}
+                        placeholder="Filter lockers by mall, fuel stop, area or street..."
+                        className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:outline-none transition-colors text-white placeholder:text-white/30 mb-3"
+                      />
+
+                      {/* Lockers Grid */}
+                      {filteredPudoLockers.length > 0 ? (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {(showAllPudoLockers || lockerSearch.trim() ? filteredPudoLockers : filteredPudoLockers.slice(0, 4)).map((locker) => {
+                              const isSelected = preferredLocker?.id === locker.id || preferredLocker?.name === locker.name;
+                              return (
+                                <div
+                                  key={locker.id || locker.name}
+                                  onClick={() => {
+                                    setPreferredLocker(locker);
+                                    if (locker.postalCode) {
+                                      setFormData((prev) => ({ ...prev, postalCode: locker.postalCode }));
+                                    }
+                                    if (onNotify) onNotify(`Selected ${locker.name}`);
+                                    setQuote(null);
+                                  }}
+                                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                                    isSelected
+                                      ? 'border-emerald-400 bg-emerald-500/15 shadow-[0_0_15px_rgba(16,185,129,0.15)] ring-1 ring-emerald-400/40'
+                                      : 'border-white/10 bg-black/40 hover:border-white/30 hover:bg-white/[0.03]'
+                                  }`}
+                                >
+                                  <div>
+                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                      <p className="text-sm font-semibold text-white leading-snug">{locker.name}</p>
+                                      <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                                        isSelected ? 'bg-emerald-400 text-black' : 'border border-white/30 text-transparent'
+                                      }`}>
+                                        <CheckCircle2 size={13} className={isSelected ? 'text-black' : 'hidden'} />
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-[var(--color-ivory-muted)] line-clamp-2 mt-1 leading-relaxed">
+                                      {locker.address}
+                                    </p>
+                                    <div className="flex flex-wrap gap-2 mt-2.5 text-[10px] uppercase tracking-wider">
+                                      <span className="text-emerald-400">
+                                        🔓 24/7 Smart Locker
+                                      </span>
+                                      {locker.distance !== null && locker.distance !== undefined && (
+                                        <span className="text-white/60">📍 {locker.distance} km away</span>
+                                      )}
+                                      {locker.postalCode && (
+                                        <span className="text-white/40 font-mono">📮 {locker.postalCode}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div
+                                    className={`w-full py-2 px-3 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                      isSelected
+                                        ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
+                                        : 'bg-white/10 text-white/70'
+                                    }`}
+                                  >
+                                    {isSelected ? (
+                                      <>
+                                        <CheckCircle2 size={13} />
+                                        <span>Selected Locker</span>
+                                      </>
+                                    ) : (
+                                      'Choose This Locker'
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {filteredPudoLockers.length > 4 && !lockerSearch.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => setShowAllPudoLockers(!showAllPudoLockers)}
+                              className="w-full py-2.5 px-4 rounded-xl border border-white/10 hover:border-emerald-400/40 bg-white/5 hover:bg-white/10 text-xs font-semibold text-emerald-400 flex items-center justify-center gap-2 transition-all mt-1 cursor-pointer"
+                            >
+                              {showAllPudoLockers ? (
+                                <>
+                                  <span>Show Fewer Lockers</span>
+                                  <ChevronUp size={14} />
+                                </>
+                              ) : (
+                                <>
+                                  <span>Show All Available Lockers ({filteredPudoLockers.length} Available)</span>
+                                  <ChevronDown size={14} />
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-[var(--color-ivory-muted)] p-4 text-center">
+                          No PUDO Smart Lockers found matching "{lockerSearch}". Try typing a suburb or city name.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Send as Gift */}
+                <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isGift}
+                        onChange={(e) => setIsGift(e.target.checked)}
+                        className="w-5 h-5 accent-[var(--color-gold)] rounded bg-black border-white/10 cursor-pointer"
+                      />
+                      <div className="flex items-center gap-2">
+                        <Gift size={18} className="text-[var(--color-gold)]" />
+                        <span className="text-white font-medium text-sm">Send as a Gift</span>
+                      </div>
+                    </label>
+                    {isGift && (
+                      <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[var(--color-gold)]/10 text-[var(--color-gold)] border border-[var(--color-gold)]/30">
+                        Complimentary Gift Packaging & Card
+                      </span>
+                    )}
+                  </div>
+
+                  {isGift && (
+                    <div className="pt-3 border-t border-white/10 grid grid-cols-1 gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">
+                          Recipient Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={giftRecipientName}
+                          onChange={(e) => setGiftRecipientName(e.target.value)}
+                          required={isGift}
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors text-white placeholder:text-white/30"
+                          placeholder="e.g. Alexander Sterling"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">
+                          Personal Gift Message
+                        </label>
+                        <textarea
+                          value={giftMessage}
+                          onChange={(e) => setGiftMessage(e.target.value)}
+                          rows="3"
+                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors text-white placeholder:text-white/30"
+                          placeholder="Write your personalized message to be printed on the luxury card..."
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/*
+                ========================================================================================
+                [COMMENTED OUT FOR NOW - 18+ VERIFICATION & ID DOCUMENT UPLOAD IS ONLY FOR AUCTIONS]
+                ========================================================================================
+                 18+ Legal Age Verification & ID Document Upload Gate 
+                <div className="bg-gradient-to-br from-[#12100b] to-[#0a0a0a] border border-amber-500/30 rounded-2xl p-5 md:p-6 shadow-xl space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 shrink-0">
+                      <ShieldCheck size={22} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-white font-serif text-base font-bold">
+                          18+ Legal Age & Identity Verification
+                        </h3>
+                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          Mandatory
+                        </span>
+                      </div>
+                      <p className="text-xs text-[var(--color-ivory-muted)] mt-1 leading-relaxed">
+                        Under the National Liquor Act & CPA regulations, all spirit purchases require verified adult identification.
+                        {!user && " As a guest, upload your official identification to clear compliance. Your order will be placed immediately."}
+                      </p>
+                    </div>
+                  </div>
+
+                  {!user && (
+                    <div className="pt-2 border-t border-white/10 space-y-4">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-2 font-medium">
+                            Document Type *
+                          </label>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {[
+                              { id: 'national_id', label: 'SA National ID', icon: '🇿🇦' },
+                              { id: 'passport', label: 'Passport', icon: '🛂' },
+                              { id: 'drivers_license', label: "Driver's License", icon: '🪪' },
+                              { id: 'other', label: 'Other Photo ID', icon: '📄' }
+                            ].map((doc) => (
+                              <button
+                                key={doc.id}
+                                type="button"
+                                onClick={() => setGuestIdType(doc.id)}
+                                className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                                  guestIdType === doc.id
+                                    ? 'bg-[var(--color-gold)] text-black border-[var(--color-gold)] shadow-[0_0_12px_rgba(212,175,55,0.25)] font-bold'
+                                    : 'bg-black/60 text-white/70 border-white/10 hover:border-white/30 hover:text-white'
+                                }`}
+                              >
+                                <span>{doc.icon}</span>
+                                <span>{doc.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5 font-medium">
+                            {guestIdType === 'passport' ? 'Passport Number *' : guestIdType === 'national_id' ? 'SA National ID Number *' : 'ID / Document Number *'}
+                          </label>
+                          <input
+                            id="guestIdNumberInput"
+                            type="text"
+                            required
+                            placeholder={guestIdType === 'national_id' ? '13-digit SA ID number' : 'Official Document / Passport Number'}
+                            value={guestIdNumber}
+                            onChange={handleIdNumberChange}
+                            className="w-full bg-black/60 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-[var(--color-gold)] focus:outline-none transition-colors placeholder:text-white/30 font-mono"
+                          />
+                          {guestIdType === 'national_id' && (
+                            <p className="text-[10px] text-white/40 mt-1">
+                              💡 SA National ID auto-fills your Date of Birth.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label className="block text-[11px] uppercase tracking-wider text-white/70 font-medium">
+                              Date of Birth (Must be 18+) *
+                            </label>
+                            {guestAge !== null && (
+                              <span className={`text-[11px] font-bold flex items-center gap-1 ${guestAge >= 18 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                {guestAge >= 18 ? `✓ ${guestAge} yrs (Verified)` : `✕ ${guestAge} yrs (Under 18)`}
+                              </span>
+                            )}
+                          </div>
+                          <input
+                            id="guestDobInput"
+                            type="date"
+                            required
+                            value={guestDob}
+                            style={{ colorScheme: 'dark' }}
+                            max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+                            onChange={(e) => setGuestDob(e.target.value)}
+                            className={`w-full bg-black/60 border ${!guestDob ? 'border-amber-500/40' : (guestAge !== null && guestAge < 18 ? 'border-rose-500' : 'border-emerald-500/50')} rounded-xl px-4 py-3 text-sm text-white focus:border-[var(--color-gold)] focus:outline-none transition-colors`}
+                          />
+                        </div>
+
+                        <div id="guestDocUploadArea">
+                          <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5 font-medium">
+                            Upload Official ID Document *
+                          </label>
+                          <div className="relative">
+                            {guestDocumentUrl ? (
+                              <div className="flex items-center justify-between p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <FileCheck size={18} className="text-emerald-400 shrink-0" />
+                                  <span className="text-xs text-emerald-300 font-medium truncate">
+                                    {guestDocumentName || 'ID Document Attached ✓'}
+                                  </span>
+                                </div>
+                                <label className="text-[11px] text-emerald-400 font-bold underline cursor-pointer shrink-0 ml-2 hover:text-emerald-300">
+                                  Replace
+                                  <input
+                                    type="file"
+                                    accept="image/*,.pdf"
+                                    className="hidden"
+                                    onChange={handleUploadGuestDocument}
+                                    disabled={isUploadingGuestDoc}
+                                  />
+                                </label>
+                              </div>
+                            ) : (
+                              <label className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-black/60 border-2 border-dashed ${guestDocError ? 'border-rose-500/50' : 'border-white/20'} rounded-xl cursor-pointer hover:border-[var(--color-gold)]/60 transition-colors`}>
+                                {isUploadingGuestDoc ? (
+                                  <><Loader2 size={16} className="animate-spin text-[var(--color-gold)]" /> <span className="text-xs text-white/80 font-medium">Uploading Document...</span></>
+                                ) : (
+                                  <><UploadCloud size={16} className="text-[var(--color-gold)]" /> <span className="text-xs text-white/80 font-medium">Upload ID Card / Passport (JPG, PNG, PDF)</span></>
+                                )}
+                                <input
+                                  type="file"
+                                  accept="image/*,.pdf"
+                                  className="hidden"
+                                  onChange={handleUploadGuestDocument}
+                                  disabled={isUploadingGuestDoc}
+                                />
+                              </label>
+                            )}
+                          </div>
+                          {guestDocError && (
+                            <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1">
+                              <AlertTriangle size={12} /> {guestDocError}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                   18+ Legal Declaration Checkbox 
+                  <div className="pt-3 border-t border-white/10 flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="ageVerification"
+                      checked={isAgeConfirmed}
+                      onChange={(e) => setIsAgeConfirmed(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-white/20 bg-black/50 accent-[var(--color-gold)] focus:ring-[var(--color-gold)] cursor-pointer"
+                      required
+                    />
+                    <label htmlFor="ageVerification" className="text-xs text-white/90 leading-relaxed cursor-pointer select-none">
+                      <strong className="text-amber-400 font-semibold block sm:inline">Legal Compliance Certification (18+): </strong>
+                      I certify under South African law that I am 18 years of age or older, authorized to purchase fine spirits, and that all identification details provided are true and accurate.
+                    </label>
+                  </div>
+                </div>
+
+
+                ========================================================================================
+                */}
+
+                                {/* Continue to Step 2 Button */}
+                <button
+                  type="button"
+                  onClick={handleProceedToDeliveryMethod}
+                  disabled={quoteLoading}
+                  className="w-full bg-[var(--color-gold)] text-black font-bold uppercase tracking-widest text-xs py-4 rounded-xl hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {quoteLoading ? (
+                    <><Loader2 size={16} className="animate-spin" /> Calculating Rates...</>
+                  ) : (
+                    <>Continue to Delivery Method <ArrowRight size={16} /></>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* STEP 2: DELIVERY METHOD & ALCOHOL CONFIDENCE SECTION                    */}
+            {/* ========================================================================= */}
+            {checkoutStep === 2 && (
+              <div className="space-y-6 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-serif text-white mb-1">2. Delivery Method</h2>
+                    <p className="text-xs text-[var(--color-ivory-muted)]">Choose your preferred shipping service level.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutStep(1)}
+                    className="text-xs text-[var(--color-gold)] uppercase font-bold tracking-wider hover:underline"
+                  >
+                    Edit Details
+                  </button>
+                </div>
+
+                {/* Delivery Options Card */}
+                <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
+                  <h3 className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-medium">Available Shipping Services</h3>
+
+                  {quote?.shipments.map((shp, shpIndex) => (
+                    <div key={shpIndex} className="space-y-3">
+                      {quote.shipments.length > 1 && (
+                        <p className="text-xs font-semibold text-[var(--color-gold)] flex items-center gap-2">
+                          <Truck size={14} /> Shipment {shpIndex + 1}: {shp.vendorName}
+                        </p>
+                      )}
+
+                      <div className="space-y-2.5">
+                        {shp.shippingQuotes
+                          .filter((opt) => opt.serviceLevel !== 'PostNet Standard Delivery' && (Number(opt.cost) >= 0 || opt.isFreeDelivery || (opt.serviceLevel && opt.serviceLevel.includes('Economy Road'))))
+                          .map((opt, optIndex) => {
+                            const isSelected = shp.selectedCourier?.serviceLevel === opt.serviceLevel;
+                            const isFree = Number(opt.cost || 0) === 0 || opt.isFreeDelivery;
+                            return (
+                              <label
+                                key={optIndex}
+                                className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
+                                  isSelected
+                                    ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_15px_rgba(212,175,55,0.08)]'
+                                    : 'border-white/10 bg-black/40 hover:border-white/30'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="radio"
+                                    name={`shipping-opt-${shpIndex}`}
+                                    checked={isSelected}
+                                    onChange={() => handleCourierSelect(shpIndex, opt)}
+                                    className="accent-[var(--color-gold)] w-4 h-4"
+                                  />
+                                  <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="text-sm font-semibold text-white">{opt.serviceLevel}</p>
+                                      {opt.courierName && (
+                                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                                          opt.courierName.includes('DHL')
+                                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-mono'
+                                            : opt.courierName.includes('PostNet')
+                                            ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                                            : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                        }`}>
+                                          {opt.courierName}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                                      Estimated delivery: {opt.estimatedDays}
+                                    </p>
+                                    {opt.description && (
+                                      <p className="text-[11px] text-white/50 mt-0.5">{opt.description}</p>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="text-sm font-bold text-[var(--color-gold)] font-serif">
+                                  {isFree ? (
+                                    <span className="text-emerald-400 font-sans tracking-wide uppercase text-xs font-extrabold px-2.5 py-1 rounded bg-emerald-500/10 border border-emerald-500/30">
+                                      FREE
+                                    </span>
+                                  ) : (
+                                    <Price amount={Number(opt.cost || 0)} />
+                                  )}
+                                </span>
+                              </label>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 🔒 THE CONFIDENCE SECTION (Alcohol Compliance & Security) */}
+                <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#121212] to-[#0a0a0a] p-5 md:p-6 space-y-4 shadow-xl">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                      <ShieldCheck size={22} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        🔒 Secure & Insured Delivery
+                      </h4>
+                      <p className="text-xs text-[var(--color-ivory-muted)] mt-1 leading-relaxed">
+                        Your luxury order is securely packaged and tracked from vendor vault to handover.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-white/5 text-[11px] text-white/70">
+                    <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-400" /> Trackable delivery</span>
+                    <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-400" /> SMS notifications</span>
+                    <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-400" /> Secure handling</span>
+                    <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-400" /> Direct handover</span>
+                  </div>
+
+                  {/*
+                  [COMMENTED OUT FOR NOW - 18+ Alcohol Compliance Verification Notice (Retained for auctions)]
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200/90 flex items-start gap-2.5">
+                    <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-amber-300">18+ Alcohol Compliance Verification:</strong>
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-amber-200/80">
+                        In accordance with South African liquor regulations, valid identification (National ID or Passport) must be presented upon courier delivery or PostNet branch collection.
+                      </p>
+                    </div>
+                  </div>
+                  */}
+                </div>
+
+                {/* International Duties Notice if applicable */}
+                {quote?.hasInternational && (
+                  <div className="rounded-2xl border border-rose-500/30 bg-rose-950/20 p-5 space-y-3">
+                    <h4 className="text-sm font-bold text-rose-400 flex items-center gap-2">
+                      <AlertTriangle size={18} /> Important: International Customs & Duties
+                    </h4>
+                    <p className="text-xs text-rose-200/80 leading-relaxed">
+                      Import duties and taxes are determined by the destination customs authority. Delivery charge covers transportation only.
+                    </p>
+                    <label className="flex items-center gap-3 cursor-pointer pt-2">
+                      <input
+                        type="checkbox"
+                        checked={dutiesAccepted}
+                        onChange={(e) => setDutiesAccepted(e.target.checked)}
+                        className="accent-rose-500 w-4 h-4 rounded"
+                      />
+                      <span className="text-xs font-medium text-white">I accept responsibility for destination import charges.</span>
+                    </label>
+                  </div>
+                )}
+
+                {/* Continue to Step 3 Button */}
+                <button
+                  type="button"
+                  onClick={handleProceedToPayment}
+                  className="w-full bg-[var(--color-gold)] text-black font-bold uppercase tracking-widest text-xs py-4 rounded-xl hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2"
+                >
+                  Continue to Payment <ArrowRight size={16} />
+                </button>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* STEP 3: PAYMENT & SUPER COINS REDEMPTION                                  */}
+            {/* ========================================================================= */}
+            {checkoutStep === 3 && (
+              <form onSubmit={handlePlaceOrder} className="space-y-6 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-serif text-white mb-1">3. Payment & Rewards</h2>
+                    <p className="text-xs text-[var(--color-ivory-muted)]">Apply your Super Coins and choose your preferred payment method.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutStep(2)}
+                    className="text-xs text-[var(--color-gold)] uppercase font-bold tracking-wider hover:underline"
+                  >
+                    Edit Delivery
+                  </button>
+                </div>
+
+                {/* Locked Delivery Summary with Change Delivery Method Shortcut */}
+                <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 rounded-xl bg-white/5 border border-white/10 text-[var(--color-gold)] shrink-0">
+                      {deliveryPreference === 'pudo' ? <Package size={18} className="text-emerald-400" /> : deliveryPreference === 'postnet' ? <Store size={18} /> : <Truck size={18} />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-widest text-[var(--color-gold)] font-semibold">
+                        {deliveryPreference === 'pudo' ? 'PUDO Smart Locker Collection' : deliveryPreference === 'postnet' ? 'PostNet Collection Point' : 'Delivery Destination'}
+                      </p>
+                      <p className="text-xs text-white font-medium truncate">
+                        {deliveryPreference === 'pudo' && preferredLocker
+                          ? `${preferredLocker.name} — ${preferredLocker.address}`
+                          : deliveryPreference === 'postnet' && preferredPostnetStore
+                          ? `${preferredPostnetStore.name} — ${preferredPostnetStore.address}`
+                          : `${formData.address}, ${formData.city}, ${formData.country}`}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutStep(1)}
+                    className="self-start sm:self-auto text-xs text-[var(--color-gold)] hover:text-white uppercase font-bold tracking-wider underline shrink-0"
+                  >
+                    Change Delivery Method
+                  </button>
+                </div>
+
+                {/* ⭐ SUPER COINS REDEMPTION CARD */}
+                {quote?.superCoins && quote.superCoins.availableCoins > 0 && (() => {
+                  const isCoinsEligible = (quote.superCoins.maxDiscountRand || 0) > 0 || (quote.superCoins.eligibleSubtotal || 0) > 0;
+                  if (!isCoinsEligible) return null;
+                  const isPartial = quote.superCoins.eligibleSubtotal < (quote.globalSubtotal || cartSubtotal);
+
+                  return (
+                    <div className="bg-gradient-to-br from-[#161309] to-[#0d0d0d] border border-[var(--color-gold)]/30 rounded-2xl p-5 md:p-6 shadow-xl space-y-3 transition-all">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2 rounded-xl bg-[var(--color-gold)]/20 text-[var(--color-gold)]">
+                            <Coins size={20} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-bold text-white">
+                                Grand Store Super Coins
+                              </h3>
+                              {isPartial && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--color-gold)]/15 text-[var(--color-gold)] border border-[var(--color-gold)]/30 uppercase tracking-wider">
+                                  Eligible Items: R{quote.superCoins.eligibleSubtotal.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                              You have <strong className="text-[var(--color-gold)]">{quote.superCoins.availableCoins.toLocaleString()} Super Coins</strong> (Value: R{(quote.superCoins.availableCoins * quote.superCoins.coinValue).toFixed(2)})
+                            </p>
+                          </div>
+                        </div>
+
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={useSuperCoins}
+                            onChange={(e) => setUseSuperCoins(e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-gold)]"></div>
+                        </label>
+                      </div>
+
+                      {useSuperCoins && (
+                        <div className="pt-3 border-t border-[var(--color-gold)]/10 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                            <CheckCircle2 size={14} /> Margin-Safe Deduction: -R{quote.superCoins.maxDiscountRand.toFixed(2)} ({quote.superCoins.maxRedeemableCoins} coins)
+                          </span>
+                          {quote.superCoins.isMarginCapped && (
+                            <span className="text-amber-300/90 text-[11px]">
+                              {quote.superCoins.marginMessage}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Refer & Earn Store Credits Redemption Card */}
+                {user && (() => {
+                  const referralEligibleAmount = quote?.referralEligibleSubtotal !== undefined 
+                    ? Number(quote.referralEligibleSubtotal) 
+                    : cartReferralEligibleSubtotal;
+                  const isReferralEligible = referralEligibleAmount > 0;
+                  if (!isReferralEligible) return null;
+                  const isPartial = isReferralEligible && referralEligibleAmount < (quote?.globalSubtotal || cartSubtotal);
+
+                  return (
+                    <div className={`rounded-2xl border p-5 transition-all relative overflow-hidden ${
+                      userRewardCredit > 0 && isReferralEligible
+                        ? 'border-[var(--color-gold)]/40 bg-gradient-to-r from-[var(--color-gold)]/10 via-black/60 to-black/80 shadow-[0_0_20px_rgba(201,163,91,0.08)]' 
+                        : 'border-white/10 bg-[#0d0d0d]'
+                    }`}>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5">
+                          <div className={`p-2.5 rounded-xl border ${
+                            userRewardCredit > 0 && isReferralEligible
+                              ? 'border-[var(--color-gold)]/40 bg-[var(--color-gold)]/15 text-[var(--color-gold)]' 
+                              : 'border-white/10 bg-white/5 text-white/40'
+                          }`}>
+                            <Gift size={20} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-bold text-white">Refer &amp; Earn Store Credits</h3>
+                              {userRewardCredit > 0 ? (
+                                isReferralEligible ? (
+                                  isPartial ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--color-gold)]/15 text-[var(--color-gold)] border border-[var(--color-gold)]/30 uppercase tracking-wider">
+                                      Eligible Items: R{referralEligibleAmount.toFixed(2)}
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                      Available
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
+                                    Not Eligible on this Order
+                                  </span>
+                                )
+                              ) : null}
+                            </div>
+                            {userRewardCredit > 0 ? (
+                              isReferralEligible ? (
+                                <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                                  You have <strong className="text-[var(--color-gold)] font-serif"><Price amount={userRewardCredit} /></strong> in earned store credits ready to redeem.
+                                </p>
+                              ) : (
+                                <p className="text-xs text-amber-300/80 mt-0.5 font-mono">
+                                  ⚠️ Products in this cart are excluded from Refer &amp; Earn store credit discounts.
+                                </p>
+                              )
+                            ) : (
+                              <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                                Share your invite link with friends to earn R50 store credit per friend for checkout!
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {userRewardCredit > 0 ? (
+                          isReferralEligible ? (
+                            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                              <input
+                                type="checkbox"
+                                checked={applyRewards}
+                                onChange={(e) => setApplyRewards(e.target.checked)}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-gold)]"></div>
+                            </label>
+                          ) : (
+                            <div className="text-[11px] text-amber-400/80 font-mono bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg shrink-0">
+                              Ineligible
+                            </div>
+                          )
+                        ) : (
+                          <Link
+                            to="/customer/referrals"
+                            target="_blank"
+                            className="shrink-0 text-xs text-[var(--color-gold)] hover:underline flex items-center gap-1 font-medium"
+                          >
+                            Invite Friends <ArrowUpRight size={13} />
+                          </Link>
+                        )}
+                      </div>
+
+                      {userRewardCredit > 0 && isReferralEligible && applyRewards && referralRewardDiscount > 0 && (
+                        <div className="mt-3 pt-3 border-t border-[var(--color-gold)]/10 text-xs flex items-center justify-between">
+                          <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                            <CheckCircle2 size={14} /> Store Credit Applied: -R{referralRewardDiscount.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Payment Methods */}
+                <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
+                  <h3 className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-medium">Choose Payment Method</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label
+                      className={`cursor-pointer rounded-2xl p-4 border transition-all relative overflow-hidden ${
+                        paymentMethod === 'payfast'
+                          ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_15px_rgba(212,175,55,0.1)]'
+                          : 'border-white/10 bg-black/40 hover:border-white/30'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="payfast"
+                        checked={paymentMethod === 'payfast'}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className="hidden"
+                      />
+                      <div className="flex items-center justify-between mb-3">
+                        <CreditCard size={22} className="text-[var(--color-gold)]" />
+                        {paymentMethod === 'payfast' && <CheckCircle2 size={16} className="text-[var(--color-gold)]" />}
+                      </div>
+                      <h4 className="text-sm font-bold text-white mb-1">PayFast Instant</h4>
+                      <p className="text-[11px] text-[var(--color-ivory-muted)]">Cards, Instant EFT, SnapScan, Zapper</p>
+                    </label>
+
+                    <label
+                      className={`cursor-pointer rounded-2xl p-4 border transition-all relative overflow-hidden ${
+                        paymentMethod === 'bank_transfer'
+                          ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_15px_rgba(212,175,55,0.1)]'
+                          : 'border-white/10 bg-black/40 hover:border-white/30'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="bank_transfer"
+                        checked={paymentMethod === 'bank_transfer'}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className="hidden"
+                      />
+                      <div className="flex items-center justify-between mb-3">
+                        <ShieldCheck size={22} className="text-[var(--color-gold)]" />
+                        {paymentMethod === 'bank_transfer' && <CheckCircle2 size={16} className="text-[var(--color-gold)]" />}
+                      </div>
+                      <h4 className="text-sm font-bold text-white mb-1">Direct Bank Transfer</h4>
+                      <p className="text-[11px] text-[var(--color-ivory-muted)]">Manual EFT with deposit reference</p>
+                    </label>
+                  </div>
+
+                  {paymentMethod === 'bank_transfer' && (
+                    <div className="mt-4 animate-fadeIn">
+                      <StoreBankDetailsCard
+                        compact={true}
+                        reference="ORDER-REF-ON-SUBMIT"
+                        referenceLabel="Payment Reference"
+                        title="Grand Store Settlement Account"
+                        subtitle="EFT details will be designated with your unique order reference upon submission"
+                        onNotify={onNotify}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Final Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loading || !quote}
+                  className="w-full bg-[var(--color-gold)] text-black font-bold uppercase tracking-widest text-sm py-4 rounded-xl hover:shadow-[0_0_25px_rgba(212,175,55,0.45)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <><Loader2 size={18} className="animate-spin" /> Processing Order...</>
+                  ) : (
+                    <>Pay <Price amount={displayedTotal} /> <ArrowRight size={18} /></>
+                  )}
+                </button>
+
+                <SecurePaymentBadges />
+                <PaymentForm paymentData={paymentData} payfastUrl={payfastUrl} />
+              </form>
+            )}
+
+            {/* ========================================================================= */}
+            {/* STEP 4: BANK TRANSFER PROOF SUBMISSION (If EFT selected)                  */}
+            {/* ========================================================================= */}
+            {checkoutStep === 4 && (
+              <div className="bg-gradient-to-br from-[#111] to-[#0a0a0a] border border-[var(--color-gold)]/20 shadow-2xl rounded-2xl p-6 md:p-10 text-center relative overflow-hidden animate-fadeIn">
+                <div className="w-14 h-14 mx-auto rounded-full bg-[var(--color-gold)] text-black flex items-center justify-center mb-4">
+                  <CheckCircle2 size={28} />
+                </div>
+                <h3 className="text-xl font-serif text-[var(--color-gold)] mb-2">Order Created Successfully!</h3>
+                <p className="text-sm text-[var(--color-ivory-muted)] mb-6 max-w-md mx-auto">
+                  Order <span className="text-white font-mono font-bold">{createdOrderId}</span> is awaiting payment. Please transfer exactly <strong className="text-white font-serif"><Price amount={displayedTotal} /></strong> to our official bank account.
+                </p>
+
+                <StoreBankDetailsCard
+                  reference={createdOrderId?.slice(-6).toUpperCase()}
+                  referenceLabel="Order Reference"
+                  className="max-w-xl mx-auto mb-6"
+                  onNotify={onNotify}
+                />
+
+                <form onSubmit={handleUploadProof} className="max-w-sm mx-auto text-left space-y-3">
+                  <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)]">
+                    Proof of Payment URL (Image or PDF)
+                  </label>
+                  <input
+                    type="url"
+                    value={proofUrl}
+                    onChange={(e) => setProofUrl(e.target.value)}
+                    required
+                    placeholder="https://..."
+                    className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                  />
+                  <button
+                    type="submit"
+                    disabled={uploadingProof}
+                    className="w-full bg-[var(--color-gold)] text-black font-bold uppercase tracking-widest text-xs py-3.5 rounded-xl hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2"
+                  >
+                    {uploadingProof ? <><Loader2 size={16} className="animate-spin" /> Uploading...</> : 'Submit Proof'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(user ? `/customer/order/${createdOrderId}` : `/order-success/${createdOrderId}`)}
+                    className="w-full text-xs text-white/50 hover:text-white uppercase tracking-wider py-2 transition-colors"
+                  >
+                    {user ? 'I will upload later from My Orders' : 'View Order Confirmation'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}

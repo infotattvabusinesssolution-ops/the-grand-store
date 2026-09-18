@@ -1,0 +1,61 @@
+.trade-enquiry-container {
+  display: flex;
+  gap: 80px;
+  align-items: center;
+}
+
+.trade-enquiry-image {
+  flex: 1;
+}
+
+.trade-enquiry-image img {
+  width: 100%;
+  border-radius: 4px;
+}
+
+.trade-enquiry-content {
+  flex: 1.2;
+}
+
+.enquiry-form-container {
+  padding: 60px;
+}
+
+.enquiry-form-container .trade-sub-eyebrow {
+  margin-bottom: 10px;
+}
+
+.enquiry-form-container .form-title {
+  margin-bottom: 40px;
+}
+
+.form-row {
+  display: flex;
+  gap: 20px;
+}
+
+.half-width {
+  flex: 1;
+}
+
+.mt-10 {
+  margin-top: 20px;
+}
+
+.mt-2 {
+  margin-top: 20px;
+}
+
+@media (max-width: 992px) {
+  .trade-enquiry-container {
+    flex-direction: column-reverse;
+  }
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+  .enquiry-form-container {
+    padding: 30px;
+    width: 100%;
+  }
+}
