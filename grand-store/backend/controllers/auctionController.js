@@ -190,6 +190,7 @@ exports.placeBid = async (req, res) => {
 
     const lot = await AuctionLot.findById(lotId);
     if (!lot) return res.status(404).json({ message: 'Lot not found' });
+    const originalBid = lot.currentBid;
     
     // Bidder Permission, KYC & Admin Approval checks
     if (req.user.isBiddingSuspended) {
@@ -419,7 +420,30 @@ exports.placeBid = async (req, res) => {
       });
     }
 
-    await lot.save();
+    // Optimistic concurrency control: ensure lot currentBid hasn't changed underneath us
+    const updatedLotDoc = await AuctionLot.findOneAndUpdate(
+      { _id: lot._id, currentBid: originalBid },
+      {
+        $set: {
+          currentBid: lot.currentBid,
+          highBidder: lot.highBidder,
+          bidCount: lot.bidCount,
+          lastBidTime: lot.lastBidTime,
+          reserveMet: lot.reserveMet,
+          endDate: lot.endDate,
+          status: lot.status,
+          isExtended: lot.isExtended,
+          extensionCount: lot.extensionCount
+        }
+      },
+      { new: true }
+    );
+
+    if (!updatedLotDoc) {
+      return res.status(409).json({
+        message: 'Another bid was placed at the same moment. Please refresh to view the latest bid and try again.'
+      });
+    }
 
     // In-App Notifications: Outbid alert & Leading bid confirmation
     try {

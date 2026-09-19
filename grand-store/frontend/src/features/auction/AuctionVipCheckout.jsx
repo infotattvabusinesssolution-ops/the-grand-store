@@ -233,9 +233,6 @@ export default function AuctionVipCheckout({ onNotify }) {
     if (paymentQuery === 'cancel' && refQuery) {
       api.post('/payfast/cancel-payment', { depositId: refQuery })
         .catch(err => console.log('Cancel VIP deposit result:', err));
-    } else if (paymentQuery === 'success' && refQuery) {
-      api.post('/payfast/confirm-order', { depositId: refQuery })
-        .catch(err => console.log('Confirm VIP deposit result:', err));
     }
   }, [paymentQuery, refQuery]);
 

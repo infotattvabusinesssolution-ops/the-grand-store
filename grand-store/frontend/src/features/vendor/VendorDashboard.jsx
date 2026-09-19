@@ -90,8 +90,6 @@ export default function VendorDashboard() {
     if (params.get('payment') === 'success' && params.get('fee') === 'paid') {
       setPaymentSuccess(true);
       setShowPayModal(true);
-      // Fast fallback to confirm payment in case ITN webhook is slightly delayed
-      api.post('/payfast/confirm-order', { maintenanceFee: true }).catch(() => {});
       fetchFeeAndNotifications();
       window.history.replaceState({}, '', window.location.pathname);
       setTimeout(() => {

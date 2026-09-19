@@ -133,15 +133,47 @@ const addOrderItems = async (req, res) => {
     const commissionPct = settings.marketplaceCommissionPct || 15;
     const gatewayFeePct = settings.gatewayFeePct || 2.5;
 
-    // === RECONSTRUCT ACCOUNTING FROM QUOTE ===
-    const subTotal = Number(
-      quote.globalSubtotal ||
-      quote.subTotal ||
-      quote.subtotal ||
-      quote.aggregatedTotals?.subtotal ||
-      (quote.shipments || []).reduce((sum, s) => sum + Number(s.subtotal || 0), 0) ||
-      0
-    );
+    // === VALIDATE AND RECONSTRUCT ACCOUNTING FROM DATABASE (PRICE INTEGRITY) ===
+    let calculatedServerSubtotal = 0;
+    for (const shp of quote.shipments) {
+      let shipmentSubtotal = 0;
+      if (Array.isArray(shp.items)) {
+        for (const item of shp.items) {
+          const productId = item.product || item.id || item._id;
+          let product = null;
+          if (productId) {
+            product = await Product.findOne({ id: productId });
+            if (!product && /^[0-9a-fA-F]{24}$/.test(productId.toString())) {
+              product = await Product.findById(productId);
+            }
+          }
+          if (!product && item.name) {
+            product = await Product.findOne({ name: item.name });
+          }
+          if (!product) {
+            return res.status(404).json({ message: `Product not found in catalog: ${item.name || productId}` });
+          }
+          const authoritativePrice = Number(product.price);
+          if (isNaN(authoritativePrice) || authoritativePrice < 0) {
+            return res.status(400).json({ message: `Invalid catalog price for ${product.name}` });
+          }
+          // Enforce authoritative catalog price on item
+          item.price = authoritativePrice;
+          const qty = Number(item.quantity) || 1;
+          if (product.stock !== undefined && product.stock !== null && product.stock < qty) {
+            return res.status(400).json({ 
+              message: `Insufficient stock for product ${product.name}. Available: ${product.stock}, requested: ${qty}` 
+            });
+          }
+          const lineSubtotal = parseFloat((authoritativePrice * qty).toFixed(2));
+          shipmentSubtotal += lineSubtotal;
+          calculatedServerSubtotal += lineSubtotal;
+        }
+      }
+      shp.subtotal = parseFloat(shipmentSubtotal.toFixed(2));
+    }
+
+    const subTotal = parseFloat(calculatedServerSubtotal.toFixed(2));
     const rawShipping = Number(quote.aggregatedTotals?.shipping || quote.shippingCost || 0);
     const shippingCost = rawShipping <= 0.01 ? 0 : rawShipping;
     const vatAmount = Number(quote.aggregatedTotals?.vat || quote.vatAmount || 0);
@@ -667,6 +699,31 @@ const processOrderPayment = async (orderId) => {
       { status: 'Order Confirmed' }
     ).catch(err => console.error('Error updating shipment status to Order Confirmed:', err));
   }
+
+  // Atomically decrement stock for all purchased items
+  if (Array.isArray(order.orderItems)) {
+    for (const item of order.orderItems) {
+      const productId = item.product || item.id || item._id;
+      const qty = Number(item.quantity) || 1;
+      if (productId) {
+        try {
+          const isOid = /^[0-9a-fA-F]{24}$/.test(productId.toString());
+          await Product.updateOne(
+            {
+              $or: [
+                ...(isOid ? [{ _id: productId }] : []),
+                { id: productId.toString() }
+              ],
+              stock: { $gte: qty }
+            },
+            { $inc: { stock: -qty } }
+          );
+        } catch (stockErr) {
+          console.error(`Error decrementing stock for product ${productId}:`, stockErr);
+        }
+      }
+    }
+  }
   
   // Reward the referrer if this was the customer's first order
   try {
@@ -957,7 +1014,7 @@ const processOrderPayment = async (orderId) => {
  * Global cancellation of an unpaid order payment
  * Can be invoked by PayFast ITN (CANCELLED/FAILED), customer aborting on gateway, or admin.
  */
-const cancelOrderPayment = async (orderId, reason = 'Payment cancelled') => {
+const cancelOrderPayment = async (orderId, reason = 'Payment cancelled', forceRefund = false) => {
   const mongoose = require('mongoose');
   const Order = require('../models/Order');
   const Shipment = require('../models/Shipment');
@@ -977,10 +1034,34 @@ const cancelOrderPayment = async (orderId, reason = 'Payment cancelled') => {
     return null;
   }
 
-  // Idempotent & safety guard: If order is already paid, do NOT cancel it!
-  if (order.isPaid || order.paymentStatus === 'Paid') {
+  // Idempotent & safety guard: If order is already paid, do NOT cancel it unless forceRefund is explicitly requested
+  if ((order.isPaid || order.paymentStatus === 'Paid') && !forceRefund) {
     console.warn(`cancelOrderPayment: Order ${order._id} is already paid. Cancellation skipped.`);
     return order;
+  }
+
+  // If order was paid, restore product stock
+  if (order.isPaid && Array.isArray(order.orderItems)) {
+    for (const item of order.orderItems) {
+      const productId = item.product || item.id || item._id;
+      const qty = Number(item.quantity) || 1;
+      if (productId) {
+        try {
+          const isOid = /^[0-9a-fA-F]{24}$/.test(productId.toString());
+          await Product.updateOne(
+            {
+              $or: [
+                ...(isOid ? [{ _id: productId }] : []),
+                { id: productId.toString() }
+              ]
+            },
+            { $inc: { stock: qty } }
+          );
+        } catch (stockErr) {
+          console.error(`Error restoring stock for product ${productId}:`, stockErr);
+        }
+      }
+    }
   }
 
   order.paymentStatus = 'Cancelled';
@@ -1283,12 +1364,23 @@ const getOrderById = async (req, res) => {
     const order = await Order.findById(req.params.id)
       .populate('user', 'name email')
       .populate('shipments');
-    if (order) {
-      await ensureOrderItemsImages(order);
-      res.json(order);
-    } else {
-      res.status(404).json({ message: 'Order not found' });
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
     }
+
+    // Access control:
+    const isOwner = order.user && req.user && (order.user._id ? order.user._id.toString() : order.user.toString()) === req.user._id.toString();
+    const isAdmin = req.user && ['admin', 'super_admin', 'product_manager', 'finance_staff', 'accountant'].includes(req.user.role);
+    const providedGuestToken = req.headers['x-guest-access-token'] || req.query.token || req.query.guestAccessToken;
+    const isAuthorizedGuest = order.isGuest && order.guestAccessToken && providedGuestToken && order.guestAccessToken === providedGuestToken;
+    const isVendorForShipment = req.user && (order.shipments || []).some(s => s.vendorId && s.vendorId.toString() === req.user._id.toString());
+
+    if (!isOwner && !isAdmin && !isAuthorizedGuest && !isVendorForShipment) {
+      return res.status(403).json({ message: 'Not authorized to view this order' });
+    }
+
+    await ensureOrderItemsImages(order);
+    res.json(order);
   } catch (error) {
     console.error('Get Order Error:', error);
     res.status(500).json({ message: 'Server Error getting order' });
@@ -1409,12 +1501,10 @@ const markOrderAsPaid = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // Verify user ownership or staff/admin or guest order
-    const isOwner = order.user && req.user && order.user.toString() === req.user._id.toString();
-    const isAdmin = req.user && ['admin', 'super_admin', 'product_manager', 'finance_staff'].includes(req.user?.role);
-    const isGuestOwner = order.isGuest;
-    if (!isOwner && !isAdmin && !isGuestOwner) {
-      return res.status(403).json({ message: 'Not authorized to update this order' });
+    // Verify staff/admin authorization (strictly restricted to finance and admin staff)
+    const isAdmin = req.user && ['admin', 'super_admin', 'product_manager', 'finance_staff', 'accountant'].includes(req.user?.role);
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Only authorized administrative finance staff can manually confirm order payment.' });
     }
 
     if (order.isPaid) {

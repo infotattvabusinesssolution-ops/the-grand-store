@@ -101,10 +101,10 @@ exports.generateShopPayment = async (req, res) => {
     const nameParts = customerName.trim().split(/\s+/);
 
     let returnUrl = order.isGuest 
-      ? `${frontendUrl}/order-success/${order._id}?payment=success&guest=true`
+      ? `${frontendUrl}/order-success/${order._id}?payment=success&guest=true${order.guestAccessToken ? `&token=${order.guestAccessToken}` : ''}`
       : `${frontendUrl}/customer/order/${order._id}?payment=success`;
     let cancelUrl = order.isGuest
-      ? `${frontendUrl}/order-success/${order._id}?payment=cancel&guest=true`
+      ? `${frontendUrl}/order-success/${order._id}?payment=cancel&guest=true${order.guestAccessToken ? `&token=${order.guestAccessToken}` : ''}`
       : `${frontendUrl}/customer/order/${order._id}?payment=cancel`;
 
     if (isMobile) {
@@ -506,26 +506,104 @@ exports.itnWebhook = async (req, res) => {
 
     if (payload.payment_status === 'COMPLETE') {
        const reference = payload.m_payment_id;
+       const receivedAmount = Number(payload.amount_gross || 0);
+
        if (reference.startsWith('SHP-')) {
           const orderId = reference.replace('SHP-', '');
+          const order = await Order.findById(orderId);
+          if (!order) {
+            console.error(`PayFast ITN: Shop order ${orderId} not found`);
+            return res.status(404).send('Order not found');
+          }
+          if (order.isPaid) {
+            console.log(`PayFast ITN: Shop order ${orderId} already marked as paid (idempotent duplicate)`);
+            return res.status(200).send('OK');
+          }
+          const expectedAmount = Number(order.totalPrice || 0);
+          if (Math.abs(receivedAmount - expectedAmount) > 0.05) {
+            console.error(`PayFast ITN: Shop order ${orderId} amount mismatch. Expected R${expectedAmount.toFixed(2)}, received R${receivedAmount.toFixed(2)}`);
+            return res.status(400).send('Amount mismatch');
+          }
           await processOrderPayment(orderId);
           console.log(`Successfully processed shop order payment for ${orderId}`);
        } else if (reference.startsWith('AUC-')) {
           const auctionId = reference.replace('AUC-', '');
+          const lot = await AuctionLot.findById(auctionId);
+          if (!lot) {
+            console.error(`PayFast ITN: Auction lot ${auctionId} not found`);
+            return res.status(404).send('Lot not found');
+          }
+          if (lot.paymentStatus === 'Paid') {
+            console.log(`PayFast ITN: Auction lot ${auctionId} already marked as paid (idempotent duplicate)`);
+            return res.status(200).send('OK');
+          }
+          const expectedAmount = Number(lot.totalPaidByBuyer || lot.currentBid || 0);
+          if (expectedAmount > 0 && Math.abs(receivedAmount - expectedAmount) > 0.05) {
+            console.error(`PayFast ITN: Auction lot ${auctionId} amount mismatch. Expected R${expectedAmount.toFixed(2)}, received R${receivedAmount.toFixed(2)}`);
+            return res.status(400).send('Amount mismatch');
+          }
           await processAuctionPayment(auctionId);
           console.log(`Successfully processed auction payment for ${auctionId}`);
        } else if (reference.startsWith('EVT-')) {
           const bookingId = reference.replace('EVT-', '');
+          const booking = await Booking.findById(bookingId);
+          if (!booking) {
+            console.error(`PayFast ITN: Event booking ${bookingId} not found`);
+            return res.status(404).send('Booking not found');
+          }
+          if (['Paid', 'Completed'].includes(booking.paymentStatus)) {
+            console.log(`PayFast ITN: Event booking ${bookingId} already marked as paid (idempotent duplicate)`);
+            return res.status(200).send('OK');
+          }
+          const expectedAmount = Number(booking.totalPrice || 0);
+          if (Math.abs(receivedAmount - expectedAmount) > 0.05) {
+            console.error(`PayFast ITN: Event booking ${bookingId} amount mismatch. Expected R${expectedAmount.toFixed(2)}, received R${receivedAmount.toFixed(2)}`);
+            return res.status(400).send('Amount mismatch');
+          }
           await processEventPayment(bookingId, {
             gatewayTransactionId: payload.pf_payment_id,
           });
           console.log(`Successfully processed event payment for ${bookingId}`);
        } else if (reference.startsWith('VND-')) {
           const vendorId = reference.replace('VND-', '');
+          const Vendor = require('../models/Vendor');
+          const vendor = await Vendor.findById(vendorId);
+          if (!vendor) {
+            console.error(`PayFast ITN: Vendor ${vendorId} not found`);
+            return res.status(404).send('Vendor not found');
+          }
+          if (vendor.paymentStatus === 'paid') {
+            console.log(`PayFast ITN: Vendor ${vendorId} registration already paid (idempotent duplicate)`);
+            return res.status(200).send('OK');
+          }
+          let expectedFee = Number(vendor.registrationFee || 0);
+          if (!expectedFee || expectedFee <= 0) {
+            const PlatformSettings = require('../models/PlatformSettings');
+            const settings = await PlatformSettings.findOne();
+            expectedFee = settings?.vendorRegistrationFee || 500;
+          }
+          if (Math.abs(receivedAmount - expectedFee) > 0.05) {
+            console.error(`PayFast ITN: Vendor ${vendorId} registration fee mismatch. Expected R${expectedFee.toFixed(2)}, received R${receivedAmount.toFixed(2)}`);
+            return res.status(400).send('Amount mismatch');
+          }
           await processVendorPayment(vendorId);
           console.log(`Successfully processed vendor payment for ${vendorId}`);
        } else if (reference.startsWith('DEP-')) {
           const depositId = reference.replace('DEP-', '');
+          const deposit = await BidderDeposit.findById(depositId);
+          if (!deposit) {
+            console.error(`PayFast ITN: Bidder deposit ${depositId} not found`);
+            return res.status(404).send('Deposit not found');
+          }
+          if (deposit.paymentStatus === 'paid') {
+            console.log(`PayFast ITN: Bidder deposit ${depositId} already paid (idempotent duplicate)`);
+            return res.status(200).send('OK');
+          }
+          const expectedAmount = Number(deposit.amount || 0);
+          if (Math.abs(receivedAmount - expectedAmount) > 0.05) {
+            console.error(`PayFast ITN: Bidder deposit ${depositId} amount mismatch. Expected R${expectedAmount.toFixed(2)}, received R${receivedAmount.toFixed(2)}`);
+            return res.status(400).send('Amount mismatch');
+          }
           await processBidderDepositPayment(depositId, payload.pf_payment_id);
           console.log(`Successfully processed VIP bidder deposit payment for ${depositId}`);
        } else if (reference.startsWith('MNF-')) {
@@ -535,7 +613,7 @@ exports.itnWebhook = async (req, res) => {
           await processMaintenanceFeePayment(vendorId, {
             paymentMethod: 'PayFast',
             reference: payload.pf_payment_id || reference,
-            amount: Number(payload.amount_gross || 0) || null
+            amount: receivedAmount || null
           });
           console.log(`Successfully processed vendor maintenance fee payment for ${vendorId}`);
        }
@@ -578,30 +656,24 @@ exports.confirmOrderPayment = async (req, res) => {
     const { orderId, bookingId, auctionId, depositId } = req.body;
     const mongoose = require('mongoose');
 
-    // 1. Event / Cellar Tasting Booking Confirmation
+    // 1. Event / Cellar Tasting Booking Status Query
     if (bookingId) {
       const Booking = require('../models/Booking');
       let booking = null;
       if (mongoose.Types.ObjectId.isValid(bookingId)) {
-        booking = await Booking.findById(bookingId);
+        booking = await Booking.findById(bookingId).populate('event');
       }
       if (!booking) {
-        booking = await Booking.findOne({ $or: [{ ticketId: bookingId }, { gsReference: bookingId }] });
+        booking = await Booking.findOne({ $or: [{ ticketId: bookingId }, { gsReference: bookingId }] }).populate('event');
       }
       if (!booking) {
         return res.status(404).json({ message: 'Booking not found' });
       }
-      if (['cancelled', 'failed', 'refunded'].includes((booking.paymentStatus || '').toLowerCase())) {
-        return res.status(400).json({ message: `Cannot confirm a ${booking.paymentStatus.toLowerCase()} booking` });
-      }
-      await processEventPayment(booking._id, {
-        gatewayTransactionId: req.body.pfPaymentId || `PF-APP-${Date.now()}`
-      });
-      const updatedBooking = await Booking.findById(booking._id).populate('event');
-      return res.json({ success: true, booking: updatedBooking });
+      const isPaid = ['Paid', 'Completed'].includes(booking.paymentStatus);
+      return res.json({ success: true, isPaid, booking, paymentStatus: booking.paymentStatus });
     }
 
-    // 2. Auction Winning Lot Confirmation
+    // 2. Auction Winning Lot Status Query
     if (auctionId) {
       const AuctionLot = require('../models/AuctionLot');
       let lot = null;
@@ -614,15 +686,11 @@ exports.confirmOrderPayment = async (req, res) => {
       if (!lot) {
         return res.status(404).json({ message: 'Auction lot not found' });
       }
-      if (['cancelled', 'failed'].includes((lot.paymentStatus || '').toLowerCase())) {
-        return res.status(400).json({ message: `Cannot confirm a ${lot.paymentStatus.toLowerCase()} auction lot` });
-      }
-      await processAuctionPayment(lot._id);
-      const updatedLot = await AuctionLot.findById(lot._id);
-      return res.json({ success: true, lot: updatedLot });
+      const isPaid = (lot.paymentStatus || '').toLowerCase() === 'paid';
+      return res.json({ success: true, isPaid, lot, paymentStatus: lot.paymentStatus });
     }
 
-    // 3. VIP Bidding Escrow Deposit Confirmation
+    // 3. VIP Bidding Escrow Deposit Status Query
     if (depositId) {
       const BidderDeposit = require('../models/BidderDeposit');
       let deposit = null;
@@ -637,15 +705,11 @@ exports.confirmOrderPayment = async (req, res) => {
       if (!deposit) {
         return res.status(404).json({ message: 'Deposit record not found' });
       }
-      if (['cancelled', 'failed'].includes((deposit.paymentStatus || '').toLowerCase())) {
-        return res.status(400).json({ message: `Cannot confirm a ${deposit.paymentStatus.toLowerCase()} deposit` });
-      }
-      await processBidderDepositPayment(deposit._id, req.body.pfPaymentId || `PF-DEP-${Date.now()}`);
-      const updatedDeposit = await BidderDeposit.findById(deposit._id);
-      return res.json({ success: true, deposit: updatedDeposit });
+      const isPaid = deposit.paymentStatus === 'paid';
+      return res.json({ success: true, isPaid, deposit, paymentStatus: deposit.paymentStatus });
     }
 
-    // 4. Vendor Maintenance Fee Confirmation
+    // 4. Vendor Maintenance Fee Status Query
     if (req.body.maintenanceVendorId || req.body.maintenanceFee) {
       const Vendor = require('../models/Vendor');
       const vendor = await Vendor.findOne({
@@ -657,15 +721,11 @@ exports.confirmOrderPayment = async (req, res) => {
       if (!vendor) {
         return res.status(404).json({ message: 'Vendor application not found' });
       }
-      const { processMaintenanceFeePayment } = require('./vendorController');
-      const updatedVendor = await processMaintenanceFeePayment(vendor._id, {
-        paymentMethod: 'PayFast',
-        reference: req.body.pfPaymentId || `PF-MNF-${Date.now().toString().slice(-6)}`
-      });
-      return res.json({ success: true, vendor: updatedVendor });
+      const isPaid = vendor.maintenanceFee?.status === 'paid';
+      return res.json({ success: true, isPaid, vendor, maintenanceStatus: vendor.maintenanceFee?.status });
     }
 
-    // 4b. Vendor Registration Fee Confirmation
+    // 4b. Vendor Registration Fee Status Query
     if (req.body.vendorRegistration || req.body.vendorId) {
       const Vendor = require('../models/Vendor');
       const vendor = await Vendor.findOne({
@@ -677,12 +737,11 @@ exports.confirmOrderPayment = async (req, res) => {
       if (!vendor) {
         return res.status(404).json({ message: 'Vendor application not found' });
       }
-      await processVendorPayment(vendor._id);
-      const updatedVendor = await Vendor.findById(vendor._id);
-      return res.json({ success: true, vendor: updatedVendor });
+      const isPaid = vendor.paymentStatus === 'paid';
+      return res.json({ success: true, isPaid, vendor, paymentStatus: vendor.paymentStatus });
     }
 
-    // 5. Shop Order Confirmation
+    // 5. Shop Order Status Query
     let order = null;
     if (orderId) {
       if (mongoose.Types.ObjectId.isValid(orderId)) {
@@ -696,19 +755,10 @@ exports.confirmOrderPayment = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // Process payment ledger, wallet, events, isPaid
-    if (!order.isPaid) {
-      if (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed') {
-        return res.status(400).json({ message: 'Cannot confirm a cancelled or failed order' });
-      }
-      await processOrderPayment(order._id);
-    }
-
-    const updated = await Order.findById(order._id);
-    return res.json(updated);
+    return res.json({ success: true, isPaid: order.isPaid, order, paymentStatus: order.paymentStatus });
   } catch (error) {
-    console.error('Error confirming PayFast order:', error);
-    return res.status(500).json({ message: 'Error confirming PayFast order', error: error.message });
+    console.error('Error querying PayFast payment status:', error);
+    return res.status(500).json({ message: 'Error querying PayFast payment status', error: error.message });
   }
 };
 
@@ -721,47 +771,7 @@ exports.mobileReturnHandler = async (req, res) => {
     const isSuccess = status === 'success';
 
     if (isSuccess) {
-      if (type === 'shop' && orderId) {
-        try {
-          await processOrderPayment(orderId, 'PayFast', req.query);
-        } catch (e) {
-          console.error('Error in mobileReturnHandler processOrderPayment:', e);
-        }
-      } else if (type === 'auction' && auctionId) {
-        try {
-          await processAuctionPayment(auctionId, 'PayFast', req.query);
-        } catch (e) {
-          console.error('Error in mobileReturnHandler processAuctionPayment:', e);
-        }
-      } else if (type === 'event' && bookingId) {
-        try {
-          await processEventPayment(bookingId, req.query);
-        } catch (e) {
-          console.error('Error in mobileReturnHandler processEventPayment:', e);
-        }
-      } else if (type === 'deposit' && depositId) {
-        try {
-          await processBidderDepositPayment(depositId, req.query.pf_payment_id || req.query.m_payment_id || `PF-MOB-DEP-${Date.now()}`);
-        } catch (e) {
-          console.error('Error in mobileReturnHandler processBidderDepositPayment:', e);
-        }
-      } else if (type === 'vendor' && vendorId) {
-        try {
-          await processVendorPayment(vendorId);
-        } catch (e) {
-          console.error('Error in mobileReturnHandler processVendorPayment:', e);
-        }
-      } else if (type === 'maintenance' && vendorId) {
-        try {
-          const { processMaintenanceFeePayment } = require('./vendorController');
-          await processMaintenanceFeePayment(vendorId, {
-            paymentMethod: 'PayFast',
-            reference: req.query.pf_payment_id || `PF-MOB-MNF-${Date.now()}`
-          });
-        } catch (e) {
-          console.error('Error in mobileReturnHandler processMaintenanceFeePayment:', e);
-        }
-      }
+      console.log(`[PayFast Mobile Return] Success callback received: type=${type}, id=${orderId || auctionId || bookingId || depositId || vendorId}. Client will poll status until verified by ITN.`);
     } else {
       // Payment was cancelled or failed on mobile gateway
       if (type === 'shop' && orderId) {

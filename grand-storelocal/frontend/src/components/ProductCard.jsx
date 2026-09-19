@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ConfirmCheckoutModal from "./modals/ConfirmCheckoutModal";
 import {
@@ -23,6 +23,9 @@ const fallbackBadges = [
   "New vintage",
   "Sommelier pick",
 ];
+
+const trimmedUploadCache = new Map();
+const vendorImageFitVersion = "full-bottle-v6";
 
 const preparedVendorImages = {
   "/uploads/images-1787292711461.png":
@@ -68,6 +71,147 @@ const resolveImageUrl = (src) => {
   return normalizedSrc;
 };
 
+function VendorProductImage({ src, alt }) {
+  const resolvedSrc = resolveImageUrl(src);
+  const isPreparedSource = Object.values(preparedVendorImages).includes(resolvedSrc);
+  const cacheKey = `${vendorImageFitVersion}:${resolvedSrc}`;
+  const [displaySource, setDisplaySource] = useState(
+    () => trimmedUploadCache.get(cacheKey) || resolvedSrc
+  );
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+    if (isPreparedSource) {
+      setDisplaySource(resolvedSrc);
+      return undefined;
+    }
+
+    if (
+      !resolvedSrc ||
+      (!resolvedSrc.includes(import.meta.env.VITE_API_URL || "https://api.grandstoreglobal.com") &&
+        !resolvedSrc.includes("res.cloudinary.com")) ||
+      trimmedUploadCache.has(cacheKey)
+    ) {
+      setDisplaySource(trimmedUploadCache.get(cacheKey) || resolvedSrc);
+      return undefined;
+    }
+
+    setDisplaySource(resolvedSrc);
+
+    let cancelled = false;
+    const sourceImage = new Image();
+    sourceImage.decoding = "async";
+    sourceImage.crossOrigin = "anonymous";
+
+    sourceImage.onload = () => {
+      try {
+        const naturalWidth = sourceImage.naturalWidth;
+        const naturalHeight = sourceImage.naturalHeight;
+        const analysisScale = Math.min(1, 800 / Math.max(naturalWidth, naturalHeight));
+        const analysisWidth = Math.max(1, Math.round(naturalWidth * analysisScale));
+        const analysisHeight = Math.max(1, Math.round(naturalHeight * analysisScale));
+        const analysisCanvas = document.createElement("canvas");
+        const analysisContext = analysisCanvas.getContext("2d", { willReadFrequently: true });
+        if (!analysisContext) return;
+
+        analysisCanvas.width = analysisWidth;
+        analysisCanvas.height = analysisHeight;
+        analysisContext.drawImage(sourceImage, 0, 0, analysisWidth, analysisHeight);
+
+        const pixels = analysisContext.getImageData(0, 0, analysisWidth, analysisHeight).data;
+        let minX = analysisWidth;
+        let minY = analysisHeight;
+        let maxX = -1;
+        let maxY = -1;
+
+        for (let y = 0; y < analysisHeight; y += 1) {
+          for (let x = 0; x < analysisWidth; x += 1) {
+            const alpha = pixels[(y * analysisWidth + x) * 4 + 3];
+            if (alpha <= 12) continue;
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+          }
+        }
+
+        if (maxX < minX || maxY < minY) return;
+
+        const visibleWidth = maxX - minX + 1;
+        const visibleHeight = maxY - minY + 1;
+        const needsTrim = visibleWidth < analysisWidth * 0.88 || visibleHeight < analysisHeight * 0.88;
+
+        if (!needsTrim) {
+          trimmedUploadCache.set(cacheKey, resolvedSrc);
+          return;
+        }
+
+        const sourceX = minX / analysisScale;
+        const sourceY = minY / analysisScale;
+        const sourceWidth = visibleWidth / analysisScale;
+        const sourceHeight = visibleHeight / analysisScale;
+        const horizontalPadding = sourceWidth * 0.14;
+        const topPadding = sourceHeight * 0.1;
+        const bottomPadding = sourceHeight * 0.12;
+        const paddedWidth = sourceWidth + horizontalPadding * 2;
+        const paddedHeight = sourceHeight + topPadding + bottomPadding;
+        const outputScale = Math.min(1, 1200 / Math.max(paddedWidth, paddedHeight));
+        const outputCanvas = document.createElement("canvas");
+        const outputContext = outputCanvas.getContext("2d");
+        if (!outputContext) return;
+
+        outputCanvas.width = Math.max(1, Math.round(paddedWidth * outputScale));
+        outputCanvas.height = Math.max(1, Math.round(paddedHeight * outputScale));
+        outputContext.drawImage(
+          sourceImage,
+          sourceX,
+          sourceY,
+          sourceWidth,
+          sourceHeight,
+          horizontalPadding * outputScale,
+          topPadding * outputScale,
+          sourceWidth * outputScale,
+          sourceHeight * outputScale
+        );
+
+        const trimmedSource = outputCanvas.toDataURL("image/png");
+        trimmedUploadCache.set(cacheKey, trimmedSource);
+        if (!cancelled) setDisplaySource(trimmedSource);
+      } catch {
+        trimmedUploadCache.set(cacheKey, src);
+      }
+    };
+
+    sourceImage.onerror = () => trimmedUploadCache.set(cacheKey, resolvedSrc);
+    sourceImage.src = resolvedSrc;
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cacheKey, isPreparedSource, resolvedSrc]);
+
+  if (!resolvedSrc || hasError) {
+    return (
+      <div className="flex flex-col items-center justify-center text-[#caa458]/70 text-xs gap-1 relative z-10">
+        <Wine size={28} strokeWidth={1.5} />
+        <span className="text-[10px] uppercase tracking-wider text-white/50">Bottle</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={displaySource}
+      alt={alt}
+      className="max-h-[195px] md:max-h-[210px] w-auto max-w-[88%] object-contain drop-shadow-[0_14px_30px_rgba(0,0,0,0.95)] transition-transform duration-500 group-hover:-translate-y-2 relative z-10"
+      loading="lazy"
+      decoding="async"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 export default function ProductCard({
   product,
   index = 0,
@@ -86,7 +230,6 @@ export default function ProductCard({
   const productName = product.name || product.fullName || "Cellar selection";
   const category = product.category || product.type || "Wine & spirits";
   const badge = product.badge || fallbackBadges[index % fallbackBadges.length];
-  const productImage = resolveImageUrl(product.image);
 
   return (
     <>
@@ -188,30 +331,7 @@ export default function ProductCard({
             }}
           />
 
-          {productImage ? (
-            <img
-              src={productImage}
-              alt={productName}
-              className="max-h-[195px] md:max-h-[210px] w-auto max-w-[88%] object-contain drop-shadow-[0_14px_30px_rgba(0,0,0,0.95)] transition-transform duration-500 group-hover:-translate-y-2 relative z-10"
-              loading="lazy"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-                if (e.currentTarget.nextElementSibling) {
-                  e.currentTarget.nextElementSibling.style.display = "flex";
-                }
-              }}
-            />
-          ) : null}
-          <div
-            className={`${
-              productImage ? "hidden" : "flex"
-            } flex-col items-center justify-center text-[#caa458]/70 text-xs gap-1 relative z-10`}
-          >
-            <Wine size={28} strokeWidth={1.5} />
-            <span className="text-[10px] uppercase tracking-wider text-white/50">
-              Bottle
-            </span>
-          </div>
+          <VendorProductImage src={product.image} alt={productName} />
         </Link>
 
         {/* Product Info Description Area matching Arrivals hierarchy with our luxury design */}

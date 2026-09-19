@@ -111,15 +111,23 @@ export default function AuctionCheckout({ onNotify }) {
     window.scrollTo({ top: 0, behavior: 'auto' });
     fetchLot();
 
+    let pollInterval = null;
     if (paymentQuery === 'success' && id) {
-      api.post('/payfast/confirm-order', { auctionId: id })
-        .then(() => fetchLot())
-        .catch(err => console.log('Confirm auction payment error:', err));
+      let attempts = 0;
+      pollInterval = setInterval(async () => {
+        attempts += 1;
+        await fetchLot();
+        if (attempts >= 10) clearInterval(pollInterval);
+      }, 2500);
     } else if (paymentQuery === 'cancel' && id) {
       api.post('/payfast/cancel-payment', { auctionId: id, reason: 'Customer cancelled PayFast session' })
         .then(() => fetchLot())
         .catch(err => console.log('Cancel auction payment error:', err));
     }
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, [id, paymentQuery]);
 
   const handleRetryPayFast = async () => {

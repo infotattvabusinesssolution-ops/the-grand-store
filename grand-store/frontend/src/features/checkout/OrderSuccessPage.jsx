@@ -44,6 +44,16 @@ export default function OrderSuccessPage({ onClearCart }) {
   const [accountCreated, setAccountCreated] = useState(false);
   const [accountError, setAccountError] = useState("");
 
+  const guestTokenFromUrl = searchParams.get("token") || searchParams.get("guestAccessToken");
+  const storedGuestToken = (() => {
+    try {
+      return sessionStorage.getItem(`guestAccessToken_${id}`) || localStorage.getItem(`guestAccessToken_${id}`);
+    } catch (_) {
+      return null;
+    }
+  })();
+  const effectiveGuestToken = guestTokenFromUrl || storedGuestToken;
+
   const handleCreateAccount = async (e) => {
     e.preventDefault();
     if (!accountPassword || accountPassword.length < 6) {
@@ -55,7 +65,8 @@ export default function OrderSuccessPage({ onClearCart }) {
     try {
       const res = await api.post("/auth/convert-guest", {
         orderId: order._id,
-        password: accountPassword
+        password: accountPassword,
+        guestAccessToken: effectiveGuestToken || order.guestAccessToken
       });
       if (updateUser) {
         updateUser(res.data);
@@ -73,9 +84,15 @@ export default function OrderSuccessPage({ onClearCart }) {
     document.title = "Order Confirmation - The Grand Store";
     window.scrollTo({ top: 0, behavior: "auto" });
 
+    let pollInterval = null;
+    const reqConfig = effectiveGuestToken
+      ? { headers: { 'x-guest-access-token': effectiveGuestToken } }
+      : {};
+    const queryParam = effectiveGuestToken ? `?guestAccessToken=${encodeURIComponent(effectiveGuestToken)}` : '';
+
     const fetchOrder = async () => {
       try {
-        const res = await api.get(`/orders/${id}`);
+        const res = await api.get(`/orders/${id}${queryParam}`, reqConfig);
         let data = res.data;
         if (paymentStatus === "cancel" && !data.isPaid && data.paymentStatus !== "Paid") {
           try {
@@ -96,6 +113,26 @@ export default function OrderSuccessPage({ onClearCart }) {
         if (paymentStatus === "success" && onClearCart) {
           onClearCart();
         }
+
+        // If returned from gateway with payment=success but webhook has not yet finished, poll for confirmation
+        if (paymentStatus === "success" && !data.isPaid && data.paymentStatus !== "Paid") {
+          let attempts = 0;
+          pollInterval = setInterval(async () => {
+            attempts += 1;
+            try {
+              const pollRes = await api.get(`/orders/${id}${queryParam}`, reqConfig);
+              if (pollRes.data && (pollRes.data.isPaid || pollRes.data.paymentStatus === "Paid")) {
+                setOrder(pollRes.data);
+                clearInterval(pollInterval);
+              }
+            } catch (pollErr) {
+              console.warn("Order polling warning:", pollErr.message);
+            }
+            if (attempts >= 12) {
+              clearInterval(pollInterval);
+            }
+          }, 2500);
+        }
       } catch (error) {
         console.error("Error fetching order", error);
       } finally {
@@ -108,7 +145,11 @@ export default function OrderSuccessPage({ onClearCart }) {
     } else {
       setLoading(false);
     }
-  }, [id, paymentStatus]);
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [id, paymentStatus, effectiveGuestToken]);
 
   if (loading) {
     const isCancelFlow = paymentStatus === "cancel" || searchParams.get("status") === "cancel";

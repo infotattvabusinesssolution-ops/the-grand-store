@@ -56,10 +56,6 @@ export default function VendorPaymentGate() {
 
   const handleSuccessRedirect = async () => {
     setVerifying(true);
-    try {
-      await api.post('/payfast/confirm-order', { vendorRegistration: true });
-    } catch (e) {}
-
     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
     
     let attempts = 0;

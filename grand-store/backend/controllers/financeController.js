@@ -212,16 +212,25 @@ const requestVendorPayout = async (req, res) => {
       });
     }
 
-    if (amount > (wallet.availableBalance || 0)) {
+    // Atomic check and balance deduction to eliminate TOCTOU race conditions / double spending
+    const updatedWallet = await Wallet.findOneAndUpdate(
+      { vendorId: req.user._id, availableBalance: { $gte: amount } },
+      { 
+        $inc: { 
+          availableBalance: -amount, 
+          pendingWithdrawalAmount: amount 
+        } 
+      },
+      { new: true }
+    );
+
+    if (!updatedWallet) {
+      const currentWallet = await Wallet.findOne({ vendorId: req.user._id });
+      const currentAvailable = currentWallet?.availableBalance || 0;
       return res.status(400).json({
-        message: `Requested amount exceeds available balance. You have R ${(wallet.availableBalance || 0).toFixed(2)} available.`
+        message: `Requested amount exceeds available balance. You have R ${currentAvailable.toFixed(2)} available.`
       });
     }
-
-    // Deduct from availableBalance and place in pendingWithdrawalAmount
-    wallet.availableBalance = Math.max(0, Number((wallet.availableBalance - amount).toFixed(2)));
-    wallet.pendingWithdrawalAmount = Number(((wallet.pendingWithdrawalAmount || 0) + amount).toFixed(2));
-    await wallet.save();
 
     const timestamp = Date.now();
     const gsReference = `GS-${new Date().getFullYear().toString().slice(-2)}-VND-POUT-${timestamp.toString().slice(-6)}`;

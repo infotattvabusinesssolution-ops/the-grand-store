@@ -35,7 +35,7 @@ router.route('/:id/admin-message').post(
 );
 
 router.route('/:id/cancel-payment').post(optionalAuth, cancelOrderPaymentHandler);
-router.route('/:id/pay').put(optionalAuth, markOrderAsPaid).post(optionalAuth, markOrderAsPaid);
+router.route('/:id/pay').put(protect, financeStaff, markOrderAsPaid).post(protect, financeStaff, markOrderAsPaid);
 router.route('/vendor/sales').get(
   protect,
   requireRoles('vendor_active', 'admin', 'super_admin', 'product_manager'),

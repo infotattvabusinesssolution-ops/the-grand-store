@@ -27,10 +27,11 @@ exports.uploadProofOfPayment = async (req, res) => {
     }
 
     const isOwner = order.user && req.user && order.user.toString() === req.user._id.toString();
-    const isGuestOwner = order.isGuest;
+    const providedGuestToken = req.headers['x-guest-access-token'] || req.body.guestAccessToken || req.query.token;
+    const isAuthorizedGuest = order.isGuest && order.guestAccessToken && providedGuestToken && order.guestAccessToken === providedGuestToken;
     const isAdmin = req.user && ['admin', 'super_admin', 'product_manager', 'finance_staff'].includes(req.user.role);
 
-    if (!isOwner && !isGuestOwner && !isAdmin) {
+    if (!isOwner && !isAuthorizedGuest && !isAdmin) {
       return res.status(403).json({ message: 'Not authorized to modify this order' });
     }
 

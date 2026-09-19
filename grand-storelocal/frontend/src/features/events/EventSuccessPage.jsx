@@ -62,12 +62,7 @@ export default function EventSuccessPage() {
     let active = true;
     let attempts = 0;
 
-    // Immediately trigger backend confirmation to ensure MongoDB update & email dispatch
-    if (paymentResult === 'success' && id) {
-      api.post('/payfast/confirm-order', { bookingId: id })
-        .then(() => fetchBooking({ silent: true }))
-        .catch((err) => console.log('Event confirm-order result:', err));
-    } else if (paymentResult === 'cancel' && id) {
+    if (paymentResult === 'cancel' && id) {
       api.post('/payfast/cancel-payment', { bookingId: id })
         .then(() => fetchBooking({ silent: true }))
         .catch((err) => console.log('Event cancel-payment result:', err));

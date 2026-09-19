@@ -913,6 +913,13 @@ export default function CheckoutPage({
       const res = await api.post('/orders', orderData);
       const data = res.data;
       setCreatedOrderId(data._id);
+      if (data.guestAccessToken) {
+        setCreatedOrderGuestToken(data.guestAccessToken);
+        try {
+          sessionStorage.setItem(`guestAccessToken_${data._id}`, data.guestAccessToken);
+          localStorage.setItem(`guestAccessToken_${data._id}`, data.guestAccessToken);
+        } catch (_) {}
+      }
 
       if (paymentMethod === 'payfast') {
         const pfRes = await api.post('/payfast/generate-shop', { orderId: data._id });
@@ -942,10 +949,12 @@ export default function CheckoutPage({
     }
     setUploadingProof(true);
     try {
-      await api.post(`/orders/${createdOrderId}/bank-transfer/upload`, { proofUrl });
+      const tokenHeader = createdOrderGuestToken ? { headers: { 'x-guest-access-token': createdOrderGuestToken } } : {};
+      await api.post(`/orders/${createdOrderId}/bank-transfer/upload`, { proofUrl }, tokenHeader);
       onNotify('Proof uploaded successfully. Awaiting verification.');
       if (onClearCart) onClearCart(vendorId);
-      navigate(user ? `/customer/order/${createdOrderId}` : `/order-success/${createdOrderId}`);
+      const guestParam = createdOrderGuestToken ? `?token=${createdOrderGuestToken}` : '';
+      navigate(user ? `/customer/order/${createdOrderId}` : `/order-success/${createdOrderId}${guestParam}`);
     } catch (error) {
       onNotify(error.response?.data?.message || error.message || 'Failed to upload proof');
     } finally {
@@ -2774,7 +2783,7 @@ export default function CheckoutPage({
                   </button>
                   <button
                     type="button"
-                    onClick={() => navigate(user ? `/customer/order/${createdOrderId}` : `/order-success/${createdOrderId}`)}
+                    onClick={() => navigate(user ? `/customer/order/${createdOrderId}` : `/order-success/${createdOrderId}${createdOrderGuestToken ? `?token=${createdOrderGuestToken}` : ''}`)}
                     className="w-full text-xs text-white/50 hover:text-white uppercase tracking-wider py-2 transition-colors"
                   >
                     {user ? 'I will upload later from My Orders' : 'View Order Confirmation'}

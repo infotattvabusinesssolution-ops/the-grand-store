@@ -154,15 +154,24 @@ export default function AuctionLotDetail({ onNotify }) {
   }, [id]);
 
   useEffect(() => {
+    let pollInterval = null;
     if (paymentStatus === 'success' && id) {
-      api.post('/payfast/confirm-order', { auctionId: id })
-        .then(() => fetchLot())
-        .catch(err => console.log('Auction confirm-order result:', err));
+      fetchLot();
+      let attempts = 0;
+      pollInterval = setInterval(async () => {
+        attempts += 1;
+        await fetchLot();
+        if (attempts >= 10) clearInterval(pollInterval);
+      }, 2500);
     } else if (paymentStatus === 'cancel' && id) {
       api.post('/payfast/cancel-payment', { auctionId: id })
         .then(() => fetchLot())
         .catch(err => console.log('Auction cancel-payment result:', err));
     }
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, [paymentStatus, id]);
 
   const userInfo = (() => {

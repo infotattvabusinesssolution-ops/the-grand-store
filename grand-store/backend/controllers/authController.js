@@ -1267,27 +1267,12 @@ const verifyOtp = async (req, res) => {
       return res.status(400).json({ message: 'Invalid phone number format' });
     }
 
-    let isFirebaseVerified = false;
-    if (firebaseIdToken) {
-      try {
-        const decoded = jwt.decode(firebaseIdToken);
-        if (decoded && decoded.iss?.includes('securetoken.google.com')) {
-          const fbPhone = decoded.phone_number ? normalizeToE164(decoded.phone_number) : null;
-          if (!fbPhone || fbPhone === cleanPhone) {
-            isFirebaseVerified = true;
-            console.log(`[AUTH OTP] Verified via Google Firebase Phone Auth token for ${cleanPhone}`);
-          }
-        }
-      } catch (e) {
-        console.warn('[AUTH OTP] Firebase token decode warning:', e.message);
-      }
-    }
-
     const stored = otpStore.get(cleanPhone);
-    const isMasterCode = String(otp || '').trim() === '123456';
+    const isTestOtpAllowed = process.env.ALLOW_TEST_OTP === 'true' && process.env.NODE_ENV !== 'production';
+    const isMasterCode = isTestOtpAllowed && String(otp || '').trim() === '123456';
     const isValidCode = stored && stored.code === String(otp || '').trim() && stored.expiresAt > Date.now();
 
-    if (!isValidCode && !isMasterCode && !isFirebaseVerified) {
+    if (!isValidCode && !isMasterCode) {
       return res.status(400).json({ message: 'Invalid or expired verification code' });
     }
 
@@ -1728,13 +1713,15 @@ const appleAuth = async (req, res) => {
 // @access  Public
 const convertGuestToAccount = async (req, res) => {
   try {
-    const { orderId, password } = req.body;
+    const { orderId, password, guestAccessToken } = req.body;
     if (!orderId || !password) {
       return res.status(400).json({ message: 'Order ID and password are required' });
     }
     if (password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
+
+    const providedToken = guestAccessToken || req.headers['x-guest-access-token'] || req.query.token;
 
     const Order = require('../models/Order');
     const Shipment = require('../models/Shipment');
@@ -1751,6 +1738,14 @@ const convertGuestToAccount = async (req, res) => {
     }
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (!order.isGuest) {
+      return res.status(400).json({ message: 'This order is already associated with an account' });
+    }
+
+    if (!order.guestAccessToken || !providedToken || order.guestAccessToken !== providedToken) {
+      return res.status(403).json({ message: 'Invalid or missing guest access token for this order' });
     }
 
     const guestEmail = (order.guestInfo?.email || order.shippingAddress?.email || '').trim().toLowerCase();
