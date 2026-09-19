@@ -1,5 +1,9 @@
 *.apk
 *.log
+/*.tif
+/*DOBBE*
+/*Dobbe*
+/*dobbe*
 logs
 npm-debug.log*
 

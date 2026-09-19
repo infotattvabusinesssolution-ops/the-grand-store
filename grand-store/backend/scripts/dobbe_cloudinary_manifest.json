@@ -1,0 +1,114 @@
+{
+  "dobbe_vs": {
+    "productKey": "dobbe_vs",
+    "images": [
+      {
+        "role": "primary",
+        "publicId": "grand-store/catalog-originals/dobbe/dobbe-cognac-vs-750ml",
+        "version": 1789802804,
+        "originalUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/v1789802804/grand-store/catalog-originals/dobbe/dobbe-cognac-vs-750ml.png",
+        "transparentUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1789802804/grand-store/catalog-originals/dobbe/dobbe-cognac-vs-750ml.png",
+        "sourceFileName": "COGNAC DOBBE VS HR.jpg"
+      }
+    ]
+  },
+  "dobbe_vsop": {
+    "productKey": "dobbe_vsop",
+    "images": [
+      {
+        "role": "primary",
+        "publicId": "grand-store/catalog-originals/dobbe/dobbe-cognac-vsop-750ml",
+        "version": 1789802810,
+        "originalUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/v1789802810/grand-store/catalog-originals/dobbe/dobbe-cognac-vsop-750ml.png",
+        "transparentUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1789802810/grand-store/catalog-originals/dobbe/dobbe-cognac-vsop-750ml.png",
+        "sourceFileName": "COGNAC DOBBE VSOP HR.jpg"
+      }
+    ]
+  },
+  "dobbe_10_ans": {
+    "productKey": "dobbe_10_ans",
+    "images": [
+      {
+        "role": "primary",
+        "publicId": "grand-store/catalog-originals/dobbe/dobbe-cognac-10-ans-petite-champagne-750ml",
+        "version": 1789802815,
+        "originalUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/v1789802815/grand-store/catalog-originals/dobbe/dobbe-cognac-10-ans-petite-champagne-750ml.png",
+        "transparentUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1789802815/grand-store/catalog-originals/dobbe/dobbe-cognac-10-ans-petite-champagne-750ml.png",
+        "sourceFileName": "Cognac Dobbe 10 ANS Petite Champagne.jpg"
+      }
+    ]
+  },
+  "dobbe_xo": {
+    "productKey": "dobbe_xo",
+    "images": [
+      {
+        "role": "primary",
+        "publicId": "grand-store/catalog-originals/dobbe/dobbe-cognac-xo-fine-gastronomie-750ml",
+        "version": 1789802823,
+        "originalUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/v1789802823/grand-store/catalog-originals/dobbe/dobbe-cognac-xo-fine-gastronomie-750ml.png",
+        "transparentUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1789802823/grand-store/catalog-originals/dobbe/dobbe-cognac-xo-fine-gastronomie-750ml.png",
+        "sourceFileName": "Cognac DOBBÉ XO FG HR.jpg"
+      }
+    ]
+  },
+  "dobbe_millesime_1999": {
+    "productKey": "dobbe_millesime_1999",
+    "images": [
+      {
+        "role": "primary",
+        "publicId": "grand-store/catalog-originals/dobbe/dobbe-cognac-millesime-1999-vintage-750ml",
+        "version": 1789802832,
+        "originalUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/v1789802832/grand-store/catalog-originals/dobbe/dobbe-cognac-millesime-1999-vintage-750ml.png",
+        "transparentUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1789802832/grand-store/catalog-originals/dobbe/dobbe-cognac-millesime-1999-vintage-750ml.png",
+        "sourceFileName": "Cognac DOBBÉ Millésime 1999 FB HR.jpg"
+      }
+    ]
+  },
+  "dobbe_extra": {
+    "productKey": "dobbe_extra",
+    "images": [
+      {
+        "role": "primary",
+        "publicId": "grand-store/catalog-originals/dobbe/dobbe-cognac-extra-rare-gift-box-open-750ml",
+        "version": 1789802840,
+        "originalUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/v1789802840/grand-store/catalog-originals/dobbe/dobbe-cognac-extra-rare-gift-box-open-750ml.png",
+        "transparentUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/c_limit,h_1600,w_1200/v1789802840/grand-store/catalog-originals/dobbe/dobbe-cognac-extra-rare-gift-box-open-750ml.png",
+        "sourceFileName": "COGNAC DOBBE EXTRA GB OPEN.png"
+      },
+      {
+        "role": "gallery",
+        "publicId": "grand-store/catalog-originals/dobbe/dobbe-cognac-extra-rare-gift-box-white-750ml",
+        "version": 1789802848,
+        "originalUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/v1789802848/grand-store/catalog-originals/dobbe/dobbe-cognac-extra-rare-gift-box-white-750ml.png",
+        "transparentUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1789802848/grand-store/catalog-originals/dobbe/dobbe-cognac-extra-rare-gift-box-white-750ml.png",
+        "sourceFileName": "COGNAC DOBBE EXTRA with Gift Box WHT.tif"
+      }
+    ]
+  },
+  "dobbe_o_liqueur": {
+    "productKey": "dobbe_o_liqueur",
+    "images": [
+      {
+        "role": "primary",
+        "publicId": "grand-store/catalog-originals/dobbe/dobbe-o-liqueur-cognac-orange-750ml",
+        "version": 1789802853,
+        "originalUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/v1789802853/grand-store/catalog-originals/dobbe/dobbe-o-liqueur-cognac-orange-750ml.png",
+        "transparentUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1789802853/grand-store/catalog-originals/dobbe/dobbe-o-liqueur-cognac-orange-750ml.png",
+        "sourceFileName": "DOBBE O COGNAC DOBBE HR.jpg"
+      }
+    ]
+  },
+  "dobbe_whisky_peated": {
+    "productKey": "dobbe_whisky_peated",
+    "images": [
+      {
+        "role": "primary",
+        "publicId": "grand-store/catalog-originals/dobbe/dobbe-whisky-peated-single-malt-750ml",
+        "version": 1789802866,
+        "originalUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/v1789802866/grand-store/catalog-originals/dobbe/dobbe-whisky-peated-single-malt-750ml.png",
+        "transparentUrl": "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1789802866/grand-store/catalog-originals/dobbe/dobbe-whisky-peated-single-malt-750ml.png",
+        "sourceFileName": "Whisky DOBBE Peated Single Malt HR.jpg"
+      }
+    ]
+  }
+}
