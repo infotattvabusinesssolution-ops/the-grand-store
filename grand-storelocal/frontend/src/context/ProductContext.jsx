@@ -24,7 +24,7 @@ export const ProductProvider = ({ children }) => {
   const [products, setProducts] = useState(() => {
     try {
       // Use clean cached live products from session to avoid flashing, strictly avoiding hardcoded seeded mock products
-      const cached = sessionStorage.getItem("gs_live_products_cache");
+      const cached = sessionStorage.getItem("gs_live_products_cache_v3");
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -57,7 +57,7 @@ export const ProductProvider = ({ children }) => {
           setLoading(false);
         }
         try {
-          sessionStorage.setItem("gs_live_products_cache", JSON.stringify(filteredData));
+          sessionStorage.setItem("gs_live_products_cache_v3", JSON.stringify(filteredData));
         } catch (e) {}
       } catch (err) {
         console.error("Error fetching live products:", err);

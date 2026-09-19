@@ -171,6 +171,8 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
       matchesSearch =
         normalizeForFilter(product.name).includes(q) ||
         normalizeForFilter(product.brand).includes(q) ||
+        normalizeForFilter(product.storeName).includes(q) ||
+        normalizeForFilter(product.vendorName).includes(q) ||
         normalizeForFilter(product.category).includes(q) ||
         normalizeForFilter(product.subcategory).includes(q) ||
         (Array.isArray(product.tags) && product.tags.some(t => normalizeForFilter(t).includes(q)));

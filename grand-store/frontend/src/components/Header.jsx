@@ -116,6 +116,8 @@ export default function Header({
           return (
             normalizeForSearch(p.name).includes(q) ||
             normalizeForSearch(p.brand).includes(q) ||
+            normalizeForSearch(p.storeName).includes(q) ||
+            normalizeForSearch(p.vendorName).includes(q) ||
             normalizeForSearch(p.category).includes(q) ||
             normalizeForSearch(p.subcategory).includes(q) ||
             (Array.isArray(p.tags) && p.tags.some(t => normalizeForSearch(t).includes(q)))
@@ -131,6 +133,8 @@ export default function Header({
           return (
             normalizeForSearch(p.name).includes(q) ||
             normalizeForSearch(p.brand).includes(q) ||
+            normalizeForSearch(p.storeName).includes(q) ||
+            normalizeForSearch(p.vendorName).includes(q) ||
             normalizeForSearch(p.category).includes(q) ||
             normalizeForSearch(p.subcategory).includes(q) ||
             (Array.isArray(p.tags) && p.tags.some(t => normalizeForSearch(t).includes(q)))
