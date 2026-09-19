@@ -68,7 +68,7 @@ const PRODUCT_METADATA = {
     tastingNotes: ['Dried Dates', 'Crushed Walnut', 'Leather', 'Violet Flower', 'Rancio & Cocoa'],
     flavorProfile: ['Complex & Layered', 'Deep Wood', 'Aristocratic & Polished'],
     foodPairing: ['Roast Venison', 'Roquefort Blue Cheese', 'Walnut Tart', 'Single Origin Espresso'],
-    tags: ['Dobbé', 'Cognac', 'Petite Champagne', '10 Years Old', 'Single Cru', 'XO Quality']
+    tags: ['Dobbé', 'Dobbe', 'Cognac', '10 Ans', '10 ans', 'Petite Champagne', '10 Years Old', 'Single Cru', 'XO Quality']
   },
   dobbe_xo: {
     name: 'Dobbé Cognac XO Fine Gastronomie 750ml',
@@ -199,8 +199,16 @@ async function seed() {
       const primaryImg = manifestItem.images.find(img => img.role === 'primary') || manifestItem.images[0];
       const galleryImgs = manifestItem.images.filter(img => img.role === 'gallery').map(img => img.transparentUrl || img.originalUrl);
 
+      const cleanSlug = String(meta.name)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+
       const productPayload = {
         ...meta,
+        slug: cleanSlug,
         image: primaryImg.transparentUrl,
         originalImage: primaryImg.originalUrl,
         cloudinaryPublicId: primaryImg.publicId,
@@ -214,17 +222,15 @@ async function seed() {
 
       if (existing) {
         await Product.updateOne({ _id: existing._id }, { $set: productPayload });
-        console.log(`✓ Updated: ${meta.name}`);
+        console.log(`✓ Updated: ${meta.name} (slug: ${cleanSlug})`);
         updated++;
       } else {
         const id = crypto.randomUUID();
-        const slug = meta.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         await Product.create({
           ...productPayload,
-          id,
-          slug
+          id
         });
-        console.log(`+ Inserted: ${meta.name} (id: ${id}, slug: ${slug})`);
+        console.log(`+ Inserted: ${meta.name} (id: ${id}, slug: ${cleanSlug})`);
         inserted++;
       }
     }

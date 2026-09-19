@@ -59,6 +59,8 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
     setVisibleCount(12);
   }, [searchParams, minPrice, maxPriceInput, sortBy]);
 
+  const searchTerm = (searchParams.get("search") || searchParams.get("q") || "").trim();
+
   const selectedCategories = searchParams
     .getAll("category")
     .filter(isVisibleFilterValue);
@@ -159,9 +161,28 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
     Fortified: ['Port', 'Sherry', 'Madeira', 'Vermouth', 'Late Harvest Wine', 'Ice Wine', 'Sauternes', 'Moscato']
   };
 
+  const normalizeForFilter = (str) =>
+    String(str || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
   let filteredProducts = shopProducts.filter((product) => {
     const matchesStyle = selectedStyles.length === 0 || selectedStyles.some(style => WINE_STYLES[style]?.includes(product.subcategory));
+
+    let matchesSearch = true;
+    if (searchTerm) {
+      const q = normalizeForFilter(searchTerm);
+      matchesSearch =
+        normalizeForFilter(product.name).includes(q) ||
+        normalizeForFilter(product.brand).includes(q) ||
+        normalizeForFilter(product.category).includes(q) ||
+        normalizeForFilter(product.subcategory).includes(q) ||
+        (Array.isArray(product.tags) && product.tags.some(t => normalizeForFilter(t).includes(q)));
+    }
+
     return (
+      matchesSearch &&
       (!selectedCategories.length ||
         selectedCategories.includes(getProductCategory(product))) &&
       matchesStyle &&

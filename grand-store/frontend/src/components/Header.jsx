@@ -103,24 +103,40 @@ export default function Header({
   const [mobileSearchQuery, setMobileSearchQuery] = useState("");
   const mobileSearchRef = useRef(null);
 
+  const normalizeForSearch = (str) =>
+    String(str || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
   const searchResults = searchQuery.trim()
     ? products
-        .filter(
-          (p) =>
-            p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.brand?.toLowerCase().includes(searchQuery.toLowerCase()),
-        )
-        .slice(0, 5)
+        .filter((p) => {
+          const q = normalizeForSearch(searchQuery);
+          return (
+            normalizeForSearch(p.name).includes(q) ||
+            normalizeForSearch(p.brand).includes(q) ||
+            normalizeForSearch(p.category).includes(q) ||
+            normalizeForSearch(p.subcategory).includes(q) ||
+            (Array.isArray(p.tags) && p.tags.some(t => normalizeForSearch(t).includes(q)))
+          );
+        })
+        .slice(0, 8)
     : [];
 
   const mobileSearchResults = mobileSearchQuery.trim()
     ? products
-        .filter(
-          (p) =>
-            p.name?.toLowerCase().includes(mobileSearchQuery.toLowerCase()) ||
-            p.brand?.toLowerCase().includes(mobileSearchQuery.toLowerCase()),
-        )
-        .slice(0, 5)
+        .filter((p) => {
+          const q = normalizeForSearch(mobileSearchQuery);
+          return (
+            normalizeForSearch(p.name).includes(q) ||
+            normalizeForSearch(p.brand).includes(q) ||
+            normalizeForSearch(p.category).includes(q) ||
+            normalizeForSearch(p.subcategory).includes(q) ||
+            (Array.isArray(p.tags) && p.tags.some(t => normalizeForSearch(t).includes(q)))
+          );
+        })
+        .slice(0, 8)
     : [];
 
   const [hasLiveAuction, setHasLiveAuction] = useState(false);
