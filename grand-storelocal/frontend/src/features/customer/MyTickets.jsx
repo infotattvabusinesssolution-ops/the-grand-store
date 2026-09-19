@@ -243,9 +243,9 @@ export default function MyTickets() {
                      ) : (
                        <>
                          <div className="bg-white p-3 rounded-xl mb-2 shadow-[0_0_30px_rgba(212,175,55,0.15)] relative group-hover:shadow-[0_0_40px_rgba(212,175,55,0.3)] transition-shadow">
-                           <QRCodeSVG id={`ticket-qr-svg-${ticket._id}`} value={ticket.ticketId} size={110} />
+                           <QRCodeSVG id={`ticket-qr-svg-${ticket._id}`} value={ticket.ticketId || ticket.gsReference || ticket._id} size={110} />
                          </div>
-                         <p className="text-[11px] font-mono text-white/50 tracking-[0.2em]">{ticket.ticketId}</p>
+                         <p className="text-[11px] font-mono text-white/50 tracking-[0.2em]">{ticket.ticketId || ticket.gsReference || ticket._id}</p>
                        </>
                      )}
                      <button
@@ -344,7 +344,7 @@ export default function MyTickets() {
 
             <div className="py-6 flex flex-col items-center text-center">
               <div className="bg-white p-4 rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.2)] mb-4">
-                <QRCodeSVG value={shareTicket.ticketId} size={150} />
+                <QRCodeSVG value={shareTicket.ticketId || shareTicket.gsReference || shareTicket._id} size={150} />
               </div>
               <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 mb-2">
                 {shareTicket.ticketType || 'VIP Access'} • Verified

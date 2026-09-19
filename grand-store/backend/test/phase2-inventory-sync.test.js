@@ -103,4 +103,69 @@ test('Phase 2: Inventory & Storefront Sync Test Suite', async (t) => {
     const isNew = !paymentHistory.some(h => h.reference === newRef);
     assert.equal(isNew, true, 'New reference must not be flagged as duplicate');
   });
+
+  // 7. Multi-Platform QR Ticket Identifier Extraction & Synchronization
+  await t.test('8. Multi-platform QR ticket identifier extracts consistently across web, mobile, and scanner formats', async () => {
+    const { extractTicketIdentifier } = (() => {
+      // Replicate controller extractor logic
+      const extract = (input) => {
+        if (!input) return '';
+        if (typeof input === 'object') {
+          return input.ticketId || input.ticket_id || input.code || input.ticketCode || input.id || input._id || input.gsReference || '';
+        }
+        let str = String(input).trim();
+        if ((str.startsWith('"') && str.endsWith('"')) || (str.startsWith("'") && str.endsWith("'"))) {
+          str = str.slice(1, -1).trim();
+        }
+        if ((str.startsWith('{') && str.endsWith('}')) || (str.startsWith('[') && str.endsWith(']'))) {
+          try {
+            const parsed = JSON.parse(str);
+            if (parsed && typeof parsed === 'object') {
+              return parsed.ticketId || parsed.ticket_id || parsed.code || parsed.ticketCode || parsed.id || parsed._id || parsed.gsReference || str;
+            }
+          } catch (_) {}
+        }
+        if (str.startsWith('http://') || str.startsWith('https://')) {
+          try {
+            const url = new URL(str);
+            return url.searchParams.get('ticketId') || url.searchParams.get('ticket') || url.searchParams.get('id') || str.split('/').pop() || str;
+          } catch (_) {}
+        }
+        return str;
+      };
+      return { extractTicketIdentifier: extract };
+    })();
+
+    const expectedTicketId = 'TKT-17189012-3456';
+
+    // A. Raw string from Web MyTickets.jsx
+    assert.equal(extractTicketIdentifier('TKT-17189012-3456'), expectedTicketId);
+
+    // B. JSON payload from Mobile App inline pass & Backend QR generator
+    const jsonPayload = JSON.stringify({
+      ticketId: 'TKT-17189012-3456',
+      gsReference: 'GS-26-EVT-000123',
+      event: 'Exclusive Cellar Wine Tasting',
+      date: '2026-10-15',
+      tier: 'VIP Reserve',
+      quantity: 2
+    });
+    assert.equal(extractTicketIdentifier(jsonPayload), expectedTicketId);
+
+    // C. URL scan from mobile or email link
+    const urlPayload = 'https://grandstoreglobal.com/events/ticket?ticketId=TKT-17189012-3456';
+    assert.equal(extractTicketIdentifier(urlPayload), expectedTicketId);
+
+    // D. Object body from scanner webhook
+    assert.equal(extractTicketIdentifier({ ticketId: 'TKT-17189012-3456' }), expectedTicketId);
+    assert.equal(extractTicketIdentifier({ qrPayload: jsonPayload }), ''); // nested string fallback
+    assert.equal(extractTicketIdentifier({ code: 'TKT-17189012-3456' }), expectedTicketId);
+
+    // E. Quoted string
+    assert.equal(extractTicketIdentifier('"TKT-17189012-3456"'), expectedTicketId);
+
+    // F. Booking GS Reference fallback
+    assert.equal(extractTicketIdentifier('GS-26-EVT-000123'), 'GS-26-EVT-000123');
+  });
 });
+

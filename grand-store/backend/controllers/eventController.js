@@ -314,7 +314,7 @@ const getEventAttendees = async (req, res) => {
 const extractTicketIdentifierLegacy = (input) => {
   if (!input) return "";
   if (typeof input === "object") {
-    return input.ticketId || input.ticket_id || input.id || input._id || input.gsReference || "";
+    return input.ticketId || input.ticket_id || input.code || input.ticketCode || input.id || input._id || input.gsReference || "";
   }
   let str = String(input).trim();
   if ((str.startsWith('"') && str.endsWith('"')) || (str.startsWith("'") && str.endsWith("'"))) {
@@ -324,7 +324,7 @@ const extractTicketIdentifierLegacy = (input) => {
     try {
       const parsed = JSON.parse(str);
       if (parsed && typeof parsed === "object") {
-        return parsed.ticketId || parsed.ticket_id || parsed.id || parsed._id || parsed.gsReference || str;
+        return parsed.ticketId || parsed.ticket_id || parsed.code || parsed.ticketCode || parsed.id || parsed._id || parsed.gsReference || str;
       }
     } catch (_) {}
   }
@@ -339,7 +339,7 @@ const extractTicketIdentifierLegacy = (input) => {
 
 const verifyTicket = async (req, res) => {
   try {
-    const rawInput = req.body.ticketId || req.body.code || req.body.data || req.body.qrData || req.body.ticket;
+    const rawInput = req.body.ticketId || req.body.code || req.body.data || req.body.qrData || req.body.qrPayload || req.body.ticketCode || req.body.ticket || req.body.gsReference || req.body.id || req.body._id || (typeof req.body === 'string' ? req.body : (req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : null));
     const identifier = extractTicketIdentifierLegacy(rawInput);
 
     if (!identifier) {
