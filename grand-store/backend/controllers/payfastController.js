@@ -609,6 +609,25 @@ exports.itnWebhook = async (req, res) => {
        } else if (reference.startsWith('MNF-')) {
           const parts = reference.replace('MNF-', '').split('-');
           const vendorId = parts[0];
+          const Vendor = require('../models/Vendor');
+          const vendor = await Vendor.findById(vendorId);
+          if (!vendor) {
+            console.error(`PayFast ITN: Vendor ${vendorId} not found for maintenance fee`);
+            return res.status(404).send('Vendor not found');
+          }
+          let defaultMonthlyFee = 500;
+          try {
+            const PlatformSettings = require('../models/PlatformSettings');
+            const settings = await PlatformSettings.findOne();
+            if (settings && settings.vendorMonthlyMaintenanceFee !== undefined) {
+              defaultMonthlyFee = settings.vendorMonthlyMaintenanceFee;
+            }
+          } catch (e) {}
+          const expectedFee = Number(vendor.maintenanceFee?.amount || defaultMonthlyFee);
+          if (Math.abs(receivedAmount - expectedFee) > 0.05) {
+            console.error(`PayFast ITN: Vendor ${vendorId} maintenance fee mismatch. Expected R${expectedFee.toFixed(2)}, received R${receivedAmount.toFixed(2)}`);
+            return res.status(400).send('Amount mismatch');
+          }
           const { processMaintenanceFeePayment } = require('./vendorController');
           await processMaintenanceFeePayment(vendorId, {
             paymentMethod: 'PayFast',
@@ -636,6 +655,25 @@ exports.itnWebhook = async (req, res) => {
              const depositId = reference.replace('DEP-', '');
              await cancelBidderDepositPayment(depositId, `PayFast ITN status: ${payload.payment_status}`);
              console.log(`Successfully cancelled VIP deposit ${depositId} due to ITN status: ${payload.payment_status}`);
+          } else if (reference.startsWith('VND-')) {
+             const vendorId = reference.replace('VND-', '');
+             const Vendor = require('../models/Vendor');
+             const vendor = await Vendor.findById(vendorId);
+             if (vendor && vendor.paymentStatus !== 'paid') {
+               vendor.paymentStatus = 'failed';
+               await vendor.save();
+               console.log(`PayFast ITN: Vendor ${vendorId} registration marked failed due to ITN status: ${payload.payment_status}`);
+             }
+          } else if (reference.startsWith('MNF-')) {
+             const parts = reference.replace('MNF-', '').split('-');
+             const vendorId = parts[0];
+             const Vendor = require('../models/Vendor');
+             const vendor = await Vendor.findById(vendorId);
+             if (vendor && vendor.maintenanceFee && vendor.maintenanceFee.status !== 'paid') {
+               vendor.maintenanceFee.status = 'unpaid';
+               await vendor.save();
+               console.log(`PayFast ITN: Vendor ${vendorId} maintenance fee marked unpaid due to ITN status: ${payload.payment_status}`);
+             }
           }
        }
     }

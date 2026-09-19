@@ -308,6 +308,11 @@ exports.processVendorPayment = async (vendorId) => {
       return;
     }
 
+    if (vendor.paymentStatus === 'paid') {
+      console.log(`processVendorPayment: Vendor ${vendorId} registration fee already paid (idempotent)`);
+      return vendor;
+    }
+
     vendor.paymentStatus = 'paid';
     vendor.paidAt = new Date();
 
@@ -575,6 +580,17 @@ const processMaintenanceFeePayment = async (vendorId, { paymentMethod = 'PayFast
   const feeAmount = amount || vendor.maintenanceFee?.amount || defaultMonthlyFee;
   const payRef = reference || `MNF-${vendor._id}-${Date.now().toString().slice(-6)}`;
   const gsRef = `GS-${new Date().getFullYear().toString().slice(-2)}-VND-MNF-${Date.now()}`;
+
+  // Idempotency check: if this payment reference was already recorded, skip duplicate advance
+  if (Array.isArray(vendor.maintenanceFee?.paymentHistory)) {
+    const isAlreadyRecorded = vendor.maintenanceFee.paymentHistory.some(
+      (h) => (reference && h.reference === reference) || (payRef && h.reference === payRef)
+    );
+    if (isAlreadyRecorded) {
+      console.log(`processMaintenanceFeePayment: Payment ${payRef} already recorded for vendor ${vendorId} (idempotent duplicate)`);
+      return vendor;
+    }
+  }
 
   // Advance nextDueAt by 30 days
   const currentDue = (vendor.maintenanceFee?.nextDueAt && new Date(vendor.maintenanceFee.nextDueAt) > new Date())

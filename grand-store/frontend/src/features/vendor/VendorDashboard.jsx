@@ -90,12 +90,30 @@ export default function VendorDashboard() {
     if (params.get('payment') === 'success' && params.get('fee') === 'paid') {
       setPaymentSuccess(true);
       setShowPayModal(true);
-      fetchFeeAndNotifications();
       window.history.replaceState({}, '', window.location.pathname);
-      setTimeout(() => {
-        setPaymentSuccess(false);
-        setShowPayModal(false);
-      }, 4000);
+
+      let attempts = 0;
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        try {
+          const feeRes = await api.get('/vendor/maintenance-fee');
+          setMaintenanceFeeData(feeRes.data);
+          if (feeRes.data?.status === 'paid' || attempts >= 6) {
+            clearInterval(pollInterval);
+            if (feeRes.data?.status === 'paid') {
+              setTimeout(() => {
+                setPaymentSuccess(false);
+                setShowPayModal(false);
+              }, 3000);
+            }
+          }
+        } catch (e) {
+          console.error('Error polling maintenance fee status:', e);
+          if (attempts >= 6) clearInterval(pollInterval);
+        }
+      }, 2000);
+
+      fetchFeeAndNotifications();
     } else if (params.get('payment') === 'cancelled') {
       alert("PayFast payment was cancelled. You can complete your maintenance fee payment at any time.");
       window.history.replaceState({}, '', window.location.pathname);

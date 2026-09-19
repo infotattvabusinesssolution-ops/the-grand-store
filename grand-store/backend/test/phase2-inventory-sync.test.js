@@ -69,11 +69,38 @@ test('Phase 2: Inventory & Storefront Sync Test Suite', async (t) => {
       headers: {},
       query: { guestAccessToken: 'token-from-alias-777' }
     };
-
     const extractToken = (req) => req.headers['x-guest-access-token'] || req.query.token || req.query.guestAccessToken;
 
     assert.equal(extractToken(reqFromHeader), 'token-from-header-999');
     assert.equal(extractToken(reqFromQuery), 'token-from-query-888');
     assert.equal(extractToken(reqFromQueryAlias), 'token-from-alias-777');
+  });
+
+  // 5. Vendor Maintenance Fee Amount Verification
+  await t.test('6. Vendor maintenance fee mismatch rejects underpayment', async () => {
+    const expectedFee = 500.00;
+    const receivedAmount = 100.00;
+    const isMismatch = Math.abs(receivedAmount - expectedFee) > 0.05;
+    assert.equal(isMismatch, true, 'Underpaid maintenance fee must be rejected');
+
+    const exactAmount = 500.00;
+    const isMatch = Math.abs(exactAmount - expectedFee) <= 0.05;
+    assert.equal(isMatch, true, 'Exact maintenance fee must match');
+  });
+
+  // 6. Vendor Maintenance Fee Idempotency Check
+  await t.test('7. Vendor maintenance fee duplicate payment reference is detected', async () => {
+    const paymentHistory = [
+      { reference: 'MNF-vendor-123-999', status: 'cleared' },
+      { reference: 'EFT-MNF-VND-001', status: 'pending_verification' }
+    ];
+
+    const duplicateRef = 'MNF-vendor-123-999';
+    const isDuplicate = paymentHistory.some(h => h.reference === duplicateRef);
+    assert.equal(isDuplicate, true, 'Duplicate reference must be recognized');
+
+    const newRef = 'MNF-vendor-123-1000';
+    const isNew = !paymentHistory.some(h => h.reference === newRef);
+    assert.equal(isNew, true, 'New reference must not be flagged as duplicate');
   });
 });
