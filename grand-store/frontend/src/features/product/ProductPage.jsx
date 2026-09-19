@@ -57,17 +57,23 @@ const resolveImageUrl = (src) => {
 
 export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   const navigate = useNavigate();
-  const { products } = useProducts();
+  const { products, loading: productsLoading } = useProducts();
   const { slug } = useParams();
   const { currency, country_name } = useGeoLocation();
 
-  const product = products.find(
+  const [directProduct, setDirectProduct] = useState(null);
+  const [directLoading, setDirectLoading] = useState(false);
+  const [fetchAttempted, setFetchAttempted] = useState(false);
+
+  const matchedProduct = products.find(
     (item) =>
       item.slug === slug ||
       item.id === slug ||
       item.id === Number(slug) ||
       item._id === slug
   );
+
+  const product = matchedProduct || directProduct;
   const { isWishlisted } = useWishlist();
   const wishlisted = product ? isWishlisted(product) : false;
   const [selectedImage, setSelectedImage] = useState(resolveImageUrl(product?.image ?? ""));
@@ -75,6 +81,41 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   const [selectedOption, setSelectedOption] = useState(
     product?.options?.[0] ?? "Pack of 1",
   );
+
+  useEffect(() => {
+    if (matchedProduct) return;
+    if (!slug) return;
+
+    let cancelled = false;
+    const fetchDirect = async () => {
+      setDirectLoading(true);
+      try {
+        const res = await api.get(`/products/slugs/${encodeURIComponent(slug)}`);
+        const item = res.data?.data || res.data;
+        if (!cancelled && item && (item.name || item._id)) {
+          setDirectProduct(item);
+        }
+      } catch (err) {
+        try {
+          const resId = await api.get(`/products/${encodeURIComponent(slug)}`);
+          const item = resId.data?.data || resId.data;
+          if (!cancelled && item && (item.name || item._id)) {
+            setDirectProduct(item);
+          }
+        } catch (e) {}
+      } finally {
+        if (!cancelled) {
+          setDirectLoading(false);
+          setFetchAttempted(true);
+        }
+      }
+    };
+
+    fetchDirect();
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, matchedProduct]);
 
   // For zooming/gallery
   const [isZoomed, setIsZoomed] = useState(false);
@@ -145,7 +186,18 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
     };
   }, [product?.id, product?._id]);
 
-  if (!product) return <Navigate to="/" replace />;
+  if (productsLoading || directLoading || (!product && !fetchAttempted)) {
+    return (
+      <div className="min-h-screen bg-[#0d0907] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+          <p className="text-sm tracking-widest uppercase text-amber-200/60 font-serif">Loading Vintage...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) return <Navigate to="/shop" replace />;
 
   const gallery = [...new Set(
     [product.image, ...(product.gallery || [])].filter(Boolean).map(resolveImageUrl)
