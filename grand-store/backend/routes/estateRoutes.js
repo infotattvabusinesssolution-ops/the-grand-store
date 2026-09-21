@@ -13,7 +13,7 @@ const { protect } = require('../middleware/authMiddleware');
 
 // Inline vendor role check (project has no separate vendorMiddleware file)
 const isVendor = (req, res, next) => {
-  if (req.user && (req.user.role === 'vendor_active' || req.user.role === 'vendor_pending')) {
+  if (req.user && (req.user.role === 'vendor_active' || req.user.role === 'vendor_pending' || req.user.role === 'admin')) {
     return next();
   }
   res.status(403).json({ message: 'Access denied. Vendors only.' });
@@ -27,6 +27,21 @@ const upload = multer({ storage });
 router.get('/vendor/my-profile', protect, isVendor, getMyProfile);
 router.post('/vendor/my-profile', protect, isVendor, upsertMyProfile);
 router.patch('/vendor/my-profile/publish', protect, isVendor, togglePublish);
+
+// Single image upload route for Estate Builder (Cloudinary)
+router.post('/vendor/upload-image', protect, isVendor, (req, res) => {
+  upload.any()(req, res, (err) => {
+    if (err) {
+      console.error('Estate image upload error:', err);
+      return res.status(400).json({ message: 'Failed to upload image', error: err.message });
+    }
+    const file = req.file || (req.files && req.files[0]);
+    if (!file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+    res.json({ url: file.path, secure_url: file.path });
+  });
+});
 
 // Image upload route
 router.post('/vendor/upload-images', protect, isVendor, upload.array('images', 4), (req, res) => {

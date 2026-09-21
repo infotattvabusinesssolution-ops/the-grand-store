@@ -19,6 +19,8 @@ import {
   Phone,
   Mail,
   Camera,
+  UploadCloud,
+  Loader2,
 } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL;
@@ -93,6 +95,190 @@ const Toggle = ({ label, description, value, onChange }) => (
   </div>
 );
 
+/* ─── Cloudinary Image Upload & URL Input ─── */
+const ImageUploadInput = ({
+  label,
+  value,
+  onChange,
+  placeholder = "https://... or upload image",
+  previewHeight = "h-44",
+  helperText,
+}) => {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please select a valid image file (JPG, PNG, WEBP, etc.).");
+      return;
+    }
+
+    setUploading(true);
+    setUploadError(null);
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const res = await axios.post(
+        `${API}/api/estates/vendor/upload-image`,
+        formData,
+        {
+          headers: {
+            ...headers(),
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      const url = res.data.secure_url || res.data.url;
+      if (url) {
+        onChange(url);
+      }
+    } catch (err) {
+      console.error("Cloudinary upload failed via /api/estates/vendor/upload-image:", err);
+      // Fallback: try /api/vendor/onboarding/upload
+      try {
+        const fallbackForm = new FormData();
+        fallbackForm.append("document", file);
+        const fallbackRes = await axios.post(
+          `${API}/api/vendor/onboarding/upload`,
+          fallbackForm,
+          {
+            headers: {
+              ...headers(),
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+        let fbUrl = fallbackRes.data.url;
+        if (fbUrl && !fbUrl.startsWith("http")) {
+          fbUrl = `${API}${fbUrl}`;
+        }
+        if (fbUrl) {
+          onChange(fbUrl);
+          setUploading(false);
+          return;
+        }
+      } catch (fbErr) {
+        console.error("Fallback upload failed:", fbErr);
+      }
+      setUploadError("Upload to Cloudinary failed. Please try again.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const isCloudinary = value && value.includes("cloudinary.com");
+
+  return (
+    <Field label={label}>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={value || ""}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={placeholder}
+              className="w-full bg-white/[0.04] border border-white/10 px-4 py-3 text-white placeholder-white/20 text-sm focus:outline-none focus:border-amber-400/50 focus:bg-white/[0.07] transition-all pr-24"
+            />
+            {isCloudinary && (
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-mono uppercase tracking-wider">
+                Cloudinary
+              </span>
+            )}
+          </div>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
+          />
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-1.5 px-4 py-3 bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/50 text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap disabled:opacity-50"
+          >
+            {uploading ? (
+              <>
+                <Loader2 size={13} className="animate-spin" />
+                <span>Uploading…</span>
+              </>
+            ) : (
+              <>
+                <UploadCloud size={13} />
+                <span>Upload</span>
+              </>
+            )}
+          </button>
+
+          {value && (
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              title="Clear image"
+              className="p-3 text-white/30 hover:text-red-400 bg-white/[0.04] border border-white/10 hover:border-red-400/30 transition-colors"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+
+        {uploadError && (
+          <p className="text-red-400 text-xs">{uploadError}</p>
+        )}
+
+        {helperText && (
+          <p className="text-white/30 text-[11px]">{helperText}</p>
+        )}
+
+        {value && (
+          <div className={`relative overflow-hidden ${previewHeight} bg-white/5 border border-white/10 group rounded-sm`}>
+            <img
+              src={value}
+              alt={label || "Preview"}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              onError={(e) => {
+                e.target.style.display = "none";
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute top-2 left-2 flex items-center gap-1.5">
+              <span className="text-[9px] uppercase tracking-widest text-white/70 bg-black/60 backdrop-blur-sm px-2 py-0.5 border border-white/10">
+                Preview
+              </span>
+              {isCloudinary && (
+                <span className="text-[9px] uppercase tracking-widest text-amber-300 bg-amber-950/80 backdrop-blur-sm px-2 py-0.5 border border-amber-500/30">
+                  Cloudinary CDN
+                </span>
+              )}
+            </div>
+            <a
+              href={value}
+              target="_blank"
+              rel="noreferrer"
+              className="absolute bottom-2 right-2 text-[10px] text-white/70 hover:text-white bg-black/60 backdrop-blur-sm px-2.5 py-1 border border-white/10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <ExternalLink size={10} /> View Full
+            </a>
+          </div>
+        )}
+      </div>
+    </Field>
+  );
+};
+
 /* ─── Experience / Tasting package editor ─── */
 const PackageEditor = ({ items = [], onChange, addLabel = "Add Package" }) => {
   const add = () =>
@@ -147,11 +333,12 @@ const PackageEditor = ({ items = [], onChange, addLabel = "Add Package" }) => {
               placeholder="10"
             />
             <div className="col-span-2">
-              <Input
-                label="Image URL"
+              <ImageUploadInput
+                label="Package Image (Cloudinary or URL)"
                 value={item.imageUrl}
                 onChange={(v) => update(i, "imageUrl", v)}
-                placeholder="https://images.unsplash.com/..."
+                placeholder="Upload or paste image URL..."
+                previewHeight="h-32"
               />
             </div>
             <div className="col-span-2">
@@ -449,28 +636,14 @@ export default function EstateBuilder() {
                 placeholder="South Africa"
               />
               <div className="col-span-2">
-                <Input
-                  label="Hero Image URL"
+                <ImageUploadInput
+                  label="Hero Banner Image (Cloudinary or URL)"
                   value={p.heroImageUrl}
                   onChange={(v) => set("heroImageUrl", v)}
-                  placeholder="https://images.unsplash.com/..."
+                  placeholder="Upload or paste image URL..."
+                  previewHeight="h-56"
+                  helperText="Upload a high-resolution hero banner for your estate (recommended 1920x1080)."
                 />
-                {p.heroImageUrl && (
-                  <div className="mt-3 relative overflow-hidden h-48 bg-white/5">
-                    <img
-                      src={p.heroImageUrl}
-                      alt="Hero preview"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                      }}
-                    />
-                    <div className="absolute inset-0 border border-white/10 pointer-events-none" />
-                    <span className="absolute top-2 left-2 text-[9px] uppercase tracking-widest text-white/40 bg-black/40 px-2 py-1">
-                      Preview
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
           </Section>
@@ -525,20 +698,21 @@ export default function EstateBuilder() {
 
             <div className="mt-4">
               <label className="block text-[11px] text-white/40 uppercase tracking-[0.15em] mb-2 font-medium">
-                Story Image URLs (Max 4)
+                Story Images (Max 4)
               </label>
               <div className="grid grid-cols-2 gap-4">
                 {[0, 1, 2, 3].map((i) => (
-                  <Input
+                  <ImageUploadInput
                     key={i}
-                    label={`Image ${i + 1} URL`}
+                    label={`Story Image ${i + 1}`}
                     value={p.story?.images?.[i] || ""}
                     onChange={(v) => {
                       const newImages = [...(p.story?.images || [])];
                       newImages[i] = v;
                       set("story.images", newImages);
                     }}
-                    placeholder="https://images.unsplash.com/..."
+                    placeholder="Upload or paste image URL..."
+                    previewHeight="h-36"
                   />
                 ))}
               </div>
@@ -548,11 +722,13 @@ export default function EstateBuilder() {
           {/* ── Vineyard ── */}
           <Section isActive={activeSection === "vineyard"} id="vineyard" title="Vineyard">
             <div className="mb-6">
-              <Input
-                label="Vineyard Image URL"
+              <ImageUploadInput
+                label="Vineyard Image"
                 value={p.vineyard?.imageUrl}
                 onChange={(v) => set("vineyard.imageUrl", v)}
-                placeholder="https://images.unsplash.com/..."
+                placeholder="Upload or paste image URL..."
+                previewHeight="h-48"
+                helperText="A panoramic shot of your estate's vineyards or terroir."
               />
             </div>
             <div className="grid grid-cols-2 gap-6">
@@ -615,11 +791,12 @@ export default function EstateBuilder() {
             />
             {p.hospitality?.hasTastings && (
               <div className="pt-2">
-                <Input
-                  label="Tastings Image URL"
+                <ImageUploadInput
+                  label="Tastings Banner Image"
                   value={p.hospitality?.tastingsImageUrl}
                   onChange={(v) => set("hospitality.tastingsImageUrl", v)}
-                  placeholder="https://images.unsplash.com/..."
+                  placeholder="Upload or paste image URL..."
+                  previewHeight="h-44"
                 />
                 <div className="mt-4">
                   <PackageEditor
@@ -642,11 +819,12 @@ export default function EstateBuilder() {
             />
             {p.hospitality?.hasRestaurant && (
               <>
-                <Input
-                  label="Restaurant Image URL"
+                <ImageUploadInput
+                  label="Restaurant Image"
                   value={p.hospitality?.restaurant?.imageUrl}
                   onChange={(v) => set("hospitality.restaurant.imageUrl", v)}
-                  placeholder="https://images.unsplash.com/..."
+                  placeholder="Upload or paste image URL..."
+                  previewHeight="h-44"
                 />
                 <Input
                   label="Restaurant Name"
@@ -693,11 +871,12 @@ export default function EstateBuilder() {
             />
             {p.hospitality?.hasAccommodation && (
               <>
-                <Input
-                  label="Accommodation Image URL"
+                <ImageUploadInput
+                  label="Accommodation Image"
                   value={p.hospitality?.accommodation?.imageUrl}
                   onChange={(v) => set("hospitality.accommodation.imageUrl", v)}
-                  placeholder="https://images.unsplash.com/..."
+                  placeholder="Upload or paste image URL..."
+                  previewHeight="h-44"
                 />
                 <Textarea
                   label="Description"
