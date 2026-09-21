@@ -70,24 +70,24 @@ async function seedAdminStore() {
       vendor.paymentStatus = 'paid';
       vendor.vendorType = 'flagship';
       
-      // Preserve custom banner/logo if already customized, otherwise ensure default flagship assets
-      vendor.businessInfo = {
-        ...ADMIN_STORE_PROFILE.businessInfo,
-        ...vendor.businessInfo,
-        tradingName: vendor.businessInfo?.tradingName || 'The Grand Store',
-        bannerUrl: vendor.businessInfo?.bannerUrl || '/assets/grand-store-whisky-banner.jpg',
-        logoUrl: vendor.businessInfo?.logoUrl || '/grand-store-logo.png',
-        story: vendor.businessInfo?.story || ADMIN_STORE_PROFILE.businessInfo.story
-      };
+      if (!vendor.businessInfo) vendor.businessInfo = {};
+      vendor.businessInfo.tradingName = vendor.businessInfo.tradingName || 'The Grand Store';
+      vendor.businessInfo.legalName = vendor.businessInfo.legalName || 'The Grand Store International (Pty) Ltd';
+      vendor.businessInfo.bannerUrl = vendor.businessInfo.bannerUrl || '/assets/grand-store-whisky-banner.jpg';
+      vendor.businessInfo.logoUrl = vendor.businessInfo.logoUrl || '/grand-store-logo.png';
+      vendor.businessInfo.story = vendor.businessInfo.story || ADMIN_STORE_PROFILE.businessInfo.story;
 
-      vendor.shippingProfile = {
-        ...ADMIN_STORE_PROFILE.shippingProfile,
-        ...vendor.shippingProfile
-      };
+      if (!vendor.shippingProfile) vendor.shippingProfile = {};
+      if (!vendor.shippingProfile.pickupAddress) vendor.shippingProfile.pickupAddress = {};
+      vendor.shippingProfile.pickupAddress.country = 'South Africa & Global';
+      vendor.shippingProfile.pickupAddress.city = 'Cape Town';
 
       vendor.verificationScore = {
-        ...ADMIN_STORE_PROFILE.verificationScore,
-        ...vendor.verificationScore
+        businessVerified: true,
+        identityVerified: true,
+        licenceVerified: true,
+        taxVerified: true,
+        bankVerified: true
       };
 
       await vendor.save();
