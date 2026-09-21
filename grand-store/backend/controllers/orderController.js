@@ -1444,6 +1444,70 @@ const getVendorOrders = async (req, res) => {
     console.error('Get Vendor Orders Error:', error);
     res.status(500).json({ message: 'Server Error getting vendor orders' });
   }
+// @desc    Get single vendor shipment/order detail
+// @route   GET /api/orders/vendor/sales/:shipmentId
+// @access  Private (Vendor/Product Staff)
+const getVendorOrderById = async (req, res) => {
+  try {
+    const Shipment = require('../models/Shipment');
+    const Order = require('../models/Order');
+    const mongoose = require('mongoose');
+
+    const { shipmentId } = req.params;
+    let shipment = null;
+    if (mongoose.Types.ObjectId.isValid(shipmentId)) {
+      shipment = await Shipment.findById(shipmentId);
+    }
+    if (!shipment) {
+      shipment = await Shipment.findOne({ shipmentId });
+    }
+    if (!shipment) {
+      return res.status(404).json({ message: 'Shipment not found' });
+    }
+
+    const managesInternalOrders = ['admin', 'super_admin', 'product_manager'].includes(req.user.role);
+    const ownsShipment = shipment.vendorId && shipment.vendorId.toString() === req.user._id.toString();
+    if ((!shipment.vendorId && !managesInternalOrders) || (shipment.vendorId && !ownsShipment && !managesInternalOrders)) {
+      return res.status(403).json({ message: 'Not authorized to view this shipment' });
+    }
+
+    const masterOrder = await Order.findById(shipment.orderId).populate('customerId', 'name email');
+    if (!masterOrder) {
+      return res.status(404).json({ message: 'Master order not found' });
+    }
+
+    let items = masterOrder.orderItems.filter(item => {
+      if (managesInternalOrders) return !item.vendorId;
+      return item.vendorId && item.vendorId.toString() === req.user._id.toString();
+    });
+
+    const result = {
+      _id: shipment._id,
+      shipmentId: shipment.shipmentId,
+      orderId: shipment.orderId,
+      orderRef: shipment.orderRef || masterOrder.invoiceNumber || masterOrder.orderId,
+      createdAt: shipment.createdAt,
+      status: shipment.status,
+      courierName: shipment.legs && shipment.legs.length > 0 ? shipment.legs[0].courierName : 'Vendor Managed',
+      shippingCost: shipment.customerShippingCharge,
+      trackingNumber: shipment.mainTrackingNumber,
+      deliveryAddress: shipment.deliveryAddress || masterOrder.shippingAddress,
+      deliveryPreference: masterOrder.deliveryPreference,
+      selectedPostnetStore: masterOrder.selectedPostnetStore,
+      customerName: masterOrder.customerId ? masterOrder.customerId.name : (masterOrder.shippingAddress?.fullName || masterOrder.guestInfo?.name || 'Customer'),
+      customerEmail: masterOrder.customerId ? masterOrder.customerId.email : (masterOrder.shippingAddress?.email || masterOrder.guestInfo?.email || ''),
+      customerPhone: masterOrder.shippingAddress?.phone || masterOrder.shippingAddress?.phoneNumber || masterOrder.guestInfo?.phone || '',
+      adminMessages: masterOrder.adminMessages || [],
+      latestAdminMessage: masterOrder.latestAdminMessage || null,
+      items: items,
+      vendorTotal: items.reduce((acc, item) => acc + (item.price * item.quantity), 0)
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error('Get Vendor Order Detail Error:', error);
+    res.status(500).json({ message: 'Server error retrieving shipment details' });
+  }
 };
 
 // @desc    Update a retail shipment's fulfilment status
@@ -1953,5 +2017,6 @@ module.exports = {
   getAdminOrders,
   getAdminOrderById,
   sendAdminOrderMessage,
-  sendVendorOrderMessage
+  sendVendorOrderMessage,
+  getVendorOrderById
 };

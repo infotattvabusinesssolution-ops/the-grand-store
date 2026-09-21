@@ -11,6 +11,7 @@ const {
   getAdminOrderById,
   sendAdminOrderMessage,
   sendVendorOrderMessage,
+  getVendorOrderById,
   cancelOrderPaymentHandler
 } = require('../controllers/orderController');
 const { protect, optionalAuth, requireRoles, financeStaff } = require('../middleware/authMiddleware');
@@ -41,6 +42,11 @@ router.route('/vendor/sales').get(
   protect,
   requireRoles('vendor_active', 'admin', 'super_admin', 'product_manager'),
   getVendorOrders,
+);
+router.route('/vendor/sales/:shipmentId').get(
+  protect,
+  requireRoles('vendor_active', 'admin', 'super_admin', 'product_manager'),
+  getVendorOrderById,
 );
 router.route('/vendor/sales/:shipmentId/status').patch(
   protect,

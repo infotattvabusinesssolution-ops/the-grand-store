@@ -102,6 +102,7 @@ import VendorInventory from './features/vendor/VendorInventory'
 import VendorWallet from './features/vendor/VendorWallet'
 import VendorBankDetails from './features/vendor/VendorBankDetails'
 import VendorOrders from './features/vendor/VendorOrders'
+import VendorOrderDetail from './features/vendor/VendorOrderDetail'
 import VendorShippingProfile from './features/vendor/VendorShippingProfile'
 import AdminLoginPage from './features/admin/AdminLoginPage'
 import AdminLayout from './features/admin/AdminLayout'
@@ -782,6 +783,7 @@ function App() {
         <Route path="/vendor" element={<VendorLayout />}>
           <Route path="dashboard" element={<VendorDashboard />} />
           <Route path="orders" element={<VendorOrders />} />
+          <Route path="orders/:id" element={<VendorOrderDetail onNotify={showToast} />} />
           <Route path="inventory" element={<VendorInventory />} />
           <Route path="wallet" element={<VendorWallet />} />
           <Route path="banking" element={<VendorBankDetails />} />
