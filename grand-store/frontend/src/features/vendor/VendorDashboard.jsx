@@ -2,6 +2,7 @@ import Price from '../../components/ui/Price';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useCurrency } from '../../context/CurrencyContext';
 import { 
   TrendingUp, Package, DollarSign, Activity, AlertCircle, ShoppingBag, 
   Lightbulb, Calendar, Gavel, CreditCard, Clock, ShieldCheck, CheckCheck, 
@@ -14,6 +15,7 @@ import api from '../../api';
 
 export default function VendorDashboard() {
   const { user } = useAuth();
+  const { formatPrice } = useCurrency();
   const navigate = useNavigate();
   const [sales, setSales] = useState([]);
   const [lots, setLots] = useState([]);
@@ -270,22 +272,22 @@ export default function VendorDashboard() {
                   ? 'Urgent Action Required: Monthly Vendor Maintenance Fee Overdue'
                   : 'Notice: Monthly Vendor Maintenance Fee Due'}
               </div>
-              <p className="text-xs opacity-80 mt-0.5">
+              <p className="text-xs text-white/70 mt-0.5">
                 {maintenanceFeeData.status === 'overdue'
-                  ? `Your monthly fee of R ${maintenanceFeeData.amount} is ${Math.abs(maintenanceFeeData.daysRemaining || 0)} days past due. Please settle now to ensure your storefront and product listings stay live.`
-                  : `Your recurring monthly maintenance fee of R ${maintenanceFeeData.amount} is due in ${maintenanceFeeData.daysRemaining <= 0 ? 'today' : `${maintenanceFeeData.daysRemaining} days`}.`}
+                  ? `Your monthly fee of ${formatPrice(maintenanceFeeData.amount)} is ${Math.abs(maintenanceFeeData.daysRemaining || 0)} days past due. Please settle now to ensure your storefront and product listings stay live.`
+                  : `Your recurring monthly maintenance fee of ${formatPrice(maintenanceFeeData.amount)} is due in ${maintenanceFeeData.daysRemaining <= 0 ? 'today' : `${maintenanceFeeData.daysRemaining} days`}.`}
               </p>
             </div>
           </div>
           <button
             onClick={() => setShowPayModal(true)}
-            className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shrink-0 ${
+            className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shrink-0 flex items-center gap-1.5 ${
               maintenanceFeeData.status === 'overdue'
                 ? 'bg-red-500 hover:bg-red-400 text-white shadow-lg shadow-red-500/20'
                 : 'bg-[#c9a35b] hover:bg-[#e1bd70] text-black shadow-lg shadow-[#c9a35b]/20'
             }`}
           >
-            Pay R {maintenanceFeeData.amount} Now
+            <span>Pay</span> <Price amount={maintenanceFeeData.amount} /> <span>Now</span>
           </button>
         </div>
       )}
@@ -398,8 +400,8 @@ export default function VendorDashboard() {
           <div className="flex flex-wrap items-center gap-6 sm:gap-8 w-full lg:w-auto justify-between lg:justify-end border-t lg:border-t-0 pt-4 lg:pt-0 border-white/[0.08]">
             <div>
               <div className="text-[10px] uppercase tracking-widest text-[var(--color-ivory-muted)] font-semibold mb-1">Monthly Rate</div>
-              <div className="text-2xl font-serif text-[#e1bd70] font-medium">
-                R {maintenanceFeeData?.amount || 500} <span className="text-xs text-[var(--color-ivory-muted)] font-sans">/ mo</span>
+              <div className="text-2xl font-serif text-[#e1bd70] font-medium flex items-baseline gap-1">
+                <Price amount={maintenanceFeeData?.amount || 500} /> <span className="text-xs text-[var(--color-ivory-muted)] font-sans">/ mo</span>
               </div>
             </div>
 
@@ -816,7 +818,7 @@ export default function VendorDashboard() {
                   </div>
                   <h4 className="text-xl font-serif text-white">Payment Confirmed!</h4>
                   <p className="text-sm text-[var(--color-ivory-muted)] max-w-sm mx-auto">
-                    Your monthly maintenance fee of R {maintenanceFeeData?.amount || 500}.00 has been successfully processed. Store privileges and catalog listings are renewed for the next 30 days.
+                    Your monthly maintenance fee of <Price amount={maintenanceFeeData?.amount || 500} /> has been successfully processed. Store privileges and catalog listings are renewed for the next 30 days.
                   </p>
                 </div>
               ) : proofSuccess ? (
@@ -835,7 +837,9 @@ export default function VendorDashboard() {
                   <div className="p-4 rounded-xl bg-black/60 border border-white/[0.08] space-y-2.5">
                     <div className="flex items-center justify-between text-xs text-[var(--color-ivory-muted)]">
                       <span>Monthly Fee Amount:</span>
-                      <span className="font-mono text-white text-base font-bold">R {maintenanceFeeData?.amount || 500}.00</span>
+                      <span className="font-mono text-white text-base font-bold">
+                        <Price amount={maintenanceFeeData?.amount || 500} />
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-[var(--color-ivory-muted)]">
                       <span>Coverage Duration:</span>
@@ -930,7 +934,7 @@ export default function VendorDashboard() {
                             </>
                           ) : (
                             <>
-                              <span>Pay R {maintenanceFeeData?.amount || 500} via PayFast</span>
+                              <span className="flex items-center gap-1">Pay <Price amount={maintenanceFeeData?.amount || 500} /> via PayFast</span>
                               <ArrowRight size={14} />
                             </>
                           )}
