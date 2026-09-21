@@ -1444,6 +1444,8 @@ const getVendorOrders = async (req, res) => {
     console.error('Get Vendor Orders Error:', error);
     res.status(500).json({ message: 'Server Error getting vendor orders' });
   }
+};
+
 // @desc    Get single vendor shipment/order detail
 // @route   GET /api/orders/vendor/sales/:shipmentId
 // @access  Private (Vendor/Product Staff)
