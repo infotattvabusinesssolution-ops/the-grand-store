@@ -34,4 +34,5 @@ Disallow: /verify-email
 Disallow: /api/
 
 # Sitemap directive pointing to your official production domain
+Sitemap: https://grandstore.co.za/sitemap.xml
 Sitemap: https://grandstoreglobal.com/sitemap.xml
