@@ -1418,6 +1418,7 @@ const getVendorOrders = async (req, res) => {
       return {
         _id: shp._id,
         shipmentId: shp.shipmentId,
+        orderId: shp.orderId,
         orderRef: shp.orderRef,
         createdAt: shp.createdAt,
         status: shp.status,
@@ -1425,7 +1426,11 @@ const getVendorOrders = async (req, res) => {
         shippingCost: shp.customerShippingCharge,
         trackingNumber: shp.mainTrackingNumber,
         deliveryAddress: shp.deliveryAddress,
-        customerName: shp.customerId ? shp.customerId.name : 'Guest',
+        customerName: shp.customerId ? shp.customerId.name : (masterOrder.shippingAddress?.fullName || masterOrder.guestInfo?.name || 'Customer'),
+        customerEmail: shp.customerId ? shp.customerId.email : (masterOrder.shippingAddress?.email || masterOrder.guestInfo?.email || ''),
+        customerPhone: masterOrder.shippingAddress?.phone || masterOrder.shippingAddress?.phoneNumber || masterOrder.guestInfo?.phone || '',
+        adminMessages: masterOrder.adminMessages || [],
+        latestAdminMessage: masterOrder.latestAdminMessage || null,
         items: items,
         vendorTotal: items.reduce((acc, item) => acc + (item.price * item.quantity), 0)
       };
@@ -1447,6 +1452,9 @@ const getVendorOrders = async (req, res) => {
 const updateShipmentStatus = async (req, res) => {
   try {
     const Shipment = require('../models/Shipment');
+    const Order = require('../models/Order');
+    const mongoose = require('mongoose');
+
     const allowedStatuses = [
       'Order Confirmed',
       'Preparing',
@@ -1462,24 +1470,201 @@ const updateShipmentStatus = async (req, res) => {
       return res.status(400).json({ message: 'Invalid shipment status' });
     }
 
-    const shipment = await Shipment.findById(req.params.shipmentId);
+    let shipment = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.shipmentId)) {
+      shipment = await Shipment.findById(req.params.shipmentId);
+    }
+    if (!shipment) {
+      shipment = await Shipment.findOne({ shipmentId: req.params.shipmentId });
+    }
     if (!shipment) {
       return res.status(404).json({ message: 'Shipment not found' });
     }
 
     const managesInternalOrders = ['admin', 'super_admin', 'product_manager'].includes(req.user.role);
     const ownsShipment = shipment.vendorId?.toString() === req.user._id.toString();
-    if ((!shipment.vendorId && !managesInternalOrders) || (shipment.vendorId && !ownsShipment)) {
+    if ((!shipment.vendorId && !managesInternalOrders) || (shipment.vendorId && !ownsShipment && !managesInternalOrders)) {
       return res.status(403).json({ message: 'Not authorized to update this shipment' });
     }
 
     shipment.status = status;
+    if (req.body.trackingNumber) {
+      shipment.mainTrackingNumber = String(req.body.trackingNumber).trim();
+    }
     shipment.actualDeliveryDate = status === 'Delivered' ? new Date() : shipment.actualDeliveryDate;
     await shipment.save();
-    res.json({ _id: shipment._id, status: shipment.status, actualDeliveryDate: shipment.actualDeliveryDate });
+
+    // Synchronize delivery status on Master Order
+    if (shipment.orderId) {
+      const order = await Order.findById(shipment.orderId);
+      if (order) {
+        order.deliveryStatusText = status;
+        if (status === 'Delivered') {
+          const allShipments = await Shipment.find({ orderId: order._id });
+          const allDelivered = allShipments.length > 0 && allShipments.every(s => s._id.toString() === shipment._id.toString() ? true : s.status === 'Delivered');
+          if (allDelivered) {
+            order.isDelivered = true;
+            order.deliveredAt = new Date();
+          }
+        }
+        await order.save();
+      }
+    }
+
+    res.json({ _id: shipment._id, status: shipment.status, actualDeliveryDate: shipment.actualDeliveryDate, trackingNumber: shipment.mainTrackingNumber });
   } catch (error) {
     console.error('Update Shipment Status Error:', error);
     res.status(500).json({ message: 'Server Error updating shipment status' });
+  }
+};
+
+// @desc    Send custom / advisory notice from Vendor to customer for a shipment / order
+// @route   POST /api/orders/vendor/sales/:shipmentId/message
+// @access  Private (Vendor / Admin Staff)
+const sendVendorOrderMessage = async (req, res) => {
+  try {
+    const Shipment = require('../models/Shipment');
+    const Order = require('../models/Order');
+    const mongoose = require('mongoose');
+
+    const { shipmentId } = req.params;
+    const { message, type = 'info', shipmentStatus, trackingNumber } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'Message content is required' });
+    }
+
+    let shipment = null;
+    if (mongoose.Types.ObjectId.isValid(shipmentId)) {
+      shipment = await Shipment.findById(shipmentId);
+    }
+    if (!shipment) {
+      shipment = await Shipment.findOne({ shipmentId });
+    }
+    if (!shipment) {
+      return res.status(404).json({ message: 'Shipment not found' });
+    }
+
+    const managesInternalOrders = ['admin', 'super_admin', 'product_manager'].includes(req.user.role);
+    const ownsShipment = shipment.vendorId && shipment.vendorId.toString() === req.user._id.toString();
+    if ((!shipment.vendorId && !managesInternalOrders) || (shipment.vendorId && !ownsShipment && !managesInternalOrders)) {
+      return res.status(403).json({ message: 'Not authorized to send notice for this shipment' });
+    }
+
+    const order = await Order.findById(shipment.orderId).populate('user', 'name email');
+    if (!order) {
+      return res.status(404).json({ message: 'Master order not found' });
+    }
+
+    // Determine vendor display name
+    const senderName = req.user.vendorProfile?.storeName || req.user.vendorProfile?.companyName || req.user.name || 'Grand Store Partner';
+    const messageObj = {
+      message: message.trim(),
+      type: ['info', 'warning', 'emergency', 'stock_issue'].includes(type) ? type : 'info',
+      sentAt: new Date(),
+      sentBy: req.user._id,
+      sentByName: senderName,
+      isVendor: true,
+      shipmentId: shipment.shipmentId || shipment._id
+    };
+
+    if (!Array.isArray(order.adminMessages)) {
+      order.adminMessages = [];
+    }
+    order.adminMessages.push(messageObj);
+    order.latestAdminMessage = messageObj;
+
+    // Optional status update
+    const allowedStatuses = [
+      'Order Confirmed',
+      'Preparing',
+      'Collected',
+      'In Transit',
+      'Out for Delivery',
+      'Delivered',
+      'Delayed',
+      'Failed',
+    ];
+    if (shipmentStatus && allowedStatuses.includes(shipmentStatus)) {
+      shipment.status = shipmentStatus;
+      shipment.actualDeliveryDate = shipmentStatus === 'Delivered' ? new Date() : shipment.actualDeliveryDate;
+      order.deliveryStatusText = shipmentStatus;
+
+      if (shipmentStatus === 'Delivered') {
+        const allShipments = await Shipment.find({ orderId: order._id });
+        const allDelivered = allShipments.length > 0 && allShipments.every(s => s._id.toString() === shipment._id.toString() ? true : s.status === 'Delivered');
+        if (allDelivered) {
+          order.isDelivered = true;
+          order.deliveredAt = new Date();
+        }
+      }
+    }
+
+    if (trackingNumber && typeof trackingNumber === 'string') {
+      shipment.mainTrackingNumber = trackingNumber.trim();
+    }
+
+    await shipment.save();
+    await order.save();
+
+    // 1. In-app notification for registered customer
+    if (order.user && order.user._id) {
+      try {
+        const Notification = require('../models/Notification');
+        await Notification.create({
+          recipient: order.user._id,
+          recipientType: 'customer',
+          title: `Order Advisory from ${senderName}: #${order.invoiceNumber || order.orderId}`,
+          message: messageObj.message,
+          type: 'order',
+          link: '/customer/orders',
+          metadata: {
+            orderId: order._id,
+            shipmentId: shipment._id,
+            orderReference: order.invoiceNumber || order.orderId,
+            type: messageObj.type
+          }
+        });
+      } catch (notifErr) {
+        console.error('Failed to create in-app notification for vendor message:', notifErr.message);
+      }
+    }
+
+    // 2. Email notification to customer
+    const customerEmail = order.guestInfo?.email || order.shippingAddress?.email || (order.user && order.user.email);
+    const customerName = order.guestInfo?.name || order.shippingAddress?.fullName || (order.user && order.user.name) || 'Valued Customer';
+
+    if (customerEmail) {
+      try {
+        const { sendEmail } = require('../utils/emailService');
+        const { adminOrderMessageEmailTemplate } = require('../utils/emailTemplates');
+        await sendEmail({
+          to: customerEmail,
+          subject: `[Order #${order.invoiceNumber || order.orderId}] Notice from ${senderName}`,
+          html: adminOrderMessageEmailTemplate({
+            customerName,
+            orderReference: order.invoiceNumber || order.orderId || order._id,
+            message: messageObj.message,
+            type: messageObj.type,
+            storeUrl: process.env.FRONTEND_URL || 'https://grandstoreglobal.com'
+          })
+        });
+      } catch (emailErr) {
+        console.error('Failed to send vendor order message email:', emailErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Notice sent to customer successfully',
+      adminMessage: messageObj,
+      shipmentStatus: shipment.status,
+      trackingNumber: shipment.mainTrackingNumber,
+      orderAdminMessages: order.adminMessages
+    });
+  } catch (error) {
+    console.error('Send Vendor Order Message Error:', error);
+    res.status(500).json({ message: 'Server error sending notice to customer' });
   }
 };
 
@@ -1767,5 +1952,6 @@ module.exports = {
   cancelOrderPaymentHandler, // Exported for route POST /api/orders/:id/cancel-payment
   getAdminOrders,
   getAdminOrderById,
-  sendAdminOrderMessage
+  sendAdminOrderMessage,
+  sendVendorOrderMessage
 };
