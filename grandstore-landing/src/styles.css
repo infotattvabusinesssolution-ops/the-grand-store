@@ -5491,15 +5491,27 @@ em {
 }
 
 .events-torn-section .storefront-card .photo-frame {
-  aspect-ratio: 16 / 11;
+  aspect-ratio: 682 / 1024;
   width: 100%;
-  background: #080a0e;
+  max-width: 440px;
+  margin: 0 auto;
+  background: radial-gradient(circle at center, #151720 0%, #080a0e 100%);
 }
 
 .events-torn-section .terrace-card .photo-frame {
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 622 / 1024;
   width: 100%;
-  background: #080a0e;
+  max-width: 440px;
+  margin: 0 auto;
+  background: radial-gradient(circle at center, #151720 0%, #080a0e 100%);
+}
+
+.events-torn-section .photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  filter: contrast(1.06) brightness(0.98);
 }
 
 @media (max-width: 991px) {
