@@ -98,13 +98,7 @@ export default function Footer({
           <h3 className="footer-heading">The Grand Store</h3>
           <a
             className="footer-nav-link"
-            href={`${STORE}/about`}
-            onClick={(e) => {
-              if (onNavigateAbout) {
-                e.preventDefault();
-                onNavigateAbout();
-              }
-            }}
+            href="/about"
             target="_blank"
             rel="noopener noreferrer"
           >

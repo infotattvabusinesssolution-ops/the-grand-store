@@ -65,6 +65,7 @@ const data = {
   internationalHref: `https://grandstoreglobal.com/shop?${new URLSearchParams(
     allInternationalCountries.map((country) => ["country", country])
   )}`,
+  localHref: "https://grandstore.co.za/shop?country=South%20Africa",
 };
 for (const [collection, picks] of Object.entries(selections)) {
   data[collection] = [];
@@ -89,6 +90,10 @@ for (const [collection, picks] of Object.entries(selections)) {
       })
       .webp({ quality: 85 })
       .toFile(path.join(root, "public", file));
+    const baseStore =
+      collection === "local"
+        ? "https://grandstore.co.za"
+        : "https://grandstoreglobal.com";
     data[collection].push({
       id: product._id,
       slug,
@@ -100,7 +105,7 @@ for (const [collection, picks] of Object.entries(selections)) {
       size: product.size || "750ml",
       image: file,
       sourceImage: imageUrl,
-      href: `https://grandstoreglobal.com/product/${encodeURIComponent(slug)}`,
+      href: `${baseStore}/product/${encodeURIComponent(slug)}`,
     });
     console.log(`Saved ${collection}: ${displayName}`);
   }

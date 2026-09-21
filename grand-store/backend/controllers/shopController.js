@@ -1,14 +1,76 @@
+const mongoose = require('mongoose');
 const Vendor = require('../models/Vendor');
 const Product = require('../models/Product');
+const User = require('../models/User');
+const seedAdminStore = require('../services/seedAdminStore');
 
 // @desc    Fetch store details and products
 // @route   GET /api/shop/stores/:id
 // @access  Public
 const getStoreById = async (req, res) => {
   try {
-    const storeId = req.params.id;
-    
-    // Find Vendor by either userId or its own _id to be robust
+    const storeId = String(req.params.id || '').trim();
+    const lowerId = storeId.toLowerCase();
+    const isObjectId = mongoose.Types.ObjectId.isValid(storeId);
+
+    // Check if this is the Grand Store Admin flagship storefront
+    let isAdminStore = ['admin', 'grandstore', 'grand-store', 'thegrandstore'].includes(lowerId);
+    let adminUser = null;
+
+    if (!isAdminStore && isObjectId) {
+      adminUser = await User.findOne({ _id: storeId, role: { $in: ['admin', 'super_admin'] } });
+      if (adminUser) {
+        isAdminStore = true;
+      }
+    }
+
+    if (isAdminStore) {
+      if (!adminUser) {
+        adminUser = await User.findOne({
+          $or: [
+            { email: 'admin@grandstore.com' },
+            { role: 'admin' },
+            { role: 'super_admin' }
+          ]
+        });
+      }
+
+      let vendor = adminUser ? await Vendor.findOne({ userId: adminUser._id }).populate('userId', 'name email') : null;
+      if (!vendor) {
+        vendor = await seedAdminStore();
+      }
+
+      // Flagship store data
+      const storeData = {
+        _id: 'admin',
+        businessName: vendor?.businessInfo?.tradingName || 'The Grand Store',
+        country: vendor?.shippingProfile?.pickupAddress?.country || 'South Africa & Global',
+        type: 'Flagship House',
+        bannerUrl: vendor?.businessInfo?.bannerUrl || '/assets/grand-store-whisky-banner.jpg',
+        logoUrl: vendor?.businessInfo?.logoUrl || '/grand-store-logo.png',
+        story: vendor?.businessInfo?.story || 'The Grand Store is an exclusive sanctuary for rare whiskies, aged cognacs, historic vintages, and bespoke cellar allocations. Curated by master sommeliers, our flagship collection presents the finest single malts, aged rums, rare cognacs, and iconic estate wines—sourced directly from private vaults, heritage distilleries, and distinguished estates worldwide.',
+        isVerified: true
+      };
+
+      // Fetch all approved house products (where vendorId is null/unassigned, or belongs to admin)
+      const products = await Product.find({
+        $or: [
+          { vendorId: null },
+          { vendorId: { $exists: false } },
+          ...(adminUser ? [{ vendorId: adminUser._id }] : [])
+        ],
+        approvalStatus: 'approved',
+        isCatalogDuplicate: { $ne: true }
+      }).sort({ createdAt: -1 });
+
+      return res.json({ storeData, products });
+    }
+
+    // Standard vendor store lookup
+    if (!isObjectId) {
+      return res.status(404).json({ message: 'Store not found' });
+    }
+
     const vendor = await Vendor.findOne({ 
       $or: [
         { userId: storeId },
@@ -21,7 +83,11 @@ const getStoreById = async (req, res) => {
     }
     
     // Fetch products using the vendor's userId, since product.vendorId points to User
-    const products = await Product.find({ vendorId: vendor.userId._id || vendor.userId, approvalStatus: 'approved' });
+    const products = await Product.find({
+      vendorId: vendor.userId._id || vendor.userId,
+      approvalStatus: 'approved',
+      isCatalogDuplicate: { $ne: true }
+    }).sort({ createdAt: -1 });
     
     // Map data
     const storeData = {

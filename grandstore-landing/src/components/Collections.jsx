@@ -41,6 +41,15 @@ export default function CuratedShowcase() {
   const isHoveredRef = useRef(false);
   const reduced = useReducedMotion();
 
+  const currentStore =
+    activeTab === "south-africa"
+      ? "https://grandstore.co.za"
+      : "https://grandstoreglobal.com";
+  const exploreHref =
+    activeTab === "south-africa"
+      ? catalog.localHref || `${currentStore}/shop`
+      : catalog.internationalHref || `${currentStore}/shop`;
+
   const currentProducts =
     activeTab === "south-africa" ? catalog.local : catalog.international;
 
@@ -143,8 +152,6 @@ export default function CuratedShowcase() {
           {/* Action & Filter Controls Bar */}
           <div className="showcase-controls-bar">
             {/* Center: Black & Gold Glassmorphic Tabs */}
-
-            {/* Center: Black & Gold Glassmorphic Tabs */}
             <div className="showcase-tab-switcher black-gold-switcher" role="tablist">
               <button
                 role="tab"
@@ -197,9 +204,11 @@ export default function CuratedShowcase() {
               </div>
 
               <a
-                href={`${STORE}/shop`}
+                href={exploreHref}
                 className="showcase-menu-link black-gold-link"
                 aria-label="Explore full store"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 <span>EXPLORE ALL</span>
                 <ArrowUpRight size={13} />
@@ -258,6 +267,8 @@ export default function CuratedShowcase() {
                       href={product.href}
                       className="bottle-visual-link"
                       aria-label={`View ${product.displayName} on The Grand Store`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
                       <motion.div
                         className="bottle-motion-wrapper"
@@ -288,7 +299,12 @@ export default function CuratedShowcase() {
 
                   {/* Big Bold Clean Typography Below Bottle matching Reference */}
                   <div className="showcase-bottle-info black-gold-info">
-                    <a href={product.href} className="bottle-title-link">
+                    <a
+                      href={product.href}
+                      className="bottle-title-link"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <h3 className="showcase-bottle-title">
                         {product.displayName}
                       </h3>
@@ -312,9 +328,9 @@ export default function CuratedShowcase() {
         {/* Bottom Bar matching Reference */}
         <div className="showcase-bottombar black-gold-bottombar">
           <div className="showcase-bottom-links">
-            <a href={`${STORE}/terms-and-conditions`}>TERMS & CONDITIONS</a>
-            <a href={`${STORE}/privacy-policy`}>PRIVACY POLICY</a>
-            <a href={`${STORE}/auction`}>LIVE AUCTION ROOM</a>
+            <a href={`${currentStore}/terms-and-conditions`} target="_blank" rel="noopener noreferrer">TERMS & CONDITIONS</a>
+            <a href={`${currentStore}/privacy-policy`} target="_blank" rel="noopener noreferrer">PRIVACY POLICY</a>
+            <a href={`${currentStore}/auction`} target="_blank" rel="noopener noreferrer">LIVE AUCTION ROOM</a>
           </div>
 
           <div className="showcase-bottom-meta">

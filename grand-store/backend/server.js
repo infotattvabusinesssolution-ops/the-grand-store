@@ -148,6 +148,8 @@ mongoose
     console.log("MongoDB connected successfully");
     const seedAdminStaff = require("./services/seedAdminStaff");
     await seedAdminStaff();
+    const seedAdminStore = require("./services/seedAdminStore");
+    await seedAdminStore();
     // Start jobs ONLY after successful DB connection to avoid Mongoose buffering timeouts
     startAuctionCronJobs();
     startVendorTrustJobs();

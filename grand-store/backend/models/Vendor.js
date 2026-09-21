@@ -10,7 +10,7 @@ const vendorSchema = new mongoose.Schema({
   // Step 1: Progress Tracking
   vendorType: {
     type: String,
-    enum: ['local', 'international'],
+    enum: ['local', 'international', 'flagship'],
     default: 'local'
   },
   onboardingStep: {

@@ -29,7 +29,6 @@ import {
 } from "@phosphor-icons/react";
 import { Reveal, MagneticLink } from "./components/MotionUI";
 import CuratedShowcase from "./components/Collections";
-import AboutUsStory from "./components/AboutUsStory";
 import AboutPage from "./pages/AboutPage";
 import AuctionsPage from "./pages/AuctionsPage";
 import AppPromoSection from "./components/AppPromoSection";
@@ -42,7 +41,7 @@ import LegalModal from "./components/LegalModal";
 import AppDownloadModal from "./components/AppDownloadModal";
 const STORE = "https://grandstoreglobal.com";
 const navigation = [
-  ["Our story", "#our-story"],
+  ["About us", "/about"],
   ["Collection", "#collection"],
   ["Experiences", "#experiences"],
   ["Auctions", "#auctions"],
@@ -118,13 +117,25 @@ function Header({ onNavigate, onOpenAppModal, currentRoute = "/" }) {
         <nav aria-label="Main navigation" className="desktop-nav">
           {navigation.map(([label, href]) => {
             const isAuction = href === "#auctions" || href === "/auctions";
-            const isActive = isAuction ? currentRoute === "/auctions" : false;
+            const isAbout = href === "/about";
+            const isActive = isAuction
+              ? currentRoute === "/auctions"
+              : isAbout
+              ? currentRoute === "/about"
+              : false;
             return (
               <a
                 key={label}
                 href={isAuction ? "/auctions" : href}
+                target={isAbout ? "_blank" : undefined}
+                rel={isAbout ? "noopener noreferrer" : undefined}
                 className={isActive ? "active-nav-tab" : ""}
-                onClick={(e) => handleNavClick(e, href)}
+                onClick={(e) => {
+                  if (isAbout) {
+                    return;
+                  }
+                  handleNavClick(e, href);
+                }}
               >
                 {label}
                 {isAuction && <span className="nav-live-dot" />}
@@ -161,14 +172,24 @@ function Header({ onNavigate, onOpenAppModal, currentRoute = "/" }) {
           >
             {navigation.map(([label, href]) => {
               const isAuction = href === "#auctions" || href === "/auctions";
-              const isActive = isAuction ? currentRoute === "/auctions" : false;
+              const isAbout = href === "/about";
+              const isActive = isAuction
+                ? currentRoute === "/auctions"
+                : isAbout
+                ? currentRoute === "/about"
+                : false;
               return (
                 <a
                   key={label}
                   href={isAuction ? "/auctions" : href}
+                  target={isAbout ? "_blank" : undefined}
+                  rel={isAbout ? "noopener noreferrer" : undefined}
                   className={isActive ? "active-nav-tab" : ""}
                   onClick={(e) => {
                     setOpen(false);
+                    if (isAbout) {
+                      return;
+                    }
                     handleNavClick(e, href);
                   }}
                 >
@@ -576,7 +597,7 @@ function Experiences() {
               </div>
 
               <p className="manifesto-body">
-                Step behind the velvet curtain for guided sommelier flights, executive cellar masterclasses, and sunset tastings across our subterranean Rosebank vaults and Franschhoek Winelands terraces. Sessions are capped at 12 guests to ensure unparalleled personal curation.
+                Step behind the velvet curtain for guided sommelier flights, executive cellar masterclasses, and sunset tastings across our subterranean Rosebank vaults and Franschhoek Winelands terraces. Every private gathering is capped at 12 guests to guarantee unparalleled personal curation, accompanied by rare direct cellar allocations, artisanal pairings, and bespoke sommelier consultations tailored to your palate.
               </p>
             </div>
           </div>
@@ -938,7 +959,6 @@ export default function App() {
       <main id="main">
         <PerspectiveHero reduceMotion={reduced} onNavigate={navigate} />
         <CategoryBar />
-        <AboutUsStory onNavigateAbout={() => navigate("/about")} />
         <CuratedShowcase />
         <Experiences />
         <AppPromoSection />
