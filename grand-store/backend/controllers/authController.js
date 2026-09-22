@@ -1813,13 +1813,49 @@ const convertGuestToAccount = async (req, res) => {
     // Link this order and all guest orders with this email to the user
     order.user = user._id;
     order.isGuest = false;
+    if (order.guestInfo) {
+      order.guestInfo.isLinkedToAccount = true;
+    }
     await order.save();
 
-    // Link any other guest orders matching this email
-    await Order.updateMany(
-      { isGuest: true, 'guestInfo.email': guestEmail, user: null },
-      { $set: { user: user._id, isGuest: false } }
-    );
+    // Link any other guest orders matching this email and calculate earned SuperCoins
+    const otherGuestOrders = await Order.find({
+      'guestInfo.email': guestEmail,
+      _id: { $ne: order._id }
+    });
+
+    let extraCoinsEarned = 0;
+    if (order.superCoinsEarned > 0) {
+      extraCoinsEarned += Number(order.superCoinsEarned);
+    }
+
+    for (const pastOrd of otherGuestOrders) {
+      pastOrd.user = user._id;
+      pastOrd.isGuest = false;
+      if (pastOrd.guestInfo) {
+        pastOrd.guestInfo.isLinkedToAccount = true;
+      }
+      await pastOrd.save();
+      if (pastOrd.superCoinsEarned > 0) {
+        extraCoinsEarned += Number(pastOrd.superCoinsEarned);
+      }
+    }
+
+    // Credit any earned SuperCoins from the linked orders if not already credited
+    if (extraCoinsEarned > 0) {
+      user.superCoinsBalance = (user.superCoinsBalance || 0) + extraCoinsEarned;
+      await user.save();
+
+      await SuperCoinLedger.create({
+        userId: user._id,
+        amount: extraCoinsEarned,
+        type: 'earned',
+        activity: 'order_reward',
+        status: 'completed',
+        description: `Credited ${extraCoinsEarned} Super Coins from linked guest order #${order.orderId || order.invoiceNumber}`,
+        balanceSnapshot: user.superCoinsBalance
+      }).catch(err => console.warn('SuperCoin ledger error on guest conversion:', err.message));
+    }
 
     // Link shipments
     await Shipment.updateMany(
@@ -1827,10 +1863,58 @@ const convertGuestToAccount = async (req, res) => {
       { $set: { customerId: user._id } }
     );
 
+    // Emit real-time notification to Vendor and Admin dashboards if socket.io is active
+    const io = req.app?.get('io') || global.io;
+    if (io) {
+      io.emit('customer:guest-converted', {
+        userId: user._id,
+        email: user.email,
+        name: user.name,
+        orderId: order._id,
+        orderNumber: order.orderId || order.invoiceNumber,
+        totalOrdersLinked: otherGuestOrders.length + 1,
+        superCoinsTotal: user.superCoinsBalance
+      });
+    }
+
     sendTokenResponse(user, 201, res);
   } catch (error) {
     console.error('Error converting guest to account:', error);
     res.status(500).json({ message: 'Server error converting account', error: error.message });
+  }
+};
+
+// @desc    Check if a guest email belongs to an existing registered user
+// @route   POST /api/auth/check-guest-email
+// @access  Public
+const checkGuestEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existingUser = await User.findOne({ email: cleanEmail }).select('_id name email phone phoneNumber superCoinsBalance isEmailVerified');
+
+    if (existingUser) {
+      return res.json({
+        exists: true,
+        user: {
+          id: existingUser._id,
+          name: existingUser.name,
+          email: existingUser.email,
+          phone: existingUser.phone || existingUser.phoneNumber || '',
+          superCoinsBalance: existingUser.superCoinsBalance || 0,
+          isEmailVerified: existingUser.isEmailVerified || false
+        }
+      });
+    }
+
+    return res.json({ exists: false });
+  } catch (error) {
+    console.error('Error checking guest email:', error);
+    res.status(500).json({ message: 'Error checking email', error: error.message });
   }
 };
 
@@ -1859,4 +1943,5 @@ module.exports = {
   verifyMagicLink,
   appleAuth,
   convertGuestToAccount,
+  checkGuestEmail,
 };

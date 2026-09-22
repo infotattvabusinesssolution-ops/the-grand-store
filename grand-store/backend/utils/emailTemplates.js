@@ -178,6 +178,32 @@ const millionaireNewsletterWelcomeTemplate = () => {
   return generateEmailTemplate('Welcome to the Millionaires Collection', content);
 };
 
+const cigarNewsletterWelcomeTemplate = () => {
+  const content = `
+    <div style="text-align: center; margin-bottom: 25px;">
+      <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: #d99a4e; font-weight: bold; display: block; margin-bottom: 8px;">The Connoisseur Circle</span>
+      <h1 style="color: #fffaf0; font-size: 26px; font-family: 'Times New Roman', serif; margin: 0 0 10px 0; letter-spacing: 1px;">WELCOME TO MCIGAR CLUB</h1>
+      <p style="color: #c8bda8; font-size: 15px; margin: 0; line-height: 1.6;">You are now part of our private cigar aficionado circle.</p>
+    </div>
+
+    <div style="background: linear-gradient(145deg, #1b140f 0%, #0d0a08 100%); border: 1px solid #d99a4e; border-radius: 8px; padding: 25px; margin: 25px 0; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <p style="color: #fffaf0; font-size: 15px; line-height: 1.7; margin: 0 0 18px 0;">
+        You will receive priority access to rare Cuban and New World cigar shipments, limited edition humidor drops, tasting notes, and private lounge invitations.
+      </p>
+      <a href="https://cigar.yogapranafitness.com/" style="display: inline-block; padding: 12px 28px; background: #8a4b1d; color: #fffaf0; border: 1px solid #d99a4e; font-size: 13px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; border-radius: 4px;">
+        Explore The Cigar Vault
+      </a>
+    </div>
+
+    <div style="border-top: 1px solid #222; margin-top: 30px; padding-top: 20px; font-size: 12px; color: #777; text-align: center; line-height: 1.6;">
+      <p style="margin: 0;">Mcigar — The Grand Store Fine Cigars &amp; Accessories.</p>
+      <p style="margin: 4px 0 0 0;">Strictly 18+. Cigars are for adult connoisseurs only.</p>
+    </div>
+  `;
+  return generateEmailTemplate('Welcome to Mcigar — The Cigar Connoisseur Club', content);
+};
+
+
 const orderConfirmationTemplate = (order) => {
   const orderReference = order.invoiceNumber || order.orderId || order._id;
   const isPostNet = order.deliveryPreference === 'postnet' || Boolean(order.selectedPostnetStore?.name);
@@ -1078,6 +1104,7 @@ module.exports = {
   passwordResetTemplate,
   newsletterWelcomeTemplate,
   millionaireNewsletterWelcomeTemplate,
+  cigarNewsletterWelcomeTemplate,
   orderConfirmationTemplate,
   paymentFailedEmailTemplate,
   bankTransferInstructionsTemplate,

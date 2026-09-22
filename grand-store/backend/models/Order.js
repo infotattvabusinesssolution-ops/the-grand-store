@@ -13,7 +13,8 @@ const orderSchema = new mongoose.Schema({
     email: { type: String, default: '' },
     phone: { type: String, default: '' },
     phoneCountry: { type: String, default: '' },
-    phoneCountryCode: { type: String, default: '' }
+    phoneCountryCode: { type: String, default: '' },
+    isLinkedToAccount: { type: Boolean, default: false }
   },
   isAgeConfirmed: { type: Boolean, default: false },
   guestAccessToken: { type: String },

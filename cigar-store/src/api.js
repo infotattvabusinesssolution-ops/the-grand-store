@@ -17,3 +17,19 @@ export const submitCigarEnquiry = async (payload) => {
   if (!response.ok) throw new Error(data.message || 'Your enquiry could not be submitted.');
   return data;
 };
+
+export const subscribeCigarNewsletter = async (email) => {
+  const response = await fetch(`${apiOrigin}/api/newsletter/subscribe`, {
+    method: 'POST',
+    credentials: 'omit',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, source: 'cigar-store' }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || 'Your subscription could not be processed.');
+  return data;
+};

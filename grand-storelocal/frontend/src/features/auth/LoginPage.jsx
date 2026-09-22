@@ -49,11 +49,12 @@ export default function LoginPage() {
     navigate(targetRoute);
   };
 
+  const emailQueryParam = searchParams.get('email') || '';
   // Primary Login Tab: 'phone' (Mobile SMS OTP) or 'email' (Email & Password)
-  const [primaryTab, setPrimaryTab] = useState('phone');
+  const [primaryTab, setPrimaryTab] = useState(() => (emailQueryParam ? 'email' : 'phone'));
 
   // Email & Password State
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => emailQueryParam);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);

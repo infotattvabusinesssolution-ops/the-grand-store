@@ -242,7 +242,18 @@ const addOrderItems = async (req, res) => {
     */
 
     const User = require('../models/User');
-    const user = req.user ? await User.findById(req.user._id) : null;
+    let user = req.user ? await User.findById(req.user._id) : null;
+    let isGuestLinkedToExistingAccount = false;
+
+    // If guest checkout, check if the email belongs to an existing registered user
+    if (!user && isGuest && guestEmail) {
+      const existingUser = await User.findOne({ email: guestEmail });
+      if (existingUser) {
+        user = existingUser;
+        isGuestLinkedToExistingAccount = true;
+      }
+    }
+
     const previousOrders = user ? await Order.countDocuments({ user: user._id }) : 0;
 
     // If authenticated user also attached KYC document during checkout, update profile
@@ -335,6 +346,11 @@ const addOrderItems = async (req, res) => {
       }
     }
 
+    if (user && superCoinsEarned > 0) {
+      user.pendingSuperCoins = (user.pendingSuperCoins || 0) + superCoinsEarned;
+      await user.save().catch(err => console.warn('Error updating pendingSuperCoins on order creation:', err.message));
+    }
+
     const finalTotal = parseFloat(Math.max(0, calculatedTotal - appliedWelcomeDiscount - appliedRewards - superCoinsDiscount).toFixed(2));
 
     let allOrderItems = [];
@@ -356,7 +372,12 @@ const addOrderItems = async (req, res) => {
     const order = new Order({
       user: user ? user._id : null,
       isGuest: isGuest,
-      guestInfo: isGuest ? { name: guestName, email: guestEmail, phone: guestPhone } : undefined,
+      guestInfo: isGuest ? {
+        name: guestName,
+        email: guestEmail,
+        phone: guestPhone,
+        isLinkedToAccount: Boolean(isGuestLinkedToExistingAccount)
+      } : undefined,
       guestAccessToken: isGuest ? guestAccessToken : undefined,
       isAgeConfirmed: isAgeConfirmed,
       guestKyc: isGuest ? {

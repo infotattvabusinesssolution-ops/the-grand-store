@@ -250,9 +250,17 @@ export default function AdminOrders() {
                         <User size={13} /> Customer Details
                       </h4>
                       <span className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${
-                        ord.isGuest ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                        ord.isGuest
+                          ? ord.guestInfo?.isLinkedToAccount
+                            ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                            : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                          : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                       }`}>
-                        {ord.isGuest ? "Guest Checkout" : "VIP Member"}
+                        {ord.isGuest
+                          ? ord.guestInfo?.isLinkedToAccount
+                            ? "Guest (Linked Account)"
+                            : "Guest Checkout"
+                          : "VIP Member"}
                       </span>
                     </div>
 

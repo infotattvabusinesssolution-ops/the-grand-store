@@ -882,10 +882,44 @@ export default function OrderSuccessPage({ onClearCart }) {
           </div>
         </div>
 
-        {/* Post-Order 1-Click Account Creation (Section 6 & Quick Buyer) */}
-        {(!user || order.isGuest) && !accountCreated && (
+        {/* Auto-Linked to Existing Account Banner */}
+        {(!user || order.isGuest) && (order.guestInfo?.isLinkedToAccount || (order.user && !accountCreated)) && (
           <div className="bg-gradient-to-br from-[#1a160d] via-[#12100a] to-[#0a0a0a] border-2 border-[var(--color-gold)]/40 rounded-2xl p-6 md:p-8 mb-10 shadow-[0_0_35px_rgba(212,175,55,0.15)] relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-72 h-72 bg-[var(--color-gold)]/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute top-0 right-0 w-72 h-72 bg-[var(--color-gold)]/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 bg-[var(--color-gold)]/20 border border-[var(--color-gold)]/40 text-[var(--color-gold)] rounded-2xl shrink-0">
+                  <Coins size={24} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-serif text-white font-bold">
+                      Order Auto-Linked to Your Account!
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase tracking-wider">
+                      Patron Profile Linked
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--color-ivory-muted)] mt-1 max-w-xl leading-relaxed">
+                    This order placed under <strong className="text-white">{order.guestInfo?.email || order.user?.email || order.shippingAddress?.email}</strong> is attached to your existing Grand Store account. All earned SuperCoins and live tracking are synchronized with your account profile.
+                  </p>
+                </div>
+              </div>
+              <Link
+                to={`/login?redirect=${encodeURIComponent(`/customer/order/${order._id}`)}&email=${encodeURIComponent(order.guestInfo?.email || order.shippingAddress?.email || '')}`}
+                className="px-6 py-3.5 bg-gradient-to-r from-[#c9a35b] to-[#dfb76c] text-black text-xs font-bold uppercase tracking-widest rounded-xl hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2 shrink-0 self-start sm:self-center"
+              >
+                <span>Login to View in Dashboard</span>
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Post-Order 1-Click Account Creation (Section 6 & Quick Buyer - for Unregistered Guests) */}
+        {(!user || order.isGuest) && !order.guestInfo?.isLinkedToAccount && !order.user && !accountCreated && (
+          <div className="bg-gradient-to-br from-[#1a160d] via-[#12100a] to-[#0a0a0a] border-2 border-[var(--color-gold)]/40 rounded-2xl p-6 md:p-8 mb-10 shadow-[0_0_35px_rgba(212,175,55,0.15)] relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-72 h-72 bg-[var(--color-gold)]/10 rounded-full blur-3xl pointer-events-none" />
             <div className="relative z-10">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-[var(--color-gold)]/20">
                 <div className="flex items-center gap-3">

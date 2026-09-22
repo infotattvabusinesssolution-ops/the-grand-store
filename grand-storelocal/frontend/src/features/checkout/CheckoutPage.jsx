@@ -43,6 +43,7 @@ import StoreBankDetailsCard from '../../components/StoreBankDetailsCard';
 import api from '../../api';
 import CountryCodeSelect from '../../components/CountryCodeSelect';
 import { PHONE_COUNTRIES, getCheckoutPhone, splitPhoneNumber } from '../../utils/phoneNumbers';
+import ExistingAccountModal from '../../components/modals/ExistingAccountModal';
 
 const POPULAR_INTERNATIONAL_COUNTRIES = [
   { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
@@ -120,6 +121,15 @@ export default function CheckoutPage({
   const [guestDocumentName, setGuestDocumentName] = useState('');
   const [isUploadingGuestDoc, setIsUploadingGuestDoc] = useState(false);
   const [guestDocError, setGuestDocError] = useState('');
+
+  // Existing Account Detection modal & state for Guest Checkout
+  const [existingAccountModal, setExistingAccountModal] = useState({
+    isOpen: false,
+    userData: null
+  });
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [guestAutoLinked, setGuestAutoLinked] = useState(false);
+  const checkedEmailsRef = useRef(new Set());
 
   const handleIdNumberChange = (e) => {
     const val = e.target.value;
@@ -397,6 +407,32 @@ export default function CheckoutPage({
     if (['address', 'city', 'postalCode', 'country'].includes(name)) {
       setQuote(null);
       setDutiesAccepted(false);
+    }
+  };
+
+  const handleEmailBlur = async () => {
+    const emailToTest = (formData.email || '').trim().toLowerCase();
+    if (user || !emailToTest || !emailToTest.includes('@') || !emailToTest.includes('.')) {
+      return;
+    }
+    if (checkedEmailsRef.current.has(emailToTest)) {
+      return;
+    }
+
+    try {
+      setIsCheckingEmail(true);
+      const res = await api.post('/auth/check-guest-email', { email: emailToTest });
+      checkedEmailsRef.current.add(emailToTest);
+      if (res.data?.exists && res.data?.user) {
+        setExistingAccountModal({
+          isOpen: true,
+          userData: res.data.user
+        });
+      }
+    } catch (err) {
+      console.warn('Check guest email error:', err);
+    } finally {
+      setIsCheckingEmail(false);
     }
   };
 
@@ -1387,10 +1423,22 @@ export default function CheckoutPage({
                         name="email"
                         value={formData.email}
                         onChange={handleChange}
+                        onBlur={handleEmailBlur}
                         required
                         placeholder="e.g. yourname@example.com"
                         className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
                       />
+                      {isCheckingEmail && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-[var(--color-gold)]/80">
+                          <Loader2 size={12} className="animate-spin" /> Checking account status...
+                        </div>
+                      )}
+                      {guestAutoLinked && (
+                        <div className="mt-2 flex items-center gap-2 text-xs text-[#c9a35b] bg-[#c9a35b]/10 border border-[#c9a35b]/20 px-3 py-2 rounded-xl">
+                          <CheckCircle2 size={14} className="text-[#c9a35b] shrink-0" />
+                          <span>Account recognized: Your order &amp; earned SuperCoins will automatically link to your account.</span>
+                        </div>
+                      )}
                     </div>
                     <div className="sm:col-span-2">
                       <div className="flex items-center justify-between mb-1.5">
@@ -2794,6 +2842,29 @@ export default function CheckoutPage({
           </div>
         </div>
       </div>
+
+      <ExistingAccountModal
+        isOpen={existingAccountModal.isOpen}
+        userData={existingAccountModal.userData}
+        onLogin={() => {
+          navigate(`/login?redirect=${encodeURIComponent('/checkout' + (window.location.search || ''))}&email=${encodeURIComponent(existingAccountModal.userData?.email || formData.email)}`);
+        }}
+        onContinueAsGuest={() => {
+          setGuestAutoLinked(true);
+          setExistingAccountModal({ isOpen: false, userData: null });
+          if (existingAccountModal.userData) {
+            setFormData((prev) => ({
+              ...prev,
+              fullName: prev.fullName || existingAccountModal.userData.name || '',
+              phone: prev.phone || existingAccountModal.userData.phone || ''
+            }));
+          }
+          if (onNotify) {
+            onNotify('Your purchase will be automatically linked to your Grand Store account and SuperCoins will be credited!');
+          }
+        }}
+        onClose={() => setExistingAccountModal({ isOpen: false, userData: null })}
+      />
     </main>
   );
 }

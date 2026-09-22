@@ -385,9 +385,17 @@ export default function AdminOrderDetail({ onNotify }) {
                 <span className="text-xs text-white/40 block">Recipient Full Name</span>
                 <span className="font-bold text-white text-base">{order.customerName}</span>
                 <span className={`inline-block ml-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                  order.isGuest ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  order.isGuest
+                    ? order.guestInfo?.isLinkedToAccount
+                      ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                 }`}>
-                  {order.isGuest ? 'Guest Checkout' : 'VIP Member'}
+                  {order.isGuest
+                    ? order.guestInfo?.isLinkedToAccount
+                      ? 'Guest (Linked Account)'
+                      : 'Guest Checkout'
+                    : 'VIP Member'}
                 </span>
               </div>
 

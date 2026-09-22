@@ -1,6 +1,6 @@
 const Newsletter = require('../models/Newsletter');
 const { sendEmail } = require('../utils/emailService');
-const { newsletterWelcomeTemplate, millionaireNewsletterWelcomeTemplate, bulkNewsletterTemplate } = require('../utils/emailTemplates');
+const { newsletterWelcomeTemplate, millionaireNewsletterWelcomeTemplate, cigarNewsletterWelcomeTemplate, bulkNewsletterTemplate } = require('../utils/emailTemplates');
 const geoip = require('geoip-lite');
 const countryNames = new Intl.DisplayNames(['en'], { type: 'region' });
 
@@ -23,7 +23,14 @@ const subscribeNewsletter = async (req, res) => {
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    const subscriberSource = source && typeof source === 'string' ? source.trim() : 'grand-store';
+    let subscriberSource = source && typeof source === 'string' ? source.trim().toLowerCase() : 'grand-store';
+    if (subscriberSource.includes('cigar')) {
+      subscriberSource = 'cigar-store';
+    } else if (subscriberSource.includes('million')) {
+      subscriberSource = 'millionaires-collection';
+    } else {
+      subscriberSource = 'grand-store';
+    }
 
     let ip = frontendIp && frontendIp !== 'Unknown' ? frontendIp : (
              req.headers['cf-connecting-ip'] || 
@@ -65,10 +72,24 @@ const subscribeNewsletter = async (req, res) => {
     // Send welcome email
     try {
       const isMillionaire = subscriberSource === 'millionaires-collection';
+      const isCigar = subscriberSource === 'cigar-store';
+      const subject = isCigar
+        ? 'Welcome to Mcigar — The Cigar Connoisseur Club'
+        : isMillionaire
+        ? 'Welcome to the Millionaires Collection'
+        : 'Welcome to The Grand Store Newsletter';
+
+      let welcomeHtml = newsletterWelcomeTemplate();
+      if (isMillionaire) {
+        welcomeHtml = millionaireNewsletterWelcomeTemplate();
+      } else if (isCigar) {
+        welcomeHtml = cigarNewsletterWelcomeTemplate();
+      }
+
       await sendEmail({
         to: email,
-        subject: isMillionaire ? 'Welcome to the Millionaires Collection' : 'Welcome to The Grand Store Newsletter',
-        html: isMillionaire ? millionaireNewsletterWelcomeTemplate() : newsletterWelcomeTemplate()
+        subject,
+        html: welcomeHtml
       });
     } catch (err) {
       console.error('Failed to send newsletter welcome email:', err);
@@ -92,7 +113,16 @@ const getSubscribers = async (req, res) => {
       filter.country = country;
     }
     if (source && source !== 'All') {
-      filter.source = source;
+      const src = source.toLowerCase();
+      if (src.includes('cigar')) {
+        filter.source = { $in: ['cigar-store', 'cigarstore', 'cigar-club'] };
+      } else if (src.includes('million')) {
+        filter.source = { $in: ['millionaires-collection', 'millionarestore', 'millionairestore'] };
+      } else if (src.includes('grand')) {
+        filter.source = { $in: ['grand-store', 'grandstore', null, undefined] };
+      } else {
+        filter.source = source;
+      }
     }
     if (search && search.trim()) {
       const regex = new RegExp(search.trim(), 'i');
@@ -132,7 +162,16 @@ const sendBulkNewsletter = async (req, res) => {
         filter.country = country;
       }
       if (source && source !== 'All') {
-        filter.source = source;
+        const src = source.toLowerCase();
+        if (src.includes('cigar')) {
+          filter.source = { $in: ['cigar-store', 'cigarstore', 'cigar-club'] };
+        } else if (src.includes('million')) {
+          filter.source = { $in: ['millionaires-collection', 'millionarestore', 'millionairestore'] };
+        } else if (src.includes('grand')) {
+          filter.source = { $in: ['grand-store', 'grandstore', null, undefined] };
+        } else {
+          filter.source = source;
+        }
       }
 
       const subscribers = await Newsletter.find(filter);
