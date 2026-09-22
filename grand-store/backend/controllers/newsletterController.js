@@ -17,7 +17,7 @@ const getCountryName = (countryCode) => {
 // @access  Public
 const subscribeNewsletter = async (req, res) => {
   try {
-    const { email, country: frontendCountry, ipAddress: frontendIp, source } = req.body;
+    const { email, country: frontendCountry, ipAddress: frontendIp, source } = req.body || {};
 
     if (!email) {
       return res.status(400).json({ message: 'Email is required' });
@@ -146,7 +146,7 @@ const getSubscribers = async (req, res) => {
 // @access  Private/Admin
 const sendBulkNewsletter = async (req, res) => {
   try {
-    const { subject, htmlContent, country, source, recipientEmails } = req.body;
+    const { subject, htmlContent, country, source, recipientEmails } = req.body || {};
     
     if (!subject || !htmlContent) {
       return res.status(400).json({ message: 'Subject and HTML content are required' });

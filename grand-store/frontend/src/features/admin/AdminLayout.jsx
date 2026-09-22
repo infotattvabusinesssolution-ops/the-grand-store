@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Navigate, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, Gavel, Wallet, Settings, Menu, X, LogOut, ArrowLeft, Star, Package, ShoppingBag, Tv, Mail, Activity, Briefcase, Shield, Gem, Award, MessageSquare, Bot, CalendarCheck, Tag, Layers, Flame, Wine, UserCheck, GraduationCap, Home, Compass, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Gavel, Wallet, Settings, Menu, X, LogOut, ArrowLeft, Star, Package, ShoppingBag, Tv, Mail, Activity, Briefcase, Shield, Gem, Award, MessageSquare, Bot, CalendarCheck, Tag, Layers, Flame, Wine, UserCheck, GraduationCap, Home, Compass, BookOpen, Crown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AdminLayout() {
@@ -30,6 +30,9 @@ export default function AdminLayout() {
     }
     if (path === '/admin/vendors') {
       return location.pathname === '/admin/vendors' && (location.search === '' || location.search === '?tab=applications');
+    }
+    if (path === '/admin/newsletter') {
+      return location.pathname === '/admin/newsletter' && (!location.search || location.search === '?store=All');
     }
     return location.pathname === path;
   };
@@ -135,9 +138,46 @@ export default function AdminLayout() {
                 <button onClick={() => handleNavigate('/admin/academy')} className={navItemClass('/admin/academy')}>
                   <GraduationCap size={16} /> Vendor Academy
                 </button>
-                <button onClick={() => handleNavigate('/admin/newsletter')} className={navItemClass('/admin/newsletter')}>
-                  <Mail size={16} /> Newsletter Subscribers
-                </button>
+                <div className="flex flex-col">
+                  <button onClick={() => handleNavigate('/admin/newsletter')} className={navItemClass('/admin/newsletter')}>
+                    <Mail size={16} /> Newsletter Subscribers
+                  </button>
+                  <div className="flex flex-col gap-1 pl-6 pr-2 py-1 mt-1 border-l border-white/10 ml-5 text-xs">
+                    <button
+                      onClick={() => handleNavigate('/admin/newsletter?store=grand-store')}
+                      className={`text-left px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-2 text-[11px] uppercase tracking-wider cursor-pointer ${
+                        location.pathname === '/admin/newsletter' && location.search.includes('grand')
+                          ? 'text-[#c9a35b] font-bold bg-[#c9a35b]/15 border border-[#c9a35b]/30'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <Wine size={13} className="text-[#c9a35b]" />
+                      <span>Grand Store</span>
+                    </button>
+                    <button
+                      onClick={() => handleNavigate('/admin/newsletter?store=cigar-store')}
+                      className={`text-left px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-2 text-[11px] uppercase tracking-wider cursor-pointer ${
+                        location.pathname === '/admin/newsletter' && location.search.includes('cigar')
+                          ? 'text-amber-400 font-bold bg-amber-500/15 border border-amber-500/30'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <Flame size={13} className="text-amber-400" />
+                      <span>Cigar Store</span>
+                    </button>
+                    <button
+                      onClick={() => handleNavigate('/admin/newsletter?store=millionaires-collection')}
+                      className={`text-left px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-2 text-[11px] uppercase tracking-wider cursor-pointer ${
+                        location.pathname === '/admin/newsletter' && location.search.includes('million')
+                          ? 'text-purple-300 font-bold bg-purple-500/15 border border-purple-500/30'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <Crown size={13} className="text-purple-300" />
+                      <span>Millionaires Store</span>
+                    </button>
+                  </div>
+                </div>
               </>
             )}
 

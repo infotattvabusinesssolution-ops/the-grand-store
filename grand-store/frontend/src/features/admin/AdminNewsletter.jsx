@@ -95,7 +95,7 @@ export default function AdminNewsletter() {
     if (p.includes('cigar')) setFilterSource('cigar-store');
     else if (p.includes('million')) setFilterSource('millionaires-collection');
     else if (p.includes('grand')) setFilterSource('grand-store');
-    else if (p === 'all') setFilterSource('All');
+    else setFilterSource('All');
   }, [searchParams]);
 
   useEffect(() => {
