@@ -6,6 +6,8 @@ export default function AdminNewsletter() {
   const [subscribers, setSubscribers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterCountry, setFilterCountry] = useState('All');
+  const [filterSource, setFilterSource] = useState('All'); // 'All' | 'grand-store' | 'millionaires-collection'
+  const [targetSource, setTargetSource] = useState('millionaires-collection'); // 'millionaires-collection' | 'grand-store'
   const [countries, setCountries] = useState(['All']);
   
   // Search state
@@ -17,7 +19,7 @@ export default function AdminNewsletter() {
   
   // Compose modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [recipientMode, setRecipientMode] = useState('selected'); // 'selected' | 'all' | 'country'
+  const [recipientMode, setRecipientMode] = useState('selected'); // 'selected' | 'all' | 'country' | 'source'
   const [subject, setSubject] = useState('');
   const [htmlContent, setHtmlContent] = useState('');
   const [sending, setSending] = useState(false);
@@ -25,14 +27,16 @@ export default function AdminNewsletter() {
 
   useEffect(() => {
     fetchSubscribers();
-  }, [filterCountry]);
+  }, [filterCountry, filterSource]);
 
   const fetchSubscribers = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/newsletter/subscribers', {
-        params: { country: filterCountry }
-      });
+      const params = { country: filterCountry };
+      if (filterSource !== 'All') {
+        params.source = filterSource;
+      }
+      const res = await api.get('/newsletter/subscribers', { params });
       setSubscribers(res.data || []);
       
       // Extract unique countries if 'All' is selected
@@ -56,7 +60,8 @@ export default function AdminNewsletter() {
       const country = (sub.country || '').toLowerCase();
       const ip = (sub.ipAddress || '').toLowerCase();
       const status = (sub.status || '').toLowerCase();
-      return email.includes(query) || country.includes(query) || ip.includes(query) || status.includes(query);
+      const source = (sub.source || 'grand-store').toLowerCase();
+      return email.includes(query) || country.includes(query) || ip.includes(query) || status.includes(query) || source.includes(query);
     });
   }, [subscribers, activeSearch]);
 
@@ -149,8 +154,12 @@ export default function AdminNewsletter() {
         payload.recipientEmails = selectedEmails;
       } else if (recipientMode === 'country') {
         payload.country = filterCountry;
+        if (filterSource !== 'All') payload.source = filterSource;
+      } else if (recipientMode === 'source') {
+        payload.source = targetSource;
       } else {
         payload.country = 'All';
+        if (filterSource !== 'All') payload.source = filterSource;
       }
 
       const res = await api.post('/newsletter/send', payload);
@@ -172,10 +181,13 @@ export default function AdminNewsletter() {
   const targetRecipientCount = useMemo(() => {
     if (recipientMode === 'selected') return selectedEmails.length;
     if (recipientMode === 'country') {
-      return subscribers.filter(s => s.status === 'subscribed' && (filterCountry === 'All' || s.country === filterCountry)).length;
+      return subscribers.filter(s => s.status === 'subscribed' && (filterCountry === 'All' || s.country === filterCountry) && (filterSource === 'All' || (s.source || 'grand-store') === filterSource)).length;
+    }
+    if (recipientMode === 'source') {
+      return subscribers.filter(s => s.status === 'subscribed' && (s.source || 'grand-store') === targetSource).length;
     }
     return totalActiveCount;
-  }, [recipientMode, selectedEmails, subscribers, filterCountry, totalActiveCount]);
+  }, [recipientMode, selectedEmails, subscribers, filterCountry, filterSource, targetSource, totalActiveCount]);
 
   return (
     <div className="space-y-6">
@@ -208,7 +220,7 @@ export default function AdminNewsletter() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-[#0a0a0a] border border-white/5 p-6 rounded-2xl flex items-center gap-4 shadow-lg">
           <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400">
             <Users size={22} />
@@ -231,10 +243,22 @@ export default function AdminNewsletter() {
 
         <div className="bg-[#0a0a0a] border border-white/5 p-6 rounded-2xl flex items-center gap-4 shadow-lg">
           <div className="w-12 h-12 bg-gold/10 rounded-xl flex items-center justify-center text-gold">
+            <Sparkles size={22} />
+          </div>
+          <div>
+            <div className="text-2xl font-mono font-bold text-gold">
+              {subscribers.filter(s => s.source === 'millionaires-collection').length}
+            </div>
+            <div className="text-white/50 text-xs uppercase tracking-widest mt-0.5">Millionaires List</div>
+          </div>
+        </div>
+
+        <div className="bg-[#0a0a0a] border border-white/5 p-6 rounded-2xl flex items-center gap-4 shadow-lg">
+          <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center text-purple-400">
             <UserCheck size={22} />
           </div>
           <div>
-            <div className="text-2xl font-mono font-bold text-gold">{selectedEmails.length}</div>
+            <div className="text-2xl font-mono font-bold text-white">{selectedEmails.length}</div>
             <div className="text-white/50 text-xs uppercase tracking-widest mt-0.5">Selected Recipients</div>
           </div>
         </div>
@@ -272,8 +296,24 @@ export default function AdminNewsletter() {
           </button>
         </form>
 
-        {/* Country Filter and Quick Select */}
+        {/* Country & Store Filters */}
         <div className="flex flex-wrap items-center gap-3">
+          {/* Store / Source Filter */}
+          <div className="flex items-center gap-2 bg-black/40 border border-white/10 px-3 py-2 rounded-xl">
+            <Sparkles size={14} className="text-gold" />
+            <span className="text-xs uppercase tracking-wider text-white/50 font-medium">Store:</span>
+            <select 
+              value={filterSource}
+              onChange={(e) => setFilterSource(e.target.value)}
+              className="bg-transparent text-white text-xs font-mono outline-none cursor-pointer focus:text-gold"
+            >
+              <option value="All" className="bg-neutral-900 text-white">All Stores</option>
+              <option value="grand-store" className="bg-neutral-900 text-white">Grand Store</option>
+              <option value="millionaires-collection" className="bg-neutral-900 text-white">Millionaires Collection</option>
+            </select>
+          </div>
+
+          {/* Country Filter */}
           <div className="flex items-center gap-2 bg-black/40 border border-white/10 px-3 py-2 rounded-xl">
             <Filter size={14} className="text-gold" />
             <span className="text-xs uppercase tracking-wider text-white/50 font-medium">Country:</span>
@@ -288,12 +328,15 @@ export default function AdminNewsletter() {
             </select>
           </div>
 
-          {activeSearch && (
+          {(activeSearch || filterSource !== 'All') && (
             <button
-              onClick={handleClearSearch}
+              onClick={() => {
+                handleClearSearch();
+                setFilterSource('All');
+              }}
               className="flex items-center gap-1 text-xs text-white/60 hover:text-white bg-white/5 px-3 py-2 rounded-xl transition-colors cursor-pointer"
             >
-              <RotateCcw size={13} /> Reset Filter
+              <RotateCcw size={13} /> Reset Filters
             </button>
           )}
         </div>
@@ -375,6 +418,7 @@ export default function AdminNewsletter() {
                   </button>
                 </th>
                 <th className="p-4">Email Address</th>
+                <th className="p-4">Store / Source</th>
                 <th className="p-4">Country</th>
                 <th className="p-4">IP Address</th>
                 <th className="p-4">Status</th>
@@ -385,7 +429,7 @@ export default function AdminNewsletter() {
             <tbody className="divide-y divide-white/5 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="p-12 text-center text-white/50">
+                  <td colSpan="8" className="p-12 text-center text-white/50">
                     <div className="inline-flex items-center gap-3">
                       <div className="w-4 h-4 rounded-full border-2 border-gold border-t-transparent animate-spin" />
                       Loading subscribers...
@@ -394,7 +438,7 @@ export default function AdminNewsletter() {
                 </tr>
               ) : filteredSubscribers.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="p-12 text-center text-white/50">
+                  <td colSpan="8" className="p-12 text-center text-white/50">
                     <Mail size={32} className="mx-auto mb-3 text-white/20" />
                     <p className="text-white/70 font-medium">No subscribers match your search criteria.</p>
                     {activeSearch && (
@@ -444,6 +488,17 @@ export default function AdminNewsletter() {
                             {sub.email}
                           </span>
                         </div>
+                      </td>
+                      <td className="p-4">
+                        {sub.source === 'millionaires-collection' ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gold/15 text-gold border border-gold/30">
+                            <Sparkles size={11} /> Millionaires
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 text-white/70 border border-white/10">
+                            Grand Store
+                          </span>
+                        )}
                       </td>
                       <td className="p-4 text-white/70">
                         <div className="flex items-center gap-2 text-xs">
@@ -537,7 +592,7 @@ export default function AdminNewsletter() {
                   Target Recipients Selection
                 </label>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {/* Option 1: Selected Subscribers (Checklist) */}
                   <label className={`relative flex flex-col p-4 rounded-xl border transition-all cursor-pointer ${
                     recipientMode === 'selected' 
@@ -545,7 +600,7 @@ export default function AdminNewsletter() {
                       : 'bg-black/40 border-white/10 hover:border-white/20'
                   }`}>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-bold uppercase tracking-wider text-white">Checked Checklist</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-white">Checked List</span>
                       <input 
                         type="radio" 
                         name="recipientMode" 
@@ -600,7 +655,59 @@ export default function AdminNewsletter() {
                     <div className="text-lg font-mono font-bold text-white truncate">{filterCountry}</div>
                     <span className="text-[11px] text-white/50">Current filtered country</span>
                   </label>
+
+                  {/* Option 4: By Store / Source */}
+                  <label className={`relative flex flex-col p-4 rounded-xl border transition-all cursor-pointer ${
+                    recipientMode === 'source' 
+                      ? 'bg-gold/15 border-gold shadow-[0_0_15px_rgba(212,175,55,0.2)]' 
+                      : 'bg-black/40 border-white/10 hover:border-white/20'
+                  }`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold uppercase tracking-wider text-white">By Store</span>
+                      <input 
+                        type="radio" 
+                        name="recipientMode" 
+                        value="source" 
+                        checked={recipientMode === 'source'} 
+                        onChange={() => setRecipientMode('source')}
+                        className="accent-gold w-4 h-4 cursor-pointer"
+                      />
+                    </div>
+                    <div className="text-lg font-mono font-bold text-gold">
+                      {targetSource === 'millionaires-collection' ? 'Millionaires' : 'Grand Store'}
+                    </div>
+                    <span className="text-[11px] text-white/50">Specific brand list</span>
+                  </label>
                 </div>
+
+                {/* Sub-selector when By Store is chosen */}
+                {recipientMode === 'source' && (
+                  <div className="p-3 bg-black/60 border border-gold/20 rounded-xl flex flex-wrap items-center gap-4">
+                    <span className="text-xs uppercase tracking-wider text-white/60 font-bold">Target Brand:</span>
+                    <label className="flex items-center gap-2 text-xs text-white cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="targetSourceRadio" 
+                        value="millionaires-collection" 
+                        checked={targetSource === 'millionaires-collection'}
+                        onChange={() => setTargetSource('millionaires-collection')}
+                        className="accent-gold w-3.5 h-3.5"
+                      />
+                      <span className="text-gold font-medium">Millionaires Collection ({subscribers.filter(s => s.status === 'subscribed' && s.source === 'millionaires-collection').length})</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-white cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="targetSourceRadio" 
+                        value="grand-store" 
+                        checked={targetSource === 'grand-store'}
+                        onChange={() => setTargetSource('grand-store')}
+                        className="accent-gold w-3.5 h-3.5"
+                      />
+                      <span className="text-white/80 font-medium">Grand Store ({subscribers.filter(s => s.status === 'subscribed' && (!s.source || s.source === 'grand-store')).length})</span>
+                    </label>
+                  </div>
+                )}
 
                 {/* Checked Emails Chip Preview when 'selected' is active */}
                 {recipientMode === 'selected' && (

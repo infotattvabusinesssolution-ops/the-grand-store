@@ -82,6 +82,24 @@
   font-size: 18px;
 }
 
+.newsletter-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: #fca5a5;
+  font-size: 14px;
+}
+
+.newsletter-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 850px) {
   .newsletter-section {
     grid-template-columns: 1fr;

@@ -153,6 +153,31 @@ const newsletterWelcomeTemplate = () => {
   return generateEmailTemplate('Welcome to The Grand Store Newsletter', content);
 };
 
+const millionaireNewsletterWelcomeTemplate = () => {
+  const content = `
+    <div style="text-align: center; margin-bottom: 25px;">
+      <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: #d9b768; font-weight: bold; display: block; margin-bottom: 8px;">The Private List</span>
+      <h1 style="color: #fffaf0; font-size: 26px; font-family: 'Times New Roman', serif; margin: 0 0 10px 0; letter-spacing: 1px;">WELCOME TO THE COLLECTION</h1>
+      <p style="color: #c8bda8; font-size: 15px; margin: 0; line-height: 1.6;">You are now on the private list of the Millionaires Collection.</p>
+    </div>
+
+    <div style="background: linear-gradient(145deg, #161310 0%, #0c0a08 100%); border: 1px solid #d9b768; border-radius: 8px; padding: 25px; margin: 25px 0; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <p style="color: #fffaf0; font-size: 15px; line-height: 1.7; margin: 0 0 18px 0;">
+        As a distinguished subscriber, you will receive priority announcements regarding limited edition sparkling wine vintages, private cellar allocations, and bespoke invitations.
+      </p>
+      <a href="https://millionair.yogapranafitness.com/" style="display: inline-block; padding: 12px 28px; background: #7a263c; color: #fffaf0; border: 1px solid #d9b768; font-size: 13px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; border-radius: 4px;">
+        Discover The Collection
+      </a>
+    </div>
+
+    <div style="border-top: 1px solid #222; margin-top: 30px; padding-top: 20px; font-size: 12px; color: #777; text-align: center; line-height: 1.6;">
+      <p style="margin: 0;">Millionaires Collection — A Private World of Exceptional Sparkling Wine.</p>
+      <p style="margin: 4px 0 0 0;">Strictly 18+. Enjoy responsibly.</p>
+    </div>
+  `;
+  return generateEmailTemplate('Welcome to the Millionaires Collection', content);
+};
+
 const orderConfirmationTemplate = (order) => {
   const orderReference = order.invoiceNumber || order.orderId || order._id;
   const isPostNet = order.deliveryPreference === 'postnet' || Boolean(order.selectedPostnetStore?.name);
@@ -1052,6 +1077,7 @@ module.exports = {
   verificationEmailTemplate,
   passwordResetTemplate,
   newsletterWelcomeTemplate,
+  millionaireNewsletterWelcomeTemplate,
   orderConfirmationTemplate,
   paymentFailedEmailTemplate,
   bankTransferInstructionsTemplate,

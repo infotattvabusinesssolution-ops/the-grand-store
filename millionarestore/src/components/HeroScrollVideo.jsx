@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { ArrowDown } from 'lucide-react'
 import './HeroScrollVideo.css'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -9,7 +8,6 @@ gsap.registerPlugin(ScrollTrigger)
 export default function HeroScrollVideo() {
   const sectionRef = useRef(null)
   const stageRef = useRef(null)
-  const canvasRef = useRef(null)
   const mediaRef = useRef(null)
   const introRef = useRef(null)
   const terroirRef = useRef(null)
@@ -84,7 +82,17 @@ export default function HeroScrollVideo() {
 
         <div className="hero-desktop-only">
           <div className="hero-media" ref={mediaRef}>
-            <video src="https://res.cloudinary.com/oioqrgj0/video/upload/v1787819430/millionaire-store/hero/mgy82l4bxwmkq9o9pyvc.mp4" autoPlay loop muted playsInline preload="auto" aria-label="Millionaires Collection sparkling wine film sequence" />
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              aria-label="Millionaires Collection sparkling wine film sequence"
+            >
+              <source src="https://res.cloudinary.com/oioqrgj0/video/upload/v1789992104/millionaire-store/hero/mgy82l4bxwmkq9o9pyvc.mp4" type="video/mp4" />
+              <source src="/assets/hero-film.mp4" type="video/mp4" />
+            </video>
             <div className="hero-film-shade" />
           </div>
 

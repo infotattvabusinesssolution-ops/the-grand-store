@@ -24,6 +24,12 @@ const newsletterSchema = new mongoose.Schema(
     },
     ipAddress: {
       type: String,
+    },
+    source: {
+      type: String,
+      enum: ["grand-store", "millionaires-collection", "cigar-club", "other"],
+      default: "grand-store",
+      index: true,
     }
   },
   {

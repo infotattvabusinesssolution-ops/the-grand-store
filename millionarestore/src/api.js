@@ -19,3 +19,24 @@ export const submitWineEnquiry = async (payload) => {
   }
   return data;
 };
+
+export const subscribeNewsletter = async (email) => {
+  const response = await fetch(`${apiOrigin}/api/newsletter/subscribe`, {
+    method: 'POST',
+    credentials: 'omit',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email,
+      source: 'millionaires-collection',
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || 'Subscription failed. Please try again.');
+  }
+  return data;
+};
