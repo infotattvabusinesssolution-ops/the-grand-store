@@ -384,13 +384,13 @@ export default function AuctionLotDetail({ onNotify }) {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-white font-serif">Loading Luxury Lot...</div>;
   if (!lot) return <div className="min-h-screen flex items-center justify-center text-white font-serif">Lot not found</div>;
 
-  const isAdmin = user && user.role === 'admin';
+  const isAdmin = Boolean(user && ['admin', 'super_admin'].includes(user.role));
   const isVendor = user && lot.vendor && (user._id === (typeof lot.vendor === 'object' ? lot.vendor._id : lot.vendor));
 
   const vendorName = lot.vendor ? (lot.vendor.storeName || lot.vendor.name) : 'The Grand Store';
 
   const currentUserId = user?._id;
-  const isRestrictedRole = user?.role === 'admin' || user?.role === 'vendor_active';
+  const isRestrictedRole = user && (['admin', 'super_admin', 'vendor_active'].includes(user.role));
   const targetTime = isUpcoming && lot?.startDate ? new Date(lot.startDate).getTime() : new Date(lot.endDate).getTime();
 
   const currentValuation = hasEnded && lot.winningBid ? lot.winningBid : (lot.currentBid || lot.startingBid || 0);

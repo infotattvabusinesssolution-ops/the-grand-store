@@ -248,7 +248,7 @@ export default function EditProduct({ onNotify }) {
 
       setSuccess(true);
       if (onNotify) onNotify('Product updated successfully!');
-      if (user.role === 'admin') {
+      if (['admin', 'super_admin', 'product_manager'].includes(user.role)) {
         setTimeout(() => navigate('/admin/products'), 2000);
       } else {
         setTimeout(() => navigate('/vendor/products'), 2000);

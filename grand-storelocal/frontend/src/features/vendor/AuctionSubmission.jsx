@@ -57,7 +57,7 @@ export default function AuctionSubmission({ onNotify }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  if (!user || (user.role !== 'vendor_active' && user.role !== 'admin' && user.role !== 'auction_host')) {
+  if (!user || (user.role !== 'vendor_active' && user.role !== 'admin' && user.role !== 'super_admin' && user.role !== 'auction_host')) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4">
         <div className="p-8 border border-red-500/20 bg-red-950/10 text-[var(--color-ivory)] max-w-md w-full flex items-center gap-4">

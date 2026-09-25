@@ -12,7 +12,7 @@ const { protect } = require('../middleware/authMiddleware');
 
 // Admin-only guard
 const isAdmin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') return next();
+  if (req.user && ['admin', 'super_admin'].includes(req.user.role)) return next();
   res.status(403).json({ message: 'Admin access required' });
 };
 

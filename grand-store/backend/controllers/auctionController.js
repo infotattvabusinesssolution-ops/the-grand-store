@@ -16,6 +16,8 @@ const { generateAuctionCertificateBuffer } = require('../utils/pdfService');
 const { evaluateBidIntegrity, logAuctionEvent } = require('../services/auctionFraudService');
 const { createInAppNotification } = require('./notificationController');
 
+const isUserAdmin = (user) => Boolean(user && ['admin', 'super_admin'].includes(user.role));
+
 const calculateDynamicIncrement = (currentBid) => {
   if (currentBid < 5000) return 250;
   if (currentBid < 10000) return 500;
@@ -56,7 +58,7 @@ exports.getAuctionLots = async (req, res) => {
     lots = lots.filter(lot => {
       if (!lot.vendor) return false;
       const role = lot.vendor.role;
-      return role === 'admin' || role === 'vendor_active' || role === 'auction_host';
+      return role === 'admin' || role === 'super_admin' || role === 'vendor_active' || role === 'auction_host';
     });
 
     res.json(lots);
@@ -109,7 +111,7 @@ exports.getLotDetails = async (req, res) => {
     const sanitizedBids = bids.map(b => {
       let canSeeDetails = false;
       if (currentUser) {
-         if (currentUser.role === 'admin') canSeeDetails = true;
+         if (isUserAdmin(currentUser)) canSeeDetails = true;
          if (lot.vendor && lot.vendor._id.toString() === currentUser._id.toString()) canSeeDetails = true;
       }
 
@@ -165,7 +167,7 @@ exports.getLotDetails = async (req, res) => {
 
         if (order.shippingAddress) {
           const isWinner = currentUser && lotObj.winner && lotObj.winner.toString() === currentUser._id.toString();
-          const isAdmin = currentUser && currentUser.role === 'admin';
+          const isAdmin = isUserAdmin(currentUser);
           const isVendor = currentUser && lotObj.vendor && lotObj.vendor._id.toString() === currentUser._id.toString();
 
           if (isWinner || isAdmin || isVendor) {
@@ -498,7 +500,7 @@ exports.submitLot = async (req, res) => {
       estimatedValueMin, estimatedValueMax, reserveType
     } = req.body;
     
-    if (req.user.role !== 'vendor_active' && req.user.role !== 'auction_host' && req.user.role !== 'admin') {
+    if (req.user.role !== 'vendor_active' && req.user.role !== 'auction_host' && !isUserAdmin(req.user)) {
        return res.status(403).json({ message: 'Only active vendors, auction hosts, and admins can submit lots.' });
     }
 
@@ -622,7 +624,7 @@ exports.resubmitLot = async (req, res) => {
 // ADMIN: Approve lot
 exports.approveLot = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
        return res.status(403).json({ message: 'Admin only' });
     }
 
@@ -777,7 +779,7 @@ exports.getVendorLots = async (req, res) => {
 // ADMIN: Get all pending lots
 exports.getAdminPendingLots = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
     const lots = await AuctionLot.find({ status: 'pending_approval' })
@@ -1031,7 +1033,7 @@ exports.closeAuctionInternal = closeAuctionInternal;
 // ADMIN: Close auction manually
 exports.closeAuction = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -1407,7 +1409,7 @@ exports.cancelBidderDepositPayment = async (depositId, reason = 'Payment cancell
 // ADMIN: Get all lots (for admin financial view)
 exports.getAllLots = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
     const lots = await AuctionLot.find().sort({ createdAt: -1 }).populate('vendor', 'name email storeName').populate('winner', 'name email').lean();
@@ -1575,7 +1577,7 @@ exports.registerBidder = async (req, res) => {
       });
 
       // Notify all administrators
-      const admins = await User.find({ role: 'admin' }).select('_id');
+      const admins = await User.find({ role: { $in: ['admin', 'super_admin'] } }).select('_id');
       for (const adm of admins) {
         await createInAppNotification({
           recipient: adm._id,
@@ -1679,7 +1681,7 @@ exports.getBidderStatus = async (req, res) => {
 // ADMIN: Get all bidder applicants
 exports.getAdminBidders = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -1701,7 +1703,7 @@ exports.getAdminBidders = async (req, res) => {
 // ADMIN: Approve a bidder application
 exports.approveBidder = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -1767,7 +1769,7 @@ exports.approveBidder = async (req, res) => {
 // ADMIN: Reject a bidder application
 exports.rejectBidder = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -1815,7 +1817,7 @@ exports.rejectBidder = async (req, res) => {
 // ADMIN: Update bidder limit or toggle suspension
 exports.updateBidderLimit = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -1936,7 +1938,7 @@ exports.createBidderDeposit = async (req, res) => {
 
       // If EFT, notify admins that an audit is waiting
       if (deposit.paymentMethod === 'eft') {
-        const admins = await User.find({ role: 'admin' }).select('_id');
+        const admins = await User.find({ role: { $in: ['admin', 'super_admin'] } }).select('_id');
         for (const adm of admins) {
           await createInAppNotification({
             recipient: adm._id,
@@ -1968,7 +1970,7 @@ exports.createBidderDeposit = async (req, res) => {
 // ADMIN: Get all bidder deposits
 exports.getAdminDeposits = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -1988,7 +1990,7 @@ exports.getAdminDeposits = async (req, res) => {
 // ADMIN: Verify / Refund a bidder deposit
 exports.verifyAdminDeposit = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -2080,7 +2082,7 @@ exports.verifyAdminDeposit = async (req, res) => {
 // ADMIN: Update lot authentication & custody status
 exports.updateLotAuthentication = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -2123,7 +2125,7 @@ exports.updateLotAuthentication = async (req, res) => {
 // ADMIN: Get active fraud alerts
 exports.getAuctionFraudAlerts = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -2143,7 +2145,7 @@ exports.getAuctionFraudAlerts = async (req, res) => {
 // ADMIN: Resolve fraud alert
 exports.resolveFraudAlert = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -2178,7 +2180,7 @@ exports.resolveFraudAlert = async (req, res) => {
 // ADMIN: Get auction double-entry ledger entries
 exports.getAuctionLedger = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 

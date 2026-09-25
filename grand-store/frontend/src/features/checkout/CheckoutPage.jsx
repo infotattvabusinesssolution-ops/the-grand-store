@@ -345,7 +345,7 @@ export default function CheckoutPage({
     document.title = 'Checkout – The Grand Store';
     window.scrollTo({ top: 0, behavior: 'auto' });
 
-    if (user && user.role && (user.role.startsWith('vendor') || user.role === 'admin')) {
+    if (user && user.role && (user.role.startsWith('vendor') || ['admin', 'super_admin'].includes(user.role))) {
       onNotify('Vendors and admins cannot checkout. Please login as a customer to buy.');
       navigate('/register');
     }

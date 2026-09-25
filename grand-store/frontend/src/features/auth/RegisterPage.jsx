@@ -63,7 +63,7 @@ export default function RegisterPage() {
       const userCredential = await signInWithPopup(auth, googleProvider);
       const userData = await googleLogin(userCredential, 'customer', referralCode);
       let defaultRoute = '/customer/profile';
-      if (userData.role === 'admin') defaultRoute = '/admin/auctions';
+      if (['admin', 'super_admin'].includes(userData.role)) defaultRoute = '/admin/auctions';
       if (userData.role === 'vendor_active') defaultRoute = '/vendor/dashboard';
       navigate(defaultRoute);
     } catch (err) {

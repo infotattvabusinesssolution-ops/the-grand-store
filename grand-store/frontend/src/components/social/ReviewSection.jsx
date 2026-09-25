@@ -429,7 +429,7 @@ export const ReviewSection = ({
           displayReviews.map((review) => {
             const authorName = review.author?.name || 'Grand Store Patron';
             const authorInitial = authorName.charAt(0).toUpperCase();
-            const isAdmin = authorName.toLowerCase().includes('admin') || review.author?.role === 'admin';
+            const isAdmin = authorName.toLowerCase().includes('admin') || ['admin', 'super_admin'].includes(review.author?.role);
             const formattedDate = new Date(review.createdAt || Date.now()).toLocaleDateString('en-US', {
               day: 'numeric',
               month: 'short',

@@ -26,7 +26,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) {
       navigate('/login');
-    } else if (user.role === 'admin') {
+    } else if (['admin', 'super_admin'].includes(user.role)) {
       navigate('/admin/auctions');
     } else {
       setProfileForm({ 

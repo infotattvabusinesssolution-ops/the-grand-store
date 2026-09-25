@@ -101,7 +101,7 @@ export default function VendorLayout() {
             </div>
             <div className="hidden md:block h-4 w-px bg-white/20 mx-2"></div>
             <div className="hidden md:block text-sm tracking-widest text-[#e1bd70] font-medium uppercase ">
-              {user?.role === 'admin' ? 'Admin Gateway' : 'Business Partner'}
+              {['admin', 'super_admin'].includes(user?.role) ? 'Admin Gateway' : 'Business Partner'}
             </div>
           </div>
         </div>
@@ -119,7 +119,7 @@ export default function VendorLayout() {
           <div className="flex items-center gap-3">
             <div className="text-right hidden md:block">
               <div className="text-sm font-serif">{user.name}</div>
-              <div className="text-xs text-[#e1bd70] tracking-widest uppercase">{user?.role === 'admin' ? 'System Administrator' : 'Level 1 - New Vendor'}</div>
+              <div className="text-xs text-[#e1bd70] tracking-widest uppercase">{['admin', 'super_admin'].includes(user?.role) ? 'System Administrator' : 'Level 1 - New Vendor'}</div>
             </div>
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#c9a35b] p-[1px] shrink-0">
               <div className="w-full h-full bg-[#0a0a0a] rounded-full flex items-center justify-center">

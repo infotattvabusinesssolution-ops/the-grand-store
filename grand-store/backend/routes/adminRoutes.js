@@ -5,7 +5,6 @@ const financeController = require('../controllers/financeController');
 const testimonialController = require('../controllers/testimonialController');
 const { protect, superAdmin, financeStaff } = require('../middleware/authMiddleware');
 const { adminLogin } = require('../controllers/authController');
-
 // Public Admin Authentication Endpoint Alias
 router.post('/login', adminLogin);
 

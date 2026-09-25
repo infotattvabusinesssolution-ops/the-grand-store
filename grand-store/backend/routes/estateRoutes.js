@@ -13,7 +13,7 @@ const { protect } = require('../middleware/authMiddleware');
 
 // Inline vendor role check (project has no separate vendorMiddleware file)
 const isVendor = (req, res, next) => {
-  if (req.user && (req.user.role === 'vendor_active' || req.user.role === 'vendor_pending' || req.user.role === 'admin')) {
+  if (req.user && (req.user.role === 'vendor_active' || req.user.role === 'vendor_pending' || req.user.role === 'admin' || req.user.role === 'super_admin')) {
     return next();
   }
   res.status(403).json({ message: 'Access denied. Vendors only.' });

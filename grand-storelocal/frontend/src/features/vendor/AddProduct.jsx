@@ -193,7 +193,7 @@ export default function AddProduct({ onNotify }) {
       });
 
       if (onNotify) onNotify('Product added successfully!');
-      if (user.role === 'admin') {
+      if (['admin', 'super_admin', 'product_manager'].includes(user.role)) {
         setTimeout(() => navigate('/admin/products'), 2000);
       } else {
         setTimeout(() => navigate('/vendor/products'), 2000);
