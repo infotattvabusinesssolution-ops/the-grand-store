@@ -117,9 +117,13 @@ export const crmApi = {
   updateCustomerTier: (id, data) => crmClient.put(`/customers/${id}/tier`, data),
   addCustomerNote: (id, note) => crmClient.post(`/customers/${id}/notes`, { note }),
 
-  // Vendor Workflow
+  // Vendor 360 & Operations Directory
   getVendorSummary: () => crmClient.get('/vendors/summary'),
+  getVendors: (params) => crmClient.get('/vendors', { params }),
+  getVendor360: (id) => crmClient.get(`/vendors/${id}/360`),
   updateVendorStage: (id, data) => crmClient.put(`/vendors/${id}/stage`, data),
+  updateVendorStatus: (id, data) => crmClient.put(`/vendors/${id}/status`, data),
+  pingVendor: (id, data) => crmClient.post(`/vendors/${id}/ping`, data),
 
   // Order Operations Kanban & Logistics Exceptions
   getOrderBoard: () => crmClient.get('/orders/board'),

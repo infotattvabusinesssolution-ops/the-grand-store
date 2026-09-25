@@ -126,9 +126,13 @@ router.get('/customers/:id/360', crmCustomerController.getCustomer360);
 router.put('/customers/:id/tier', crmCustomerController.updateCustomerTier);
 router.post('/customers/:id/notes', crmCustomerController.addCustomerNote);
 
-// --- Module 3: Vendor Onboarding & Audit Workflow ---
+// --- Module 3: Vendor Onboarding, Directory & 360° Management ---
 router.get('/vendors/summary', crmVendorController.getVendorOperationsSummary);
+router.get('/vendors', crmVendorController.getAllVendors);
+router.get('/vendors/:id/360', crmVendorController.getVendor360);
 router.put('/vendors/:id/stage', crmVendorController.updateVendorWorkflowStage);
+router.put('/vendors/:id/status', crmVendorController.updateVendorStatus);
+router.post('/vendors/:id/ping', crmVendorController.pingVendor);
 
 // --- Module 4 & 5: Order Operations Board & Logistics Exceptions ---
 router.get('/orders/board', crmOrderOpsController.getOrderOperationsBoard);
