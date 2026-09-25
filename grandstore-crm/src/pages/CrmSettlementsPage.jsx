@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Wallet, Clock, CheckCircle2, AlertTriangle, FileText, 
   Download, RefreshCw, DollarSign, ArrowUpRight, Search, 
-  Building2, ShieldCheck, X 
+  Building2, ShieldCheck, X, Globe, Plane, MapPin 
 } from 'lucide-react';
 import StatCard from '../components/common/StatCard';
 import StatusBadge from '../components/common/StatusBadge';
@@ -13,6 +13,7 @@ export default function CrmSettlementsPage() {
   const toast = useToast();
   const { stats, settlements, loading, refresh, processPayment, disputeSettlement } = useCrmSettlements();
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'due' | 'pending' | 'settled' | 'disputed'
+  const [filterScope, setFilterScope] = useState('all'); // 'all' | 'local' | 'global_export'
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSettlement, setSelectedSettlement] = useState(null);
   const [payoutModalSettlement, setPayoutModalSettlement] = useState(null);
@@ -30,12 +31,18 @@ export default function CrmSettlementsPage() {
       filterStatus === 'settled' ? s.status === 'settled' :
       filterStatus === 'disputed' ? (s.status === 'disputed' || s.status === 'held') : true;
 
+    const matchesScope = 
+      filterScope === 'all' ? true :
+      filterScope === 'local' ? (s.orderType === 'local' || !s.orderType) :
+      filterScope === 'global_export' ? s.orderType === 'global_export' : true;
+
     const matchesSearch = 
       (s.vendorName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (s.orderNumber?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (s.destinationCountry?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (s.reference?.toLowerCase() || '').includes(searchTerm.toLowerCase());
 
-    return matchesFilter && matchesSearch;
+    return matchesFilter && matchesScope && matchesSearch;
   });
 
   const handleExportRemittanceCsv = () => {
@@ -44,15 +51,19 @@ export default function CrmSettlementsPage() {
         toast.warning('No settlement records to export.');
         return;
       }
-      const headers = ['Settlement ID', 'Order Reference', 'Vendor / Wine Farm', 'Gross Total (ZAR)', 'Commission (15%)', 'Net Payable to Vendor', 'Maturity Due Date', 'Status', 'Payment Ref'];
+      const headers = ['Settlement ID', 'Order Reference', 'Scope', 'Destination', 'Vendor / Wine Farm', 'Gross Total (ZAR)', 'VAT Rate (%)', 'Commission (15%)', 'Net Payable to Vendor', 'Payout Method', 'Maturity Due Date', 'Status', 'Payment Ref'];
       const rows = settlements.map(s => [
         `"${s.id || s.reference || ''}"`,
         `"${s.orderNumber || ''}"`,
+        `"${s.orderType === 'global_export' ? 'Global Export' : 'Local Domestic'}"`,
+        `"${s.destinationCountry || 'South Africa'}"`,
         `"${s.vendorName || ''}"`,
         `"${s.orderTotal || 0}"`,
+        `"${s.vatRatePct !== undefined ? s.vatRatePct : 15}%"`,
         `"${s.commissionAmount || 0}"`,
-        `"${s.netPayoutAmount || 0}"`,
-        `"${s.dueDate ? new Date(s.dueDate).toLocaleDateString() : ''}"`,
+        `"${s.payoutAmount || 0}"`,
+        `"${s.payoutMethod || 'domestic_eft'}"`,
+        `"${s.payoutDueDate ? new Date(s.payoutDueDate).toLocaleDateString() : ''}"`,
         `"${s.status || ''}"`,
         `"${s.paymentReference || ''}"`
       ]);
@@ -61,7 +72,7 @@ export default function CrmSettlementsPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
-      link.setAttribute('download', `grandstore_vendor_remittance_batch_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.setAttribute('download', `grandstore_vendor_remittance_${filterScope}_${new Date().toISOString().slice(0, 10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -74,8 +85,9 @@ export default function CrmSettlementsPage() {
   const handleConfirmPayout = async () => {
     if (!payoutModalSettlement) return;
     try {
+      const defaultPrefix = payoutModalSettlement.orderType === 'global_export' ? 'SWIFT' : 'EFT';
       await processPayment(payoutModalSettlement.id, {
-        paymentReference: paymentRefInput || `EFT-${Date.now().toString().slice(-6)}`,
+        paymentReference: paymentRefInput || `${defaultPrefix}-${Date.now().toString().slice(-6)}`,
         proofOfPaymentUrl: popUrlInput,
         notes: notesInput
       });
@@ -83,7 +95,7 @@ export default function CrmSettlementsPage() {
       setPaymentRefInput('');
       setPopUrlInput('');
       setNotesInput('');
-      toast.success('Vendor settlement payout recorded successfully! Remittance voucher generated.');
+      toast.success(`Vendor payout processed successfully! Remittance voucher issued.`);
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to record payout');
     }
@@ -108,15 +120,15 @@ export default function CrmSettlementsPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              30-Day Vendor Settlement Tracking
+              30-Day Vendor Settlement Tracking & Escrow
             </h1>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
               <ShieldCheck size={13} />
-              Zero-Duplicate Safeguard
+              Local & Global Escrow
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Section 11 Financial Pipeline: Payouts unlock strictly 30 days post-delivery to allow customer inspection and dispute buffers.
+            Section 11 Financial Pipeline: Payouts unlock strictly 30 days post-delivery. Domestic EFT for SA wine estates (15% VAT) & SWIFT/IBAN wire with SARB SAD500 zero-rated tax exemption for international exports.
           </p>
         </div>
 
@@ -145,33 +157,34 @@ export default function CrmSettlementsPage() {
           value={`R ${(stats.totalDueAmount || 0).toLocaleString()}`} 
           icon={AlertTriangle} 
           color="amber"
-          subtitle={`${stats.dueCount || 0} batches matured`}
+          subtitle={`${stats.dueCount || 0} batches matured (>30 days)`}
         />
         <StatCard 
-          title="Pending (30-Day Clock)" 
+          title="Pending (30-Day Window)" 
           value={stats.pendingCount || 0} 
           icon={Clock} 
           color="blue"
-          subtitle="Inspection window active"
+          subtitle="Inspection & claim buffer active"
         />
         <StatCard 
           title="Total Settled (30d)" 
           value={`R ${(stats.totalSettledAmount || 0).toLocaleString()}`} 
           icon={Wallet} 
           color="emerald"
-          subtitle={`${stats.settledCount || 0} vendor transfers complete`}
+          subtitle={`${stats.settledCount || 0} disbursements complete`}
         />
         <StatCard 
-          title="Disputes & Holds" 
-          value={stats.disputedCount || 0} 
-          icon={ShieldCheck} 
-          color="red"
-          subtitle="Claims or returns pending"
+          title="Consignment Scope" 
+          value={`${stats.localCount || 0} Local • ${stats.globalCount || 0} Export`} 
+          icon={Globe} 
+          color="purple"
+          subtitle="Domestic SA vs Global DDP"
         />
       </div>
 
       {/* Controls & Filter Bar */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Status Filters & Scope Toggles */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {[
             { id: 'all', label: 'All Records' },
@@ -183,7 +196,7 @@ export default function CrmSettlementsPage() {
             <button
               key={f.id}
               onClick={() => setFilterStatus(f.id)}
-              className={`px-3 py-1.5 rounded-xl font-semibold transition-colors ${
+              className={`px-3 py-1.5 rounded-xl font-semibold transition-colors cursor-pointer ${
                 filterStatus === f.id 
                   ? 'bg-blue-600 text-white shadow-sm' 
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -192,13 +205,47 @@ export default function CrmSettlementsPage() {
               {f.label}
             </button>
           ))}
+
+          <span className="text-slate-300 mx-1">|</span>
+
+          {/* Scope Filters */}
+          <button
+            onClick={() => setFilterScope('all')}
+            className={`px-2.5 py-1.5 rounded-xl font-semibold transition-colors cursor-pointer ${
+              filterScope === 'all'
+                ? 'bg-slate-800 text-white shadow-xs'
+                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            All Scopes
+          </button>
+          <button
+            onClick={() => setFilterScope('local')}
+            className={`px-2.5 py-1.5 rounded-xl font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+              filterScope === 'local'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+            }`}
+          >
+            🇿🇦 Domestic ZA
+          </button>
+          <button
+            onClick={() => setFilterScope('global_export')}
+            className={`px-2.5 py-1.5 rounded-xl font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+              filterScope === 'global_export'
+                ? 'bg-purple-700 text-white shadow-xs'
+                : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200'
+            }`}
+          >
+            🌍 Global Export
+          </button>
         </div>
 
         <div className="relative w-full sm:w-64">
           <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
           <input 
             type="text"
-            placeholder="Search vendor, order #, ref..."
+            placeholder="Search vendor, order #, country..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
@@ -214,7 +261,7 @@ export default function CrmSettlementsPage() {
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
                 <th className="py-3 px-4">Settlement Ref</th>
                 <th className="py-3 px-4">Estate / Vendor</th>
-                <th className="py-3 px-4">Order Details</th>
+                <th className="py-3 px-4">Order & Destination</th>
                 <th className="py-3 px-4">Delivered Date</th>
                 <th className="py-3 px-4">30-Day Milestone</th>
                 <th className="py-3 px-4">Payout Amount</th>
@@ -233,15 +280,37 @@ export default function CrmSettlementsPage() {
                 filteredSettlements.map((s) => (
                   <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-3 px-4">
-                      <span className="font-semibold text-slate-900 font-mono">{s.reference}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-slate-900 font-mono">{s.reference}</span>
+                        {s.orderType === 'global_export' ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                            <Plane size={10} /> Global Export
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            🇿🇦 Local (ZAR)
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="font-semibold text-slate-900">{s.vendorName}</div>
-                      <div className="text-slate-400 text-[10px]">{s.bankDetails?.bankName || 'FNB'} • Acc ending in {s.bankDetails?.accountNumber?.slice(-4) || '••••'}</div>
+                      <div className="text-slate-400 text-[10px] flex items-center gap-1">
+                        <span>{s.bankDetails?.bankName || 'FNB Corporate'}</span>
+                        <span>•</span>
+                        <span>{s.payoutMethod === 'swift_wire' ? 'SWIFT Wire' : 'Domestic EFT'}</span>
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="font-medium text-slate-800">Order #{s.orderNumber}</div>
-                      <div className="text-slate-400 text-[10px]">Gross: R {s.orderTotal?.toLocaleString()}</div>
+                      <div className="text-slate-500 text-[10px] flex items-center gap-1">
+                        <MapPin size={10} className="text-slate-400" />
+                        <span>{s.destinationCountry || 'South Africa'}</span>
+                        <span>•</span>
+                        <span className="font-semibold text-slate-600">
+                          {s.vatRatePct === 0 ? '0% Export Zero-Rated' : `${s.vatRatePct}% VAT`}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-slate-600">
                       {new Date(s.deliveredAt).toLocaleDateString()}
@@ -249,15 +318,15 @@ export default function CrmSettlementsPage() {
                     <td className="py-3 px-4">
                       {s.status === 'settled' ? (
                         <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                          <CheckCircle2 size={12} /> Settled
+                          <CheckCircle2 size={12} /> Settled & Paid
                         </span>
                       ) : s.status === 'due_for_payment' ? (
                         <span className="text-amber-700 font-bold flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
                           <AlertTriangle size={12} /> Mature — Due Today
                         </span>
-                      ) : s.status === 'disputed' ? (
+                      ) : s.status === 'disputed' || s.status === 'held' ? (
                         <span className="text-red-700 font-bold bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
-                          Disputed ({s.disputeReason || 'Frozen'})
+                          Disputed (Escrow Frozen)
                         </span>
                       ) : (
                         <div>
@@ -266,8 +335,13 @@ export default function CrmSettlementsPage() {
                         </div>
                       )}
                     </td>
-                    <td className="py-3 px-4 font-bold text-slate-900">
-                      R {Number(s.payoutAmount || 0).toLocaleString()}
+                    <td className="py-3 px-4">
+                      <div className="font-bold text-slate-900">
+                        R {Number(s.payoutAmount || 0).toLocaleString()}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        Gross: R {s.orderTotal?.toLocaleString()} ({s.commissionRatePct || 15}% comm)
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <StatusBadge status={s.status} />
@@ -277,24 +351,24 @@ export default function CrmSettlementsPage() {
                         {s.status === 'due_for_payment' && (
                           <button
                             onClick={() => setPayoutModalSettlement(s)}
-                            className="px-2.5 py-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center gap-1"
+                            className="px-2.5 py-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center gap-1 cursor-pointer"
                           >
-                            <DollarSign size={12} /> Pay EFT
+                            <DollarSign size={12} /> {s.orderType === 'global_export' ? 'Pay Wire' : 'Pay EFT'}
                           </button>
                         )}
                         {s.status === 'pending_30day_window' && (
                           <button
                             onClick={() => setDisputeModalSettlement(s)}
-                            className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg border border-slate-200 transition-colors"
-                            title="Flag return / dispute"
+                            className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                            title="Flag customer claim or freeze payout timer"
                           >
-                            Dispute
+                            Hold / Claim
                           </button>
                         )}
                         <button
                           onClick={() => setSelectedSettlement(s)}
-                          className="p-1 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg"
-                          title="View Voucher"
+                          className="p-1 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer"
+                          title="View Voucher & Escrow Breakdown"
                         >
                           <FileText size={15} />
                         </button>
@@ -308,34 +382,56 @@ export default function CrmSettlementsPage() {
         </div>
       </div>
 
-      {/* Pay EFT Modal */}
+      {/* Pay EFT / SWIFT Modal */}
       {payoutModalSettlement && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="font-bold text-slate-900 text-base">Authorize Vendor Payout</h3>
-            <p className="text-xs text-slate-500">Record banking EFT transfer for {payoutModalSettlement.vendorName}</p>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 text-base">
+                Authorize {payoutModalSettlement.orderType === 'global_export' ? 'SWIFT Wire' : 'Domestic EFT'} Payout
+              </h3>
+              <button onClick={() => setPayoutModalSettlement(null)} className="text-slate-400 hover:text-slate-600">
+                <X size={16} />
+              </button>
+            </div>
+            
+            <p className="text-xs text-slate-500">
+              Disburse 30-day matured escrow funds to {payoutModalSettlement.vendorName}
+            </p>
 
             <div className="bg-blue-50/70 p-3 rounded-xl border border-blue-200 text-xs space-y-1">
               <div className="flex justify-between text-slate-600">
-                <span>Vendor:</span>
+                <span>Consignment Scope:</span>
+                <span className="font-semibold text-slate-900">
+                  {payoutModalSettlement.orderType === 'global_export' ? '🌍 International Export' : '🇿🇦 Domestic South Africa'}
+                </span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Beneficiary:</span>
                 <span className="font-semibold text-slate-900">{payoutModalSettlement.vendorName}</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Bank / Routing:</span>
+                <span>{payoutModalSettlement.bankDetails?.bankName || 'FNB Corporate'}</span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Order Total:</span>
                 <span>R {payoutModalSettlement.orderTotal?.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-blue-900 font-bold text-sm pt-1 border-t border-blue-200">
-                <span>Payout Amount:</span>
+                <span>Net Payable:</span>
                 <span>R {payoutModalSettlement.payoutAmount?.toLocaleString()}</span>
               </div>
             </div>
 
             <div className="space-y-2 text-xs">
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">EFT / Wire Payment Reference</label>
+                <label className="font-semibold text-slate-700 block mb-1">
+                  {payoutModalSettlement.orderType === 'global_export' ? 'SWIFT / Wire Reference Number' : 'EFT Payment Reference'}
+                </label>
                 <input 
                   type="text"
-                  placeholder="e.g. EFT-2026-FNB-88412"
+                  placeholder={payoutModalSettlement.orderType === 'global_export' ? 'e.g. SWIFT-2026-STB-99120' : 'e.g. EFT-2026-FNB-88412'}
                   value={paymentRefInput}
                   onChange={(e) => setPaymentRefInput(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
@@ -343,7 +439,7 @@ export default function CrmSettlementsPage() {
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">Proof of Payment URL / Doc Link</label>
+                <label className="font-semibold text-slate-700 block mb-1">Proof of Payment URL / Audit Receipt</label>
                 <input 
                   type="text"
                   placeholder="https://..."
@@ -354,10 +450,10 @@ export default function CrmSettlementsPage() {
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">Internal Note</label>
+                <label className="font-semibold text-slate-700 block mb-1">Internal Accountant Notes</label>
                 <input 
                   type="text"
-                  placeholder="Batch processed via Standard Bank portal..."
+                  placeholder="Batch processed via corporate treasury..."
                   value={notesInput}
                   onChange={(e) => setNotesInput(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
@@ -365,57 +461,84 @@ export default function CrmSettlementsPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-              <button
+            <div className="flex justify-end gap-2 pt-2">
+              <button 
                 onClick={() => setPayoutModalSettlement(null)}
-                className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl"
+                className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
-              <button
+              <button 
                 onClick={handleConfirmPayout}
-                className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm"
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm cursor-pointer"
               >
-                Mark Paid & Lock Voucher
+                Confirm Payout & Issue Voucher
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Remittance Voucher Modal */}
+      {/* Settlement Voucher & Escrow Breakdown Modal */}
       {selectedSettlement && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Remittance Voucher</h3>
-                <p className="text-xs text-slate-500 font-mono">{selectedSettlement.reference}</p>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-sm">Settlement Voucher Details</h3>
+                  {selectedSettlement.orderType === 'global_export' ? (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                      🌍 Global Export
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      🇿🇦 Domestic ZA
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">{selectedSettlement.reference}</p>
               </div>
               <button 
                 onClick={() => setSelectedSettlement(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl">
+              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <div>
-                  <span className="text-slate-400 text-[10px] block">Vendor</span>
+                  <span className="text-slate-400 text-[10px] block">Vendor / Wine Farm</span>
                   <span className="font-semibold text-slate-900">{selectedSettlement.vendorName}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 text-[10px] block">Order Number</span>
+                  <span className="text-slate-400 text-[10px] block">Order Reference</span>
                   <span className="font-semibold text-slate-900">#{selectedSettlement.orderNumber}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 text-[10px] block">Delivered At</span>
+                  <span className="text-slate-400 text-[10px] block">Destination</span>
+                  <span className="font-medium text-slate-800">{selectedSettlement.destinationCountry || 'South Africa'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Tax Treatment</span>
+                  <span className="font-medium text-slate-800">
+                    {selectedSettlement.vatRatePct === 0 ? '0% Export Zero-Rated' : `${selectedSettlement.vatRatePct}% SA VAT`}
+                  </span>
+                </div>
+                {selectedSettlement.customsDeclarationRef && (
+                  <div className="col-span-2">
+                    <span className="text-slate-400 text-[10px] block">Customs Clearance Reference (SARS SAD500)</span>
+                    <span className="font-mono font-semibold text-purple-700">{selectedSettlement.customsDeclarationRef}</span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Delivered At (POD)</span>
                   <span className="font-medium text-slate-800">{new Date(selectedSettlement.deliveredAt).toLocaleDateString()}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 text-[10px] block">Milestone Due Date</span>
+                  <span className="text-slate-400 text-[10px] block">30-Day Escrow Maturity</span>
                   <span className="font-medium text-slate-800">{new Date(selectedSettlement.payoutDueDate).toLocaleDateString()}</span>
                 </div>
               </div>
@@ -426,7 +549,7 @@ export default function CrmSettlementsPage() {
                   <span>R {selectedSettlement.orderTotal?.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
-                  <span>Platform Commission (15%)</span>
+                  <span>Platform Commission ({selectedSettlement.commissionRatePct || 15}%)</span>
                   <span>- R {selectedSettlement.commissionAmount?.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-blue-900 font-bold pt-1.5 border-t border-slate-200 text-sm">
@@ -437,7 +560,13 @@ export default function CrmSettlementsPage() {
 
               {selectedSettlement.paymentReference && (
                 <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-emerald-900 text-xs">
-                  <span className="font-semibold">Bank Payment Cleared:</span> Ref {selectedSettlement.paymentReference}
+                  <span className="font-semibold">Settlement Cleared:</span> Reference {selectedSettlement.paymentReference}
+                </div>
+              )}
+
+              {selectedSettlement.disputeReason && (
+                <div className="bg-red-50 border border-red-200 p-2.5 rounded-xl text-red-900 text-xs">
+                  <span className="font-semibold">Dispute / Hold Reason:</span> {selectedSettlement.disputeReason}
                 </div>
               )}
             </div>
@@ -445,13 +574,13 @@ export default function CrmSettlementsPage() {
             <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
               <button
                 onClick={() => setSelectedSettlement(null)}
-                className="px-4 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl"
+                className="px-4 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
               >
                 Close
               </button>
               <button
-                onClick={() => alert('Printing vendor remittance slip...')}
-                className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm flex items-center gap-1.5"
+                onClick={() => toast.success(`Remittance voucher for ${selectedSettlement.reference} exported to print view.`)}
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm flex items-center gap-1.5 cursor-pointer"
               >
                 <Download size={13} /> Print Remittance
               </button>
@@ -460,18 +589,18 @@ export default function CrmSettlementsPage() {
         </div>
       )}
 
-      {/* Dispute Modal */}
+      {/* Freeze / Dispute Modal */}
       {disputeModalSettlement && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="font-bold text-slate-900 text-base">Freeze Payout — Flag Dispute</h3>
+            <h3 className="font-bold text-slate-900 text-base">Freeze Payout — Open Claim</h3>
             <p className="text-xs text-slate-500">Hold 30-day payout timer for order #{disputeModalSettlement.orderNumber}</p>
 
             <div className="text-xs space-y-1">
-              <label className="font-semibold text-slate-700 block">Reason for Dispute / Hold</label>
+              <label className="font-semibold text-slate-700 block">Reason for Dispute / Transit Claim</label>
               <textarea 
                 rows="3"
-                placeholder="e.g. Broken vintage bottle reported during transit; replacement bottle pending..."
+                placeholder="e.g. Client reported broken bottle during Heathrow air cargo handling; replacement dispatched..."
                 value={disputeReasonInput}
                 onChange={(e) => setDisputeReasonInput(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
@@ -481,15 +610,15 @@ export default function CrmSettlementsPage() {
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
               <button
                 onClick={() => setDisputeModalSettlement(null)}
-                className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl"
+                className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmDispute}
-                className="px-4 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-sm"
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-sm cursor-pointer"
               >
-                Hold Settlement
+                Freeze Escrow
               </button>
             </div>
           </div>

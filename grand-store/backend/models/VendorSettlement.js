@@ -63,6 +63,33 @@ const vendorSettlementSchema = new mongoose.Schema({
     type: String,
     default: 'ZAR'
   },
+  orderType: {
+    type: String,
+    enum: ['local', 'global_export'],
+    default: 'local',
+    index: true
+  },
+  destinationCountry: {
+    type: String,
+    default: 'South Africa'
+  },
+  vatRatePct: {
+    type: Number,
+    default: 15
+  },
+  payoutMethod: {
+    type: String,
+    enum: ['domestic_eft', 'swift_wire', 'international_iban', 'direct_treasury'],
+    default: 'domestic_eft'
+  },
+  customsDeclarationRef: {
+    type: String,
+    default: ''
+  },
+  fxRate: {
+    type: Number,
+    default: 1.0
+  },
   status: {
     type: String,
     enum: ['pending_30day_window', 'due_for_payment', 'processing', 'settled', 'disputed', 'held'],
@@ -75,7 +102,9 @@ const vendorSettlementSchema = new mongoose.Schema({
     accountNumber: { type: String },
     branchCode: { type: String },
     accountType: { type: String },
-    swiftCode: { type: String }
+    swiftCode: { type: String },
+    iban: { type: String },
+    country: { type: String }
   },
   disputeReason: {
     type: String,

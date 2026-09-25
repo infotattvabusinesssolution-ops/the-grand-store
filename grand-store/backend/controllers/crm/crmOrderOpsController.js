@@ -2,6 +2,7 @@ const Order = require('../../models/Order');
 const Shipment = require('../../models/Shipment');
 const User = require('../../models/User');
 const SupportTicket = require('../../models/SupportTicket');
+const { createSettlementsForDeliveredOrder } = require('./crmSettlementController');
 
 // Ensure illustrative distribution across lanes if database only has default status
 const ensureInitialOrderStages = async () => {
@@ -214,6 +215,9 @@ exports.updateOrderStage = async (req, res) => {
       order.status = status;
       if (status === 'Delivered' || status === 'Completed') {
         order.deliveredAt = new Date();
+        order.isDelivered = true;
+        // Automatically start the 30-day vendor settlement milestone clock
+        createSettlementsForDeliveredOrder(order).catch(e => console.error('Settlement creation error:', e.message));
       }
     }
 

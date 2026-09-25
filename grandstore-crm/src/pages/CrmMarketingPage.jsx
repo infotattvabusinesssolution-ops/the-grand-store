@@ -104,7 +104,7 @@ export default function CrmMarketingPage() {
       };
 
       if (editingCategory) {
-        await updateCategory(editingCategory.id || editingCategory._id, payload);
+        await updateCategory(editingCategory._id || editingCategory.slug || editingCategory.id, payload);
         toast.success(`Audience category "${payload.name}" updated successfully!`);
       } else {
         await createCategory(payload);
@@ -122,7 +122,7 @@ export default function CrmMarketingPage() {
     if (!deletingCategory) return;
     setDeletingLoading(true);
     try {
-      await deleteCategory(deletingCategory.id || deletingCategory._id);
+      await deleteCategory(deletingCategory._id || deletingCategory.slug || deletingCategory.id);
       toast.success(`Audience category "${deletingCategory.name}" removed successfully.`);
       setDeletingCategory(null);
     } catch (err) {
@@ -1026,6 +1026,7 @@ export default function CrmMarketingPage() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         initialCohortId={importCohortId}
+        cohorts={segments}
         onSuccess={() => {
           refresh();
         }}
