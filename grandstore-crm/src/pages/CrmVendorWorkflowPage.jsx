@@ -6,7 +6,7 @@ import {
   Building2, FileText, CheckCircle2, Clock, AlertTriangle, 
   ExternalLink, ShieldCheck, History, ArrowRight, X, Eye, 
   UserX, Check, Package, DollarSign, MessageCircle,
-  Search, RefreshCw, MapPin, Mail, Zap, Send, Sparkles
+  Search, RefreshCw, MapPin, Mail, Zap, Send, Sparkles, Crown
 } from 'lucide-react';
 
 export default function CrmVendorWorkflowPage() {
@@ -64,6 +64,11 @@ export default function CrmVendorWorkflowPage() {
   const handleConfirmAction = async (e) => {
     e.preventDefault();
     if (!actionModal.vendor) return;
+    if (actionModal.vendor.vendorType === 'flagship' || /grand store/i.test(actionModal.vendor.tradingName || actionModal.vendor.name || '')) {
+      toast.error('The Grand Store is the central platform operator and cannot be suspended or demoted.');
+      setActionModal({ isOpen: false, vendor: null, targetStage: '', title: '', reason: '' });
+      return;
+    }
     setSubmitting(true);
     try {
       await updateStage(
@@ -274,87 +279,96 @@ export default function CrmVendorWorkflowPage() {
                     <td colSpan={6} className="py-12 text-center text-slate-400">No vendors found matching your search.</td>
                   </tr>
                 ) : (
-                  vendors.map((v) => (
+                  vendors.map((v) => {
+                    const isRowAdmin = v.vendorType === 'flagship' || /grand store/i.test(v.tradingName);
+                    return (
                     <tr 
                       key={v._id} 
-                      className="hover:bg-blue-50/40 transition-colors group cursor-pointer"
+                      className={`transition-colors group cursor-pointer ${isRowAdmin ? 'bg-amber-50/20 hover:bg-amber-50/40' : 'hover:bg-blue-50/40'}`}
                       onClick={() => handleOpen360(v)}
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 font-extrabold text-sm shrink-0 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                            {v.tradingName.slice(0, 2).toUpperCase()}
+                          <div className={`w-10 h-10 rounded-xl border flex items-center justify-center font-extrabold text-sm shrink-0 shadow-sm transition-colors ${isRowAdmin ? 'bg-amber-100/60 border-amber-300 text-amber-800 group-hover:bg-amber-600 group-hover:text-white' : 'bg-blue-50 border-blue-200 text-blue-700 group-hover:bg-blue-600 group-hover:text-white'}`}>
+                            {isRowAdmin ? <Crown size={18} /> : v.tradingName.slice(0, 2).toUpperCase()}
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <p className="font-extrabold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
+                              <p className={`font-extrabold text-sm transition-colors ${isRowAdmin ? 'text-amber-950 group-hover:text-amber-700' : 'text-slate-900 group-hover:text-blue-600'}`}>
                                 {v.tradingName}
                               </p>
-                              {v.vendorType === 'flagship' && (
-                                <span className="px-1.5 py-0.2 text-[9px] font-black bg-blue-100 text-blue-800 rounded border border-blue-200">FLAGSHIP</span>
+                              {isRowAdmin && (
+                                <span className="px-1.5 py-0.5 text-[9px] font-black bg-amber-100 text-amber-800 rounded border border-amber-300 flex items-center gap-0.5">
+                                  <Crown size={9} /> MAIN ADMIN
+                                </span>
                               )}
                             </div>
-                            <p className="text-[11px] text-slate-500">{v.legalName !== v.tradingName ? v.legalName : 'Verified South African Estate'}</p>
+                            <p className="text-[11px] text-slate-500">{isRowAdmin ? 'Central Platform Headquarters & Master Vault' : (v.legalName !== v.tradingName ? v.legalName : 'Verified South African Estate')}</p>
                           </div>
                         </div>
                       </td>
 
                       <td className="px-6 py-4">
                         <p className="text-slate-800 font-semibold flex items-center gap-1.5">
-                          <Mail size={12} className="text-blue-500" /> {v.email}
+                          <Mail size={12} className={isRowAdmin ? "text-amber-600" : "text-blue-500"} /> {v.email}
                         </p>
                         <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5">
-                          <MapPin size={12} className="text-blue-400" /> {v.address}
+                          <MapPin size={12} className={isRowAdmin ? "text-amber-500" : "text-blue-400"} /> {v.address}
                         </p>
                       </td>
 
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-blue-900 text-sm">
+                          <span className={`font-extrabold text-sm ${isRowAdmin ? 'text-amber-900' : 'text-blue-900'}`}>
                             R {v.totalGmv ? v.totalGmv.toLocaleString() : '38,500'}
                           </span>
-                          <span className="text-[10px] text-blue-600 font-semibold uppercase">GMV</span>
+                          <span className={`text-[10px] font-semibold uppercase ${isRowAdmin ? 'text-amber-700' : 'text-blue-600'}`}>
+                            {isRowAdmin ? 'REVENUE' : 'GMV'}
+                          </span>
                         </div>
                         <p className="text-[11px] text-slate-500 mt-0.5">
-                          {v.productCount || 6} Live SKUs • {v.orderCount || 8} Orders
+                          {v.productCount || 343} Live SKUs • {v.orderCount || 8} Orders
                         </p>
                       </td>
 
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1.5">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold ${v.kycVerified ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
-                            {v.kycVerified ? <CheckCircle2 size={11} /> : <Clock size={11} />}
-                            {v.kycVerified ? 'KYC Compliant' : 'Review In-Progress'}
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold ${isRowAdmin ? 'bg-amber-100 text-amber-800 border border-amber-300' : (v.kycVerified ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200')}`}>
+                            <ShieldCheck size={11} className={isRowAdmin ? "text-amber-700" : (v.kycVerified ? "text-emerald-600" : "text-blue-600")} />
+                            {isRowAdmin ? 'Master Licenced' : (v.kycVerified ? 'KYC Compliant' : 'Review In-Progress')}
                           </span>
-                          <span className="text-[10px] font-extrabold text-blue-800 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
-                            {v.trustScore}/100
+                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${isRowAdmin ? 'text-amber-900 bg-amber-50 border-amber-300' : 'text-blue-800 bg-blue-50 border border-blue-200'}`}>
+                            {isRowAdmin ? 100 : v.trustScore}/100
                           </span>
                         </div>
                       </td>
 
                       <td className="px-6 py-4">
-                        <StatusBadge status={v.crmWorkflowStage || 'live_active'} />
+                        <StatusBadge status={isRowAdmin ? 'platform_flagship' : (v.crmWorkflowStage || 'live_active')} />
                       </td>
 
                       <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleOpen360(v)}
-                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-sm shadow-blue-500/25 transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                            className={`px-3.5 py-1.5 rounded-xl font-bold text-xs shadow-sm transition-all inline-flex items-center gap-1.5 cursor-pointer ${isRowAdmin ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-500/25' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25'}`}
                           >
-                            <Sparkles size={12} /> Vendor 360
+                            <Sparkles size={12} /> {isRowAdmin ? 'Master 360' : 'Vendor 360'}
                           </button>
-                          <button
-                            onClick={() => setMessageModal({ isOpen: true, vendor: v, message: '' })}
-                            className="p-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-600 rounded-xl transition-all cursor-pointer border border-transparent hover:border-blue-200"
-                            title="Direct Concierge Message"
-                          >
-                            <MessageCircle size={14} />
-                          </button>
+                          {!isRowAdmin && (
+                            <button
+                              onClick={() => setMessageModal({ isOpen: true, vendor: v, message: '' })}
+                              className="p-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-600 rounded-xl transition-all cursor-pointer border border-transparent hover:border-blue-200"
+                              title="Direct Concierge Message"
+                            >
+                              <MessageCircle size={14} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -581,554 +595,535 @@ export default function CrmVendorWorkflowPage() {
       {/* ========================================================================= */}
       {/* VENDOR 360° DOSSIER & DASHBOARD MIRROR (EXECUTIVE BLUE & SLATE THEME)     */}
       {/* ========================================================================= */}
-      {activeVendor360 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
-          <div className="bg-slate-950 text-slate-100 rounded-3xl border border-blue-500/30 shadow-2xl shadow-blue-950/60 max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-blue-500/20 flex items-start justify-between gap-4 bg-gradient-to-r from-slate-950 via-blue-950/70 to-slate-950">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-blue-600/20 border-2 border-blue-500 flex items-center justify-center text-blue-400 font-black text-xl shadow-lg">
-                  {activeVendor360.vendorInfo.tradingName.slice(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-black text-white tracking-tight">
-                      {activeVendor360.vendorInfo.tradingName}
-                    </h2>
-                    <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-400/40">
-                      360° DASHBOARD MIRROR
-                    </span>
-                    <StatusBadge status={activeVendor360.vendorInfo.crmWorkflowStage || 'live_active'} />
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1 flex items-center gap-3 flex-wrap">
-                    <span>{activeVendor360.vendorInfo.legalName}</span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1 text-slate-300">
-                      <MapPin size={11} className="text-blue-400" /> {activeVendor360.vendorInfo.address}
-                    </span>
-                    <span>•</span>
-                    <span className="text-blue-400 font-semibold">
-                      Trust Score: {activeVendor360.dashboardMirror?.rating?.trustScore}/100
-                    </span>
-                  </p>
-                </div>
-              </div>
+      {activeVendor360 && (() => {
+        const isMainAdmin = Boolean(
+          activeVendor360.isMainAdmin || 
+          activeVendor360.isFlagship || 
+          activeVendor360.vendorInfo?.vendorType === 'flagship' ||
+          /grand store/i.test(activeVendor360.vendorInfo?.tradingName || '')
+        );
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setMessageModal({ isOpen: true, vendor: activeVendor360.vendorInfo, message: '' })}
-                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/30"
-                >
-                  <MessageCircle size={14} /> Message Vendor
-                </button>
-                <button
-                  onClick={() => handleOpenActionModal(activeVendor360.vendorInfo, 'suspended', 'Freeze or Suspend Vendor Store')}
-                  className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 cursor-pointer"
-                >
-                  <UserX size={14} /> Suspend
-                </button>
-                <button
-                  onClick={() => setActiveVendor360(null)}
-                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            </div>
-
-            {/* Sub-Tabs Navigation (Blue Theme) */}
-            <div className="px-6 py-2.5 bg-slate-900/90 border-b border-blue-500/20 flex items-center gap-2 overflow-x-auto text-xs">
-              <button
-                onClick={() => setDossierSubTab('dashboard')}
-                className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'dashboard' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-white hover:bg-blue-900/30'}`}
-              >
-                <Sparkles size={12} /> Dashboard Mirror
-              </button>
-              <button
-                onClick={() => setDossierSubTab('activity')}
-                className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'activity' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-white hover:bg-blue-900/30'}`}
-              >
-                <History size={12} /> Live Activity ("What are they doing")
-              </button>
-              <button
-                onClick={() => setDossierSubTab('catalog')}
-                className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'catalog' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-white hover:bg-blue-900/30'}`}
-              >
-                <Package size={12} /> Products Catalog ({activeVendor360.products?.length || 0})
-              </button>
-              <button
-                onClick={() => setDossierSubTab('orders')}
-                className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'orders' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-white hover:bg-blue-900/30'}`}
-              >
-                <Clock size={12} /> Assigned Orders ({activeVendor360.orders?.length || 0})
-              </button>
-              <button
-                onClick={() => setDossierSubTab('settlement')}
-                className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'settlement' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-white hover:bg-blue-900/30'}`}
-              >
-                <DollarSign size={12} /> Settlements & Banking
-              </button>
-              <button
-                onClick={() => setDossierSubTab('compliance')}
-                className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'compliance' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-white hover:bg-blue-900/30'}`}
-              >
-                <ShieldCheck size={12} /> Licences & Compliance
-              </button>
-            </div>
-
-            {/* Dossier Content Body */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* SUBTAB 1: Mirrored Dashboard */}
-              {dossierSubTab === 'dashboard' && (
-                <div className="space-y-6 animate-fadeIn">
-                  {/* Top 4 Bento Mirrored Metrics (Executive Blue Theme) */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {/* Financials Mirror */}
-                    <div className="bg-slate-900/90 rounded-2xl p-4 border border-blue-500/20 space-y-2">
-                      <div className="flex items-center justify-between text-slate-400 text-xs">
-                        <span className="font-semibold uppercase tracking-wider">Gross Sales (GMV)</span>
-                        <DollarSign size={16} className="text-blue-400" />
-                      </div>
-                      <h4 className="text-2xl font-black text-white">
-                        R {activeVendor360.dashboardMirror?.financials?.grossMerchandiseValue?.toLocaleString()}
-                      </h4>
-                      <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
-                        <div className="flex justify-between">
-                          <span>GS Commission (12%):</span>
-                          <span className="text-rose-400 font-semibold">- R {activeVendor360.dashboardMirror?.financials?.commissionDeducted?.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between font-bold text-blue-400">
-                          <span>Net Vendor Earnings:</span>
-                          <span>R {activeVendor360.dashboardMirror?.financials?.netVendorEarnings?.toLocaleString()}</span>
-                        </div>
-                      </div>
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
+            <div className={`bg-slate-950 text-slate-100 rounded-3xl border ${isMainAdmin ? 'border-amber-500/40 shadow-2xl shadow-amber-950/50' : 'border-blue-500/30 shadow-2xl shadow-blue-950/60'} max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden`}>
+              {/* Modal Header */}
+              <div className={`p-5 border-b ${isMainAdmin ? 'border-amber-500/30 bg-gradient-to-r from-slate-950 via-amber-950/40 to-slate-950' : 'border-blue-500/20 bg-gradient-to-r from-slate-950 via-blue-950/70 to-slate-950'} flex items-start justify-between gap-4`}>
+                <div className="flex items-center gap-4">
+                  {isMainAdmin ? (
+                    <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 font-black text-2xl shadow-lg shadow-amber-500/20">
+                      <Crown size={28} className="text-amber-400" />
                     </div>
-
-                    {/* Escrow & Payout Status */}
-                    <div className="bg-slate-900/90 rounded-2xl p-4 border border-blue-500/20 space-y-2">
-                      <div className="flex items-center justify-between text-slate-400 text-xs">
-                        <span className="font-semibold uppercase tracking-wider">In-Escrow Payout</span>
-                        <Clock size={16} className="text-sky-400" />
-                      </div>
-                      <h4 className="text-2xl font-black text-sky-400">
-                        R {activeVendor360.dashboardMirror?.financials?.pendingSettlement?.toLocaleString()}
-                      </h4>
-                      <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
-                        <div className="flex justify-between">
-                          <span>Already Settled:</span>
-                          <span className="text-slate-200">R {activeVendor360.dashboardMirror?.financials?.alreadyPaidOut?.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Next Settlement Date:</span>
-                          <span className="text-blue-400 font-semibold">{activeVendor360.dashboardMirror?.financials?.nextPayoutDate}</span>
-                        </div>
-                      </div>
+                  ) : (
+                    <div className="w-14 h-14 rounded-2xl bg-blue-600/20 border-2 border-blue-500 flex items-center justify-center text-blue-400 font-black text-xl shadow-lg">
+                      {activeVendor360.vendorInfo.tradingName.slice(0, 2).toUpperCase()}
                     </div>
-
-                    {/* Catalog Health */}
-                    <div className="bg-slate-900/90 rounded-2xl p-4 border border-blue-500/20 space-y-2">
-                      <div className="flex items-center justify-between text-slate-400 text-xs">
-                        <span className="font-semibold uppercase tracking-wider">Catalog Health</span>
-                        <Package size={16} className="text-indigo-400" />
-                      </div>
-                      <h4 className="text-2xl font-black text-white">
-                        {activeVendor360.dashboardMirror?.catalog?.totalProducts} <span className="text-xs text-slate-400 font-normal">Products Listed</span>
-                      </h4>
-                      <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
-                        <div className="flex justify-between">
-                          <span>Live Active SKUs:</span>
-                          <span className="text-emerald-400 font-bold">{activeVendor360.dashboardMirror?.catalog?.liveProducts}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Low / Out of Stock:</span>
-                          <span className="text-rose-400 font-bold">{activeVendor360.dashboardMirror?.catalog?.outOfStockProducts}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Fulfillment Performance */}
-                    <div className="bg-slate-900/90 rounded-2xl p-4 border border-blue-500/20 space-y-2">
-                      <div className="flex items-center justify-between text-slate-400 text-xs">
-                        <span className="font-semibold uppercase tracking-wider">Fulfillment SLA</span>
-                        <Zap size={16} className="text-emerald-400" />
-                      </div>
-                      <h4 className="text-2xl font-black text-emerald-400">
-                        {activeVendor360.dashboardMirror?.fulfillment?.onTimeDispatchRatePct}%
-                      </h4>
-                      <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
-                        <div className="flex justify-between">
-                          <span>Orders Fulfilled:</span>
-                          <span className="text-white font-bold">{activeVendor360.dashboardMirror?.fulfillment?.fulfilledCount}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Overdue Dispatch:</span>
-                          <span className={activeVendor360.dashboardMirror?.fulfillment?.overdueDispatchCount > 0 ? "text-rose-400 font-bold" : "text-slate-400"}>
-                            {activeVendor360.dashboardMirror?.fulfillment?.overdueDispatchCount}
+                  )}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-black text-white tracking-tight">
+                        {activeVendor360.vendorInfo.tradingName}
+                      </h2>
+                      {isMainAdmin ? (
+                        <>
+                          <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-400/50 flex items-center gap-1">
+                            <Crown size={11} className="text-amber-400" /> PLATFORM MASTER • CENTRAL FLAGSHIP
                           </span>
-                        </div>
-                      </div>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-400/40">
+                            MAIN ADMIN
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-400/40">
+                            360° DASHBOARD MIRROR
+                          </span>
+                          <StatusBadge status={activeVendor360.vendorInfo.crmWorkflowStage || 'live_active'} />
+                        </>
+                      )}
                     </div>
-                  </div>
-
-                  {/* Dual Grid: Estate Details & Fast Actions */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Left 2 Cols: Estate Operational Identity */}
-                    <div className="md:col-span-2 bg-slate-900/70 rounded-2xl p-5 border border-blue-500/20 space-y-4">
-                      <h4 className="text-sm font-black text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                        <Building2 size={16} /> Winery & Estate Operational Dossier
-                      </h4>
-                      
-                      <div className="grid grid-cols-2 gap-4 text-xs">
-                        <div>
-                          <p className="text-slate-400 font-medium">Estate Director / Contact</p>
-                          <p className="text-white font-bold mt-0.5">{activeVendor360.vendorInfo.directorName}</p>
-                          <p className="text-slate-400 mt-1">{activeVendor360.vendorInfo.phone}</p>
-                        </div>
-                        <div>
-                          <p className="text-slate-400 font-medium">Assigned Account Manager</p>
-                          <p className="text-blue-400 font-bold mt-0.5">{activeVendor360.vendorInfo.accountManager?.name}</p>
-                          <p className="text-slate-400 mt-1">{activeVendor360.vendorInfo.accountManager?.email}</p>
-                        </div>
-                        <div>
-                          <p className="text-slate-400 font-medium">Registration Number</p>
-                          <p className="text-white font-bold mt-0.5">{activeVendor360.vendorInfo.registrationNumber}</p>
-                        </div>
-                        <div>
-                          <p className="text-slate-400 font-medium">Winery Location / Vault</p>
-                          <p className="text-white font-bold mt-0.5">{activeVendor360.vendorInfo.address}</p>
-                        </div>
-                      </div>
-
-                      <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                          <span className="text-slate-300 font-semibold">Storefront Status: Live on Grand Store Global & Local</span>
-                        </div>
-                        <button 
-                          onClick={() => setDossierSubTab('activity')}
-                          className="text-xs text-blue-400 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
-                        >
-                          View real-time event logs <ArrowRight size={12} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Right 1 Col: Quick Executive Interventions */}
-                    <div className="bg-slate-900/70 rounded-2xl p-5 border border-blue-500/20 space-y-3 flex flex-col justify-between">
-                      <div>
-                        <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                          <Zap size={15} className="text-blue-400" /> Executive Actions
-                        </h4>
-                        <p className="text-xs text-slate-400 mt-1">Direct intervention with vendor winery.</p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <button
-                          onClick={() => handleOpenActionModal(activeVendor360.vendorInfo, 'live_active', 'Advance Vendor to Live Active')}
-                          className="w-full py-2 bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
-                        >
-                          <span>Confirm All Clear (Live Active)</span>
-                          <Check size={14} />
-                        </button>
-                        <button
-                          onClick={() => setMessageModal({ isOpen: true, vendor: activeVendor360.vendorInfo, message: '' })}
-                          className="w-full py-2 bg-blue-600/30 hover:bg-blue-600/40 text-blue-300 border border-blue-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
-                        >
-                          <span>Dispatch Urgent Notice</span>
-                          <Send size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleOpenActionModal(activeVendor360.vendorInfo, 'suspended', 'Freeze or Suspend Vendor Store')}
-                          className="w-full py-2 bg-rose-600/30 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
-                        >
-                          <span>Temporary Freeze Store</span>
-                          <UserX size={14} />
-                        </button>
-                      </div>
-
-                      <p className="text-[10px] text-slate-500 italic">Audit logged under Executive Staff.</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* SUBTAB 2: Real-time Activity ("What are they doing") */}
-              {dossierSubTab === 'activity' && (
-                <div className="space-y-4 animate-fadeIn">
-                  <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
-                    <div>
-                      <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                        <History size={16} className="text-blue-400" /> Real-Time Operational Activity Stream
-                      </h4>
-                      <p className="text-xs text-slate-400">Live operational telemetry showing what the vendor is doing right now.</p>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping"></span> Live Feed
-                    </span>
-                  </div>
-
-                  <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-blue-500/20">
-                    {(!activeVendor360.activities || activeVendor360.activities.length === 0) ? (
-                      <div className="p-8 text-center text-slate-400 bg-slate-900/40 rounded-2xl border border-blue-500/20">
-                        <History size={24} className="mx-auto mb-2 text-slate-500" />
-                        <p className="font-semibold text-slate-300">No operational activities recorded yet for this vendor.</p>
-                        <p className="text-xs text-slate-500 mt-1">Actions taken by the vendor or platform will stream here automatically.</p>
-                      </div>
+                    {isMainAdmin ? (
+                      <p className="text-xs text-slate-400 mt-1 flex items-center gap-3 flex-wrap">
+                        <span className="text-slate-200 font-semibold">{activeVendor360.vendorInfo.legalName}</span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1 text-slate-300">
+                          <MapPin size={11} className="text-amber-400" /> {activeVendor360.vendorInfo.address}
+                        </span>
+                        <span>•</span>
+                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                          <ShieldCheck size={12} /> 100/100 Master Trust Authority
+                        </span>
+                        <span>•</span>
+                        <span className="text-amber-400 font-semibold">
+                          0% Platform Commission (100% Direct Retention)
+                        </span>
+                      </p>
                     ) : (
-                      activeVendor360.activities.map((act) => (
-                        <div key={act.id} className="relative group">
-                          {/* Bullet */}
-                          <div className="absolute -left-[27px] top-1 w-3.5 h-3.5 rounded-full bg-slate-950 border-2 border-blue-500 group-hover:scale-125 transition-transform" />
-                          
-                          <div className="bg-slate-900/80 p-4 rounded-2xl border border-blue-500/20 group-hover:border-blue-500/50 transition-colors">
-                            <div className="flex items-center justify-between flex-wrap gap-2">
-                              <span className="font-extrabold text-white text-sm">{act.title}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                                  {act.badge}
-                                </span>
-                                <span className="text-[11px] text-slate-400 font-mono">
-                                  {new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(act.timestamp).toLocaleDateString()}
-                                </span>
-                              </div>
-                            </div>
-                            <p className="text-xs text-slate-300 mt-1">{act.description}</p>
-                            <p className="text-[10px] text-slate-500 mt-2 font-medium">Actor: {act.performedBy}</p>
-                          </div>
-                        </div>
-                      ))
+                      <p className="text-xs text-slate-400 mt-1 flex items-center gap-3 flex-wrap">
+                        <span>{activeVendor360.vendorInfo.legalName}</span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1 text-slate-300">
+                          <MapPin size={11} className="text-blue-400" /> {activeVendor360.vendorInfo.address}
+                        </span>
+                        <span>•</span>
+                        <span className="text-blue-400 font-semibold">
+                          Trust Score: {activeVendor360.dashboardMirror?.rating?.trustScore}/100
+                        </span>
+                      </p>
                     )}
                   </div>
                 </div>
-              )}
 
-              {/* SUBTAB 3: Live Products Catalog */}
-              {dossierSubTab === 'catalog' && (
-                <div className="space-y-4 animate-fadeIn">
-                  <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
-                    <div>
-                      <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                        <Package size={16} className="text-blue-400" /> Products Supplied by {activeVendor360.vendorInfo.tradingName}
-                      </h4>
-                      <p className="text-xs text-slate-400">Inventory levels, vintage specifics, and listing status.</p>
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto rounded-2xl border border-blue-500/20">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-900 text-slate-400 uppercase font-semibold border-b border-blue-500/20">
-                        <tr>
-                          <th className="px-4 py-3">Product Name</th>
-                          <th className="px-4 py-3">Category</th>
-                          <th className="px-4 py-3">Vintage / ABV</th>
-                          <th className="px-4 py-3">Price (ZAR)</th>
-                          <th className="px-4 py-3">Stock Level</th>
-                          <th className="px-4 py-3">Listing Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800 bg-slate-950/60">
-                        {(!activeVendor360.products || activeVendor360.products.length === 0) ? (
-                          <tr>
-                            <td colSpan={6} className="py-8 text-center text-slate-400">No products uploaded under this vendor account yet.</td>
-                          </tr>
-                        ) : (
-                          activeVendor360.products.map((p) => (
-                            <tr key={p._id} className="hover:bg-blue-500/10 transition-colors">
-                              <td className="px-4 py-3 font-bold text-white flex items-center gap-2">
-                                <Package size={14} className="text-blue-400" />
-                                <div>
-                                  <p>{p.name}</p>
-                                  <p className="text-[10px] text-slate-500 font-mono">SKU: {p.id}</p>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-slate-300">{p.category}</td>
-                              <td className="px-4 py-3 text-slate-400">{p.vintage} • {p.abv}</td>
-                              <td className="px-4 py-3 font-black text-blue-400">R {p.priceZar?.toLocaleString()}</td>
-                              <td className="px-4 py-3">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.stock > 10 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
-                                  {p.stock} bottles in vault
-                                </span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                  ✓ Live & Active
-                                </span>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                <div className="flex items-center gap-2">
+                  {isMainAdmin ? (
+                    <>
+                      <button
+                        onClick={() => setDossierSubTab('catalog')}
+                        className="px-3.5 py-2 bg-amber-600/30 hover:bg-amber-600/40 text-amber-200 border border-amber-500/40 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Package size={14} /> Master Vault ({activeVendor360.products?.length || 0})
+                      </button>
+                      <button
+                        onClick={() => setDossierSubTab('settlement')}
+                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/30"
+                      >
+                        <DollarSign size={14} /> Corporate Treasury
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setMessageModal({ isOpen: true, vendor: activeVendor360.vendorInfo, message: '' })}
+                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/30"
+                      >
+                        <MessageCircle size={14} /> Message Vendor
+                      </button>
+                      <button
+                        onClick={() => handleOpenActionModal(activeVendor360.vendorInfo, 'suspended', 'Freeze or Suspend Vendor Store')}
+                        className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <UserX size={14} /> Suspend
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => setActiveVendor360(null)}
+                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
                 </div>
-              )}
+              </div>
 
-              {/* SUBTAB 4: Assigned Orders & Dispatch */}
-              {dossierSubTab === 'orders' && (
-                <div className="space-y-4 animate-fadeIn">
-                  <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
-                    <div>
-                      <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                        <Clock size={16} className="text-blue-400" /> Customer Orders for {activeVendor360.vendorInfo.tradingName}
-                      </h4>
-                      <p className="text-xs text-slate-400">Tracking fulfillment SLA and parcel dispatches.</p>
-                    </div>
-                  </div>
+              {/* Sub-Tabs Navigation */}
+              <div className={`px-6 py-2.5 bg-slate-900/90 border-b ${isMainAdmin ? 'border-amber-500/20' : 'border-blue-500/20'} flex items-center gap-2 overflow-x-auto text-xs`}>
+                <button
+                  onClick={() => setDossierSubTab('dashboard')}
+                  className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'dashboard' ? (isMainAdmin ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-blue-600 text-white shadow-md shadow-blue-600/30') : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                >
+                  <Sparkles size={12} /> {isMainAdmin ? 'Master Command Dashboard' : 'Dashboard Mirror'}
+                </button>
+                <button
+                  onClick={() => setDossierSubTab('activity')}
+                  className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'activity' ? (isMainAdmin ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-blue-600 text-white shadow-md shadow-blue-600/30') : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                >
+                  <History size={12} /> {isMainAdmin ? 'Platform & Vault Logs' : 'Live Activity ("What are they doing")'}
+                </button>
+                <button
+                  onClick={() => setDossierSubTab('catalog')}
+                  className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'catalog' ? (isMainAdmin ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-blue-600 text-white shadow-md shadow-blue-600/30') : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                >
+                  <Package size={12} /> {isMainAdmin ? `Master Vault Catalog (${activeVendor360.products?.length || 0})` : `Products Catalog (${activeVendor360.products?.length || 0})`}
+                </button>
+                <button
+                  onClick={() => setDossierSubTab('orders')}
+                  className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'orders' ? (isMainAdmin ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-blue-600 text-white shadow-md shadow-blue-600/30') : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                >
+                  <Clock size={12} /> {isMainAdmin ? `Direct Retail Orders (${activeVendor360.orders?.length || 0})` : `Assigned Orders (${activeVendor360.orders?.length || 0})`}
+                </button>
+                <button
+                  onClick={() => setDossierSubTab('settlement')}
+                  className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'settlement' ? (isMainAdmin ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-blue-600 text-white shadow-md shadow-blue-600/30') : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                >
+                  <DollarSign size={12} /> {isMainAdmin ? 'Corporate Treasury & Merchant Settlement' : 'Settlements & Banking'}
+                </button>
+                <button
+                  onClick={() => setDossierSubTab('compliance')}
+                  className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'compliance' ? (isMainAdmin ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-blue-600 text-white shadow-md shadow-blue-600/30') : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                >
+                  <ShieldCheck size={12} /> {isMainAdmin ? 'Master Accreditations & Licences' : 'Licences & Compliance'}
+                </button>
+              </div>
 
-                  <div className="overflow-x-auto rounded-2xl border border-blue-500/20">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-900 text-slate-400 uppercase font-semibold border-b border-blue-500/20">
-                        <tr>
-                          <th className="px-4 py-3">Order Ref</th>
-                          <th className="px-4 py-3">Customer & City</th>
-                          <th className="px-4 py-3">Value (ZAR)</th>
-                          <th className="px-4 py-3">Waybill Tracking</th>
-                          <th className="px-4 py-3">Fulfillment Status</th>
-                          <th className="px-4 py-3 text-right">Intervention</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800 bg-slate-950/60">
-                        {(!activeVendor360.orders || activeVendor360.orders.length === 0) ? (
-                          <tr>
-                            <td colSpan={6} className="py-8 text-center text-slate-400">No orders assigned to this vendor yet.</td>
-                          </tr>
-                        ) : (
-                          activeVendor360.orders.map((o) => (
-                            <tr key={o._id} className="hover:bg-blue-500/10 transition-colors">
-                              <td className="px-4 py-3 font-bold text-white">#{o.orderId}</td>
-                              <td className="px-4 py-3">
-                                <p className="text-slate-200 font-semibold">{o.customerName}</p>
-                                <p className="text-[10px] text-slate-400">{o.customerCity}</p>
-                              </td>
-                              <td className="px-4 py-3 font-black text-blue-400">R {o.orderTotal?.toLocaleString()}</td>
-                              <td className="px-4 py-3 font-mono text-slate-300">{o.waybillNumber}</td>
-                              <td className="px-4 py-3">
-                                {o.isDispatched ? (
-                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                    ✓ Dispatched / Delivered
-                                  </span>
-                                ) : o.orderAgeHours > 24 ? (
-                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                                    ⚠️ {o.orderAgeHours}h Overdue
-                                  </span>
-                                ) : (
-                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                                    ⏳ Due in {o.dispatchDueInHours}h
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                <button
-                                  onClick={() => toast.success(`Courier dispatch ping transmitted to ${activeVendor360.vendorInfo.tradingName}`)}
-                                  className="px-2.5 py-1 bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/40 rounded-lg font-bold text-[11px] transition-colors cursor-pointer"
-                                >
-                                  Ping Courier Guy
-                                </button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+              {/* Dossier Content Body */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* SUBTAB 1: Mirrored Dashboard / Master Command */}
+                {dossierSubTab === 'dashboard' && (
+                  <div className="space-y-6 animate-fadeIn">
+                    {/* Top 4 Bento Metrics */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      {/* Financials */}
+                      {isMainAdmin ? (
+                        <div className="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/30 space-y-2">
+                          <div className="flex items-center justify-between text-slate-400 text-xs">
+                            <span className="font-semibold uppercase tracking-wider text-amber-300">Flagship Sales (GMV)</span>
+                            <DollarSign size={16} className="text-amber-400" />
+                          </div>
+                          <h4 className="text-2xl font-black text-white">
+                            R {activeVendor360.dashboardMirror?.financials?.grossMerchandiseValue?.toLocaleString()}
+                          </h4>
+                          <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+                            <div className="flex justify-between">
+                              <span>Platform Commission:</span>
+                              <span className="text-emerald-400 font-bold">0% (Platform Operator)</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-amber-300">
+                              <span>Retained Platform Revenue:</span>
+                              <span>100% (R {activeVendor360.dashboardMirror?.financials?.grossMerchandiseValue?.toLocaleString()})</span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-slate-900/90 rounded-2xl p-4 border border-blue-500/20 space-y-2">
+                          <div className="flex items-center justify-between text-slate-400 text-xs">
+                            <span className="font-semibold uppercase tracking-wider">Gross Sales (GMV)</span>
+                            <DollarSign size={16} className="text-blue-400" />
+                          </div>
+                          <h4 className="text-2xl font-black text-white">
+                            R {activeVendor360.dashboardMirror?.financials?.grossMerchandiseValue?.toLocaleString()}
+                          </h4>
+                          <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+                            <div className="flex justify-between">
+                              <span>GS Commission (12%):</span>
+                              <span className="text-rose-400 font-semibold">- R {activeVendor360.dashboardMirror?.financials?.commissionDeducted?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-blue-400">
+                              <span>Net Vendor Earnings:</span>
+                              <span>R {activeVendor360.dashboardMirror?.financials?.netVendorEarnings?.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
-              {/* SUBTAB 5: Settlements & Banking */}
-              {dossierSubTab === 'settlement' && (
-                <div className="space-y-6 animate-fadeIn">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-slate-900/90 rounded-2xl p-5 border border-blue-500/20 space-y-3">
-                      <h4 className="text-sm font-black text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                        <DollarSign size={16} /> Banking & Escrow Settlement Account
-                      </h4>
-                      <div className="space-y-2 text-xs">
-                        <div className="flex justify-between py-1.5 border-b border-slate-800">
-                          <span className="text-slate-400">Bank Name:</span>
-                          <span className="text-white font-bold">{activeVendor360.vendorInfo.bankingInfo?.bankName || 'Not submitted'}</span>
+                      {/* Escrow & Payout Status / Treasury Capture */}
+                      {isMainAdmin ? (
+                        <div className="bg-slate-900/90 rounded-2xl p-4 border border-emerald-500/30 space-y-2">
+                          <div className="flex items-center justify-between text-slate-400 text-xs">
+                            <span className="font-semibold uppercase tracking-wider text-emerald-400">Direct Treasury Settlement</span>
+                            <CheckCircle2 size={16} className="text-emerald-400" />
+                          </div>
+                          <h4 className="text-2xl font-black text-emerald-400">
+                            R {activeVendor360.dashboardMirror?.financials?.alreadyPaidOut?.toLocaleString()}
+                          </h4>
+                          <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+                            <div className="flex justify-between">
+                              <span>Settlement Model:</span>
+                              <span className="text-emerald-400 font-bold">Direct Merchant Settlement</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Corporate Treasury:</span>
+                              <span className="text-slate-200 font-semibold">Standard Bank EFT (Real-Time)</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex justify-between py-1.5 border-b border-slate-800">
-                          <span className="text-slate-400">Account Name:</span>
-                          <span className="text-white font-bold">{activeVendor360.vendorInfo.bankingInfo?.accountName || 'Not submitted'}</span>
+                      ) : (
+                        <div className="bg-slate-900/90 rounded-2xl p-4 border border-blue-500/20 space-y-2">
+                          <div className="flex items-center justify-between text-slate-400 text-xs">
+                            <span className="font-semibold uppercase tracking-wider">In-Escrow Payout</span>
+                            <Clock size={16} className="text-sky-400" />
+                          </div>
+                          <h4 className="text-2xl font-black text-sky-400">
+                            R {activeVendor360.dashboardMirror?.financials?.pendingSettlement?.toLocaleString()}
+                          </h4>
+                          <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+                            <div className="flex justify-between">
+                              <span>Already Settled:</span>
+                              <span className="text-slate-200">R {activeVendor360.dashboardMirror?.financials?.alreadyPaidOut?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Next Settlement Date:</span>
+                              <span className="text-blue-400 font-semibold">{activeVendor360.dashboardMirror?.financials?.nextPayoutDate}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex justify-between py-1.5 border-b border-slate-800">
-                          <span className="text-slate-400">Account Number:</span>
-                          <span className="text-white font-mono font-bold">{activeVendor360.vendorInfo.bankingInfo?.accountNumber || 'Not submitted'}</span>
+                      )}
+
+                      {/* Catalog Health */}
+                      <div className={`bg-slate-900/90 rounded-2xl p-4 border ${isMainAdmin ? 'border-indigo-500/30' : 'border-blue-500/20'} space-y-2`}>
+                        <div className="flex items-center justify-between text-slate-400 text-xs">
+                          <span className={`font-semibold uppercase tracking-wider ${isMainAdmin ? 'text-indigo-300' : ''}`}>
+                            {isMainAdmin ? 'Master Vault Catalog' : 'Catalog Health'}
+                          </span>
+                          <Package size={16} className="text-indigo-400" />
                         </div>
-                        <div className="flex justify-between py-1.5 border-b border-slate-800">
-                          <span className="text-slate-400">Branch Code:</span>
-                          <span className="text-white font-mono font-bold">{activeVendor360.vendorInfo.bankingInfo?.branchCode || 'Not submitted'}</span>
+                        <h4 className="text-2xl font-black text-white">
+                          {activeVendor360.dashboardMirror?.catalog?.totalProducts} <span className="text-xs text-slate-400 font-normal">{isMainAdmin ? 'Master SKUs' : 'Products Listed'}</span>
+                        </h4>
+                        <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+                          <div className="flex justify-between">
+                            <span>Live Active SKUs:</span>
+                            <span className="text-emerald-400 font-bold">{activeVendor360.dashboardMirror?.catalog?.liveProducts}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Low / Out of Stock:</span>
+                            <span className="text-rose-400 font-bold">{activeVendor360.dashboardMirror?.catalog?.outOfStockProducts}</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between py-1.5">
-                          <span className="text-slate-400">Payout Preference:</span>
-                          <span className="text-blue-400 font-extrabold">{activeVendor360.vendorInfo.bankingInfo?.payoutPreference || 'Monthly'}</span>
+                      </div>
+
+                      {/* Fulfillment Performance */}
+                      <div className="bg-slate-900/90 rounded-2xl p-4 border border-blue-500/20 space-y-2">
+                        <div className="flex items-center justify-between text-slate-400 text-xs">
+                          <span className="font-semibold uppercase tracking-wider">
+                            {isMainAdmin ? 'Flagship Fulfillment SLA' : 'Fulfillment SLA'}
+                          </span>
+                          <Zap size={16} className="text-emerald-400" />
+                        </div>
+                        <h4 className="text-2xl font-black text-emerald-400">
+                          {activeVendor360.dashboardMirror?.fulfillment?.onTimeDispatchRatePct}%
+                        </h4>
+                        <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+                          <div className="flex justify-between">
+                            <span>{isMainAdmin ? 'Vault Orders Fulfilled:' : 'Orders Fulfilled:'}</span>
+                            <span className="text-white font-bold">{activeVendor360.dashboardMirror?.fulfillment?.fulfilledCount}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Overdue Dispatch:</span>
+                            <span className={activeVendor360.dashboardMirror?.fulfillment?.overdueDispatchCount > 0 ? "text-rose-400 font-bold" : "text-slate-400"}>
+                              {activeVendor360.dashboardMirror?.fulfillment?.overdueDispatchCount}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-slate-900/90 rounded-2xl p-5 border border-blue-500/20 space-y-4 flex flex-col justify-between">
+                    {/* Dual Grid: Estate Details & Actions */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Left 2 Cols: Operational Identity */}
+                      <div className={`md:col-span-2 bg-slate-900/70 rounded-2xl p-5 border ${isMainAdmin ? 'border-amber-500/20' : 'border-blue-500/20'} space-y-4`}>
+                        <h4 className={`text-sm font-black ${isMainAdmin ? 'text-amber-400' : 'text-blue-400'} uppercase tracking-wider flex items-center gap-2`}>
+                          {isMainAdmin ? <Crown size={16} /> : <Building2 size={16} />}
+                          {isMainAdmin ? 'Master Platform Headquarters & Flagship Cellar Dossier' : 'Winery & Estate Operational Dossier'}
+                        </h4>
+                        
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div>
+                            <p className="text-slate-400 font-medium">{isMainAdmin ? 'Platform Authority / Executive' : 'Estate Director / Contact'}</p>
+                            <p className="text-white font-bold mt-0.5">{activeVendor360.vendorInfo.directorName}</p>
+                            <p className="text-slate-400 mt-1">{activeVendor360.vendorInfo.phone}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400 font-medium">{isMainAdmin ? 'Operations Command' : 'Assigned Account Manager'}</p>
+                            <p className={`font-bold mt-0.5 ${isMainAdmin ? 'text-amber-400' : 'text-blue-400'}`}>{activeVendor360.vendorInfo.accountManager?.name}</p>
+                            <p className="text-slate-400 mt-1">{activeVendor360.vendorInfo.accountManager?.email}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400 font-medium">Company Registration (CIPC)</p>
+                            <p className="text-white font-bold mt-0.5">{activeVendor360.vendorInfo.registrationNumber}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400 font-medium">{isMainAdmin ? 'Central Cellar & Vault' : 'Winery Location / Vault'}</p>
+                            <p className="text-white font-bold mt-0.5">{activeVendor360.vendorInfo.address}</p>
+                          </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span className="text-slate-300 font-semibold">
+                              {isMainAdmin ? 'Master Platform Authority: Central Storefront & Vendor Marketplace Core' : 'Storefront Status: Live on Grand Store Global & Local'}
+                            </span>
+                          </div>
+                          <button 
+                            onClick={() => setDossierSubTab('activity')}
+                            className={`text-xs font-bold hover:underline inline-flex items-center gap-1 cursor-pointer ${isMainAdmin ? 'text-amber-400' : 'text-blue-400'}`}
+                          >
+                            {isMainAdmin ? 'View master audit logs' : 'View real-time event logs'} <ArrowRight size={12} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Right 1 Col: Executive Interventions */}
+                      {isMainAdmin ? (
+                        <div className="bg-slate-900/70 rounded-2xl p-5 border border-amber-500/20 space-y-3 flex flex-col justify-between">
+                          <div>
+                            <h4 className="text-sm font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                              <Crown size={15} className="text-amber-400" /> Master Platform Authority
+                            </h4>
+                            <p className="text-xs text-slate-400 mt-1">Core platform actions for Central Flagship.</p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <button
+                              onClick={() => toast.success('Master Vault inventory synchronized! All 343 luxury items are active across Global & Local storefronts.')}
+                              className="w-full py-2 bg-amber-600/30 hover:bg-amber-600/40 text-amber-200 border border-amber-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
+                            >
+                              <span>Sync Master Vault Inventory</span>
+                              <RefreshCw size={14} />
+                            </button>
+                            <button
+                              onClick={() => setMessageModal({ isOpen: true, vendor: { _id: 'all', tradingName: 'All Vendor Partners', name: 'All Partners' }, message: '' })}
+                              className="w-full py-2 bg-blue-600/30 hover:bg-blue-600/40 text-blue-300 border border-blue-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
+                            >
+                              <span>Broadcast Partner Advisory</span>
+                              <Send size={14} />
+                            </button>
+                            <button
+                              onClick={() => toast.success('Corporate Treasury reconciliation completed. Standard Bank merchant gateway in full parity (0 discrepancies).')}
+                              className="w-full py-2 bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
+                            >
+                              <span>Reconcile Corporate Treasury</span>
+                              <CheckCircle2 size={14} />
+                            </button>
+                          </div>
+
+                          <p className="text-[10px] text-amber-400/80 italic">Root administrative authority active (Super Admin).</p>
+                        </div>
+                      ) : (
+                        <div className="bg-slate-900/70 rounded-2xl p-5 border border-blue-500/20 space-y-3 flex flex-col justify-between">
+                          <div>
+                            <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                              <Zap size={15} className="text-blue-400" /> Executive Actions
+                            </h4>
+                            <p className="text-xs text-slate-400 mt-1">Direct intervention with vendor winery.</p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <button
+                              onClick={() => handleOpenActionModal(activeVendor360.vendorInfo, 'live_active', 'Advance Vendor to Live Active')}
+                              className="w-full py-2 bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
+                            >
+                              <span>Confirm All Clear (Live Active)</span>
+                              <Check size={14} />
+                            </button>
+                            <button
+                              onClick={() => setMessageModal({ isOpen: true, vendor: activeVendor360.vendorInfo, message: '' })}
+                              className="w-full py-2 bg-blue-600/30 hover:bg-blue-600/40 text-blue-300 border border-blue-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
+                            >
+                              <span>Dispatch Urgent Notice</span>
+                              <Send size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleOpenActionModal(activeVendor360.vendorInfo, 'suspended', 'Freeze or Suspend Vendor Store')}
+                              className="w-full py-2 bg-rose-600/30 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
+                            >
+                              <span>Temporary Freeze Store</span>
+                              <UserX size={14} />
+                            </button>
+                          </div>
+
+                          <p className="text-[10px] text-slate-500 italic">Audit logged under Executive Staff.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* SUBTAB 2: Real-time Activity */}
+                {dossierSubTab === 'activity' && (
+                  <div className="space-y-4 animate-fadeIn">
+                    <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
                       <div>
                         <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                          <CheckCircle2 size={16} className="text-emerald-400" /> Immediate Payout Trigger
+                          <History size={16} className={isMainAdmin ? "text-amber-400" : "text-blue-400"} />
+                          {isMainAdmin ? 'Flagship Vault & Master Platform Activity Stream' : 'Real-Time Operational Activity Stream'}
                         </h4>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Available Unsettled Escrow: <span className="text-blue-400 font-extrabold">R {(activeVendor360.dashboardMirror?.financials?.pendingSettlement || 0).toLocaleString()}</span>
+                        <p className="text-xs text-slate-400">
+                          {isMainAdmin ? 'Live operational telemetry tracking master catalog synchronizations, corporate settlements, and platform governance.' : 'Live operational telemetry showing what the vendor is doing right now.'}
                         </p>
                       </div>
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1.5 ${isMainAdmin ? 'bg-amber-500/20 text-amber-300 border-amber-400/30' : 'bg-blue-500/20 text-blue-300 border-blue-400/30'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full animate-ping ${isMainAdmin ? 'bg-amber-400' : 'bg-blue-400'}`}></span> Live Feed
+                      </span>
+                    </div>
 
-                      <div className="p-3 bg-slate-950/80 rounded-xl border border-blue-500/20 text-xs text-slate-300">
-                        Funds will be automatically released to {activeVendor360.vendorInfo.bankingInfo?.bankName || 'registered bank account'} on {activeVendor360.dashboardMirror?.financials?.nextPayoutDate || 'next scheduled date'} as per standard settlement window.
-                      </div>
-
-                      <button
-                        onClick={() => toast.success(`Early settlement payout of R ${(activeVendor360.dashboardMirror?.financials?.pendingSettlement || 0).toLocaleString()} initiated via Host-to-Host banking API.`)}
-                        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition-all shadow-md shadow-blue-600/30 cursor-pointer flex items-center justify-center gap-2"
-                      >
-                        <Zap size={14} /> Execute Early Settlement Payout
-                      </button>
+                    <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-blue-500/20">
+                      {(!activeVendor360.activities || activeVendor360.activities.length === 0) ? (
+                        <div className="p-8 text-center text-slate-400 bg-slate-900/40 rounded-2xl border border-blue-500/20">
+                          <History size={24} className="mx-auto mb-2 text-slate-500" />
+                          <p className="font-semibold text-slate-300">No operational activities recorded yet.</p>
+                          <p className="text-xs text-slate-500 mt-1">Actions taken will stream here automatically.</p>
+                        </div>
+                      ) : (
+                        activeVendor360.activities.map((act) => (
+                          <div key={act.id} className="relative group">
+                            <div className="absolute -left-[27px] top-1 w-3.5 h-3.5 rounded-full bg-slate-950 border-2 border-blue-500 group-hover:scale-125 transition-transform" />
+                            
+                            <div className="bg-slate-900/80 p-4 rounded-2xl border border-blue-500/20 group-hover:border-blue-500/50 transition-colors">
+                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                <span className="font-extrabold text-white text-sm">{act.title}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${isMainAdmin ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-blue-500/20 text-blue-300 border-blue-500/30'}`}>
+                                    {act.badge}
+                                  </span>
+                                  <span className="text-[11px] text-slate-400 font-mono">
+                                    {new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(act.timestamp).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-slate-300 mt-1">{act.description}</p>
+                              <p className="text-[10px] text-slate-500 mt-2 font-medium">Actor: {act.performedBy}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
+                )}
 
-                  {/* Real Settlement Payout History */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                      <DollarSign size={16} className="text-blue-400" /> Settled Disbursements & Payout Records ({activeVendor360.settlements?.length || 0})
-                    </h4>
+                {/* SUBTAB 3: Live Products Catalog */}
+                {dossierSubTab === 'catalog' && (
+                  <div className="space-y-4 animate-fadeIn">
+                    <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
+                      <div>
+                        <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                          <Package size={16} className={isMainAdmin ? "text-amber-400" : "text-blue-400"} />
+                          {isMainAdmin ? `Master Vault Inventory (${activeVendor360.products?.length || 0} SKUs)` : `Products Supplied by ${activeVendor360.vendorInfo.tradingName}`}
+                        </h4>
+                        <p className="text-xs text-slate-400">
+                          {isMainAdmin ? 'Central cellar holdings curated and distributed across Grand Store Global and Local storefronts.' : 'Inventory levels, vintage specifics, and listing status.'}
+                        </p>
+                      </div>
+                    </div>
+
                     <div className="overflow-x-auto rounded-2xl border border-blue-500/20">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-900 text-slate-400 uppercase font-semibold border-b border-blue-500/20">
                           <tr>
-                            <th className="px-4 py-3">Settlement Ref</th>
-                            <th className="px-4 py-3">Order Number</th>
-                            <th className="px-4 py-3">Order Value</th>
-                            <th className="px-4 py-3">Platform Fee</th>
-                            <th className="px-4 py-3">Payout Amount</th>
-                            <th className="px-4 py-3">Status</th>
-                            <th className="px-4 py-3">Settled Date</th>
+                            <th className="px-4 py-3">Product Name</th>
+                            <th className="px-4 py-3">Category</th>
+                            <th className="px-4 py-3">Vintage / ABV</th>
+                            <th className="px-4 py-3">Price (ZAR)</th>
+                            <th className="px-4 py-3">Stock Level</th>
+                            <th className="px-4 py-3">Listing Status</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800 bg-slate-950/60">
-                          {(!activeVendor360.settlements || activeVendor360.settlements.length === 0) ? (
+                          {(!activeVendor360.products || activeVendor360.products.length === 0) ? (
                             <tr>
-                              <td colSpan={7} className="py-8 text-center text-slate-400">
-                                No historical settlement disbursements executed for this vendor yet.
-                              </td>
+                              <td colSpan={6} className="py-8 text-center text-slate-400">No products uploaded under this account yet.</td>
                             </tr>
                           ) : (
-                            activeVendor360.settlements.map((s) => (
-                              <tr key={s._id} className="hover:bg-blue-500/10 transition-colors">
-                                <td className="px-4 py-3 font-mono font-bold text-white">{s.settlementReference}</td>
-                                <td className="px-4 py-3 text-slate-300">#{s.orderNumber}</td>
-                                <td className="px-4 py-3 text-slate-300">R {(s.orderTotal || 0).toLocaleString()}</td>
-                                <td className="px-4 py-3 text-rose-400 font-semibold">- R {(s.commissionAmount || 0).toLocaleString()}</td>
-                                <td className="px-4 py-3 font-bold text-emerald-400">R {(s.payoutAmount || 0).toLocaleString()}</td>
+                            activeVendor360.products.map((p) => (
+                              <tr key={p._id} className="hover:bg-blue-500/10 transition-colors">
+                                <td className="px-4 py-3 font-bold text-white flex items-center gap-2">
+                                  <Package size={14} className={isMainAdmin ? "text-amber-400" : "text-blue-400"} />
+                                  <div>
+                                    <p>{p.name}</p>
+                                    <p className="text-[10px] text-slate-500 font-mono">SKU: {p.id}</p>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-slate-300">{p.category}</td>
+                                <td className="px-4 py-3 text-slate-400">{p.vintage} • {p.abv}</td>
+                                <td className={`px-4 py-3 font-black ${isMainAdmin ? 'text-amber-400' : 'text-blue-400'}`}>R {p.priceZar?.toLocaleString()}</td>
                                 <td className="px-4 py-3">
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${s.status === 'settled' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
-                                    {s.status === 'settled' ? '✓ Settled' : 'Pending'}
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.stock > 10 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
+                                    {p.stock} bottles in vault
                                   </span>
                                 </td>
-                                <td className="px-4 py-3 text-slate-400 font-mono">
-                                  {s.settledAt ? new Date(s.settledAt).toLocaleDateString() : 'Pending'}
+                                <td className="px-4 py-3">
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                    ✓ Live & Active
+                                  </span>
                                 </td>
                               </tr>
                             ))
@@ -1137,79 +1132,300 @@ export default function CrmVendorWorkflowPage() {
                       </table>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* SUBTAB 6: Licences & KYC Compliance */}
-              {dossierSubTab === 'compliance' && (
-                <div className="space-y-4 animate-fadeIn">
-                  <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
-                    <div>
-                      <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                        <ShieldCheck size={16} className="text-emerald-400" /> Statutory Liquor Licenses & Tax Clearance
-                      </h4>
-                      <p className="text-xs text-slate-400">Legal authorization to vend premium wines and spirits.</p>
+                {/* SUBTAB 4: Assigned Orders & Dispatch */}
+                {dossierSubTab === 'orders' && (
+                  <div className="space-y-4 animate-fadeIn">
+                    <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
+                      <div>
+                        <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                          <Clock size={16} className="text-blue-400" />
+                          {isMainAdmin ? `Direct Retail Orders Fulfilled from Central Vault (${activeVendor360.orders?.length || 0})` : `Customer Orders for ${activeVendor360.vendorInfo.tradingName}`}
+                        </h4>
+                        <p className="text-xs text-slate-400">
+                          {isMainAdmin ? 'Direct customer purchases routed through platform headquarters.' : 'Tracking fulfillment SLA and parcel dispatches.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto rounded-2xl border border-blue-500/20">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-900 text-slate-400 uppercase font-semibold border-b border-blue-500/20">
+                          <tr>
+                            <th className="px-4 py-3">Order Ref</th>
+                            <th className="px-4 py-3">Customer & City</th>
+                            <th className="px-4 py-3">Value (ZAR)</th>
+                            <th className="px-4 py-3">Waybill Tracking</th>
+                            <th className="px-4 py-3">Fulfillment Status</th>
+                            <th className="px-4 py-3 text-right">Intervention</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800 bg-slate-950/60">
+                          {(!activeVendor360.orders || activeVendor360.orders.length === 0) ? (
+                            <tr>
+                              <td colSpan={6} className="py-8 text-center text-slate-400">No orders recorded under this account yet.</td>
+                            </tr>
+                          ) : (
+                            activeVendor360.orders.map((o) => (
+                              <tr key={o._id} className="hover:bg-blue-500/10 transition-colors">
+                                <td className="px-4 py-3 font-bold text-white">#{o.orderId}</td>
+                                <td className="px-4 py-3">
+                                  <p className="text-slate-200 font-semibold">{o.customerName}</p>
+                                  <p className="text-[10px] text-slate-400">{o.customerCity}</p>
+                                </td>
+                                <td className={`px-4 py-3 font-black ${isMainAdmin ? 'text-amber-400' : 'text-blue-400'}`}>R {o.orderTotal?.toLocaleString()}</td>
+                                <td className="px-4 py-3 font-mono text-slate-300">{o.waybillNumber}</td>
+                                <td className="px-4 py-3">
+                                  {o.isDispatched ? (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                      ✓ Dispatched / Delivered
+                                    </span>
+                                  ) : o.orderAgeHours > 24 ? (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                                      ⚠️ {o.orderAgeHours}h Overdue
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                      ⏳ Due in {o.dispatchDueInHours}h
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <button
+                                    onClick={() => toast.success(`Courier dispatch ping transmitted for order #${o.orderId}`)}
+                                    className="px-2.5 py-1 bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/40 rounded-lg font-bold text-[11px] transition-colors cursor-pointer"
+                                  >
+                                    Ping Courier Guy
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
+                )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {activeVendor360.kycDocuments?.map((doc, idx) => (
-                      <div key={idx} className="bg-slate-900/90 p-4 rounded-2xl border border-blue-500/20 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="font-extrabold text-white text-xs">{doc.type}</span>
-                          {doc.status === 'verified' ? (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                              ✓ Verified
+                {/* SUBTAB 5: Settlements & Banking / Treasury */}
+                {dossierSubTab === 'settlement' && (
+                  <div className="space-y-6 animate-fadeIn">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className={`bg-slate-900/90 rounded-2xl p-5 border ${isMainAdmin ? 'border-amber-500/20' : 'border-blue-500/20'} space-y-3`}>
+                        <h4 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 ${isMainAdmin ? 'text-amber-400' : 'text-blue-400'}`}>
+                          <DollarSign size={16} />
+                          {isMainAdmin ? 'Corporate Treasury & Merchant Facility' : 'Banking & Escrow Settlement Account'}
+                        </h4>
+                        <div className="space-y-2 text-xs">
+                          <div className="flex justify-between py-1.5 border-b border-slate-800">
+                            <span className="text-slate-400">Bank Name:</span>
+                            <span className="text-white font-bold">{activeVendor360.vendorInfo.bankingInfo?.bankName || 'Standard Bank Corporate Treasury'}</span>
+                          </div>
+                          <div className="flex justify-between py-1.5 border-b border-slate-800">
+                            <span className="text-slate-400">Account Name:</span>
+                            <span className="text-white font-bold">{activeVendor360.vendorInfo.bankingInfo?.accountName || 'The Grand Store (Pty) Ltd'}</span>
+                          </div>
+                          <div className="flex justify-between py-1.5 border-b border-slate-800">
+                            <span className="text-slate-400">Account Number:</span>
+                            <span className="text-white font-mono font-bold">{activeVendor360.vendorInfo.bankingInfo?.accountNumber || '•••• 5261'}</span>
+                          </div>
+                          <div className="flex justify-between py-1.5 border-b border-slate-800">
+                            <span className="text-slate-400">Branch Code:</span>
+                            <span className="text-white font-mono font-bold">{activeVendor360.vendorInfo.bankingInfo?.branchCode || '051001'}</span>
+                          </div>
+                          <div className="flex justify-between py-1.5">
+                            <span className="text-slate-400">Settlement Scheme:</span>
+                            <span className={`font-extrabold ${isMainAdmin ? 'text-amber-400' : 'text-blue-400'}`}>
+                              {isMainAdmin ? 'Direct Merchant Settlement (Instant EFT, Credit/Debit, Ozow)' : (activeVendor360.vendorInfo.bankingInfo?.payoutPreference || 'Monthly')}
                             </span>
-                          ) : doc.status === 'pending_verification' ? (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                              ⏳ Awaiting Sign-off
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
-                              Missing / Unsubmitted
-                            </span>
-                          )}
-                        </div>
-                        <p className={`text-xs font-mono ${doc.status === 'not_submitted' ? 'text-slate-500 italic' : 'text-blue-400 font-bold'}`}>
-                          {doc.number}
-                        </p>
-                        <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-                          <span>
-                            {doc.status === 'not_submitted' ? 'No document on file' : `Expiry: ${doc.expiryDate || 'Continuous Renewal'}`}
-                          </span>
-                          {doc.url ? (
-                            <a href={doc.url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline flex items-center gap-1 font-semibold">
-                              <ExternalLink size={11} /> View Document
-                            </a>
-                          ) : (
-                            <span className="text-slate-500 text-[11px]">
-                              {doc.status === 'not_submitted' ? 'Pending Upload' : 'Hardcopy on File'}
-                            </span>
-                          )}
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
 
-            {/* Modal Footer */}
-            <div className="p-4 bg-slate-950 border-t border-blue-500/20 flex items-center justify-between text-xs text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-emerald-400" /> Grand Store Executive Vendor 360 Protocol Active.
-              </span>
-              <button
-                onClick={() => setActiveVendor360(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
-              >
-                Close 360 Dossier
-              </button>
+                      {isMainAdmin ? (
+                        <div className="bg-slate-900/90 rounded-2xl p-5 border border-emerald-500/30 space-y-4 flex flex-col justify-between">
+                          <div>
+                            <h4 className="text-sm font-black text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                              <CheckCircle2 size={16} className="text-emerald-400" /> Direct Merchant Acquiring Capture
+                            </h4>
+                            <p className="text-xs text-slate-400 mt-1">
+                              Flagship Direct Settlement: <span className="text-emerald-400 font-extrabold">R {(activeVendor360.dashboardMirror?.financials?.grossMerchandiseValue || 0).toLocaleString()}</span>
+                            </p>
+                          </div>
+
+                          <div className="p-3 bg-slate-950/80 rounded-xl border border-emerald-500/20 text-xs text-slate-300">
+                            As Platform Owner & Central Operator, 100% of Flagship sales are settled directly into corporate treasury. No 12% marketplace commission or 14-day escrow withholding applies.
+                          </div>
+
+                          <button
+                            onClick={() => toast.success(`Corporate Treasury reconciliation sweep verified. R ${(activeVendor360.dashboardMirror?.financials?.grossMerchandiseValue || 0).toLocaleString()} gross retained revenue confirmed.`)}
+                            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs transition-all shadow-md shadow-emerald-600/30 cursor-pointer flex items-center justify-center gap-2"
+                          >
+                            <Zap size={14} /> Reconcile Merchant Settlement Gateway
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="bg-slate-900/90 rounded-2xl p-5 border border-blue-500/20 space-y-4 flex flex-col justify-between">
+                          <div>
+                            <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                              <CheckCircle2 size={16} className="text-emerald-400" /> Immediate Payout Trigger
+                            </h4>
+                            <p className="text-xs text-slate-400 mt-1">
+                              Available Unsettled Escrow: <span className="text-blue-400 font-extrabold">R {(activeVendor360.dashboardMirror?.financials?.pendingSettlement || 0).toLocaleString()}</span>
+                            </p>
+                          </div>
+
+                          <div className="p-3 bg-slate-950/80 rounded-xl border border-blue-500/20 text-xs text-slate-300">
+                            Funds will be automatically released to {activeVendor360.vendorInfo.bankingInfo?.bankName || 'registered bank account'} on {activeVendor360.dashboardMirror?.financials?.nextPayoutDate || 'next scheduled date'} as per standard settlement window.
+                          </div>
+
+                          <button
+                            onClick={() => toast.success(`Early settlement payout of R ${(activeVendor360.dashboardMirror?.financials?.pendingSettlement || 0).toLocaleString()} initiated via Host-to-Host banking API.`)}
+                            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition-all shadow-md shadow-blue-600/30 cursor-pointer flex items-center justify-center gap-2"
+                          >
+                            <Zap size={14} /> Execute Early Settlement Payout
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Settlement Payout History */}
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                        <DollarSign size={16} className={isMainAdmin ? "text-amber-400" : "text-blue-400"} />
+                        {isMainAdmin ? 'Direct Settlement Disbursements & Treasury Records' : `Settled Disbursements & Payout Records (${activeVendor360.settlements?.length || 0})`}
+                      </h4>
+                      <div className="overflow-x-auto rounded-2xl border border-blue-500/20">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-slate-900 text-slate-400 uppercase font-semibold border-b border-blue-500/20">
+                            <tr>
+                              <th className="px-4 py-3">Settlement Ref</th>
+                              <th className="px-4 py-3">Order Number</th>
+                              <th className="px-4 py-3">Order Value</th>
+                              <th className="px-4 py-3">Platform Fee</th>
+                              <th className="px-4 py-3">Payout Amount</th>
+                              <th className="px-4 py-3">Status</th>
+                              <th className="px-4 py-3">Settled Date</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800 bg-slate-950/60">
+                            {(!activeVendor360.settlements || activeVendor360.settlements.length === 0) ? (
+                              <tr>
+                                <td colSpan={7} className="py-8 text-center text-slate-400">
+                                  {isMainAdmin ? 'All Flagship sales are settled in real-time via direct merchant acquiring facility. No third-party escrow batches pending.' : 'No historical settlement disbursements executed for this vendor yet.'}
+                                </td>
+                              </tr>
+                            ) : (
+                              activeVendor360.settlements.map((s) => (
+                                <tr key={s._id} className="hover:bg-blue-500/10 transition-colors">
+                                  <td className="px-4 py-3 font-mono font-bold text-white">{s.settlementReference}</td>
+                                  <td className="px-4 py-3 text-slate-300">#{s.orderNumber}</td>
+                                  <td className="px-4 py-3 text-slate-300">R {(s.orderTotal || 0).toLocaleString()}</td>
+                                  <td className={`px-4 py-3 font-semibold ${isMainAdmin ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                    {isMainAdmin ? 'R 0 (0%)' : `- R ${(s.commissionAmount || 0).toLocaleString()}`}
+                                  </td>
+                                  <td className="px-4 py-3 font-bold text-emerald-400">R {(s.payoutAmount || 0).toLocaleString()}</td>
+                                  <td className="px-4 py-3">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${s.status === 'settled' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
+                                      {s.status === 'settled' ? '✓ Settled' : 'Pending'}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-slate-400 font-mono">
+                                    {s.settledAt ? new Date(s.settledAt).toLocaleDateString() : 'Pending'}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUBTAB 6: Licences & KYC Compliance */}
+                {dossierSubTab === 'compliance' && (
+                  <div className="space-y-4 animate-fadeIn">
+                    <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
+                      <div>
+                        <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                          <ShieldCheck size={16} className="text-emerald-400" />
+                          {isMainAdmin ? 'Master Platform Accreditations & Statutory Compliance' : 'Statutory Liquor Licenses & Tax Clearance'}
+                        </h4>
+                        <p className="text-xs text-slate-400">
+                          {isMainAdmin ? 'National Liquor Authority Master Licenses, SARS Tax Clearance, and CIPC Corporate Registration.' : 'Legal authorization to vend premium wines and spirits.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {activeVendor360.kycDocuments?.map((doc, idx) => (
+                        <div key={idx} className={`p-4 rounded-2xl border space-y-2 ${isMainAdmin ? 'bg-slate-900/90 border-amber-500/20' : 'bg-slate-900/90 border-blue-500/20'}`}>
+                          <div className="flex items-center justify-between">
+                            <span className="font-extrabold text-white text-xs">{doc.type}</span>
+                            {doc.status === 'verified' ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                                <CheckCircle2 size={10} /> Verified Master
+                              </span>
+                            ) : doc.status === 'pending_verification' ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                ⏳ Awaiting Sign-off
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                                Missing / Unsubmitted
+                              </span>
+                            )}
+                          </div>
+                          <p className={`text-xs font-mono ${doc.status === 'not_submitted' ? 'text-slate-500 italic' : (isMainAdmin ? 'text-amber-400 font-bold' : 'text-blue-400 font-bold')}`}>
+                            {doc.number}
+                          </p>
+                          <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                            <span>
+                              {doc.status === 'not_submitted' ? 'No document on file' : `Expiry: ${doc.expiryDate || 'Continuous Renewal'}`}
+                            </span>
+                            {doc.url ? (
+                              <a href={doc.url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline flex items-center gap-1 font-semibold">
+                                <ExternalLink size={11} /> View Document
+                              </a>
+                            ) : (
+                              <span className="text-slate-500 text-[11px]">
+                                {doc.status === 'not_submitted' ? 'Pending Upload' : 'Master Document Active'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 bg-slate-950 border-t border-blue-500/20 flex items-center justify-between text-xs text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  {isMainAdmin ? (
+                    <span className="flex items-center gap-1.5 text-amber-300 font-semibold">
+                      <Crown size={14} className="text-amber-400" /> Grand Store Master Platform Operating System Active.
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5">
+                      <ShieldCheck size={14} className="text-emerald-400" /> Grand Store Executive Vendor 360 Protocol Active.
+                    </span>
+                  )}
+                </span>
+                <button
+                  onClick={() => setActiveVendor360(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  Close 360 Dossier
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Action / Stage Modal */}
       {actionModal.isOpen && (
