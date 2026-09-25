@@ -358,25 +358,26 @@ export default function CrmMarketingPage() {
   const totalAttributedOrders = campaigns.reduce((sum, c) => sum + (Number(c.attributedOrdersCount) || (c.attributedOrders?.length || 0)), 0);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="crm-page space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-              Marketing, Campaigns & Customer Audiences
+      <div className="crm-page-header">
+        <div className="crm-page-intro">
+          <p className="crm-page-eyebrow">Customer growth</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="crm-page-title">
+              Marketing
             </h1>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <ShieldCheck size={13} />
-              18+ Age Gated (Section 8)
+              18+ age gated
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Section 8 Operational Engine: 7-stage newsletter process, 343 Admin bottles, real customer vouchers, and live sales attribution.
+          <p className="crm-page-description">
+            Build product campaigns, manage your audiences and track campaign-attributed sales.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="crm-page-actions">
           <button 
             onClick={() => setIsCreateVoucherModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors shadow-2xs cursor-pointer hover:border-amber-300 hover:text-amber-800"
@@ -389,7 +390,7 @@ export default function CrmMarketingPage() {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors shadow-2xs cursor-pointer hover:border-blue-300 hover:text-blue-700"
             title="Bulk import patrons, wine club allocations, or wholesale buyers via CSV"
           >
-            <Upload size={14} className="text-blue-600" /> Import Customers (CSV)
+            <Upload size={14} className="text-blue-600" /> Import Customers
           </button>
           <button 
             onClick={() => setIsNewCampaignModalOpen(true)}
@@ -399,6 +400,8 @@ export default function CrmMarketingPage() {
           </button>
           <button 
             onClick={refresh}
+            disabled={loading}
+            aria-label="Refresh marketing data"
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-blue-600 transition-colors shadow-sm cursor-pointer"
             title="Refresh All Real Metrics"
           >
@@ -407,37 +410,27 @@ export default function CrmMarketingPage() {
         </div>
       </div>
 
-      {/* Compliance & Performance Stat Cards (100% Real Live Metrics) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-          title="Legal Age Verified (18+)" 
-          value={stats.totalAgeVerified || 0} 
-          icon={UserCheck} 
-          color="emerald"
-          subtitle={`${stats.complianceRatePct || 100}% statutory compliance`}
-        />
-        <StatCard 
-          title="Active Campaigns" 
-          value={campaigns.filter(c => c.status !== 'sent').length || 0} 
-          icon={Mail} 
-          color="blue"
+      <section className="crm-workspace-region" aria-label="Marketing summary">
+      <div className="crm-stat-grid">
+        <StatCard title="Age-verified customers" value={stats.totalAgeVerified || 0}
+          icon={UserCheck} color="emerald" loading={loading}
+          subtitle={stats.complianceRatePct == null ? 'View audience verification details' : `${stats.complianceRatePct}% statutory compliance`}
+          onClick={() => setActiveTab('segments')} active={activeTab === 'segments'} />
+        <StatCard title="Active campaigns" value={campaigns.filter(c => c.status !== 'sent').length}
+          icon={Mail} color="blue" loading={loading}
           subtitle={`${campaigns.filter(c => c.status === 'sent').length} dispatched & tracked`}
-        />
-        <StatCard 
-          title="Attributed Sales (ZAR)" 
-          value={`R ${totalAttributedRevenue.toLocaleString()}`} 
-          icon={TrendingUp} 
-          color="purple"
-          subtitle={`${totalAttributedOrders} orders tracked from broadcasts`}
-        />
-        <StatCard 
-          title="Customer Vouchers" 
-          value={coupons.length || 0} 
-          icon={Tag} 
-          color="amber"
+          onClick={() => setActiveTab('campaigns')} active={activeTab === 'campaigns'} />
+        <StatCard title="Attributed sales · ZAR" value={`R ${totalAttributedRevenue.toLocaleString()}`}
+          icon={TrendingUp} color="purple" loading={loading}
+          subtitle={`${totalAttributedOrders} orders attributed to campaigns`}
+          onClick={() => setActiveTab('campaigns')} />
+        <StatCard title="Customer vouchers" value={coupons.length}
+          icon={Tag} color="amber" loading={loading}
           subtitle={`${coupons.reduce((sum, c) => sum + (c.usedCount || 0), 0)} redemptions across store & app`}
-        />
+          onClick={() => setActiveTab('vouchers')} active={activeTab === 'vouchers'} />
       </div>
+
+      </section>
 
       {/* The 7-Stage Process Stepper */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
@@ -445,21 +438,22 @@ export default function CrmMarketingPage() {
           <div>
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Sparkles size={16} className="text-blue-600" />
-              The 7-Stage Luxury Campaign & Allocation Pipeline
+              From audience to attribution
             </h2>
             <p className="text-xs text-slate-500">
               Admin bottle selection, customer voucher generation, bulk dispatch, and real sales attribution.
             </p>
           </div>
           <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
-            Omnichannel (Web Global, Local & Mobile App)
+            Campaign workflow
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-2">
+        <div className="crm-campaign-flow" role="list" aria-label="Campaign workflow steps">
           {NEWSLETTER_FLOW_STEPS.map((s, idx) => (
             <div 
               key={s.step}
+              role="listitem"
               className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3 flex flex-col justify-between hover:border-blue-300 transition-colors"
             >
               <div>
@@ -479,52 +473,18 @@ export default function CrmMarketingPage() {
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex items-center gap-2 border-b border-slate-200 text-xs font-bold overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('campaigns')}
-          className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'campaigns'
-              ? 'border-blue-600 text-blue-600 font-extrabold'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <Mail size={16} /> Campaign Operations ({campaigns.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('vouchers')}
-          className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'vouchers'
-              ? 'border-blue-600 text-blue-600 font-extrabold'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <Tag size={16} /> Product Vouchers & Coupons ({coupons.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('segments')}
-          className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'segments'
-              ? 'border-blue-600 text-blue-600 font-extrabold'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <Users size={16} /> Curated Audiences ({segments.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('subscribers')}
-          className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'subscribers'
-              ? 'border-blue-600 text-blue-600 font-extrabold'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <CheckCircle2 size={16} /> Live Opt-in Stream ({recentSubscribers.length})
-        </button>
-      </div>
+      <nav className="crm-marketing-tabs" aria-label="Marketing sections">
+        {[
+          { id: 'campaigns', label: 'Campaigns', count: campaigns.length, icon: Mail },
+          { id: 'vouchers', label: 'Vouchers', count: coupons.length, icon: Tag },
+          { id: 'segments', label: 'Audiences', count: segments.length, icon: Users },
+          { id: 'subscribers', label: 'Subscribers', count: recentSubscribers.length, icon: CheckCircle2 }
+        ].map(({ id, label, count, icon: Icon }) => (
+          <button key={id} type="button" aria-pressed={activeTab === id} onClick={() => setActiveTab(id)}>
+            <Icon size={16} /> {label} <span className="crm-tab-count">{count}</span>
+          </button>
+        ))}
+      </nav>
 
       {/* TAB 1: CAMPAIGN OPERATIONS */}
       {activeTab === 'campaigns' && (
@@ -545,7 +505,7 @@ export default function CrmMarketingPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="crm-marketing-table w-full text-left text-xs">
               <thead className="bg-slate-50/80 text-slate-500 uppercase font-semibold border-b border-slate-100">
                 <tr>
                   <th className="px-5 py-3.5">Campaign Details</th>
@@ -703,8 +663,8 @@ export default function CrmMarketingPage() {
             </button>
           </div>
 
-          <div className="border border-slate-200 rounded-xl overflow-hidden">
-            <table className="w-full text-left text-xs">
+          <div className="border border-slate-200 rounded-xl overflow-x-auto">
+            <table className="crm-marketing-table w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-100">
                 <tr>
                   <th className="px-5 py-3">Voucher Code</th>
@@ -799,8 +759,8 @@ export default function CrmMarketingPage() {
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-slate-900">Curated Compliance Audiences (Section 8)</h2>
-              <p className="text-xs text-slate-500">Target specific luxury cohorts with zero non-compliant outreach</p>
+              <h2 className="text-base font-bold text-slate-900">Customer audiences</h2>
+              <p className="text-xs text-slate-500">Review recipients, verification details and campaign targeting.</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
@@ -821,14 +781,14 @@ export default function CrmMarketingPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="crm-audience-grid">
             {segments.map((seg) => (
               <div 
                 key={seg.id}
-                className="border border-slate-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between bg-white group"
+                className="crm-audience-card border border-slate-200 rounded-xl p-5 hover:border-blue-300 transition-colors flex flex-col justify-between bg-white group"
               >
                 <div>
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <h3 className="font-semibold text-slate-900 text-sm">{seg.name}</h3>
@@ -850,11 +810,11 @@ export default function CrmMarketingPage() {
                   <p className="text-xs text-slate-500 mt-1">{seg.description}</p>
 
                   <div className="mt-3 space-y-1.5 text-xs">
-                    <div className="flex items-center gap-1.5 text-slate-600">
+                    <div className="flex flex-wrap items-center gap-1.5 text-slate-600">
                       <span className="font-medium text-slate-800">Compliance:</span>
                       <span className="text-emerald-700 font-semibold">{seg.complianceStatus}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-slate-600">
+                    <div className="flex flex-wrap items-center gap-1.5 text-slate-600">
                       <span className="font-medium text-slate-800">Channels:</span>
                       <span>{seg.channel}</span>
                     </div>

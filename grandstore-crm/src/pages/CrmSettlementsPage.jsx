@@ -196,36 +196,71 @@ export default function CrmSettlementsPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards (Interactive Dynamic Navigation) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-          title="Due for Payout Now" 
-          value={`R ${(stats.totalDueAmount || 0).toLocaleString()}`} 
-          icon={AlertTriangle} 
-          color="amber"
-          subtitle={`${stats.dueCount || 0} batches matured (>30 days)`}
-        />
-        <StatCard 
-          title="Pending (30-Day Window)" 
-          value={stats.pendingCount || 0} 
-          icon={Clock} 
-          color="blue"
-          subtitle="Inspection & claim buffer active"
-        />
-        <StatCard 
-          title="Total Settled (30d)" 
-          value={`R ${(stats.totalSettledAmount || 0).toLocaleString()}`} 
-          icon={Wallet} 
-          color="emerald"
-          subtitle={`${stats.settledCount || 0} disbursements complete`}
-        />
-        <StatCard 
-          title="Consignment Scope" 
-          value={`${stats.localCount || 0} Local • ${stats.globalCount || 0} Export`} 
-          icon={Globe} 
-          color="purple"
-          subtitle="Domestic SA vs Global DDP"
-        />
+        <div
+          onClick={() => setFilterStatus(filterStatus === 'due' ? 'all' : 'due')}
+          className={`cursor-pointer rounded-2xl transition-all duration-200 ${
+            filterStatus === 'due' ? 'ring-2 ring-amber-500 shadow-md -translate-y-0.5' : 'hover:-translate-y-0.5 hover:shadow-md'
+          }`}
+          title="Filter: Batches matured & due for payout today"
+        >
+          <StatCard 
+            title="Due for Payout Now" 
+            value={`R ${(stats.totalDueAmount || 0).toLocaleString()}`} 
+            icon={AlertTriangle} 
+            color="amber"
+            subtitle={`${stats.dueCount || 0} batches matured (>30 days)`}
+          />
+        </div>
+
+        <div
+          onClick={() => setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending')}
+          className={`cursor-pointer rounded-2xl transition-all duration-200 ${
+            filterStatus === 'pending' ? 'ring-2 ring-blue-500 shadow-md -translate-y-0.5' : 'hover:-translate-y-0.5 hover:shadow-md'
+          }`}
+          title="Filter: Batches within 30-day inspection escrow window"
+        >
+          <StatCard 
+            title="Pending (30-Day Window)" 
+            value={stats.pendingCount || 0} 
+            icon={Clock} 
+            color="blue"
+            subtitle="Inspection & claim buffer active"
+          />
+        </div>
+
+        <div
+          onClick={() => setFilterStatus(filterStatus === 'settled' ? 'all' : 'settled')}
+          className={`cursor-pointer rounded-2xl transition-all duration-200 ${
+            filterStatus === 'settled' ? 'ring-2 ring-emerald-500 shadow-md -translate-y-0.5' : 'hover:-translate-y-0.5 hover:shadow-md'
+          }`}
+          title="Filter: Settled & disbursed remittances"
+        >
+          <StatCard 
+            title="Total Settled (30d)" 
+            value={`R ${(stats.totalSettledAmount || 0).toLocaleString()}`} 
+            icon={Wallet} 
+            color="emerald"
+            subtitle={`${stats.settledCount || 0} disbursements complete`}
+          />
+        </div>
+
+        <div
+          onClick={() => setFilterScope(filterScope === 'global_export' ? 'all' : 'global_export')}
+          className={`cursor-pointer rounded-2xl transition-all duration-200 ${
+            filterScope === 'global_export' ? 'ring-2 ring-purple-500 shadow-md -translate-y-0.5' : 'hover:-translate-y-0.5 hover:shadow-md'
+          }`}
+          title="Toggle Global Export vs Domestic filter"
+        >
+          <StatCard 
+            title="Consignment Scope" 
+            value={`${stats.localCount || 0} Local • ${stats.globalCount || 0} Export`} 
+            icon={Globe} 
+            color="purple"
+            subtitle="Domestic SA vs Global DDP"
+          />
+        </div>
       </div>
 
       {/* Controls & Filter Bar */}

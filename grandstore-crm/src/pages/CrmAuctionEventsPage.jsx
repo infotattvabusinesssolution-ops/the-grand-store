@@ -326,36 +326,71 @@ export default function CrmAuctionEventsPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards (Interactive Dynamic Navigation) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-          title="Unpaid Hammer Lots" 
-          value={stats.unpaidLotsCount || 0} 
-          icon={AlertCircle} 
-          color="amber"
-          subtitle="Section 10 48h SLA Queue"
-        />
-        <StatCard 
-          title="Pending Bidder KYC" 
-          value={stats.pendingKycCount || 0} 
-          icon={UserCheck} 
-          color="blue"
-          subtitle="Dossier verification queue"
-        />
-        <StatCard 
-          title="Tasting Event Submissions" 
-          value={events.length} 
-          icon={Calendar} 
-          color="emerald"
-          subtitle={`${stats.pendingEventsCount || 0} pending admin review`}
-        />
-        <StatCard 
-          title="Auction Consignments" 
-          value={liveLots.length} 
-          icon={Gavel} 
-          color="purple"
-          subtitle={`${stats.pendingLotsCount || 0} pending curator review`}
-        />
+        <div 
+          onClick={() => setActiveTab('unpaid')}
+          className={`cursor-pointer rounded-2xl transition-all duration-200 ${
+            activeTab === 'unpaid' ? 'ring-2 ring-amber-500 shadow-md -translate-y-0.5' : 'hover:-translate-y-0.5 hover:shadow-md'
+          }`}
+          title="Click to view Unpaid Hammer Lots queue"
+        >
+          <StatCard 
+            title="Unpaid Hammer Lots" 
+            value={unpaidLots.length} 
+            icon={AlertCircle} 
+            color="amber"
+            subtitle="Section 10 48h SLA Queue"
+          />
+        </div>
+
+        <div 
+          onClick={() => setActiveTab('kyc')}
+          className={`cursor-pointer rounded-2xl transition-all duration-200 ${
+            activeTab === 'kyc' ? 'ring-2 ring-blue-500 shadow-md -translate-y-0.5' : 'hover:-translate-y-0.5 hover:shadow-md'
+          }`}
+          title="Click to view Bidder KYC Verification queue"
+        >
+          <StatCard 
+            title="Pending Bidder KYC" 
+            value={pendingBidders.length} 
+            icon={UserCheck} 
+            color="blue"
+            subtitle={`${pendingBidders.length} awaiting verification`}
+          />
+        </div>
+
+        <div 
+          onClick={() => setActiveTab('events')}
+          className={`cursor-pointer rounded-2xl transition-all duration-200 ${
+            activeTab === 'events' ? 'ring-2 ring-emerald-500 shadow-md -translate-y-0.5' : 'hover:-translate-y-0.5 hover:shadow-md'
+          }`}
+          title="Click to view Tasting Event Submissions"
+        >
+          <StatCard 
+            title="Tasting Event Submissions" 
+            value={events.length} 
+            icon={Calendar} 
+            color="emerald"
+            subtitle={`${stats.pendingEventsCount || 0} pending admin review`}
+          />
+        </div>
+
+        <div 
+          onClick={() => setActiveTab('lots')}
+          className={`cursor-pointer rounded-2xl transition-all duration-200 ${
+            activeTab === 'lots' ? 'ring-2 ring-purple-500 shadow-md -translate-y-0.5' : 'hover:-translate-y-0.5 hover:shadow-md'
+          }`}
+          title="Click to view Auction Consignments catalog"
+        >
+          <StatCard 
+            title="Auction Consignments" 
+            value={liveLots.length} 
+            icon={Gavel} 
+            color="purple"
+            subtitle={`${stats.pendingLotsCount || 0} pending curator review`}
+          />
+        </div>
       </div>
 
       {/* Navigation Tabs */}

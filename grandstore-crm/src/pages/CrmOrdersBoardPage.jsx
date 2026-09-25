@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCrmOrders } from '../hooks/useCrmOrders';
 import StatusBadge from '../components/common/StatusBadge';
+import OrderBoardCard from '../components/orders/OrderBoardCard';
 import { 
   ShoppingBag, Truck, AlertTriangle, CheckCircle2, 
-  ExternalLink, Clock, User, MapPin, X, Search,
+  ExternalLink, Clock, User, MapPin, X, Search, Eye,
   ArrowRight, Check, RefreshCw, Send, Phone, Mail,
   Package, DollarSign, ShieldAlert, FileText, ChevronRight,
   MessageSquare, Sparkles, RefreshCcw, CreditCard, Loader2, ShieldCheck
@@ -15,7 +16,7 @@ import { crmApi } from '../services/crmApi';
 export default function CrmOrdersBoardPage() {
   const navigate = useNavigate();
   const toast = useToast();
-  const { lanes, loading, refresh, updateOrderStage, resolveException } = useCrmOrders();
+  const { lanes, loading, error, refresh, updateOrderStage, resolveException } = useCrmOrders();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -162,259 +163,96 @@ export default function CrmOrdersBoardPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              Order & Fulfilment Operations Board
-            </h1>
-            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-md border border-blue-200">
-              Module 4 & 5 (Section 5)
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Dynamic 4-stage operational board synced with live store checkout, winery dispatch timers, and courier waybills
-          </p>
+    <div className="crm-page space-y-6">
+      <header className="crm-page-header">
+        <div className="crm-page-intro">
+          <p className="crm-page-eyebrow">Store operations</p>
+          <h1 className="crm-page-title">Orders & fulfilment</h1>
+          <p className="crm-page-description">Follow each order from payment to delivery. Review customer details and resolve shipment issues in one place.</p>
         </div>
+        <span className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
+          <ShoppingBag size={14} /> {laneDefinitions.reduce((sum, lane) => sum + lane.totalCount, 0).toLocaleString()} records across all stages
+        </span>
+      </header>
 
-        <div className="flex items-center gap-2">
-          {/* Search Box */}
-          <div className="relative w-64">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search #GS-..., customer, city..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            />
+      <div className="crm-order-toolbar">
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">Fulfilment board</h2>
+          <p className="mt-1 text-xs text-slate-500">Four stages · Select an order to view details</p>
+        </div>
+        <div className="crm-order-toolbar-controls">
+          <div className="relative min-w-0 flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input type="search" aria-label="Search orders by reference, customer or city"
+              placeholder="Order, customer or city…"
+              value={searchTerm} onChange={event => setSearchTerm(event.target.value)}
+              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-9 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
             {searchTerm && (
-              <button 
-                onClick={() => setSearchTerm('')} 
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <X size={12} />
-              </button>
+              <button type="button" aria-label="Clear order search" onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"><X size={14} /></button>
             )}
           </div>
-
-          <button
-            onClick={refresh}
-            className="p-2 bg-white border border-slate-200 text-slate-600 hover:text-blue-600 rounded-xl transition-colors shadow-sm cursor-pointer"
-            title="Refresh Order Board"
-          >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+          <button type="button" onClick={refresh} disabled={loading} aria-label="Refresh order board"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-blue-50 hover:text-blue-600">
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
+      {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
+
       {/* 4-Lane Horizontal Operations Board */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
+      <div className="crm-workspace-region">
+      <div className="crm-order-grid" aria-busy={loading}>
         {laneDefinitions.map((lane) => (
           <div
             key={lane.key}
             className={`
-              bg-white rounded-2xl border p-4 shadow-sm flex flex-col min-h-[600px]
-              ${lane.isExceptionLane ? 'border-rose-200/90' : 'border-slate-200'}
+              crm-order-lane
+              ${lane.isExceptionLane ? 'crm-order-lane--exception' : ''}
             `}
           >
             {/* Lane Title & Count */}
-            <div className="pb-3 border-b border-slate-100 flex items-center justify-between mb-3">
+            <div className="crm-order-lane-header">
               <div>
                 <h3 className="font-bold text-slate-900 text-xs sm:text-sm tracking-tight">{lane.title}</h3>
-                <p className="text-[10px] text-slate-400 font-medium truncate max-w-[170px]">{lane.subtitle}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{lane.subtitle}</p>
               </div>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-extrabold border ${lane.badgeColor}`}>
+              <span className={`shrink-0 whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-extrabold border ${lane.badgeColor}`}>
                 {lane.items.length} {searchTerm && lane.totalCount > lane.items.length ? `/ ${lane.totalCount}` : ''}
               </span>
             </div>
 
             {/* Cards Feed */}
-            <div className="space-y-3 flex-1 overflow-y-auto max-h-[640px] crm-scrollbar pr-1">
+            <div className="crm-order-feed crm-scrollbar">
               {lane.items.length === 0 ? (
-                <div className="py-16 text-center text-xs text-slate-400 font-medium">
-                  {searchTerm ? 'No matching orders in this lane' : 'No orders in this stage'}
+                <div className="crm-order-empty">
+                  <Package size={28} className="text-slate-300" />
+                  {loading ? 'Loading orders…' : searchTerm ? 'No matching orders in this lane' : 'No orders in this stage'}
                 </div>
               ) : (
-                lane.items.map((item) => {
-                  const isShipment = lane.isExceptionLane;
-                  const order = isShipment ? (item.order || item.orderId || {}) : item;
-                  const customerName = order.customerName || item.customer?.name || 'Valued Patron';
-                  const customerPhone = order.customerPhone || item.customer?.phone || '';
-                  const total = order.totalPrice || order.totalAmount || 0;
-                  const orderRef = order.orderId || `GS-${String(order._id || item._id).slice(-6).toUpperCase()}`;
-
-                  return (
-                    <div
-                      key={item._id}
-                      className={`
-                        bg-slate-50/80 hover:bg-slate-50 border rounded-xl p-3.5 transition-all text-xs space-y-2.5
-                        ${lane.isExceptionLane ? 'border-rose-200 bg-rose-50/20' : 'border-slate-200/80 hover:border-blue-300'}
-                      `}
-                    >
-                      {/* Top Row: Order ID + Price */}
-                      <div className="flex items-center justify-between">
-                        <button
-                          onClick={() => setSelectedOrder(order)}
-                          className="font-extrabold text-blue-700 hover:underline cursor-pointer flex items-center gap-1"
-                        >
-                          #{orderRef} <ExternalLink size={10} className="text-slate-400" />
-                        </button>
-                        <span className="font-extrabold text-slate-900">
-                          R {Number(total).toLocaleString()}
-                        </span>
-                      </div>
-
-                      {/* Customer Info */}
-                      <div className="text-slate-700">
-                        <p className="font-semibold flex items-center gap-1 truncate">
-                          <User size={12} className="text-slate-400 shrink-0" /> {customerName}
-                        </p>
-                        {customerPhone && (
-                          <p className="text-[11px] text-slate-500 mt-0.5">{customerPhone}</p>
-                        )}
-                        {order?.shippingAddress?.city && (
-                          <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5 truncate">
-                            <MapPin size={11} className="text-slate-400 shrink-0" /> {order.shippingAddress.city}, {order.shippingAddress.province || 'SA'}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Bottles / Items Count */}
-                      {order.orderItems && order.orderItems.length > 0 && (
-                        <div className="p-2 bg-white rounded-lg border border-slate-100 text-[11px] text-slate-600">
-                          <p className="font-semibold text-slate-800">
-                            {order.orderItems.length} Bottle Line Item{order.orderItems.length > 1 ? 's' : ''}:
-                          </p>
-                          <p className="text-slate-500 truncate mt-0.5">
-                            {order.orderItems.map(i => `${i.quantity}x ${i.name}`).join(', ')}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Lane 1 Dynamic Action: Assign to Vendor Processing */}
-                      {lane.key === 'newOrders' && (
-                        <button
-                          onClick={() => handleAdvanceStage(order._id, 'Vendor Processing')}
-                          className="w-full py-1.5 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-[11px] shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                        >
-                          <span>Assign to Winery</span>
-                          <ArrowRight size={12} />
-                        </button>
-                      )}
-
-                      {/* Lane 2 Dynamic Action: Confirm Dispatched / Flag Issue */}
-                      {lane.key === 'vendorProcessing' && (
-                        <div className="flex gap-1.5">
-                          <button
-                            onClick={() => handleAdvanceStage(order._id, 'Delivered')}
-                            className="flex-1 py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] shadow-sm flex items-center justify-center gap-1 transition-all cursor-pointer"
-                            title="Confirm delivery and unlock 30-day payout timer"
-                          >
-                            <Check size={12} /> Delivered
-                          </button>
-                          <button
-                            onClick={() => setSelectedOrder(order)}
-                            className="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold text-[11px] transition-colors cursor-pointer"
-                            title="Inspect order or add waybill"
-                          >
-                            Details
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Lane 3 Exception Alert OR Customer Support Incident Ticket */}
-                      {lane.isExceptionLane && (
-                        item.isCustomerTicket ? (
-                          <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs space-y-2 shadow-xs">
-                            <div className="flex items-center justify-between">
-                              <span className="font-mono font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded text-[10px]">
-                                #{item.ticketNumber}
-                              </span>
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
-                                item.status === 'reshipped'
-                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                  : item.status === 'refunded'
-                                  ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                                  : item.status === 'courier_traced'
-                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                  : 'bg-rose-100 text-rose-800 border border-rose-300 animate-pulse'
-                              }`}>
-                                {item.status.replace('_', ' ')}
-                              </span>
-                            </div>
-
-                            <div>
-                              <p className="font-bold text-slate-900 text-xs line-clamp-1">
-                                {item.subject}
-                              </p>
-                              {item.orderItem?.name && (
-                                <p className="text-[11px] text-slate-600 truncate mt-0.5">
-                                  <strong>Bottle:</strong> {item.orderItem.name}
-                                </p>
-                              )}
-                            </div>
-
-                            <button
-                              onClick={() => setSelectedTicket(item)}
-                              className="w-full py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
-                            >
-                              <MessageSquare size={13} />
-                              <span>Inspect Ticket & Actions</span>
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="p-2 bg-rose-100/70 border border-rose-200 rounded-lg text-rose-800 text-[11px]">
-                            <p className="font-bold flex items-center gap-1">
-                              <AlertTriangle size={12} /> {item.status || 'Courier Exception'}
-                            </p>
-                            <p className="text-[10px] text-rose-600 mt-0.5">
-                              Carrier: {item.legs?.[0]?.courierName || item.carrier || 'The Courier Guy'}
-                            </p>
-                            <button
-                              onClick={() => {
-                                setSelectedException(item);
-                                setResolutionData((prev) => ({
-                                  ...prev,
-                                  courierWaybillUrl: item.tcgTrackingUrl || item.courierWaybillUrl || ''
-                                }));
-                              }}
-                              className="mt-2 w-full py-1 bg-rose-600 hover:bg-rose-700 text-white rounded font-bold text-[11px] transition-colors shadow-sm cursor-pointer"
-                            >
-                              Resolve Exception
-                            </button>
-                          </div>
-                        )
-                      )}
-
-                      {/* Lane 4 Completed State: 30-Day Payout Timer Status */}
-                      {lane.key === 'completed' && (
-                        <div className="pt-1 flex items-center justify-between">
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                            <CheckCircle2 size={11} /> 30-Day Payout Active
-                          </span>
-                          <button
-                            onClick={() => navigate('/settlements')}
-                            className="text-[11px] font-bold text-blue-600 hover:underline"
-                          >
-                            Settlements &rarr;
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Timestamp */}
-                      <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-100 flex items-center gap-1">
-                        <Clock size={11} /> Placed: {new Date(order.createdAt || item.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  );
-                })
+                lane.items.map((item) => (
+                  <OrderBoardCard
+                    key={item._id}
+                    lane={lane}
+                    item={item}
+                    onOpenOrder={setSelectedOrder}
+                    onOpenTicket={setSelectedTicket}
+                    onResolveException={(exception) => {
+                      setSelectedException(exception);
+                      setResolutionData(prev => ({
+                        ...prev,
+                        courierWaybillUrl: exception.tcgTrackingUrl || exception.courierWaybillUrl || ''
+                      }));
+                    }}
+                    onViewSettlements={() => navigate('/settlements')}
+                  />
+                ))
               )}
             </div>
           </div>
         ))}
+      </div>
+
       </div>
 
       {/* ORDER 360 INSPECTION MODAL */}
@@ -541,21 +379,36 @@ export default function CrmOrdersBoardPage() {
               </div>
             </div>
 
-            {/* Stage Transition Controls */}
-            <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs text-slate-500 font-medium">Quick Move Stage:</span>
+            {/* Telemetry & Logistics Information Banner (Read-Only) */}
+            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={18} className="text-emerald-600 shrink-0" />
+                <div className="text-xs">
+                  <p className="font-bold text-slate-800">Fulfillment & Delivery Telemetry</p>
+                  <p className="text-[11px] text-slate-500">
+                    Handled by vendor estate dispatch & integrated courier tracking (Read-only observation mode)
+                  </p>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleAdvanceStage(selectedOrder._id, 'Vendor Processing')}
-                  className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-bold text-xs border border-amber-200 transition-colors cursor-pointer"
+                  onClick={() => {
+                    const custId = selectedOrder.user?._id || selectedOrder.user || selectedOrder.customerId;
+                    if (custId) {
+                      navigate(`/customers/${custId}`);
+                    } else {
+                      toast.info('No linked customer ID found for this order.');
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-xl font-bold text-xs border border-slate-200 transition-colors cursor-pointer inline-flex items-center gap-1.5 shadow-2xs"
                 >
-                  &rarr; Vendor Processing
+                  <User size={13} className="text-blue-600" /> Customer 360
                 </button>
                 <button
-                  onClick={() => handleAdvanceStage(selectedOrder._id, 'Delivered')}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-sm transition-colors cursor-pointer"
+                  onClick={() => setSelectedOrder(null)}
+                  className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold text-xs transition-colors cursor-pointer"
                 >
-                  <Check size={12} className="inline mr-1" /> Mark Delivered (Start 30d Payout)
+                  Close
                 </button>
               </div>
             </div>

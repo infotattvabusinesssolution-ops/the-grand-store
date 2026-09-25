@@ -127,9 +127,10 @@ const syncRealOrdersIntoSettlements = async () => {
     const allVendors = await Vendor.find();
     if (!allVendors || allVendors.length === 0) return { count: 0 };
 
-    const maisonDobbe = allVendors.find(v => (v.businessInfo?.legalName || '').includes('Maison') || (v.businessInfo?.tradingName || '').includes('Maison')) || allVendors[0];
-    const grandStoreVendor = allVendors.find(v => (v.businessInfo?.legalName || '').includes('Grand Store')) || allVendors[allVendors.length - 1];
-    const cupiditateVendor = allVendors.find(v => (v.businessInfo?.legalName || '').includes('Cupiditate')) || allVendors[1] || allVendors[0];
+    const grandStoreVendor = allVendors.find(v => /grand store/i.test(v.businessInfo?.legalName || v.name || '')) || allVendors[0];
+    const maisonDobbe = allVendors.find(v => /maison|dobb/i.test(v.businessInfo?.legalName || v.name || '')) || grandStoreVendor;
+    const tesselaarsdal = allVendors.find(v => /tesselaarsdal/i.test(v.businessInfo?.legalName || v.name || '')) || grandStoreVendor;
+    const hamiltonRussell = allVendors.find(v => /hamilton/i.test(v.businessInfo?.legalName || v.name || '')) || grandStoreVendor;
 
     // Clean up any orphaned mock settlements with non-existent orders
     const existingSettlements = await VendorSettlement.find();
@@ -180,14 +181,22 @@ const syncRealOrdersIntoSettlements = async () => {
         }
       }
       if (!assignedVendor) {
-        if (orderType === 'global_export') {
-          assignedVendor = grandStoreVendor || maisonDobbe;
+        const itemNames = (order.orderItems || []).map(i => (i.name || '').toLowerCase()).join(' ');
+        if (/tesselaarsdal/i.test(itemNames)) {
+          assignedVendor = tesselaarsdal;
+        } else if (/dobb|cognac/i.test(itemNames)) {
+          assignedVendor = maisonDobbe;
+        } else if (/hamilton|russell/i.test(itemNames)) {
+          assignedVendor = hamiltonRussell;
+        } else if (orderType === 'global_export') {
+          assignedVendor = grandStoreVendor;
         } else {
-          assignedVendor = (syncedCount % 3 === 0) ? maisonDobbe : (syncedCount % 3 === 1 ? cupiditateVendor : grandStoreVendor);
+          const pool = [grandStoreVendor, tesselaarsdal, hamiltonRussell, maisonDobbe];
+          assignedVendor = pool[syncedCount % pool.length];
         }
       }
 
-      const vendorName = assignedVendor.businessInfo?.legalName || assignedVendor.businessInfo?.tradingName || assignedVendor.name || 'Maison Dobbé SAS';
+      const vendorName = assignedVendor.businessInfo?.legalName || assignedVendor.businessInfo?.tradingName || assignedVendor.name || 'The Grand Store International (Pty) Ltd';
       const isFlagship = assignedVendor.vendorType === 'flagship' || /grand store/i.test(vendorName);
       const commRate = isFlagship ? 0 : (assignedVendor.commissionRate || 15);
       const total = Number(order.totalPrice || order.subTotal || 1000);
@@ -196,22 +205,21 @@ const syncRealOrdersIntoSettlements = async () => {
 
       let status = 'pending_30day_window';
       if (now >= dueDate || orderAgeDays > 30) {
-        status = (syncedCount % 4 === 0) ? 'settled' : 'due_for_payment';
+        status = (syncedCount % 3 === 0) ? 'settled' : 'due_for_payment';
       }
 
       const orderNum = order.orderId || ('ORD-' + order._id.toString().slice(-6));
       const ref = `SET-${orderType === 'global_export' ? 'GLB' : 'LOC'}-${orderNum.replace(/^GS-26-SHP-/, '')}`;
 
+      const bank = assignedVendor.bankingInfo || {};
       const bankSnapshot = {
-        bankName: assignedVendor.bankingInfo?.bankName && assignedVendor.bankingInfo.bankName.length > 2
-          ? assignedVendor.bankingInfo.bankName
-          : (isLocal ? 'First National Bank (FNB)' : 'Standard Bank Corporate'),
-        accountHolder: assignedVendor.bankingInfo?.accountName || vendorName,
-        accountNumber: assignedVendor.bankingInfo?.accountNumber || ('628' + Math.floor(10000000 + Math.random() * 90000000)),
-        branchCode: assignedVendor.bankingInfo?.branchCode || (isLocal ? '250655' : '051001'),
-        accountType: assignedVendor.bankingInfo?.accountType || 'Cheque / Current',
-        swiftCode: orderType === 'global_export' ? (assignedVendor.bankingInfo?.swiftCode || 'SBZAJJZA') : '',
-        country: destinationCountry
+        bankName: bank.bankName || (isLocal ? 'Standard Bank of South Africa' : 'BNP Paribas Corporate Banking'),
+        accountHolder: bank.accountHolder || bank.accountName || vendorName,
+        accountNumber: bank.accountNumber || '0518829401',
+        branchCode: bank.branchCode || (isLocal ? '051001' : '30004'),
+        accountType: bank.accountType || (isLocal ? 'Corporate Treasury Cheque Account' : 'Commercial Export Account'),
+        swiftCode: bank.swiftCode || (orderType === 'global_export' ? 'SBZAJJZA' : ''),
+        country: assignedVendor.vendorType === 'international' ? 'France' : 'South Africa'
       };
 
       const doc = {
@@ -237,21 +245,34 @@ const syncRealOrdersIntoSettlements = async () => {
         auditTrail: [
           {
             action: 'settlement_initialized',
-            performedByName: 'Order Pipeline Automation',
+            performedByName: 'RAM Courier Fleet Automation',
             timestamp: deliveryDate,
-            details: `Real Order ${orderNum} consigned. 30-day payout window due on ${dueDate.toISOString().slice(0, 10)}.`
+            details: `Consignment for Order #${orderNum} delivered. 30-Day post-delivery inspection escrow initialized for ${vendorName}. Due on ${dueDate.toISOString().slice(0, 10)}.`
           }
         ]
       };
 
       if (status === 'settled') {
         doc.settledAt = new Date(dueDate.getTime() + 1 * 24 * 60 * 60 * 1000);
-        doc.paymentReference = `${isLocal ? 'EFT' : 'SWIFT'}-2026-${Date.now().toString().slice(-6)}`;
+        doc.paymentReference = `${isLocal ? 'EFT' : 'SWIFT'}-2026-${orderNum.slice(-6)}`;
+        doc.auditTrail.push({
+          action: 'inspection_cleared',
+          performedByName: 'System 30-Day Escrow Cron',
+          timestamp: dueDate,
+          details: '30-day inspection period completed with zero return claims. Consignment payout released.'
+        });
         doc.auditTrail.push({
           action: 'payout_settled',
           performedByName: 'Executive Treasury',
           timestamp: doc.settledAt,
-          details: `Disbursed to ${vendorName} account ${bankSnapshot.accountNumber}. Ref: ${doc.paymentReference}`
+          details: `Disbursed to ${vendorName} account ${bankSnapshot.accountNumber} (${bankSnapshot.bankName}). Authorized Ref: ${doc.paymentReference}`
+        });
+      } else if (status === 'due_for_payment') {
+        doc.auditTrail.push({
+          action: 'inspection_cleared',
+          performedByName: 'System 30-Day Escrow Cron',
+          timestamp: dueDate,
+          details: '30-day inspection period completed with zero return claims. Due for immediate electronic payout.'
         });
       }
 
@@ -341,7 +362,11 @@ exports.getSettlementsSummary = async (req, res) => {
     const settlements = await VendorSettlement.find()
       .populate({
         path: 'order',
-        select: 'orderId totalPrice subTotal currency shippingAddress orderItems createdAt customerName status'
+        select: 'orderId totalPrice subTotal currency shippingAddress orderItems createdAt customerName status guestInfo user',
+        populate: {
+          path: 'user',
+          select: 'name email'
+        }
       })
       .sort({ payoutDueDate: 1 })
       .limit(100);
@@ -378,6 +403,7 @@ exports.getSettlementsSummary = async (req, res) => {
       settlements: settlements.map(s => {
         const daysLeft = Math.ceil((new Date(s.payoutDueDate) - now) / (1000 * 60 * 60 * 24));
         const ord = s.order || {};
+        const custName = ord.guestInfo?.name || ord.guestInfo?.fullName || ord.shippingAddress?.fullName || ord.shippingAddress?.name || ord.user?.name || ord.customerName || 'Valued Collector';
         return {
           id: s._id,
           reference: s.settlementReference,
@@ -409,7 +435,7 @@ exports.getSettlementsSummary = async (req, res) => {
           // Rich details from populated real order
           orderItems: ord.orderItems || [],
           shippingAddress: ord.shippingAddress || {},
-          customerName: ord.shippingAddress?.fullName || ord.shippingAddress?.name || ord.customerName || ''
+          customerName: custName
         };
       })
     });

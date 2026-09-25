@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Building2, ShoppingBag, Globe, 
   MessageSquare, Gavel, Wallet, ShieldCheck, CheckSquare, Menu, X, 
-  Search, ArrowLeft, LogOut, Activity, ChevronRight, Loader2 
+  Search, ArrowLeft, LogOut, Activity, ChevronRight, Loader2, TrendingUp 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { crmClient } from '../../services/crmApi';
@@ -68,6 +68,9 @@ export default function CrmLayout() {
         // Search match triggers for quick navigational jumps
         const quickNavs = [];
         const q = searchQuery.toLowerCase();
+        if ('sales revenue financials profitability ledger turnover dashboard platform'.includes(q)) {
+          quickNavs.push({ id: 'sales-lane', title: 'Sales & Platform Overview', subtitle: 'Real-time KPIs, profitability & master ledger', type: 'module', link: '/sales' });
+        }
         if ('orders kanban shipments'.includes(q)) {
           quickNavs.push({ id: 'orders-lane', title: 'Orders Kanban Board', subtitle: 'View fulfilment lanes & exceptions', type: 'module', link: '/orders' });
         }
@@ -118,6 +121,7 @@ export default function CrmLayout() {
 
   const navLinks = [
     { to: '/', icon: LayoutDashboard, label: 'Morning Screen', end: true },
+    { to: '/sales', icon: TrendingUp, label: 'Sales' },
     { to: '/customers', icon: Users, label: 'Customer 360°' },
     { to: '/vendors', icon: Building2, label: 'Vendor Workflow' },
     { to: '/orders', icon: ShoppingBag, label: 'Order Kanban Board' },
@@ -253,7 +257,7 @@ export default function CrmLayout() {
 
         {/* Crisp White Sidebar with Royal Blue Active Highlights */}
         <aside className={`
-          w-64 bg-white border-r border-slate-200 flex flex-col fixed lg:static top-16 bottom-0 left-0 z-30
+          w-64 shrink-0 bg-white border-r border-slate-200 flex flex-col fixed lg:static top-16 bottom-0 left-0 z-30
           transition-transform duration-200 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
@@ -294,7 +298,7 @@ export default function CrmLayout() {
         </aside>
 
         {/* Dynamic Page Outlet */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 crm-scrollbar">
+        <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 crm-scrollbar">
           <Outlet />
         </main>
       </div>

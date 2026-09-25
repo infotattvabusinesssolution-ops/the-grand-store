@@ -199,49 +199,14 @@ exports.getOrderOperationsBoard = async (req, res) => {
 };
 
 /**
- * Move or advance an order across Kanban lanes (New Orders -> Vendor Processing -> Delivered / Completed).
+ * Move or advance an order across Kanban lanes.
+ * Admin role is strictly read-only observation: admins cannot manually assign delivered or advance stages.
  */
 exports.updateOrderStage = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const { status, vendorDispatchStatus, trackingNumber, carrier } = req.body;
-
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).json({ success: false, message: 'Order record not found' });
-    }
-
-    if (status) {
-      order.status = status;
-      if (status === 'Delivered' || status === 'Completed') {
-        order.deliveredAt = new Date();
-        order.isDelivered = true;
-        // Automatically start the 30-day vendor settlement milestone clock
-        createSettlementsForDeliveredOrder(order).catch(e => console.error('Settlement creation error:', e.message));
-      }
-    }
-
-    if (trackingNumber) {
-      order.trackingNumber = trackingNumber;
-    }
-
-    if (vendorDispatchStatus && order.orderItems) {
-      order.orderItems.forEach(item => {
-        item.vendorDispatchStatus = vendorDispatchStatus;
-      });
-    }
-
-    await order.save();
-
-    return res.status(200).json({
-      success: true,
-      message: `Order #${order.orderId || order._id} moved to ${status || 'updated stage'}`,
-      order
-    });
-  } catch (error) {
-    console.error('Error advancing order stage:', error);
-    return res.status(500).json({ success: false, message: 'Failed to advance order stage' });
-  }
+  return res.status(403).json({
+    success: false,
+    message: 'Admins cannot manually assign delivered or alter order fulfillment stages. Orders are fulfilled and delivered by vendors and couriers.'
+  });
 };
 
 /**

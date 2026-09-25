@@ -201,5 +201,27 @@ export const crmApi = {
   // Customer Product Support & Incident Tickets (Amazon/Flipkart Style)
   getCrmTickets: (params) => crmClient.get('/tickets', { params }),
   resolveCrmTicket: (id, data) => crmClient.put(`/tickets/${id}/resolve`, data),
-  sendTicketReply: (id, message) => crmClient.post(`/tickets/${id}/messages`, { message })
+  sendTicketReply: (id, message) => crmClient.post(`/tickets/${id}/messages`, { message }),
+
+  // Sales & Platform Financials (Live Store Admin Parity)
+  getSalesDashboard: async () => {
+    try {
+      return await crmClient.get('/sales/dashboard');
+    } catch (err) {
+      if (err.response && err.response.status === 404) {
+        return await crmClient.get(`${apiBaseUrl}/api/admin/dashboard`);
+      }
+      throw err;
+    }
+  },
+  getSalesFinance: async (params = { limit: 2000 }) => {
+    try {
+      return await crmClient.get('/sales/finance', { params });
+    } catch (err) {
+      if (err.response && err.response.status === 404) {
+        return await crmClient.get(`${apiBaseUrl}/api/admin/finance`, { params });
+      }
+      throw err;
+    }
+  }
 };

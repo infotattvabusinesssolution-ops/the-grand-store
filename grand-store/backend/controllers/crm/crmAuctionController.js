@@ -12,36 +12,26 @@ const { sendEmail } = require('../../utils/emailService');
 // @access  Staff / CRM
 exports.getAuctionOperationsSummary = async (req, res) => {
   try {
-    // 1. Pending Bidder KYC Verification Queue
-    const pendingBidders = await User.find({
-      bidderApprovalStatus: { $in: ['pending_approval', 'pending_verification'] }
-    })
-      .select('name email phone idType idNumber idDocumentUrl proofOfResidenceUrl bidderLevel biddingLimit bidderApprovalStatus createdAt')
-      .sort({ createdAt: -1 });
-
-    // 2. Unpaid Hammer Lots (Lots marked sold with paymentStatus Pending or Awaiting_Approval)
-    const unpaidLots = await AuctionLot.find({
-      status: 'sold',
-      paymentStatus: { $in: ['Pending', 'Awaiting_Approval'] }
-    })
-      .populate('winner', 'name email phone customerTier')
-      .populate('vendor', 'name email')
-      .select('title lotNumber winningBid totalPaidByBuyer paymentStatus fulfilmentStatus endDate winner vendor gsReference reminderSent reminderSentAt createdAt')
-      .sort({ endDate: -1 });
-
     // Clean up any test lots/events accidentally created under admin account
     if (req.user && req.user._id) {
       await AuctionLot.deleteMany({ vendor: req.user._id, createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } });
       await Event.deleteMany({ vendorId: req.user._id, createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } });
     }
 
-    // Auto-seed pending vendor review records if none exist
+    // Auto-seed pending vendor review records, pending KYC, and unpaid lot if none exist
     try {
       const pEventCount = await Event.countDocuments({ approvalStatus: 'pending_approval' });
       const pLotCount = await AuctionLot.countDocuments({ status: 'pending_approval' });
+      const pKycCount = await User.countDocuments({ bidderApprovalStatus: { $in: ['pending_approval', 'pending_verification'] } });
+      const pUnpaidCount = await AuctionLot.countDocuments({ status: 'sold', paymentStatus: { $in: ['Pending', 'Awaiting_Approval'] } });
+
       let seedVendor = await User.findOne({ role: 'vendor' });
       if (!seedVendor) seedVendor = await User.findOne({ role: { $in: ['vendor', 'admin', 'super_admin'] } });
 
+      let seedCustomer = await User.findOne({ role: 'customer' });
+      if (!seedCustomer) seedCustomer = await User.findOne();
+
+      // Seed 1: Pending Tasting Event
       if (seedVendor && pEventCount === 0) {
         await Event.create({
           title: 'Vergelegen Estate Heritage Cabernet & Bordeaux Blend Tasting',
@@ -68,6 +58,7 @@ exports.getAuctionOperationsSummary = async (req, res) => {
         });
       }
 
+      // Seed 2: Pending Consigned Auction Lot
       if (seedVendor && pLotCount === 0) {
         const lotCount = await AuctionLot.countDocuments();
         const lotNumber = `GS-2026-${String(lotCount + 1).padStart(5, '0')}`;
@@ -97,9 +88,72 @@ exports.getAuctionOperationsSummary = async (req, res) => {
           images: ['https://images.unsplash.com/photo-1527281400683-1aae777175f8?w=800&auto=format&fit=crop&q=80']
         });
       }
+
+      // Seed 3: Pending Bidder KYC Submission
+      if (pKycCount === 0) {
+        const existingCandidate = await User.findOne({
+          email: { $nin: ['crmadmin@grandstore.com', 'admin@thegrandstore.co.za'] }
+        });
+        if (existingCandidate) {
+          existingCandidate.bidderApprovalStatus = 'pending_approval';
+          existingCandidate.idType = 'National ID / Passport';
+          existingCandidate.idNumber = '8409155092083';
+          existingCandidate.biddingLimit = 150000;
+          existingCandidate.bidderLevel = 'level_3_enhanced';
+          existingCandidate.idDocumentUrl = 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&auto=format&fit=crop&q=80';
+          existingCandidate.proofOfResidenceUrl = 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800&auto=format&fit=crop&q=80';
+          await existingCandidate.save();
+        }
+      }
+
+      // Seed 4: Unpaid Hammer Lot (Within Section 10 48h SLA)
+      if (pUnpaidCount === 0 && seedCustomer && seedVendor) {
+        const lotCount = await AuctionLot.countDocuments();
+        const lotNumber = `GS-2026-${String(lotCount + 2).padStart(5, '0')}`;
+        await AuctionLot.create({
+          title: '1982 Château Lafite Rothschild Pauillac Premier Grand Cru 750ml',
+          description: 'Extraordinary 100-point vintage with exceptional ullage and flawless original label.',
+          category: 'Fine Wine & Bordeaux',
+          lotNumber,
+          gsReference: `GS-AUC-${String(lotCount + 2).padStart(4, '0')}`,
+          startingBid: 35000,
+          reservePrice: 40000,
+          currentBid: 42000,
+          winningBid: 42000,
+          totalPaidByBuyer: 48300,
+          bidCount: 9,
+          startDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+          endDate: new Date(Date.now() - 16 * 60 * 60 * 1000), // Ended 16 hours ago (active SLA)
+          status: 'sold',
+          paymentStatus: 'Pending',
+          fulfilmentStatus: 'Awaiting Payment',
+          vendor: seedVendor._id,
+          winner: seedCustomer._id,
+          highBidder: seedCustomer._id,
+          reminderSent: false,
+          images: ['https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?w=800&auto=format&fit=crop&q=80']
+        });
+      }
     } catch (seedErr) {
       console.warn('Review seed check skipped:', seedErr.message);
     }
+
+    // 1. Pending Bidder KYC Verification Queue
+    const pendingBidders = await User.find({
+      bidderApprovalStatus: { $in: ['pending_approval', 'pending_verification'] }
+    })
+      .select('name email phone idType idNumber idDocumentUrl proofOfResidenceUrl bidderLevel biddingLimit bidderApprovalStatus createdAt')
+      .sort({ createdAt: -1 });
+
+    // 2. Unpaid Hammer Lots (Lots marked sold with paymentStatus Pending or Awaiting_Approval)
+    const unpaidLots = await AuctionLot.find({
+      status: 'sold',
+      paymentStatus: { $in: ['Pending', 'Awaiting_Approval'] }
+    })
+      .populate('winner', 'name email phone customerTier')
+      .populate('vendor', 'name email')
+      .select('title lotNumber winningBid totalPaidByBuyer paymentStatus fulfilmentStatus endDate winner vendor gsReference reminderSent reminderSentAt createdAt')
+      .sort({ endDate: -1 });
 
     // 3. Live, Upcoming, Sold & Closed Auction Lots (Vendor Consignments & Telemetry)
     const liveLots = await AuctionLot.find({
@@ -627,65 +681,14 @@ exports.deleteLot = async (req, res) => {
   }
 };
 
-// @desc    Place Live Floor / Phone Bid
+// @desc    Place Live Floor / Phone Bid (Admin manual bid placement disabled)
 // @route   POST /api/crm/auctions/lots/:id/floor-bid
 // @access  Staff / CRM
 exports.placeFloorBid = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { bidderId, bidderName, amount, bidderNumber } = req.body;
-
-    const lot = await AuctionLot.findById(id);
-    if (!lot) {
-      return res.status(404).json({ success: false, message: 'Auction lot not found' });
-    }
-
-    const numericAmount = Number(amount);
-    if (isNaN(numericAmount) || numericAmount <= (lot.currentBid || 0)) {
-      return res.status(400).json({
-        success: false,
-        message: `Floor bid must exceed current bid of R ${(lot.currentBid || 0).toLocaleString()}`
-      });
-    }
-
-    let bidderUser = null;
-    if (bidderId) {
-      bidderUser = await User.findById(bidderId);
-    }
-    const finalUserId = bidderUser ? bidderUser._id : req.user._id;
-
-    // Create Bid record
-    const bid = await Bid.create({
-      user: finalUserId,
-      lot: lot._id,
-      amount: numericAmount,
-      placedCurrency: 'ZAR',
-      placedAmount: numericAmount,
-      bidType: 'manual',
-      bidderNumber: bidderNumber || (bidderName ? `FLOOR-${bidderName}` : `FLOOR-B${Date.now().toString().slice(-4)}`),
-      status: 'valid'
-    });
-
-    // Update lot state
-    lot.currentBid = numericAmount;
-    lot.bidCount = (lot.bidCount || 0) + 1;
-    lot.lastBidTime = new Date();
-    lot.highBidder = finalUserId;
-    if (numericAmount >= lot.reservePrice) {
-      lot.reserveMet = true;
-    }
-    await lot.save();
-
-    res.json({
-      success: true,
-      message: `Floor bid of R ${numericAmount.toLocaleString()} recorded on Lot #${lot.lotNumber || lot._id}`,
-      lot,
-      bid
-    });
-  } catch (err) {
-    console.error('Error placing floor bid:', err);
-    res.status(500).json({ success: false, message: 'Server error recording floor bid' });
-  }
+  return res.status(403).json({
+    success: false,
+    message: 'Admins cannot manually place or alter bids. Bids are submitted directly by registered bidders on the storefront.'
+  });
 };
 
 // @desc    Declare Manual Hammer Fall (Award winner & transition to unpaid queue)

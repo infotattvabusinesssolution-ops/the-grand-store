@@ -18,9 +18,28 @@ const AUDIENCE_COHORTS = [
   { id: 'retail', label: 'Standard Retail Patrons (General)', type: 'retail', tag: '' }
 ];
 
-export default function BulkImportCustomersModal({ isOpen, onClose, onSuccess, initialCohortId = 'auto' }) {
+export default function BulkImportCustomersModal({ 
+  isOpen, 
+  onClose, 
+  onSuccess, 
+  initialCohortId = 'auto',
+  cohorts = []
+}) {
   const toast = useToast();
   const fileInputRef = useRef(null);
+
+  const availableCohorts = [
+    { id: 'auto', label: 'Auto-detect from CSV (or default)', type: 'retail', tag: '' },
+    ...(cohorts && cohorts.length > 0
+      ? cohorts.map(c => ({
+          id: c.slug || c.id,
+          label: c.name,
+          type: c.targetCriteria?.customerType || (c.id === 'trade_wholesale' || c.id === 'international_buyers' ? 'trade_buyer' : 'vip_collector'),
+          tag: c.slug || c.id
+        }))
+      : AUDIENCE_COHORTS.slice(1)
+    )
+  ];
 
   const [selectedCohort, setSelectedCohort] = useState(initialCohortId || 'auto');
   const [isAgeVerifiedDefault, setIsAgeVerifiedDefault] = useState(true);
@@ -217,7 +236,7 @@ export default function BulkImportCustomersModal({ isOpen, onClose, onSuccess, i
       return;
     }
 
-    const cohortObj = AUDIENCE_COHORTS.find(c => c.id === selectedCohort);
+    const cohortObj = availableCohorts.find(c => c.id === selectedCohort);
     const defaultTagsList = customTags
       ? customTags.split(',').map(t => t.trim()).filter(Boolean)
       : [];
@@ -374,7 +393,7 @@ export default function BulkImportCustomersModal({ isOpen, onClose, onSuccess, i
                   onChange={(e) => setSelectedCohort(e.target.value)}
                   className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
                 >
-                  {AUDIENCE_COHORTS.map(c => (
+                  {availableCohorts.map(c => (
                     <option key={c.id} value={c.id}>{c.label}</option>
                   ))}
                 </select>

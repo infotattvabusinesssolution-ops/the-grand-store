@@ -1,14 +1,19 @@
 import jsPDFModule from 'jspdf';
 import autoTableModule from 'jspdf-autotable';
+import { GRAND_STORE_LOGO_BASE64 } from './grandStoreLogoBase64';
 
 const jsPDF = jsPDFModule.jsPDF || jsPDFModule.default || jsPDFModule;
 const autoTable = typeof autoTableModule === 'function' ? autoTableModule : (autoTableModule?.default || autoTableModule?.autoTable || autoTableModule);
 
 /**
  * Executive PDF Generator for The Grand Store Vendor Remittance Advice Vouchers
- * Generates an official, luxury-grade PDF document containing complete consignment,
- * tax compliance (SARS 15% VAT / 0% SAD500 zero-rated export), escrow timeline,
- * beneficiary banking snapshot, and net financial disbursements.
+ * Generates an official, luxury-grade PDF document containing:
+ * - Official Grand Store High-Res Logo Brand Identity
+ * - Complete consignment itemization & customer clearance
+ * - Tax compliance (SARS 15% Domestic VAT / 0% SAD500 zero-rated export)
+ * - 30-Day Escrow Buffer status & maturity timeline
+ * - Beneficiary banking snapshot & verified EFT/SWIFT payment confirmation
+ * - Statutory Section 11 Escrow Charter & Digital Treasury Clearance Seal
  */
 export function generateRemittancePdf(settlement) {
   if (!settlement) return null;
@@ -24,7 +29,7 @@ export function generateRemittancePdf(settlement) {
   const margin = 14;
   const contentWidth = pageWidth - margin * 2;
 
-  // Palette
+  // Luxury Executive Palette
   const primaryNavy = [15, 23, 42];     // #0F172A
   const accentGold = [217, 119, 6];     // #D97706
   const slateDark = [30, 41, 59];       // #1E293B
@@ -32,46 +37,57 @@ export function generateRemittancePdf(settlement) {
   const slateBorder = [226, 232, 240];  // #E2E8F0
   const bgLight = [248, 250, 252];      // #F8FAFC
 
-  // 1. Executive Top Header Banner
-  doc.setFillColor(...primaryNavy);
-  doc.rect(margin, 12, contentWidth, 26, 'F');
+  // 1. Official Executive Letterhead & Brand Identity
+  // Embed Official Grand Store Logo (Aspect Ratio 800:254 = 3.15)
+  try {
+    if (GRAND_STORE_LOGO_BASE64) {
+      doc.addImage(GRAND_STORE_LOGO_BASE64, 'PNG', margin, 10, 48, 15.2);
+    }
+  } catch (err) {
+    console.warn('Fallback rendering text logo due to image load:', err);
+    doc.setTextColor(...primaryNavy);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.text('THE GRAND STORE', margin, 20);
+  }
 
-  // Gold accent accent bar on top
-  doc.setFillColor(...accentGold);
-  doc.rect(margin, 12, contentWidth, 2, 'F');
-
-  // Header Brand Name
-  doc.setTextColor(255, 255, 255);
+  // Brand Credential & Section 11 Subtitle below Logo
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.text('THE GRAND STORE', margin + 6, 23);
+  doc.setFontSize(7);
+  doc.setTextColor(...primaryNavy);
+  doc.text('EXECUTIVE TREASURY & VENDOR ESCROW CLEARING', margin, 29);
 
-  // Subtitle
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(203, 213, 225);
-  doc.text('EXECUTIVE TREASURY & VENDOR SETTLEMENT ESCROW CLEARING', margin + 6, 28);
-  doc.text('Section 11 Financial Operations • Domestic & Global Cross-Border Remittance Advice', margin + 6, 33);
+  doc.setFontSize(6.5);
+  doc.setTextColor(...slateMuted);
+  doc.text('The Grand Store International (Pty) Ltd • Section 11 Governance • Reg 2024/789123/07', margin, 33);
 
   // Voucher Ref & Timestamp (Right aligned)
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(255, 255, 255);
-  doc.text('REMITTANCE ADVICE', pageWidth - margin - 6, 21, { align: 'right' });
+  doc.setFontSize(13);
+  doc.setTextColor(...primaryNavy);
+  doc.text('REMITTANCE ADVICE', pageWidth - margin, 17, { align: 'right' });
 
   doc.setFont('courier', 'bold');
   doc.setFontSize(9);
-  doc.setTextColor(251, 191, 36); // Amber 400
-  doc.text(settlement.reference || `SET-REF-${settlement.id?.slice(-8)}`, pageWidth - margin - 6, 27, { align: 'right' });
+  doc.setTextColor(...accentGold);
+  doc.text(settlement.reference || `SET-REF-${settlement.id?.slice(-8) || '2026'}`, pageWidth - margin, 23, { align: 'right' });
 
   const generatedDateStr = new Date().toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.setTextColor(148, 163, 184);
-  doc.text(`Issued: ${generatedDateStr}`, pageWidth - margin - 6, 33, { align: 'right' });
+  doc.setTextColor(...slateMuted);
+  doc.text(`Issued: ${generatedDateStr}`, pageWidth - margin, 28, { align: 'right' });
+  doc.text(`Order Reference: #${settlement.orderNumber || '—'}`, pageWidth - margin, 32.5, { align: 'right' });
+
+  // Luxurious Double Accent Divider (Gold + Navy micro-line)
+  doc.setFillColor(...accentGold);
+  doc.rect(margin, 36, contentWidth, 1.2, 'F');
+  doc.setFillColor(...primaryNavy);
+  doc.rect(margin, 37.2, contentWidth, 0.4, 'F');
 
   // 2. Escrow Status Milestone Bar
-  let yPos = 42;
+  let yPos = 41;
   const isSettled = settlement.status === 'settled';
   const isDue = settlement.status === 'due_for_payment';
   const isDisputed = settlement.status === 'disputed' || settlement.status === 'held';
@@ -118,7 +134,7 @@ export function generateRemittancePdf(settlement) {
     { align: 'right' }
   );
 
-  yPos += 13;
+  yPos += 12.5;
 
   // 3. Dual Card Section: Beneficiary Details vs Consignment Particulars
   const cardWidth = (contentWidth - 6) / 2;
@@ -155,15 +171,15 @@ export function generateRemittancePdf(settlement) {
 
   renderField('Vendor / Legal Partner:', settlement.vendorName, leftX, cardY);
   cardY += 9;
-  renderField('Account Holder:', bank.accountHolder || settlement.vendorName, leftX, cardY);
+  renderField('Account Holder:', bank.accountHolder || bank.accountName || settlement.vendorName, leftX, cardY);
   cardY += 9;
-  renderField('Bank / Financial Institution:', bank.bankName || (isGlobal ? 'Standard Bank Corporate' : 'First National Bank (FNB)'), leftX, cardY);
+  renderField('Bank / Financial Institution:', bank.bankName || (isGlobal ? 'BNP Paribas Corporate Banking' : 'Standard Bank of South Africa'), leftX, cardY);
   cardY += 9;
   renderField('Account Number:', bank.accountNumber || '—', leftX, cardY, true);
   renderField('Branch Code:', bank.branchCode || '—', leftX + 44, cardY, true);
   cardY += 9;
-  renderField('SWIFT / BIC Routing:', isGlobal ? (bank.swiftCode || 'SBZAJJZA') : 'Domestic EFT Clearing (ZA)', leftX, cardY, true);
-  renderField('Account Type:', bank.accountType || 'Current / Cheque', leftX + 44, cardY);
+  renderField('SWIFT / BIC Routing:', isGlobal ? (bank.swiftCode || 'BNPAFR21') : (bank.swiftCode || 'Domestic EFT (ZA)'), leftX, cardY, true);
+  renderField('Account Type:', bank.accountType || 'Corporate / Cheque', leftX + 44, cardY);
 
   // Right Card: Consignment & Escrow Particulars
   const rightX = margin + cardWidth + 6;
@@ -181,23 +197,23 @@ export function generateRemittancePdf(settlement) {
 
   let rightCardY = yPos + 11.5;
   renderField('Order Reference #:', `#${settlement.orderNumber}`, rightX + 4, rightCardY, true);
-  renderField('Consignment Scope:', isGlobal ? 'Global Cross-Border Export' : 'Domestic South Africa', rightX + 48, rightCardY);
+  renderField('Consignment Scope:', isGlobal ? 'Global Cross-Border Export' : 'Domestic South Africa', rightX + 46, rightCardY);
   rightCardY += 9;
   renderField('Destination Country:', settlement.destinationCountry || (isGlobal ? 'International' : 'South Africa'), rightX + 4, rightCardY);
-  renderField('Tax Treatment:', settlement.vatRatePct === 0 ? '0% SARS Zero-Rated' : '15% SA VAT Included', rightX + 48, rightCardY);
+  renderField('Tax Treatment:', settlement.vatRatePct === 0 ? '0% SARS Zero-Rated' : '15% SA VAT Included', rightX + 46, rightCardY);
   rightCardY += 9;
-  renderField('Proof of Delivery (POD):', settlement.deliveredAt ? new Date(settlement.deliveredAt).toLocaleDateString() : 'Confirmed', rightX + 4, rightCardY);
-  renderField('30-Day Escrow Maturity:', settlement.payoutDueDate ? new Date(settlement.payoutDueDate).toLocaleDateString() : 'Calculated', rightX + 48, rightCardY);
+  renderField('Proof of Delivery (POD):', settlement.deliveredAt ? new Date(settlement.deliveredAt).toLocaleDateString('en-ZA') : 'Confirmed', rightX + 4, rightCardY);
+  renderField('30-Day Escrow Maturity:', settlement.payoutDueDate ? new Date(settlement.payoutDueDate).toLocaleDateString('en-ZA') : 'Calculated', rightX + 46, rightCardY);
   rightCardY += 9;
   renderField('Customs Reference (SAD500):', settlement.customsDeclarationRef || (isGlobal ? 'SAD500-CUSTOMS-EXP' : 'N/A (Domestic SA)'), rightX + 4, rightCardY, true);
-  renderField('Payout Mechanism:', settlement.payoutMethod === 'swift_wire' ? 'SWIFT Wire' : 'Domestic EFT', rightX + 48, rightCardY);
+  renderField('Payout Mechanism:', settlement.payoutMethod === 'swift_wire' ? 'SWIFT Wire' : (settlement.payoutMethod === 'direct_treasury' ? 'Direct Treasury' : 'Domestic EFT'), rightX + 46, rightCardY);
   rightCardY += 9;
   renderField('Dispute Status:', settlement.disputeReason ? 'Active Dispute Open' : 'Clear / Zero Claims Filed', rightX + 4, rightCardY);
+  renderField('Consignment Client:', settlement.customerName || 'Valued Patron', rightX + 46, rightCardY);
 
   yPos += cardHeight + 6;
 
   // 4. Itemized Consignment & Settlement Ledger (autoTable)
-  const currencySymbol = settlement.currency || 'ZAR';
   const tableData = [];
 
   // Line items if available
@@ -226,9 +242,9 @@ export function generateRemittancePdf(settlement) {
 
   // Financial Breakdown summary rows
   const grossVal = Number(settlement.orderTotal || 0);
-  const commRate = settlement.commissionRatePct || 15;
-  const commAmt = Number(settlement.commissionAmount || (grossVal * commRate) / 100);
-  const payoutVal = Number(settlement.payoutAmount || (grossVal - commAmt));
+  const commRate = settlement.commissionRatePct !== undefined ? settlement.commissionRatePct : 15;
+  const commAmt = Number(settlement.commissionAmount !== undefined ? settlement.commissionAmount : (grossVal * commRate) / 100);
+  const payoutVal = Number(settlement.payoutAmount !== undefined ? settlement.payoutAmount : (grossVal - commAmt));
 
   tableData.push([
     '',
@@ -239,10 +255,14 @@ export function generateRemittancePdf(settlement) {
   ]);
   tableData.push([
     '',
-    `Less: Grand Store Platform Escrow & Commission (${commRate}%)`,
+    commRate === 0 
+      ? 'Less: Grand Store Flagship Platform Protocol (0% Commission)' 
+      : `Less: Grand Store Platform Escrow & Commission (${commRate}%)`,
     '',
     '',
-    `- R ${commAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    commRate === 0 
+      ? 'R 0.00' 
+      : `- R ${commAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   ]);
   tableData.push([
     '',
@@ -301,7 +321,7 @@ export function generateRemittancePdf(settlement) {
     }
   });
 
-  yPos = doc.lastAutoTable.finalY + 6;
+  yPos = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 6 : yPos + 60;
 
   // 5. Settlement Clearance / Disbursement Proof (if settled)
   if (isSettled && settlement.paymentReference) {
@@ -317,9 +337,12 @@ export function generateRemittancePdf(settlement) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(30, 41, 59);
-    const settledDateStr = settlement.settledAt ? new Date(settlement.settledAt).toLocaleDateString() : 'Completed';
+    const settledDateStr = settlement.settledAt ? new Date(settlement.settledAt).toLocaleDateString('en-ZA') : 'Completed';
+    const methodLabel = settlement.payoutMethod === 'swift_wire' 
+      ? 'SWIFT Interbank Wire' 
+      : (settlement.payoutMethod === 'direct_treasury' ? 'Internal Treasury Allocation' : 'Domestic Electronic Funds Transfer (EFT)');
     doc.text(
-      `Disbursed on ${settledDateStr} via ${settlement.payoutMethod === 'swift_wire' ? 'SWIFT Interbank Wire' : 'Domestic Electronic Funds Transfer (EFT)'}. Authorized Payment Reference: ${settlement.paymentReference}`,
+      `Disbursed on ${settledDateStr} via ${methodLabel}. Authorized Payment Reference: ${settlement.paymentReference}`,
       margin + 4,
       yPos + 9.5
     );
@@ -386,7 +409,7 @@ export function generateRemittancePdf(settlement) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(...slateMuted);
-  doc.text('The Grand Store International (Pty) Ltd • Operations Command Center • Stellenbosch & Johannesburg', margin, pageHeight - 7);
+  doc.text('The Grand Store International (Pty) Ltd • Operations Command Center • Stellenbosch, Cape Town & Paris', margin, pageHeight - 7);
   doc.text('Page 1 of 1 • Official Executive Remittance Voucher', pageWidth - margin, pageHeight - 7, { align: 'right' });
 
   return doc;
@@ -412,6 +435,7 @@ export function downloadRemittancePdf(settlement) {
 
 /**
  * Generates and downloads a consolidated Remittance Batch Report (PDF)
+ * Includes the official Grand Store logo and detailed audit breakdowns.
  */
 export function downloadRemittanceBatchPdf(settlements, scope = 'all') {
   try {
@@ -425,21 +449,53 @@ export function downloadRemittanceBatchPdf(settlements, scope = 'all') {
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 12;
 
-    // Header banner
-    doc.setFillColor(15, 23, 42);
-    doc.rect(margin, 10, pageWidth - margin * 2, 20, 'F');
-    doc.setFillColor(217, 119, 6);
-    doc.rect(margin, 10, pageWidth - margin * 2, 2, 'F');
+    const primaryNavy = [15, 23, 42];
+    const accentGold = [217, 119, 6];
+    const slateDark = [30, 41, 59];
+    const slateMuted = [100, 116, 139];
 
-    doc.setTextColor(255, 255, 255);
+    // Official Logo in Batch Report
+    try {
+      if (GRAND_STORE_LOGO_BASE64) {
+        doc.addImage(GRAND_STORE_LOGO_BASE64, 'PNG', margin, 9, 38, 12);
+      }
+    } catch {
+      doc.setTextColor(...primaryNavy);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('THE GRAND STORE', margin, 18);
+    }
+
+    // Header Title beside logo
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text('THE GRAND STORE — VENDOR REMITTANCE BATCH STATEMENT', margin + 6, 21);
+    doc.setFontSize(12);
+    doc.setTextColor(...primaryNavy);
+    doc.text('THE GRAND STORE — VENDOR REMITTANCE BATCH STATEMENT', margin + 42, 14);
 
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...slateMuted);
+    doc.text(
+      `Consolidated Settlement Audit Report • Scope: ${scope.toUpperCase()} • Generated: ${new Date().toLocaleDateString('en-ZA')}`,
+      margin + 42,
+      19
+    );
+
+    // Summary Counts on the right
+    const totalPayout = settlements.reduce((sum, s) => sum + Number(s.payoutAmount || 0), 0);
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
-    doc.setTextColor(203, 213, 225);
-    doc.text(`Consolidated Settlement Audit Report • Scope: ${scope.toUpperCase()} • Generated: ${new Date().toLocaleDateString('en-ZA')}`, margin + 6, 26);
+    doc.setTextColor(...slateDark);
+    doc.text(`Total Records: ${settlements.length}`, pageWidth - margin, 13.5, { align: 'right' });
+
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...accentGold);
+    doc.text(`Total Payable: R ${totalPayout.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin, 18.5, { align: 'right' });
+
+    // Gold Accent Line
+    doc.setFillColor(...accentGold);
+    doc.rect(margin, 24, pageWidth - margin * 2, 1, 'F');
 
     const rows = settlements.map((s, idx) => [
       String(idx + 1),
@@ -449,20 +505,20 @@ export function downloadRemittanceBatchPdf(settlements, scope = 'all') {
       s.destinationCountry || (s.orderType === 'global_export' ? 'Global' : 'South Africa'),
       s.orderType === 'global_export' ? 'Global Export' : 'Domestic ZA',
       `R ${Number(s.orderTotal || 0).toLocaleString('en-ZA')}`,
-      `${s.commissionRatePct || 15}%`,
+      `${s.commissionRatePct !== undefined ? s.commissionRatePct : 15}%`,
       `R ${Number(s.payoutAmount || 0).toLocaleString('en-ZA')}`,
       s.status === 'settled' ? 'Settled' : (s.status === 'due_for_payment' ? 'Due Today' : (s.status?.startsWith('disp') ? 'Disputed' : `${s.daysLeft || 0}d Escrow`)),
-      s.payoutMethod === 'swift_wire' ? 'SWIFT Wire' : 'Domestic EFT',
+      s.payoutMethod === 'swift_wire' ? 'SWIFT Wire' : (s.payoutMethod === 'direct_treasury' ? 'Treasury' : 'Domestic EFT'),
       s.paymentReference || 'Pending'
     ]);
 
     autoTable(doc, {
-      startY: 34,
+      startY: 27,
       margin: { left: margin, right: margin },
       head: [['#', 'Settlement Ref', 'Vendor / Estate', 'Order #', 'Destination', 'Scope', 'Gross (ZAR)', 'Comm %', 'Net Payout', 'Status', 'Method', 'Payment Ref']],
       body: rows,
       styles: { fontSize: 7, cellPadding: 2 },
-      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' }
+      headStyles: { fillColor: slateDark, textColor: [255, 255, 255], fontStyle: 'bold' }
     });
 
     const filename = `GrandStore_Remittance_Batch_${scope}_${new Date().toISOString().slice(0, 10)}.pdf`;

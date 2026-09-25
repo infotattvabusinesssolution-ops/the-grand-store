@@ -3,6 +3,8 @@ const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
 const crmDashboardController = require('../controllers/crm/crmDashboardController');
 const crmCustomerController = require('../controllers/crm/crmCustomerController');
+const adminController = require('../controllers/adminController');
+const financeController = require('../controllers/financeController');
 
 // Staff access check middleware: allow admin, super_admin, accountant, product_manager
 const crmAccess = (req, res, next) => {
@@ -238,6 +240,10 @@ router.put('/settlements/:id/dispute', crmSettlementController.disputeSettlement
 
 // --- Module 12: Staff KPI & SLA Telemetry ---
 router.get('/staff/kpis', crmStaffController.getStaffKpis);
+
+// --- Module 13: Sales & Platform Financials (Live Store Admin Parity) ---
+router.get('/sales/dashboard', protect, crmAccess, adminController.getDashboardStats);
+router.get('/sales/finance', protect, crmAccess, financeController.getAdminFinanceOverview);
 
 module.exports = router;
 

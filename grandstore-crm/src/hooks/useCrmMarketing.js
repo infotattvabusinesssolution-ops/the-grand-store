@@ -23,26 +23,32 @@ export function useCrmMarketing() {
     try {
       setLoading(true);
       setError(null);
-      const [audiencesRes, campaignsRes, couponsRes] = await Promise.all([
+      const [audiencesResult, campaignsResult, couponsResult] = await Promise.allSettled([
         crmApi.getMarketingAudiences(),
         crmApi.getCampaigns(),
-        crmApi.getProductCoupons().catch(() => ({ data: { coupons: [] } }))
+        crmApi.getProductCoupons()
       ]);
 
-      if (audiencesRes.data && audiencesRes.data.success) {
+      if (audiencesResult.status === 'fulfilled' && audiencesResult.value.data?.success) {
         setData({
-          stats: audiencesRes.data.stats || {},
-          segments: audiencesRes.data.segments || [],
-          recentSubscribers: audiencesRes.data.recentSubscribers || []
+          stats: audiencesResult.value.data.stats || {},
+          segments: audiencesResult.value.data.segments || [],
+          recentSubscribers: audiencesResult.value.data.recentSubscribers || []
         });
+      } else if (audiencesResult.status === 'rejected') {
+        console.error('Error fetching marketing audiences:', audiencesResult.reason);
       }
 
-      if (campaignsRes.data && campaignsRes.data.success) {
-        setCampaigns(campaignsRes.data.campaigns || []);
+      if (campaignsResult.status === 'fulfilled' && campaignsResult.value.data?.success) {
+        setCampaigns(campaignsResult.value.data.campaigns || []);
+      } else if (campaignsResult.status === 'rejected') {
+        console.error('Error fetching campaigns:', campaignsResult.reason);
       }
 
-      if (couponsRes.data && couponsRes.data.success) {
-        setCoupons(couponsRes.data.coupons || []);
+      if (couponsResult.status === 'fulfilled' && couponsResult.value.data?.success) {
+        setCoupons(couponsResult.value.data.coupons || []);
+      } else if (couponsResult.status === 'rejected') {
+        console.error('Error fetching coupons:', couponsResult.reason);
       }
     } catch (err) {
       console.error('Error fetching marketing data:', err);

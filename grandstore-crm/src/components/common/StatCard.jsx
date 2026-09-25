@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function StatCard({ title, count, subtitle, icon: Icon, color = 'blue', onClick }) {
+export default function StatCard({ title, count, value, subtitle, icon: Icon, color = 'blue', onClick, active = false, loading = false }) {
   const colorThemes = {
     blue: {
       bg: 'bg-blue-50',
@@ -17,33 +17,47 @@ export default function StatCard({ title, count, subtitle, icon: Icon, color = '
       text: 'text-rose-600',
       border: 'hover:border-rose-300'
     },
+    rose: {
+      bg: 'bg-rose-50',
+      text: 'text-rose-600',
+      border: 'hover:border-rose-300'
+    },
     emerald: {
       bg: 'bg-emerald-50',
       text: 'text-emerald-600',
       border: 'hover:border-emerald-300'
+    },
+    purple: {
+      bg: 'bg-purple-50',
+      text: 'text-purple-600',
+      border: 'hover:border-purple-300'
     }
   };
 
   const theme = colorThemes[color] || colorThemes.blue;
+  const displayVal = value !== undefined && value !== null ? value : (count !== undefined && count !== null ? count : '—');
+  const Card = onClick ? 'button' : 'div';
 
   return (
-    <div 
+    <Card
+      type={onClick ? 'button' : undefined}
+      aria-pressed={onClick ? active : undefined}
+      aria-busy={loading || undefined}
       onClick={onClick}
       className={`
-        bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md 
-        transition-all duration-200 flex items-start justify-between cursor-pointer ${theme.border}
+        crm-stat-card bg-white rounded-2xl p-5 border border-slate-200 shadow-sm
+        ${onClick ? `cursor-pointer hover:shadow-md ${theme.border}` : ''}
+        ${active ? 'ring-2 ring-blue-500/60 border-blue-300' : ''}
       `}
     >
-      <div>
-        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{title}</p>
-        <h3 className="text-3xl font-extrabold text-slate-900 mt-1.5 tracking-tight">
-          {count !== undefined && count !== null ? count : '—'}
-        </h3>
-        {subtitle && <p className="text-xs text-slate-500 mt-1 font-medium">{subtitle}</p>}
+      <div className="crm-stat-heading">
+        <span className="text-[11px] leading-relaxed font-bold text-slate-500 uppercase tracking-wider">{title}</span>
+        {Icon && <span className={`crm-stat-icon ${theme.bg} ${theme.text}`}><Icon size={20} aria-hidden="true" /></span>}
       </div>
-      <div className={`p-3 rounded-xl ${theme.bg} ${theme.text} shadow-sm`}>
-        {Icon && <Icon size={22} />}
-      </div>
-    </div>
+      <span className="crm-stat-value font-extrabold text-slate-900 tracking-tight">
+        {loading ? '…' : displayVal}
+      </span>
+      <span className="crm-stat-description text-xs text-slate-500 font-medium">{subtitle || '\u00a0'}</span>
+    </Card>
   );
 }

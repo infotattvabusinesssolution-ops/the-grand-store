@@ -14,6 +14,7 @@ import CrmMarketingPage from './pages/CrmMarketingPage';
 import CrmAuctionEventsPage from './pages/CrmAuctionEventsPage';
 import CrmSettlementsPage from './pages/CrmSettlementsPage';
 import CrmStaffKpisPage from './pages/CrmStaffKpisPage';
+import CrmSalesPage from './pages/CrmSalesPage';
 import CrmLoginPage from './pages/CrmLoginPage';
 import { Agentation } from 'agentation';
 
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="marketing" element={<CrmMarketingPage />} />
             <Route path="auctions-events" element={<CrmAuctionEventsPage />} />
             <Route path="settlements" element={<CrmSettlementsPage />} />
+            <Route path="sales" element={<CrmSalesPage />} />
             <Route path="staff-telemetry" element={<CrmStaffKpisPage />} />
 
             {/* Legacy Fallback redirect */}
