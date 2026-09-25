@@ -29,7 +29,8 @@ import {
   Package,
   UploadCloud,
   FileCheck,
-  BadgeCheck
+  BadgeCheck,
+  Tag
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getProductPrice } from '../../data';
@@ -120,6 +121,12 @@ export default function CheckoutPage({
   const [guestDocumentName, setGuestDocumentName] = useState('');
   const [isUploadingGuestDoc, setIsUploadingGuestDoc] = useState(false);
   const [guestDocError, setGuestDocError] = useState('');
+
+  // Product Voucher & Coupon states
+  const [couponCodeInput, setCouponCodeInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponError, setCouponError] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const handleIdNumberChange = (e) => {
     const val = e.target.value;
@@ -303,7 +310,72 @@ export default function CheckoutPage({
   const referralRewardDiscount = applyRewards && userRewardCredit > 0
     ? Math.min(userRewardCredit, Math.max(0, referralEligibleBase - superCoinDiscount))
     : 0;
-  const displayedTotal = Math.max(0, parseFloat((placeOrderBaseTotal - superCoinDiscount - referralRewardDiscount).toFixed(2)));
+
+  // Product Voucher / Coupon discount
+  const couponDiscount = appliedCoupon?.discountAmount ? Number(appliedCoupon.discountAmount) : 0;
+
+  const displayedTotal = Math.max(
+    0,
+    parseFloat((placeOrderBaseTotal - superCoinDiscount - referralRewardDiscount - couponDiscount).toFixed(2))
+  );
+
+  const handleApplyCoupon = async (codeOverride) => {
+    const code = (codeOverride || couponCodeInput).trim().toUpperCase();
+    if (!code) {
+      setCouponError('Please enter a voucher code');
+      return;
+    }
+    setCouponLoading(true);
+    setCouponError('');
+    try {
+      const itemsForValidation = vendorCartItems.map((item) => ({
+        product: item.id || item._id,
+        _id: item.id || item._id,
+        price: getProductPrice(item.price),
+        quantity: item.quantity,
+        vendorId: item.vendorId || item.vendor || null
+      }));
+
+      const res = await api.post('/coupons/validate', {
+        code,
+        cartItems: itemsForValidation,
+        subtotal: cartSubtotal
+      });
+
+      if (res.data.valid) {
+        setAppliedCoupon(res.data);
+        setCouponCodeInput(code);
+        setCouponError('');
+        if (onNotify) onNotify(`Voucher "${code}" applied! Saved R ${res.data.discountAmount}`);
+      } else {
+        setAppliedCoupon(null);
+        setCouponError(res.data.message || 'Invalid voucher code');
+        if (onNotify) onNotify(res.data.message || 'Invalid voucher code');
+      }
+    } catch (err) {
+      setAppliedCoupon(null);
+      const msg = err.response?.data?.message || 'Failed to apply voucher code';
+      setCouponError(msg);
+      if (onNotify) onNotify(msg);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCodeInput('');
+    setCouponError('');
+  };
+
+  // Auto-apply from URL (?coupon=... or ?voucher=...)
+  useEffect(() => {
+    const urlCode = (searchParams.get('coupon') || searchParams.get('voucher') || '').trim();
+    if (urlCode && vendorCartItems.length > 0 && !appliedCoupon) {
+      setCouponCodeInput(urlCode);
+      handleApplyCoupon(urlCode);
+    }
+  }, [searchParams, vendorCartItems.length]);
 
   useEffect(() => {
     const isCoinsEligible = quote?.superCoins
@@ -911,6 +983,8 @@ export default function CheckoutPage({
         selectedPostnetStore: isPickupOrder ? effectivePostnetBranch : null,
         preferredPostnetStore: isPickupOrder ? effectivePostnetBranch : null,
         paymentMethod: paymentMethod === 'payfast' ? 'PayFast' : 'Bank Transfer',
+        couponCode: appliedCoupon?.coupon?.code || null,
+        couponDiscount: couponDiscount > 0 ? couponDiscount : 0,
         isGift,
         giftRecipientName,
         giftMessage,
@@ -1161,6 +1235,70 @@ export default function CheckoutPage({
                   })}
                 </div>
 
+                {/* Voucher / Coupon Input Box */}
+                <div className="pt-3.5 pb-2 border-b border-white/10">
+                  {appliedCoupon ? (
+                    <div className="bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/30 rounded-xl p-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-[var(--color-gold)]/20 border border-[var(--color-gold)]/40 flex items-center justify-center text-[var(--color-gold)] shrink-0">
+                          <Tag size={13} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-mono font-bold text-[var(--color-gold)] tracking-wide truncate">
+                            {appliedCoupon.coupon?.code}
+                          </p>
+                          <p className="text-[10px] text-emerald-400 font-medium">
+                            Saved R {appliedCoupon.discountAmount}
+                            {appliedCoupon.applicableAdminProductsCount ? ` (${appliedCoupon.applicableAdminProductsCount} bottle eligible)` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="text-[10px] uppercase font-bold text-white/50 hover:text-rose-400 transition-colors px-2 py-1 rounded bg-black/40 hover:bg-rose-500/10 border border-white/10 shrink-0 ml-2"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Tag size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                          <input
+                            type="text"
+                            value={couponCodeInput}
+                            onChange={(e) => {
+                              setCouponCodeInput(e.target.value.toUpperCase());
+                              setCouponError('');
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleApplyCoupon();
+                              }
+                            }}
+                            placeholder="Voucher or Promo code"
+                            className="w-full bg-black/50 border border-white/10 focus:border-[var(--color-gold)]/60 rounded-xl pl-8 pr-3 py-2 text-xs text-white uppercase placeholder:normal-case placeholder:text-white/30 focus:outline-none transition-colors"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleApplyCoupon()}
+                          disabled={couponLoading || !couponCodeInput.trim()}
+                          className="px-3.5 py-2 rounded-xl bg-[var(--color-gold)] hover:bg-[var(--color-gold-light)] disabled:opacity-40 text-black text-xs font-bold transition-all shrink-0 flex items-center gap-1"
+                        >
+                          {couponLoading ? <Loader2 size={13} className="animate-spin" /> : 'Apply'}
+                        </button>
+                      </div>
+                      {couponError && (
+                        <p className="text-[11px] text-rose-400 pl-1">{couponError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Financial Breakdown */}
                 <div className="space-y-3 pt-4 text-xs">
                   <div className="flex justify-between text-[var(--color-ivory-muted)]">
@@ -1208,6 +1346,16 @@ export default function CheckoutPage({
                     <div className="flex justify-between items-center text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded-lg border border-emerald-500/20">
                       <span>Referral Credits</span>
                       <span>-<Price amount={referralRewardDiscount} /></span>
+                    </div>
+                  )}
+
+                  {/* Voucher Deduction in Summary */}
+                  {couponDiscount > 0 && (
+                    <div className="flex justify-between items-center text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2.5 py-1.5 rounded-lg border border-[var(--color-gold)]/20">
+                      <span className="flex items-center gap-1 font-medium">
+                        <Tag size={12} /> Voucher ({appliedCoupon?.coupon?.code})
+                      </span>
+                      <span>-<Price amount={couponDiscount} /></span>
                     </div>
                   )}
 

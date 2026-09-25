@@ -61,11 +61,26 @@ export function useCrmSettlements() {
     }
   };
 
+  const syncOrders = async () => {
+    try {
+      setLoading(true);
+      const res = await crmApi.syncSettlements();
+      await fetchSettlements();
+      return res.data;
+    } catch (err) {
+      console.error('Error syncing settlements with orders:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     ...data,
     loading,
     error,
     refresh: fetchSettlements,
+    syncOrders,
     processPayment,
     disputeSettlement
   };

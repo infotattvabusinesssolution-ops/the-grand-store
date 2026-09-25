@@ -29,7 +29,8 @@ import {
   Package,
   UploadCloud,
   FileCheck,
-  BadgeCheck
+  BadgeCheck,
+  Tag
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getProductPrice } from '../../data';
@@ -43,7 +44,6 @@ import StoreBankDetailsCard from '../../components/StoreBankDetailsCard';
 import api from '../../api';
 import CountryCodeSelect from '../../components/CountryCodeSelect';
 import { PHONE_COUNTRIES, getCheckoutPhone, splitPhoneNumber } from '../../utils/phoneNumbers';
-import ExistingAccountModal from '../../components/modals/ExistingAccountModal';
 
 const POPULAR_INTERNATIONAL_COUNTRIES = [
   { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
@@ -107,8 +107,8 @@ export default function CheckoutPage({
   const [checkoutStep, setCheckoutStep] = useState(1);
   const [quote, setQuote] = useState(null);
   const [dutiesAccepted, setDutiesAccepted] = useState(false);
-  const [deliveryPreference, setDeliveryPreference] = useState('home'); // 'home', 'pudo', or 'postnet'
-  const [destinationMode, setDestinationMode] = useState('domestic_sa'); // South African nationwide delivery
+  const [deliveryPreference, setDeliveryPreference] = useState('home'); // 'home' or 'postnet'
+  const [destinationMode, setDestinationMode] = useState('domestic_sa'); // 'domestic_sa' or 'international_dhl'
   const [applyRewards, setApplyRewards] = useState(false);
   const [useSuperCoins, setUseSuperCoins] = useState(true);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
@@ -122,14 +122,11 @@ export default function CheckoutPage({
   const [isUploadingGuestDoc, setIsUploadingGuestDoc] = useState(false);
   const [guestDocError, setGuestDocError] = useState('');
 
-  // Existing Account Detection modal & state for Guest Checkout
-  const [existingAccountModal, setExistingAccountModal] = useState({
-    isOpen: false,
-    userData: null
-  });
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
-  const [guestAutoLinked, setGuestAutoLinked] = useState(false);
-  const checkedEmailsRef = useRef(new Set());
+  // Product Voucher & Coupon states
+  const [couponCodeInput, setCouponCodeInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponError, setCouponError] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const handleIdNumberChange = (e) => {
     const val = e.target.value;
@@ -313,7 +310,72 @@ export default function CheckoutPage({
   const referralRewardDiscount = applyRewards && userRewardCredit > 0
     ? Math.min(userRewardCredit, Math.max(0, referralEligibleBase - superCoinDiscount))
     : 0;
-  const displayedTotal = Math.max(0, parseFloat((placeOrderBaseTotal - superCoinDiscount - referralRewardDiscount).toFixed(2)));
+
+  // Product Voucher / Coupon discount
+  const couponDiscount = appliedCoupon?.discountAmount ? Number(appliedCoupon.discountAmount) : 0;
+
+  const displayedTotal = Math.max(
+    0,
+    parseFloat((placeOrderBaseTotal - superCoinDiscount - referralRewardDiscount - couponDiscount).toFixed(2))
+  );
+
+  const handleApplyCoupon = async (codeOverride) => {
+    const code = (codeOverride || couponCodeInput).trim().toUpperCase();
+    if (!code) {
+      setCouponError('Please enter a voucher code');
+      return;
+    }
+    setCouponLoading(true);
+    setCouponError('');
+    try {
+      const itemsForValidation = vendorCartItems.map((item) => ({
+        product: item.id || item._id,
+        _id: item.id || item._id,
+        price: getProductPrice(item.price),
+        quantity: item.quantity,
+        vendorId: item.vendorId || item.vendor || null
+      }));
+
+      const res = await api.post('/coupons/validate', {
+        code,
+        cartItems: itemsForValidation,
+        subtotal: cartSubtotal
+      });
+
+      if (res.data.valid) {
+        setAppliedCoupon(res.data);
+        setCouponCodeInput(code);
+        setCouponError('');
+        if (onNotify) onNotify(`Voucher "${code}" applied! Saved R ${res.data.discountAmount}`);
+      } else {
+        setAppliedCoupon(null);
+        setCouponError(res.data.message || 'Invalid voucher code');
+        if (onNotify) onNotify(res.data.message || 'Invalid voucher code');
+      }
+    } catch (err) {
+      setAppliedCoupon(null);
+      const msg = err.response?.data?.message || 'Failed to apply voucher code';
+      setCouponError(msg);
+      if (onNotify) onNotify(msg);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCodeInput('');
+    setCouponError('');
+  };
+
+  // Auto-apply from URL (?coupon=... or ?voucher=...)
+  useEffect(() => {
+    const urlCode = (searchParams.get('coupon') || searchParams.get('voucher') || '').trim();
+    if (urlCode && vendorCartItems.length > 0 && !appliedCoupon) {
+      setCouponCodeInput(urlCode);
+      handleApplyCoupon(urlCode);
+    }
+  }, [searchParams, vendorCartItems.length]);
 
   useEffect(() => {
     const isCoinsEligible = quote?.superCoins
@@ -410,32 +472,6 @@ export default function CheckoutPage({
     }
   };
 
-  const handleEmailBlur = async () => {
-    const emailToTest = (formData.email || '').trim().toLowerCase();
-    if (user || !emailToTest || !emailToTest.includes('@') || !emailToTest.includes('.')) {
-      return;
-    }
-    if (checkedEmailsRef.current.has(emailToTest)) {
-      return;
-    }
-
-    try {
-      setIsCheckingEmail(true);
-      const res = await api.post('/auth/check-guest-email', { email: emailToTest });
-      checkedEmailsRef.current.add(emailToTest);
-      if (res.data?.exists && res.data?.user) {
-        setExistingAccountModal({
-          isOpen: true,
-          userData: res.data.user
-        });
-      }
-    } catch (err) {
-      console.warn('Check guest email error:', err);
-    } finally {
-      setIsCheckingEmail(false);
-    }
-  };
-
   const handleCityChange = (event) => {
     const { name, value } = event.target;
     setFormData((current) => ({
@@ -486,6 +522,13 @@ export default function CheckoutPage({
       setDestinationMode('domestic_sa');
       setDeliveryPreference('postnet');
       setFormData((current) => ({ ...current, country: 'South Africa' }));
+    } else if (mode === 'international_dhl') {
+      setDestinationMode('international_dhl');
+      setDeliveryPreference('home');
+      const currentCountry = formData.country && !['south africa', 'za', 'rsa'].includes(formData.country.trim().toLowerCase())
+        ? formData.country
+        : 'United Kingdom';
+      setFormData((current) => ({ ...current, country: currentCountry }));
     }
   };
 
@@ -841,6 +884,7 @@ export default function CheckoutPage({
 
   const [paymentMethod, setPaymentMethod] = useState('payfast');
   const [createdOrderId, setCreatedOrderId] = useState(null);
+  const [createdOrderGuestToken, setCreatedOrderGuestToken] = useState(null);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [proofUrl, setProofUrl] = useState('');
 
@@ -939,6 +983,8 @@ export default function CheckoutPage({
         selectedPostnetStore: isPickupOrder ? effectivePostnetBranch : null,
         preferredPostnetStore: isPickupOrder ? effectivePostnetBranch : null,
         paymentMethod: paymentMethod === 'payfast' ? 'PayFast' : 'Bank Transfer',
+        couponCode: appliedCoupon?.coupon?.code || null,
+        couponDiscount: couponDiscount > 0 ? couponDiscount : 0,
         isGift,
         giftRecipientName,
         giftMessage,
@@ -1189,6 +1235,70 @@ export default function CheckoutPage({
                   })}
                 </div>
 
+                {/* Voucher / Coupon Input Box */}
+                <div className="pt-3.5 pb-2 border-b border-white/10">
+                  {appliedCoupon ? (
+                    <div className="bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/30 rounded-xl p-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-[var(--color-gold)]/20 border border-[var(--color-gold)]/40 flex items-center justify-center text-[var(--color-gold)] shrink-0">
+                          <Tag size={13} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-mono font-bold text-[var(--color-gold)] tracking-wide truncate">
+                            {appliedCoupon.coupon?.code}
+                          </p>
+                          <p className="text-[10px] text-emerald-400 font-medium">
+                            Saved R {appliedCoupon.discountAmount}
+                            {appliedCoupon.applicableAdminProductsCount ? ` (${appliedCoupon.applicableAdminProductsCount} bottle eligible)` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="text-[10px] uppercase font-bold text-white/50 hover:text-rose-400 transition-colors px-2 py-1 rounded bg-black/40 hover:bg-rose-500/10 border border-white/10 shrink-0 ml-2"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Tag size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                          <input
+                            type="text"
+                            value={couponCodeInput}
+                            onChange={(e) => {
+                              setCouponCodeInput(e.target.value.toUpperCase());
+                              setCouponError('');
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleApplyCoupon();
+                              }
+                            }}
+                            placeholder="Voucher or Promo code"
+                            className="w-full bg-black/50 border border-white/10 focus:border-[var(--color-gold)]/60 rounded-xl pl-8 pr-3 py-2 text-xs text-white uppercase placeholder:normal-case placeholder:text-white/30 focus:outline-none transition-colors"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleApplyCoupon()}
+                          disabled={couponLoading || !couponCodeInput.trim()}
+                          className="px-3.5 py-2 rounded-xl bg-[var(--color-gold)] hover:bg-[var(--color-gold-light)] disabled:opacity-40 text-black text-xs font-bold transition-all shrink-0 flex items-center gap-1"
+                        >
+                          {couponLoading ? <Loader2 size={13} className="animate-spin" /> : 'Apply'}
+                        </button>
+                      </div>
+                      {couponError && (
+                        <p className="text-[11px] text-rose-400 pl-1">{couponError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Financial Breakdown */}
                 <div className="space-y-3 pt-4 text-xs">
                   <div className="flex justify-between text-[var(--color-ivory-muted)]">
@@ -1236,6 +1346,16 @@ export default function CheckoutPage({
                     <div className="flex justify-between items-center text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded-lg border border-emerald-500/20">
                       <span>Referral Credits</span>
                       <span>-<Price amount={referralRewardDiscount} /></span>
+                    </div>
+                  )}
+
+                  {/* Voucher Deduction in Summary */}
+                  {couponDiscount > 0 && (
+                    <div className="flex justify-between items-center text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2.5 py-1.5 rounded-lg border border-[var(--color-gold)]/20">
+                      <span className="flex items-center gap-1 font-medium">
+                        <Tag size={12} /> Voucher ({appliedCoupon?.coupon?.code})
+                      </span>
+                      <span>-<Price amount={couponDiscount} /></span>
                     </div>
                   )}
 
@@ -1310,7 +1430,7 @@ export default function CheckoutPage({
                 )}
 
                 {/* Delivery Location & Fulfillment Mode */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                   {/* Card 1: South Africa Door Delivery */}
                   <button
                     type="button"
@@ -1391,6 +1511,38 @@ export default function CheckoutPage({
                     </div>
                     <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Collect at over 450+ PostNet branches nationwide</p>
                   </button>
+
+                  {/* Card 4: International Worldwide Delivery (DHL Express) */}
+                  <button
+                    type="button"
+                    onClick={() => selectDeliveryMode('international_dhl')}
+                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      destinationMode === 'international_dhl'
+                        ? 'border-amber-400 bg-amber-500/15 shadow-[0_0_25px_rgba(245,158,11,0.18)] ring-1 ring-amber-400/40'
+                        : 'border-white/10 bg-[#0d0d0d] hover:border-amber-400/40'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between min-h-[32px] mb-3">
+                        <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'international_dhl' ? 'bg-amber-400 text-black' : 'bg-white/5 text-amber-400/80'}`}>
+                          <Globe size={18} />
+                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono shrink-0 whitespace-nowrap">
+                            Worldwide
+                          </span>
+                          {destinationMode === 'international_dhl' && (
+                            <CheckCircle2 size={16} className="text-amber-400 shrink-0" />
+                          )}
+                        </div>
+                      </div>
+                      <div className="mb-2">
+                        <p className="text-sm font-semibold text-white leading-snug">DHL Express</p>
+                        <p className="text-[10px] text-amber-300/90 font-medium leading-tight mt-0.5">✈️ International Courier</p>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Air express courier to UK, USA, Europe & 50+ countries</p>
+                  </button>
                 </div>
 
                 {/* Recipient Details */}
@@ -1423,22 +1575,10 @@ export default function CheckoutPage({
                         name="email"
                         value={formData.email}
                         onChange={handleChange}
-                        onBlur={handleEmailBlur}
                         required
                         placeholder="e.g. yourname@example.com"
                         className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
                       />
-                      {isCheckingEmail && (
-                        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-[var(--color-gold)]/80">
-                          <Loader2 size={12} className="animate-spin" /> Checking account status...
-                        </div>
-                      )}
-                      {guestAutoLinked && (
-                        <div className="mt-2 flex items-center gap-2 text-xs text-[#c9a35b] bg-[#c9a35b]/10 border border-[#c9a35b]/20 px-3 py-2 rounded-xl">
-                          <CheckCircle2 size={14} className="text-[#c9a35b] shrink-0" />
-                          <span>Account recognized: Your order &amp; earned SuperCoins will automatically link to your account.</span>
-                        </div>
-                      )}
                     </div>
                     <div className="sm:col-span-2">
                       <div className="flex items-center justify-between mb-1.5">
@@ -2400,7 +2540,9 @@ export default function CheckoutPage({
                                       <p className="text-sm font-semibold text-white">{opt.serviceLevel}</p>
                                       {opt.courierName && (
                                         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                                          opt.courierName.includes('PostNet')
+                                          opt.courierName.includes('DHL')
+                                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-mono'
+                                            : opt.courierName.includes('PostNet')
                                             ? 'bg-red-500/20 text-red-300 border-red-500/40'
                                             : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                                         }`}>
@@ -2842,29 +2984,6 @@ export default function CheckoutPage({
           </div>
         </div>
       </div>
-
-      <ExistingAccountModal
-        isOpen={existingAccountModal.isOpen}
-        userData={existingAccountModal.userData}
-        onLogin={() => {
-          navigate(`/login?redirect=${encodeURIComponent('/checkout' + (window.location.search || ''))}&email=${encodeURIComponent(existingAccountModal.userData?.email || formData.email)}`);
-        }}
-        onContinueAsGuest={() => {
-          setGuestAutoLinked(true);
-          setExistingAccountModal({ isOpen: false, userData: null });
-          if (existingAccountModal.userData) {
-            setFormData((prev) => ({
-              ...prev,
-              fullName: prev.fullName || existingAccountModal.userData.name || '',
-              phone: prev.phone || existingAccountModal.userData.phone || ''
-            }));
-          }
-          if (onNotify) {
-            onNotify('Your purchase will be automatically linked to your Grand Store account and SuperCoins will be credited!');
-          }
-        }}
-        onClose={() => setExistingAccountModal({ isOpen: false, userData: null })}
-      />
     </main>
   );
 }

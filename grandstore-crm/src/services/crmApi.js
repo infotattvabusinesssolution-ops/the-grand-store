@@ -142,6 +142,7 @@ export const crmApi = {
   logCommunication: (data) => crmClient.post('/comms', data),
 
   // Marketing Audiences, Categories, Campaigns & Legal Age Compliance (Section 8 of GS CRM 1.docx)
+  getMarketingProducts: (params) => crmClient.get('/marketing/products', { params }),
   getMarketingAudiences: () => crmClient.get('/marketing/audiences'),
   createAudienceCategory: (data) => crmClient.post('/marketing/audiences', data),
   updateAudienceCategory: (id, data) => crmClient.put(`/marketing/audiences/${id}`, data),
@@ -149,18 +150,44 @@ export const crmApi = {
   previewAudienceSegment: (segmentId) => crmClient.get(`/marketing/audiences/${segmentId}/preview`),
   importMarketingAudienceCsv: (data) => crmClient.post('/marketing/audiences/import-csv', data),
   getCampaigns: () => crmClient.get('/marketing/campaigns'),
+  getCampaignDetails: (id) => crmClient.get(`/marketing/campaigns/${id}/details`),
   createCampaign: (data) => crmClient.post('/marketing/campaigns', data),
   updateCampaignStatus: (id, status) => crmClient.put(`/marketing/campaigns/${id}/status`, { status }),
+  sendCampaignNow: (id) => crmClient.post(`/marketing/campaigns/${id}/send`),
+  testSendCampaign: (id, testEmail) => crmClient.post(`/marketing/campaigns/${id}/test-send`, { testEmail }),
+  syncCampaignAttribution: (id) => crmClient.post(`/marketing/campaigns/${id}/sync-attribution`),
+  deleteCampaign: (id) => crmClient.delete(`/marketing/campaigns/${id}`),
+
+  // Customer Product Vouchers & Coupons (Strictly Admin Products)
+  getProductCoupons: () => crmClient.get('/marketing/coupons'),
+  createProductCoupon: (data) => crmClient.post('/marketing/coupons', data),
+  toggleProductCoupon: (id) => crmClient.put(`/marketing/coupons/${id}/toggle`),
+  deleteProductCoupon: (id) => crmClient.delete(`/marketing/coupons/${id}`),
 
   // Auctions & Private Tasting Operations
   getAuctionSummary: () => crmClient.get('/auctions/summary'),
+  getAllBidders: (params) => crmClient.get('/auctions/bidders', { params }),
   updateBidderKyc: (id, data) => crmClient.put(`/auctions/bidder/${id}/kyc`, data),
   recordHammerPayment: (id, data) => crmClient.put(`/auctions/lot/${id}/payment`, data),
+  sendPaymentReminder: (id) => crmClient.post(`/auctions/lot/${id}/remind`),
+  defaultLot: (id) => crmClient.put(`/auctions/lot/${id}/default`),
+  createAuctionLot: (data) => crmClient.post('/auctions/lots', data),
+  updateAuctionLot: (id, data) => crmClient.put(`/auctions/lots/${id}`, data),
+  deleteAuctionLot: (id) => crmClient.delete(`/auctions/lots/${id}`),
+  placeFloorBid: (id, data) => crmClient.post(`/auctions/lots/${id}/floor-bid`, data),
+  declareHammerFall: (id, data) => crmClient.put(`/auctions/lots/${id}/hammer`, data),
+
+  // Events Operations & Walk-in Door Desk
   getEventGuests: (eventId) => crmClient.get(`/events/${eventId}/guests`),
   toggleGuestCheckIn: (bookingId) => crmClient.put(`/events/bookings/${bookingId}/checkin`),
+  registerWalkInGuest: (eventId, data) => crmClient.post(`/events/${eventId}/walk-in`, data),
+  createTastingEvent: (data) => crmClient.post('/events', data),
+  updateTastingEvent: (id, data) => crmClient.put(`/events/${id}`, data),
+  deleteTastingEvent: (id) => crmClient.delete(`/events/${id}`),
 
   // 30-Day Vendor Settlements & Payouts
   getSettlementsSummary: () => crmClient.get('/settlements/summary'),
+  syncSettlements: () => crmClient.post('/settlements/sync'),
   createSettlement: (data) => crmClient.post('/settlements', data),
   processSettlementPayment: (id, data) => crmClient.put(`/settlements/${id}/pay`, data),
   disputeSettlement: (id, data) => crmClient.put(`/settlements/${id}/dispute`, data),

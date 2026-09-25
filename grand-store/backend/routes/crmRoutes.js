@@ -165,6 +165,7 @@ const crmSettlementController = require('../controllers/crm/crmSettlementControl
 const crmStaffController = require('../controllers/crm/crmStaffController');
 
 // --- Module 9: Marketing Compliance & Audience Segmentation ---
+router.get('/marketing/products', crmMarketingController.getMarketingProducts);
 router.get('/marketing/audiences', crmMarketingController.getMarketingAudiences);
 router.post('/marketing/audiences', crmMarketingController.createAudienceCategory);
 router.put('/marketing/audiences/:id', crmMarketingController.updateAudienceCategory);
@@ -172,18 +173,60 @@ router.delete('/marketing/audiences/:id', crmMarketingController.deleteAudienceC
 router.get('/marketing/audiences/:segmentId/preview', crmMarketingController.previewAudienceSegment);
 router.post('/marketing/audiences/import-csv', crmCustomerController.bulkImportCustomers);
 router.get('/marketing/campaigns', crmMarketingController.getCampaigns);
+router.get('/marketing/campaigns/:id/details', crmMarketingController.getCampaignDetails);
+router.get('/marketing/campaigns/:id', crmMarketingController.getCampaignDetails);
 router.post('/marketing/campaigns', crmMarketingController.createCampaign);
 router.put('/marketing/campaigns/:id/status', crmMarketingController.updateCampaignStatus);
+router.post('/marketing/campaigns/:id/send', crmMarketingController.sendCampaign);
+router.post('/marketing/campaigns/:id/test-send', crmMarketingController.testSendCampaign);
+router.post('/marketing/campaigns/:id/sync-attribution', crmMarketingController.syncAttributedSales);
+router.delete('/marketing/campaigns/:id', crmMarketingController.deleteCampaign);
+
+// Marketing Product Coupons (Exclusively Admin Products)
+const couponRoutes = require('./couponRoutes');
+router.get('/marketing/coupons', (req, res, next) => {
+  req.url = '/admin-product';
+  couponRoutes(req, res, next);
+});
+router.post('/marketing/coupons', (req, res, next) => {
+  req.url = '/admin-product';
+  couponRoutes(req, res, next);
+});
+router.put('/marketing/coupons/:id/toggle', (req, res, next) => {
+  req.url = `/admin-product/${req.params.id}/toggle`;
+  couponRoutes(req, res, next);
+});
+router.delete('/marketing/coupons/:id', (req, res, next) => {
+  req.url = `/admin-product/${req.params.id}`;
+  couponRoutes(req, res, next);
+});
 
 // --- Module 10: Auctions & Private Tasting Operations ---
 router.get('/auctions/summary', crmAuctionController.getAuctionOperationsSummary);
+router.get('/auctions/bidders', crmAuctionController.getAllBidders);
 router.put('/auctions/bidder/:id/kyc', crmAuctionController.updateBidderKyc);
 router.put('/auctions/lot/:id/payment', crmAuctionController.recordHammerLotPayment);
+router.post('/auctions/lot/:id/remind', crmAuctionController.sendPaymentReminder);
+router.put('/auctions/lot/:id/default', crmAuctionController.defaultLot);
+
+// Auction Lots CRUD, Floor Bids & Hammer
+router.post('/auctions/lots', crmAuctionController.createLot);
+router.put('/auctions/lots/:id', crmAuctionController.updateLot);
+router.delete('/auctions/lots/:id', crmAuctionController.deleteLot);
+router.post('/auctions/lots/:id/floor-bid', crmAuctionController.placeFloorBid);
+router.put('/auctions/lots/:id/hammer', crmAuctionController.declareHammerFall);
+
+// Tasting Events Desk & Operations
 router.get('/events/:id/guests', crmAuctionController.getEventGuestList);
 router.put('/events/bookings/:bookingId/checkin', crmAuctionController.toggleGuestCheckIn);
+router.post('/events/:id/walk-in', crmAuctionController.registerWalkInGuest);
+router.post('/events', crmAuctionController.createEvent);
+router.put('/events/:id', crmAuctionController.updateEvent);
+router.delete('/events/:id', crmAuctionController.deleteEvent);
 
 // --- Module 11: 30-Day Vendor Settlement Tracking & Payouts ---
 router.get('/settlements/summary', crmSettlementController.getSettlementsSummary);
+router.post('/settlements/sync', crmSettlementController.syncOrdersHandler);
 router.post('/settlements', crmSettlementController.createSettlement);
 router.put('/settlements/:id/pay', crmSettlementController.processSettlementPayment);
 router.put('/settlements/:id/dispute', crmSettlementController.disputeSettlement);

@@ -2,16 +2,17 @@ import React, { useState } from 'react';
 import { 
   Wallet, Clock, CheckCircle2, AlertTriangle, FileText, 
   Download, RefreshCw, DollarSign, ArrowUpRight, Search, 
-  Building2, ShieldCheck, X, Globe, Plane, MapPin 
+  Building2, ShieldCheck, X, Globe, Plane, MapPin, FileDown
 } from 'lucide-react';
 import StatCard from '../components/common/StatCard';
 import StatusBadge from '../components/common/StatusBadge';
 import { useCrmSettlements } from '../hooks/useCrmSettlements';
 import { useToast } from '../context/ToastContext';
+import { downloadRemittancePdf, downloadRemittanceBatchPdf } from '../utils/remittancePdfGenerator';
 
 export default function CrmSettlementsPage() {
   const toast = useToast();
-  const { stats, settlements, loading, refresh, processPayment, disputeSettlement } = useCrmSettlements();
+  const { stats, settlements, loading, refresh, syncOrders, processPayment, disputeSettlement } = useCrmSettlements();
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'due' | 'pending' | 'settled' | 'disputed'
   const [filterScope, setFilterScope] = useState('all'); // 'all' | 'local' | 'global_export'
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,6 +23,7 @@ export default function CrmSettlementsPage() {
   const [notesInput, setNotesInput] = useState('');
   const [disputeModalSettlement, setDisputeModalSettlement] = useState(null);
   const [disputeReasonInput, setDisputeReasonInput] = useState('');
+  const [syncing, setSyncing] = useState(false);
 
   const filteredSettlements = settlements.filter(s => {
     const matchesFilter = 
@@ -44,6 +46,40 @@ export default function CrmSettlementsPage() {
 
     return matchesFilter && matchesScope && matchesSearch;
   });
+
+  const handleDownloadPdf = (settlement) => {
+    try {
+      const res = downloadRemittancePdf(settlement);
+      toast.success(`Generated Official Remittance Advice: ${res.filename}`);
+    } catch (err) {
+      toast.error('Failed to generate remittance PDF: ' + (err.message || 'Error'));
+    }
+  };
+
+  const handleDownloadBatchPdf = () => {
+    try {
+      if (filteredSettlements.length === 0) {
+        toast.warning('No settlement records match current filters to export.');
+        return;
+      }
+      const res = downloadRemittanceBatchPdf(filteredSettlements, filterScope);
+      toast.success(`Exported batch remittance statement (${filteredSettlements.length} records): ${res.filename}`);
+    } catch (err) {
+      toast.error('Failed to export batch remittance PDF: ' + (err.message || 'Error'));
+    }
+  };
+
+  const handleSyncRealOrders = async () => {
+    try {
+      setSyncing(true);
+      const res = await syncOrders();
+      toast.success(res?.message || 'Synchronized settlements from live database orders!');
+    } catch (err) {
+      toast.error('Failed to sync settlements: ' + (err?.response?.data?.message || err.message));
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleExportRemittanceCsv = () => {
     try {
@@ -134,18 +170,28 @@ export default function CrmSettlementsPage() {
 
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           <button 
+            onClick={handleDownloadBatchPdf}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-800 transition-colors shadow-sm cursor-pointer"
+            title="Download consolidated PDF remittance report"
+          >
+            <FileDown size={14} />
+            Download Batch PDF
+          </button>
+          <button 
             onClick={handleExportRemittanceCsv}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-blue-600 transition-colors shadow-sm cursor-pointer"
           >
             <Download size={14} />
-            Export Remittance Batch (CSV)
+            Export CSV
           </button>
           <button 
-            onClick={refresh}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-blue-600 transition-colors shadow-sm cursor-pointer"
+            onClick={handleSyncRealOrders}
+            disabled={syncing}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+            title="Scan database for new delivered orders and update escrow milestones"
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            Sync Milestones
+            <RefreshCw size={14} className={syncing || loading ? 'animate-spin' : ''} />
+            Sync Real Orders
           </button>
         </div>
       </div>
@@ -366,6 +412,13 @@ export default function CrmSettlementsPage() {
                           </button>
                         )}
                         <button
+                          onClick={() => handleDownloadPdf(s)}
+                          className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors"
+                          title="Download Official Remittance Advice (PDF)"
+                        >
+                          <Download size={15} />
+                        </button>
+                        <button
                           onClick={() => setSelectedSettlement(s)}
                           className="p-1 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer"
                           title="View Voucher & Escrow Breakdown"
@@ -482,7 +535,7 @@ export default function CrmSettlementsPage() {
       {/* Settlement Voucher & Escrow Breakdown Modal */}
       {selectedSettlement && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
                 <div className="flex items-center gap-2">
@@ -515,7 +568,7 @@ export default function CrmSettlementsPage() {
                 </div>
                 <div>
                   <span className="text-slate-400 text-[10px] block">Order Reference</span>
-                  <span className="font-semibold text-slate-900">#{selectedSettlement.orderNumber}</span>
+                  <span className="font-semibold text-slate-900 font-mono">#{selectedSettlement.orderNumber}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 text-[10px] block">Destination</span>
@@ -524,7 +577,7 @@ export default function CrmSettlementsPage() {
                 <div>
                   <span className="text-slate-400 text-[10px] block">Tax Treatment</span>
                   <span className="font-medium text-slate-800">
-                    {selectedSettlement.vatRatePct === 0 ? '0% Export Zero-Rated' : `${selectedSettlement.vatRatePct}% SA VAT`}
+                    {selectedSettlement.vatRatePct === 0 ? '0% Export Zero-Rated (SARS SAD500)' : `${selectedSettlement.vatRatePct}% SA VAT`}
                   </span>
                 </div>
                 {selectedSettlement.customsDeclarationRef && (
@@ -542,6 +595,53 @@ export default function CrmSettlementsPage() {
                   <span className="font-medium text-slate-800">{new Date(selectedSettlement.payoutDueDate).toLocaleDateString()}</span>
                 </div>
               </div>
+
+              {/* Beneficiary Banking Details */}
+              {(() => {
+                const bankInfo = selectedSettlement.bankDetails || selectedSettlement.bankDetailsSnapshot || {};
+                return (
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1.5">
+                    <span className="text-slate-400 text-[10px] block font-semibold uppercase tracking-wider">Beneficiary Banking Snapshot</span>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-slate-400 text-[10px] block">Bank Name</span>
+                        <span className="font-semibold text-slate-900">{bankInfo.bankName || 'Standard Bank Corporate'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[10px] block">Account Holder</span>
+                        <span className="font-semibold text-slate-900">{bankInfo.accountHolder || selectedSettlement.vendorName}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[10px] block">Account Number</span>
+                        <span className="font-mono text-slate-800">{bankInfo.accountNumber || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[10px] block">{selectedSettlement.orderType === 'global_export' ? 'SWIFT / BIC' : 'Branch Code'}</span>
+                        <span className="font-mono text-slate-800">
+                          {selectedSettlement.orderType === 'global_export' 
+                            ? (bankInfo.swiftCode || 'SBZAJJZA') 
+                            : (bankInfo.branchCode || '250655')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Real Consignment Items if available */}
+              {selectedSettlement.orderItems && selectedSettlement.orderItems.length > 0 && (
+                <div className="border border-slate-100 rounded-xl p-3 bg-slate-50/70 space-y-1.5">
+                  <span className="text-slate-400 text-[10px] block font-semibold uppercase tracking-wider">Consigned Product Line Items</span>
+                  <div className="divide-y divide-slate-100 max-h-32 overflow-y-auto">
+                    {selectedSettlement.orderItems.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center py-1 text-xs text-slate-700">
+                        <span>{item.quantity || item.qty || 1}x {item.name || item.title || 'Fine Wine / Spirit Item'}</span>
+                        <span className="font-semibold text-slate-900 font-mono">R {((item.price || 0) * (item.quantity || item.qty || 1)).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="border border-slate-200 rounded-xl p-3 space-y-1.5">
                 <div className="flex justify-between text-slate-600">
@@ -579,10 +679,11 @@ export default function CrmSettlementsPage() {
                 Close
               </button>
               <button
-                onClick={() => toast.success(`Remittance voucher for ${selectedSettlement.reference} exported to print view.`)}
+                onClick={() => handleDownloadPdf(selectedSettlement)}
                 className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm flex items-center gap-1.5 cursor-pointer"
+                title="Download official PDF remittance voucher"
               >
-                <Download size={13} /> Print Remittance
+                <Download size={13} /> Download Remittance PDF
               </button>
             </div>
           </div>

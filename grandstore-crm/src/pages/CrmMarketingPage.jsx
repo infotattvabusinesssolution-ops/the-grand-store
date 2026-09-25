@@ -3,36 +3,47 @@ import {
   ShieldCheck, Users, Mail, UserCheck, AlertTriangle, 
   Download, Eye, RefreshCw, Send, CheckCircle2, Filter, X,
   Plus, Calendar, ArrowRight, Check, Play, TrendingUp, Sparkles,
-  Clock, BarChart3, FileText, Lock, Upload, Edit2, Trash2
+  Clock, BarChart3, FileText, Lock, Upload, Edit2, Trash2, Tag, ShoppingBag
 } from 'lucide-react';
 import StatCard from '../components/common/StatCard';
 import BulkImportCustomersModal from '../components/common/BulkImportCustomersModal';
+import ProductSelectorModal from '../components/marketing/ProductSelectorModal';
+import CampaignDetailModal from '../components/marketing/CampaignDetailModal';
+import CreateVoucherModal from '../components/marketing/CreateVoucherModal';
 import { useCrmMarketing } from '../hooks/useCrmMarketing';
 import { useToast } from '../context/ToastContext';
 
 // The 7-Stage Newsletter Process specified in Section 8 of GS CRM 1.docx
 const NEWSLETTER_FLOW_STEPS = [
   { step: 1, title: 'Select Audience', desc: 'Filter 18+ verified patrons & purchase categories' },
-  { step: 2, title: 'Prepare Campaign', desc: 'Craft bottle showcase, allocations & subject copy' },
-  { step: 3, title: 'Review Content', desc: 'Verify liquor compliance, age gating & ABV facts' },
-  { step: 4, title: 'Approve', desc: 'Operations or Compliance Director sign-off' },
-  { step: 5, title: 'Schedule', desc: 'Set optimal broadcast dispatch window' },
-  { step: 6, title: 'Send', desc: 'Automated dispatch with suppression safety' },
-  { step: 7, title: 'View Results', desc: 'Track opens, clicks, unsubscribes & attributed sales' }
+  { step: 2, title: 'Select Admin Bottles', desc: 'Choose direct cellar bottles & luxury vintage allocations' },
+  { step: 3, title: 'Attach Voucher', desc: 'Issue product coupon code for Web & Mobile App' },
+  { step: 4, title: 'Review Content', desc: 'Verify liquor compliance, age gating & ABV facts' },
+  { step: 5, title: 'Approve & Schedule', desc: 'Operations sign-off & dispatch window' },
+  { step: 6, title: 'Send Broadcast', desc: 'Automated dispatch with suppression safety' },
+  { step: 7, title: 'Track Real Sales', desc: 'Real order attribution & bottle conversion analytics' }
 ];
 
 export default function CrmMarketingPage() {
   const toast = useToast();
   const { 
-    stats, segments, campaigns, recentSubscribers, loading, 
+    stats, segments, campaigns, coupons, recentSubscribers, loading, 
     refresh, previewSegment, createCampaign, updateCampaignStatus,
+    sendCampaignNow, testSendCampaign, syncCampaignAttribution, deleteCampaign,
+    toggleProductCoupon, deleteProductCoupon,
     createCategory, updateCategory, deleteCategory
   } = useCrmMarketing();
 
-  const [activeTab, setActiveTab] = useState('campaigns'); // 'campaigns' | 'segments' | 'subscribers'
+  const [activeTab, setActiveTab] = useState('campaigns'); // 'campaigns' | 'vouchers' | 'segments' | 'subscribers'
   const [selectedSegment, setSelectedSegment] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+
+  // Modals
+  const [isBottlePickerOpen, setIsBottlePickerOpen] = useState(false);
+  const [selectedBottlesForCampaign, setSelectedBottlesForCampaign] = useState([]);
+  const [selectedCampaignForDrilldown, setSelectedCampaignForDrilldown] = useState(null);
+  const [isCreateVoucherModalOpen, setIsCreateVoucherModalOpen] = useState(false);
 
   // Audience Category (Create / Edit) Modal State
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -51,6 +62,38 @@ export default function CrmMarketingPage() {
   // Delete Category Confirmation Modal State
   const [deletingCategory, setDeletingCategory] = useState(null);
   const [deletingLoading, setDeletingLoading] = useState(false);
+
+  // New Campaign Modal State
+  const [isNewCampaignModalOpen, setIsNewCampaignModalOpen] = useState(false);
+  const [newCampaignData, setNewCampaignData] = useState({
+    name: '',
+    audienceSegment: 'wine_buyers',
+    audienceSegmentLabel: 'Fine Wine Collectors & Bordeaux Patrons',
+    subject: '',
+    contentBrief: '',
+    scheduledDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString().slice(0, 16)
+  });
+  const [voucherConfig, setVoucherConfig] = useState({
+    createVoucher: false,
+    code: '',
+    discountType: 'percentage',
+    discountValue: '10',
+    expiryDays: '14'
+  });
+  const [submittingCampaign, setSubmittingCampaign] = useState(false);
+
+  // Bulk Customer Import CSV Modal
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importCohortId, setImportCohortId] = useState('auto');
+
+  // Test Email Quick Dispatch
+  const [testEmailModalCampaign, setTestEmailModalCampaign] = useState(null);
+  const [testEmailAddress, setTestEmailAddress] = useState('');
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
+
+  // Dispatch Confirmation Modal
+  const [dispatchConfirmCampaign, setDispatchConfirmCampaign] = useState(null);
+  const [dispatchingLoading, setDispatchingLoading] = useState(false);
 
   const handleOpenCreateCategory = () => {
     setEditingCategory(null);
@@ -132,29 +175,10 @@ export default function CrmMarketingPage() {
     }
   };
 
-  // New Campaign Modal
-  const [isNewCampaignModalOpen, setIsNewCampaignModalOpen] = useState(false);
-  const [newCampaignData, setNewCampaignData] = useState({
-    name: '',
-    audienceSegment: 'wine_buyers',
-    audienceSegmentLabel: 'Fine Wine Collectors & Bordeaux Patrons',
-    subject: '',
-    contentBrief: '',
-    scheduledDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString().slice(0, 16)
-  });
-  const [submittingCampaign, setSubmittingCampaign] = useState(false);
-
-  // Bulk Customer Import CSV Modal
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [importCohortId, setImportCohortId] = useState('auto');
-
   const handleOpenImport = (cohortId = 'auto') => {
     setImportCohortId(cohortId);
     setIsImportModalOpen(true);
   };
-
-  // Campaign Review Modal
-  const [reviewCampaign, setReviewCampaign] = useState(null);
 
   const handleOpenPreview = async (segment) => {
     setSelectedSegment(segment);
@@ -182,7 +206,7 @@ export default function CrmMarketingPage() {
       const rows = recipients.map(r => [
         `"${r.name || 'Valued Patron'}"`,
         `"${r.email}"`,
-        `"${r.crmCustomerType || 'Retail'}"`,
+        `"${r.type || 'Retail'}"`,
         `"VERIFIED_ADULT_18+"`,
         `"${new Date().toISOString()}"`
       ]);
@@ -211,12 +235,15 @@ export default function CrmMarketingPage() {
     setSubmittingCampaign(true);
     try {
       const segObj = segments.find(s => s.id === newCampaignData.audienceSegment);
-      await createCampaign({
+      const payload = {
         ...newCampaignData,
         audienceSegmentLabel: segObj?.name || 'Curated Cohort',
-        recipientCount: segObj?.count || 120
-      });
-      toast.success('Campaign created and moved to Content Review stage!');
+        featuredProductIds: selectedBottlesForCampaign.map(b => b.id || b.productId),
+        voucherData: voucherConfig.createVoucher ? voucherConfig : null
+      };
+
+      await createCampaign(payload);
+      toast.success('Campaign created with selected Admin bottles!');
       setIsNewCampaignModalOpen(false);
       setNewCampaignData({
         name: '',
@@ -226,8 +253,16 @@ export default function CrmMarketingPage() {
         contentBrief: '',
         scheduledDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString().slice(0, 16)
       });
+      setSelectedBottlesForCampaign([]);
+      setVoucherConfig({
+        createVoucher: false,
+        code: '',
+        discountType: 'percentage',
+        discountValue: '10',
+        expiryDays: '14'
+      });
     } catch (err) {
-      toast.error('Failed to create campaign');
+      toast.error(err?.response?.data?.message || 'Failed to create campaign');
     } finally {
       setSubmittingCampaign(false);
     }
@@ -237,11 +272,67 @@ export default function CrmMarketingPage() {
     try {
       await updateCampaignStatus(campaignId, nextStatus);
       toast.success(`Campaign moved to stage: "${nextStatus.replace('_', ' ').toUpperCase()}"`);
-      if (reviewCampaign?._id === campaignId) {
-        setReviewCampaign(null);
-      }
     } catch (err) {
       toast.error('Failed to advance campaign status');
+    }
+  };
+
+  const handleConfirmDispatch = async () => {
+    if (!dispatchConfirmCampaign) return;
+    setDispatchingLoading(true);
+    try {
+      const res = await sendCampaignNow(dispatchConfirmCampaign._id);
+      toast.success(res?.message || 'Broadcast dispatched successfully!');
+      setDispatchConfirmCampaign(null);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to dispatch campaign');
+    } finally {
+      setDispatchingLoading(false);
+    }
+  };
+
+  const handleSendTestEmailSubmit = async (e) => {
+    e.preventDefault();
+    if (!testEmailAddress.trim() || !testEmailModalCampaign) return;
+    setTestEmailLoading(true);
+    try {
+      await testSendCampaign(testEmailModalCampaign._id, testEmailAddress.trim());
+      toast.success(`Test preview dispatched to ${testEmailAddress}!`);
+      setTestEmailModalCampaign(null);
+      setTestEmailAddress('');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to send test email');
+    } finally {
+      setTestEmailLoading(false);
+    }
+  };
+
+  const handleToggleCoupon = async (couponId) => {
+    try {
+      const res = await toggleProductCoupon(couponId);
+      toast.success(res?.message || 'Coupon status updated');
+    } catch (err) {
+      toast.error('Failed to update coupon status');
+    }
+  };
+
+  const handleDeleteCoupon = async (couponId) => {
+    if (!window.confirm('Are you sure you want to remove this customer voucher?')) return;
+    try {
+      const res = await deleteProductCoupon(couponId);
+      toast.success(res?.message || 'Voucher removed');
+    } catch (err) {
+      toast.error('Failed to delete coupon');
+    }
+  };
+
+  const handleDeleteCampaign = async (campId) => {
+    if (!window.confirm('Are you sure you want to delete this campaign?')) return;
+    try {
+      await deleteCampaign(campId);
+      toast.success('Campaign removed successfully');
+    } catch (err) {
+      toast.error('Failed to delete campaign');
     }
   };
 
@@ -262,6 +353,10 @@ export default function CrmMarketingPage() {
     }
   };
 
+  // Real aggregate attributed sales
+  const totalAttributedRevenue = campaigns.reduce((sum, c) => sum + (Number(c.attributedSalesZar) || 0), 0);
+  const totalAttributedOrders = campaigns.reduce((sum, c) => sum + (Number(c.attributedOrdersCount) || (c.attributedOrders?.length || 0)), 0);
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Page Header */}
@@ -277,14 +372,21 @@ export default function CrmMarketingPage() {
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Section 8 Operational Engine: 7-stage newsletter process, curated audience cohorts, age-gated compliance, and revenue attribution.
+            Section 8 Operational Engine: 7-stage newsletter process, 343 Admin bottles, real customer vouchers, and live sales attribution.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button 
+            onClick={() => setIsCreateVoucherModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors shadow-2xs cursor-pointer hover:border-amber-300 hover:text-amber-800"
+            title="Create customer voucher for Grand Store Admin products"
+          >
+            <Tag size={14} className="text-amber-600" /> Create Voucher
+          </button>
           <button 
             onClick={() => handleOpenImport('auto')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors shadow-xs cursor-pointer hover:border-blue-300 hover:text-blue-700"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors shadow-2xs cursor-pointer hover:border-blue-300 hover:text-blue-700"
             title="Bulk import patrons, wine club allocations, or wholesale buyers via CSV"
           >
             <Upload size={14} className="text-blue-600" /> Import Customers (CSV)
@@ -298,14 +400,14 @@ export default function CrmMarketingPage() {
           <button 
             onClick={refresh}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-blue-600 transition-colors shadow-sm cursor-pointer"
-            title="Refresh All Metrics"
+            title="Refresh All Real Metrics"
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
-      {/* Compliance & Performance Stat Cards */}
+      {/* Compliance & Performance Stat Cards (100% Real Live Metrics) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
           title="Legal Age Verified (18+)" 
@@ -323,38 +425,37 @@ export default function CrmMarketingPage() {
         />
         <StatCard 
           title="Attributed Sales (ZAR)" 
-          value={`R ${(campaigns.reduce((sum, c) => sum + (c.attributedSalesZar || 0), 0)).toLocaleString()}`} 
+          value={`R ${totalAttributedRevenue.toLocaleString()}`} 
           icon={TrendingUp} 
           color="purple"
-          subtitle="Direct sales tracked to broadcasts"
+          subtitle={`${totalAttributedOrders} orders tracked from broadcasts`}
         />
         <StatCard 
-          title="Global Unsubscribes" 
-          value={stats.unsubscribedCount || 0} 
-          icon={ShieldCheck} 
+          title="Customer Vouchers" 
+          value={coupons.length || 0} 
+          icon={Tag} 
           color="amber"
-          subtitle="Zero-tolerance suppression list"
+          subtitle={`${coupons.reduce((sum, c) => sum + (c.usedCount || 0), 0)} redemptions across store & app`}
         />
       </div>
 
-      {/* The 7-Stage Newsletter Process Pipeline Visualizer (Section 8 of GS CRM 1.docx) */}
+      {/* The 7-Stage Process Stepper */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
           <div>
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Sparkles size={16} className="text-blue-600" />
-              The 7-Stage Newsletter & Campaign Process
+              The 7-Stage Luxury Campaign & Allocation Pipeline
             </h2>
             <p className="text-xs text-slate-500">
-              Standard operating procedure for fine wine and luxury spirits marketing (GS CRM 1, Section 8)
+              Admin bottle selection, customer voucher generation, bulk dispatch, and real sales attribution.
             </p>
           </div>
           <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
-            Alcohol Advertising Compliant
+            Omnichannel (Web Global, Local & Mobile App)
           </span>
         </div>
 
-        {/* Pipeline Stepper */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-2">
           {NEWSLETTER_FLOW_STEPS.map((s, idx) => (
             <div 
@@ -379,21 +480,32 @@ export default function CrmMarketingPage() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex items-center gap-2 border-b border-slate-200 text-xs font-bold">
+      <div className="flex items-center gap-2 border-b border-slate-200 text-xs font-bold overflow-x-auto">
         <button
           onClick={() => setActiveTab('campaigns')}
-          className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'campaigns'
               ? 'border-blue-600 text-blue-600 font-extrabold'
               : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
-          <Mail size={16} /> Campaign Management ({campaigns.length})
+          <Mail size={16} /> Campaign Operations ({campaigns.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('vouchers')}
+          className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'vouchers'
+              ? 'border-blue-600 text-blue-600 font-extrabold'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Tag size={16} /> Product Vouchers & Coupons ({coupons.length})
         </button>
 
         <button
           onClick={() => setActiveTab('segments')}
-          className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'segments'
               ? 'border-blue-600 text-blue-600 font-extrabold'
               : 'border-transparent text-slate-500 hover:text-slate-900'
@@ -404,7 +516,7 @@ export default function CrmMarketingPage() {
 
         <button
           onClick={() => setActiveTab('subscribers')}
-          className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`pb-3 px-3 flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'subscribers'
               ? 'border-blue-600 text-blue-600 font-extrabold'
               : 'border-transparent text-slate-500 hover:text-slate-900'
@@ -414,14 +526,14 @@ export default function CrmMarketingPage() {
         </button>
       </div>
 
-      {/* TAB 1: CAMPAIGN MANAGEMENT TABLE (SECTION 8 OF GS CRM 1.DOCX) */}
+      {/* TAB 1: CAMPAIGN OPERATIONS */}
       {activeTab === 'campaigns' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden space-y-4">
           <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-slate-900">Campaign Operations Board</h2>
               <p className="text-xs text-slate-500">
-                Track marketing campaigns across approval, scheduling, delivery rates, and attributed bottle sales.
+                Track marketing campaigns across approval, real bulk email delivery, and live attributed bottle sales.
               </p>
             </div>
             <button
@@ -436,121 +548,125 @@ export default function CrmMarketingPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50/80 text-slate-500 uppercase font-semibold border-b border-slate-100">
                 <tr>
-                  <th className="px-6 py-3.5">Campaign Name</th>
-                  <th className="px-6 py-3.5">Audience Cohort</th>
-                  <th className="px-6 py-3.5">Scheduled / Sent Date</th>
-                  <th className="px-6 py-3.5">Approval Status</th>
-                  <th className="px-6 py-3.5">Delivery Results</th>
-                  <th className="px-6 py-3.5">Unsubs</th>
-                  <th className="px-6 py-3.5">Clicks</th>
-                  <th className="px-6 py-3.5">Attributed Sales</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
+                  <th className="px-5 py-3.5">Campaign Details</th>
+                  <th className="px-5 py-3.5">Marketed Admin Bottles</th>
+                  <th className="px-5 py-3.5">Audience Cohort</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5">Delivery Results</th>
+                  <th className="px-5 py-3.5">Attributed Sales (Real)</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {campaigns.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-slate-400">
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
                       No campaigns created yet. Click "Create Campaign" to initiate the 7-step process.
                     </td>
                   </tr>
                 ) : (
                   campaigns.map((camp) => (
                     <tr key={camp._id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-4">
                         <p className="font-bold text-slate-900">{camp.name}</p>
                         <p className="text-[11px] text-slate-500 truncate max-w-xs">{camp.subject}</p>
+                        {camp.attachedCoupon?.code && (
+                          <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-mono font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                            <Tag size={10} /> Voucher: {camp.attachedCoupon.code}
+                          </span>
+                        )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-4">
+                        {camp.featuredProducts && camp.featuredProducts.length > 0 ? (
+                          <div className="flex items-center gap-1.5 flex-wrap max-w-xs">
+                            {camp.featuredProducts.map((p, i) => (
+                              <span
+                                key={p.productId || i}
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200"
+                                title={p.name}
+                              >
+                                {p.image && <img src={p.image} alt={p.name} className="w-3.5 h-4 object-contain rounded" />}
+                                <span className="max-w-[90px] truncate">{p.name}</span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic text-[11px]">General Allocation</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4">
                         <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
                           {camp.audienceSegmentLabel || camp.audienceSegment}
                         </span>
                         <p className="text-[10px] text-slate-400 mt-0.5">{camp.recipientCount || 0} Recipients</p>
                       </td>
-                      <td className="px-6 py-4 text-slate-600">
-                        {camp.sentDate ? (
-                          <div>
-                            <span className="text-emerald-700 font-bold">Sent: </span>
-                            {new Date(camp.sentDate).toLocaleDateString()}
-                          </div>
-                        ) : camp.scheduledDate ? (
-                          <div>
-                            <span className="text-purple-700 font-bold">Sched: </span>
-                            {new Date(camp.scheduledDate).toLocaleDateString()}
-                          </div>
-                        ) : (
-                          'Unscheduled'
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-4">
                         {getStatusBadge(camp.status)}
-                        {camp.approvedByName && (
-                          <p className="text-[10px] text-slate-400 mt-0.5">By: {camp.approvedByName}</p>
+                        {camp.sentDate && (
+                          <p className="text-[10px] text-emerald-700 font-semibold mt-0.5">
+                            {new Date(camp.sentDate).toLocaleDateString()}
+                          </p>
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-4">
                         {camp.status === 'sent' ? (
                           <div className="space-y-0.5">
                             <span className="text-emerald-700 font-bold">{camp.deliveryResults?.delivered || 0}</span>
                             <span className="text-slate-400 text-[10px]"> / {camp.deliveryResults?.sent || 0}</span>
-                            <p className="text-[10px] text-slate-400">({camp.deliveryResults?.opened || 0} opened)</p>
+                            <p className="text-[10px] text-slate-400">({camp.deliveryResults?.opened || 0} opens)</p>
                           </div>
                         ) : (
                           <span className="text-slate-400 italic">Pending dispatch</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 font-semibold text-slate-700">
-                        {camp.unsubscribes || 0}
-                      </td>
-                      <td className="px-6 py-4 font-semibold text-blue-600">
-                        {camp.clicks || 0}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-slate-900">
-                        {camp.attributedSalesZar > 0 ? (
-                          <span className="text-emerald-600">R {camp.attributedSalesZar.toLocaleString()}</span>
+                      <td className="px-5 py-4">
+                        {Number(camp.attributedSalesZar) > 0 ? (
+                          <div>
+                            <span className="font-extrabold text-emerald-600 text-sm">
+                              R {Number(camp.attributedSalesZar).toLocaleString()}
+                            </span>
+                            <p className="text-[10px] text-slate-400">
+                              {camp.attributedOrdersCount || camp.attributedOrders?.length || 0} orders placed
+                            </p>
+                          </div>
                         ) : (
-                          <span className="text-slate-400">R 0</span>
+                          <span className="text-slate-400 font-semibold">R 0</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="px-5 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
                           <button
-                            onClick={() => setReviewCampaign(camp)}
-                            className="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                            title="Inspect Campaign Details & Content Brief"
+                            onClick={() => setSelectedCampaignForDrilldown(camp._id)}
+                            className="px-2.5 py-1 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors cursor-pointer"
+                            title="Inspect Real Attributed Orders & Performance Funnel"
                           >
-                            Review
+                            Drilldown
                           </button>
-                          {camp.status === 'draft' && (
+                          <button
+                            onClick={() => {
+                              setTestEmailModalCampaign(camp);
+                              setTestEmailAddress('');
+                            }}
+                            className="px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                            title="Send test preview to admin inbox"
+                          >
+                            Test Email
+                          </button>
+                          {camp.status !== 'sent' && (
                             <button
-                              onClick={() => handleAdvanceCampaign(camp._id, 'review_pending')}
-                              className="px-2.5 py-1 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition-colors cursor-pointer"
-                            >
-                              Submit
-                            </button>
-                          )}
-                          {camp.status === 'review_pending' && (
-                            <button
-                              onClick={() => handleAdvanceCampaign(camp._id, 'approved')}
-                              className="px-2.5 py-1 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors cursor-pointer"
-                            >
-                              Approve
-                            </button>
-                          )}
-                          {camp.status === 'approved' && (
-                            <button
-                              onClick={() => handleAdvanceCampaign(camp._id, 'scheduled')}
-                              className="px-2.5 py-1 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors cursor-pointer"
-                            >
-                              Schedule
-                            </button>
-                          )}
-                          {camp.status === 'scheduled' && (
-                            <button
-                              onClick={() => handleAdvanceCampaign(camp._id, 'sent')}
+                              onClick={() => setDispatchConfirmCampaign(camp)}
                               className="px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors cursor-pointer"
                             >
                               Send Now
+                            </button>
+                          )}
+                          {camp.status === 'draft' && (
+                            <button
+                              onClick={() => handleDeleteCampaign(camp._id)}
+                              className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer"
+                              title="Delete Draft Campaign"
+                            >
+                              <Trash2 size={13} />
                             </button>
                           )}
                         </div>
@@ -564,7 +680,121 @@ export default function CrmMarketingPage() {
         </div>
       )}
 
-      {/* TAB 2: AUDIENCE SEGMENTS & LEGAL AGE COMPLIANCE */}
+      {/* TAB 2: PRODUCT VOUCHERS & COUPONS (ADMIN PRODUCTS ONLY) */}
+      {activeTab === 'vouchers' && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900">Customer Product Vouchers</h2>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  Admin Products Only (vendorId: null)
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Vouchers created here are live across Grand Store Global Web, Local Web, and the Mobile App.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsCreateVoucherModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors cursor-pointer shadow-sm shadow-blue-500/20"
+            >
+              <Plus size={14} /> Create Customer Voucher
+            </button>
+          </div>
+
+          <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-100">
+                <tr>
+                  <th className="px-5 py-3">Voucher Code</th>
+                  <th className="px-5 py-3">Targeted Admin Bottles</th>
+                  <th className="px-5 py-3">Discount</th>
+                  <th className="px-5 py-3">Redemptions</th>
+                  <th className="px-5 py-3">Expiry Date</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {coupons.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
+                      No customer product vouchers created yet. Click "Create Customer Voucher" to issue a promo code.
+                    </td>
+                  </tr>
+                ) : (
+                  coupons.map((c) => (
+                    <tr key={c._id} className="hover:bg-slate-50/50">
+                      <td className="px-5 py-3.5 font-mono font-bold text-amber-900">
+                        <div className="flex items-center gap-1.5">
+                          <Tag size={14} className="text-amber-600" />
+                          <span className="bg-amber-50 px-2 py-0.5 rounded border border-amber-200">{c.code}</span>
+                        </div>
+                        {c.title && <p className="text-[10px] text-slate-400 font-sans font-normal mt-0.5">{c.title}</p>}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {c.applicableProducts && c.applicableProducts.length > 0 ? (
+                          <div className="flex items-center gap-1 flex-wrap max-w-xs">
+                            {c.applicableProducts.map((p, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200"
+                              >
+                                {p.image && <img src={p.image} alt={p.name} className="w-3.5 h-4 object-contain rounded" />}
+                                <span className="max-w-[100px] truncate">{p.name}</span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic text-[11px]">All Admin Bottles</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 font-bold text-slate-900">
+                        {c.discountType === 'percentage' ? `${c.discountValue}% OFF` : `R ${c.discountValue} OFF`}
+                      </td>
+                      <td className="px-5 py-3.5 font-extrabold text-blue-700">
+                        {c.usedCount || 0} {c.usageLimit ? `/ ${c.usageLimit}` : 'uses'}
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-600">
+                        {c.expiryDate ? new Date(c.expiryDate).toLocaleDateString() : 'No expiry'}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          c.isActive 
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                            : 'bg-slate-100 text-slate-500 border border-slate-200'
+                        }`}>
+                          {c.isActive ? 'Active' : 'Paused'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleToggleCoupon(c._id)}
+                            className="px-2.5 py-1 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg cursor-pointer"
+                          >
+                            {c.isActive ? 'Pause' : 'Activate'}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCoupon(c._id)}
+                            className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer"
+                            title="Delete Voucher"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: CURATED AUDIENCES */}
       {activeTab === 'segments' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -572,7 +802,7 @@ export default function CrmMarketingPage() {
               <h2 className="text-base font-bold text-slate-900">Curated Compliance Audiences (Section 8)</h2>
               <p className="text-xs text-slate-500">Target specific luxury cohorts with zero non-compliant outreach</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
                 {segments.length} Active Cohorts
               </span>
@@ -584,7 +814,7 @@ export default function CrmMarketingPage() {
               </button>
               <button
                 onClick={() => handleOpenImport('auto')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors cursor-pointer shadow-2xs"
               >
                 <Upload size={14} /> Import Bulk Customers (CSV)
               </button>
@@ -642,15 +872,13 @@ export default function CrmMarketingPage() {
                       onClick={() => handleOpenPreview(seg)}
                       className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
                     >
-                      <Eye size={13} />
-                      Preview ({seg.count})
+                      <Eye size={13} /> Preview ({seg.count})
                     </button>
                     <button
                       onClick={() => handleExportCsv(seg)}
                       className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
                     >
-                      <Download size={13} />
-                      Export CSV
+                      <Download size={13} /> Export CSV
                     </button>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -659,21 +887,17 @@ export default function CrmMarketingPage() {
                       className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 px-2 py-1.5 rounded-lg border border-emerald-200 transition-colors cursor-pointer"
                       title={`Import CSV customers into ${seg.name}`}
                     >
-                      <Upload size={13} />
-                      Import
+                      <Upload size={13} /> Import
                     </button>
                     <button
                       onClick={() => handleOpenEditCategory(seg)}
                       className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-blue-50 px-2 py-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
-                      title="Edit Category Details"
                     >
-                      <Edit2 size={13} />
-                      Edit
+                      <Edit2 size={13} /> Edit
                     </button>
                     <button
                       onClick={() => setDeletingCategory(seg)}
                       className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2 py-1.5 rounded-lg border border-rose-200 transition-colors cursor-pointer"
-                      title="Delete Category"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -685,7 +909,7 @@ export default function CrmMarketingPage() {
         </div>
       )}
 
-      {/* TAB 3: LIVE OPT-IN STREAM & SUPPRESSION */}
+      {/* TAB 4: LIVE OPT-IN STREAM */}
       {activeTab === 'subscribers' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
@@ -750,14 +974,14 @@ export default function CrmMarketingPage() {
         </div>
       )}
 
-      {/* CREATE NEW CAMPAIGN MODAL (7-STEP PIPELINE INITIATOR) */}
+      {/* CREATE CAMPAIGN MODAL (WITH ADMIN BOTTLES & VOUCHER GENERATOR) */}
       {isNewCampaignModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto crm-scrollbar">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <h3 className="font-bold text-slate-900 text-sm">Create New Marketing Campaign</h3>
-                <p className="text-xs text-slate-400">Initiate Step 1 (Select Audience) & Step 2 (Prepare Campaign)</p>
+                <h3 className="font-extrabold text-slate-900 text-sm">Create Luxury Marketing Campaign</h3>
+                <p className="text-xs text-slate-400">Attach direct Admin bottles, generate customer vouchers, and queue for dispatch</p>
               </div>
               <button 
                 onClick={() => setIsNewCampaignModalOpen(false)}
@@ -767,13 +991,13 @@ export default function CrmMarketingPage() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateCampaignSubmit} className="space-y-3.5 text-xs">
+            <form onSubmit={handleCreateCampaignSubmit} className="space-y-4 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Campaign Name *</label>
+                <label className="block font-bold text-slate-700 mb-1">Campaign Title *</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Rare Bordeaux Allocation / Spring Gin Drop"
+                  placeholder="e.g. Krug Grand Cuvée & Rare Champagne Allocation Drop"
                   value={newCampaignData.name}
                   onChange={(e) => setNewCampaignData({ ...newCampaignData, name: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
@@ -802,12 +1026,121 @@ export default function CrmMarketingPage() {
                 </select>
               </div>
 
+              {/* Step 2: Select Admin Bottles */}
+              <div className="border border-slate-200 rounded-xl p-3.5 space-y-2 bg-slate-50/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="font-bold text-slate-800 block text-xs">
+                      Marketed Admin Bottles (Step 2)
+                    </label>
+                    <p className="text-[10px] text-slate-500">
+                      Choose direct cellar bottles to embed in marketing emails and lock vouchers to.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsBottlePickerOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 cursor-pointer shadow-2xs"
+                  >
+                    <ShoppingBag size={13} /> Select Bottles ({selectedBottlesForCampaign.length})
+                  </button>
+                </div>
+
+                {selectedBottlesForCampaign.length > 0 ? (
+                  <div className="flex items-center gap-2 flex-wrap pt-1">
+                    {selectedBottlesForCampaign.map((b) => (
+                      <span
+                        key={b.id || b.productId}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-800 shadow-2xs"
+                      >
+                        {b.image && <img src={b.image} alt={b.name} className="w-4 h-5 object-contain" />}
+                        <span className="max-w-[130px] truncate">{b.name}</span>
+                        <span className="text-emerald-700 font-bold">R {Number(b.price || 0).toLocaleString()}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBottlesForCampaign(selectedBottlesForCampaign.filter(x => x.id !== b.id))}
+                          className="text-slate-400 hover:text-rose-600 cursor-pointer"
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-400 italic">No bottles chosen yet. Click "Select Bottles" to choose from 343 direct bottles.</p>
+                )}
+              </div>
+
+              {/* Step 3: Attach Customer Voucher */}
+              <div className="border border-slate-200 rounded-xl p-3.5 space-y-2.5 bg-amber-50/30">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 font-bold text-slate-800 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={voucherConfig.createVoucher}
+                      onChange={(e) => setVoucherConfig({ ...voucherConfig, createVoucher: e.target.checked })}
+                      className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+                    />
+                    <span>Attach Exclusive Customer Voucher (Step 3)</span>
+                  </label>
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100/60 px-2 py-0.5 rounded">
+                    Admin Products Only
+                  </span>
+                </div>
+
+                {voucherConfig.createVoucher && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Voucher Code (Optional)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. KRUG10 (Auto if blank)"
+                        value={voucherConfig.code}
+                        onChange={(e) => setVoucherConfig({ ...voucherConfig, code: e.target.value.toUpperCase() })}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Discount Type & Value *</label>
+                      <div className="flex gap-1">
+                        <select
+                          value={voucherConfig.discountType}
+                          onChange={(e) => setVoucherConfig({ ...voucherConfig, discountType: e.target.value })}
+                          className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                        >
+                          <option value="percentage">% Off</option>
+                          <option value="fixed_amount">R Off</option>
+                        </select>
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="10"
+                          value={voucherConfig.discountValue}
+                          onChange={(e) => setVoucherConfig({ ...voucherConfig, discountValue: e.target.value })}
+                          className="w-16 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Validity (Days)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={voucherConfig.expiryDays}
+                        onChange={(e) => setVoucherConfig({ ...voucherConfig, expiryDays: e.target.value })}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Email Subject Header *</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Exclusive Allocation: 2019 Stellenbosch Reserve"
+                  placeholder="e.g. Exclusive Private Allocation: Rare Stellenbosch Reserve"
                   value={newCampaignData.subject}
                   onChange={(e) => setNewCampaignData({ ...newCampaignData, subject: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
@@ -815,10 +1148,10 @@ export default function CrmMarketingPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Content Brief & Featured Bottles</label>
+                <label className="block font-bold text-slate-700 mb-1">Content Brief & Editorial Copy</label>
                 <textarea
                   rows={3}
-                  placeholder="Describe the wines, discounts, free delivery thresholds, or tasting event hooks..."
+                  placeholder="Describe the wines, tasting notes, sommelier recommendations, or cellar allocations..."
                   value={newCampaignData.contentBrief}
                   onChange={(e) => setNewCampaignData({ ...newCampaignData, contentBrief: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
@@ -835,13 +1168,6 @@ export default function CrmMarketingPage() {
                 />
               </div>
 
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-start gap-2 text-[11px] text-emerald-800">
-                <ShieldCheck size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span>
-                  <strong>Compliance Guard:</strong> All recipients will be automatically checked for 18+ legal drinking age verification and active opt-in consent before dispatch.
-                </span>
-              </div>
-
               <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
                 <button
                   type="button"
@@ -853,9 +1179,9 @@ export default function CrmMarketingPage() {
                 <button
                   type="submit"
                   disabled={submittingCampaign}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm cursor-pointer"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm cursor-pointer"
                 >
-                  {submittingCampaign ? 'Queuing...' : 'Create & Move to Review'}
+                  {submittingCampaign ? 'Creating...' : 'Create Campaign'}
                 </button>
               </div>
             </form>
@@ -863,86 +1189,117 @@ export default function CrmMarketingPage() {
         </div>
       )}
 
-      {/* CAMPAIGN REVIEW & PIPELINE INSPECTOR MODAL */}
-      {reviewCampaign && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+      {/* DISPATCH CONFIRMATION MODAL */}
+      {dispatchConfirmCampaign && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">
+                <Send size={20} />
+              </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-slate-900 text-sm">{reviewCampaign.name}</h3>
-                  {getStatusBadge(reviewCampaign.status)}
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">Audience: {reviewCampaign.audienceSegmentLabel}</p>
+                <h3 className="font-bold text-slate-900 text-sm">Dispatch Live Bulk Campaign?</h3>
+                <p className="text-xs text-slate-500">Real emails will be delivered to actual recipient inboxes.</p>
               </div>
-              <button 
-                onClick={() => setReviewCampaign(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+            </div>
+
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs space-y-1">
+              <p className="font-bold text-slate-800">{dispatchConfirmCampaign.name}</p>
+              <p className="text-slate-600">Audience: {dispatchConfirmCampaign.audienceSegmentLabel}</p>
+              <p className="text-blue-600 font-semibold">{dispatchConfirmCampaign.recipientCount} legal 18+ verified recipients</p>
+            </div>
+
+            <p className="text-[11px] text-slate-400">
+              Alcohol advertising compliance checks will run automatically. Deliveries are logged in real time.
+            </p>
+
+            <div className="pt-2 flex justify-end gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setDispatchConfirmCampaign(null)}
+                className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
               >
-                <X size={18} />
+                Cancel
               </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
-                <p className="font-bold text-slate-700">Subject Line:</p>
-                <p className="text-slate-900 font-medium">{reviewCampaign.subject}</p>
-                <p className="font-bold text-slate-700 pt-2">Content Brief:</p>
-                <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{reviewCampaign.contentBrief || 'No specific content notes provided.'}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                  <span className="text-slate-400 block">Recipients</span>
-                  <span className="font-bold text-slate-900">{reviewCampaign.recipientCount || 0}</span>
-                </div>
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                  <span className="text-slate-400 block">Attributed Sales</span>
-                  <span className="font-bold text-emerald-600">R {(reviewCampaign.attributedSalesZar || 0).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">
-                Created: {new Date(reviewCampaign.createdAt).toLocaleDateString()}
-              </span>
-              <div className="flex gap-2">
-                {reviewCampaign.status === 'review_pending' && (
-                  <button
-                    onClick={() => handleAdvanceCampaign(reviewCampaign._id, 'approved')}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-sm"
-                  >
-                    Approve Content
-                  </button>
-                )}
-                {reviewCampaign.status === 'approved' && (
-                  <button
-                    onClick={() => handleAdvanceCampaign(reviewCampaign._id, 'scheduled')}
-                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-sm"
-                  >
-                    Set Schedule
-                  </button>
-                )}
-                {reviewCampaign.status === 'scheduled' && (
-                  <button
-                    onClick={() => handleAdvanceCampaign(reviewCampaign._id, 'sent')}
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-sm"
-                  >
-                    Send Now
-                  </button>
-                )}
-                <button
-                  onClick={() => setReviewCampaign(null)}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs cursor-pointer"
-                >
-                  Close
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleConfirmDispatch}
+                disabled={dispatchingLoading}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm cursor-pointer"
+              >
+                {dispatchingLoading ? 'Broadcasting...' : 'Yes, Dispatch Broadcast'}
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* TEST EMAIL QUICK MODAL */}
+      {testEmailModalCampaign && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 text-sm">Send Live Test Email</h3>
+              <button onClick={() => setTestEmailModalCampaign(null)} className="text-slate-400 hover:text-slate-700">
+                <X size={16} />
+              </button>
+            </div>
+            <form onSubmit={handleSendTestEmailSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Deliver Test Email To:</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="your.email@domain.com"
+                  value={testEmailAddress}
+                  onChange={(e) => setTestEmailAddress(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setTestEmailModalCampaign(null)}
+                  className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={testEmailLoading}
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs cursor-pointer"
+                >
+                  {testEmailLoading ? 'Sending...' : 'Send Preview'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 1: BOTTLE SELECTOR MODAL */}
+      <ProductSelectorModal
+        isOpen={isBottlePickerOpen}
+        onClose={() => setIsBottlePickerOpen(false)}
+        selectedProducts={selectedBottlesForCampaign}
+        onSelectProducts={setSelectedBottlesForCampaign}
+        maxSelectable={6}
+      />
+
+      {/* MODAL 2: CAMPAIGN DETAIL & ATTRIBUTED SALES DRILLDOWN */}
+      <CampaignDetailModal
+        isOpen={Boolean(selectedCampaignForDrilldown)}
+        onClose={() => setSelectedCampaignForDrilldown(null)}
+        campaignId={selectedCampaignForDrilldown}
+        onCampaignUpdated={refresh}
+      />
+
+      {/* MODAL 3: CREATE STANDALONE VOUCHER MODAL */}
+      <CreateVoucherModal
+        isOpen={isCreateVoucherModalOpen}
+        onClose={() => setIsCreateVoucherModalOpen(false)}
+        onVoucherCreated={refresh}
+      />
 
       {/* Cohort Preview Modal */}
       {selectedSegment && (
@@ -999,8 +1356,7 @@ export default function CrmMarketingPage() {
                 }}
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors cursor-pointer"
               >
-                <Upload size={13} />
-                Import More Customers (CSV)
+                <Upload size={13} /> Import More Customers (CSV)
               </button>
               <div className="flex justify-end gap-2">
                 <button
@@ -1031,189 +1387,6 @@ export default function CrmMarketingPage() {
           refresh();
         }}
       />
-
-      {/* CREATE / EDIT AUDIENCE CATEGORY MODAL */}
-      {isCategoryModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto crm-scrollbar">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm">
-                  {editingCategory ? 'Edit Audience Category' : 'Create New Audience Category'}
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Configure demographic targeting, legal age compliance gating, and outreach channels
-                </p>
-              </div>
-              <button 
-                onClick={() => setIsCategoryModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCategorySubmit} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Category / Cohort Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Cap Classique & Sparkling Wine Lovers"
-                  value={categoryFormData.name}
-                  onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Audience Description</label>
-                <textarea
-                  rows={2}
-                  placeholder="Target criteria, vintage affinities, customer preferences..."
-                  value={categoryFormData.description}
-                  onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Target Customer Cohort</label>
-                  <select
-                    value={categoryFormData.customerType}
-                    onChange={(e) => setCategoryFormData({ ...categoryFormData, customerType: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
-                  >
-                    <option value="all_18plus">All 18+ Verified Buyers</option>
-                    <option value="vip_collector">VIP Collectors (High Net Worth)</option>
-                    <option value="trade_buyer">B2B Trade & Wholesale Accounts</option>
-                    <option value="event_attendees">Tasting & Masterclass Attendees</option>
-                    <option value="auction_bidder">Live Auction & Lot Bidders</option>
-                    <option value="optin_newsletter">General Newsletter Opt-ins</option>
-                    <option value="custom">Custom Tag Match Only</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Marketing Channels</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Newsletter & Direct Email, WhatsApp Concierge"
-                    value={categoryFormData.channel}
-                    onChange={(e) => setCategoryFormData({ ...categoryFormData, channel: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Compliance Status Label</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Verified (100% Legal Age)"
-                    value={categoryFormData.complianceStatus}
-                    onChange={(e) => setCategoryFormData({ ...categoryFormData, complianceStatus: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Customer CRM Tags (Comma separated)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. sparkling, cap_classique, champagne"
-                    value={categoryFormData.tags}
-                    onChange={(e) => setCategoryFormData({ ...categoryFormData, tags: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Recommended Offers & Highlights</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Vintage Blanc de Blancs Allocations, Private Cellar Previews"
-                  value={categoryFormData.recommendedOffers}
-                  onChange={(e) => setCategoryFormData({ ...categoryFormData, recommendedOffers: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
-                />
-              </div>
-
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-start gap-2 text-[11px] text-emerald-800">
-                <ShieldCheck size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span>
-                  <strong>Database Synchronization:</strong> This category is saved in the central database and immediately accessible across campaign builders and audience exports.
-                </span>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCategoryModalOpen(false)}
-                  className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingCategory}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm cursor-pointer"
-                >
-                  {submittingCategory ? 'Saving...' : editingCategory ? 'Save Changes' : 'Create Category'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* DELETE CATEGORY CONFIRMATION MODAL */}
-      {deletingCategory && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
-                <Trash2 size={20} />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm">Delete Audience Category</h3>
-                <p className="text-xs text-slate-500">Are you sure you want to remove this category?</p>
-              </div>
-            </div>
-
-            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs space-y-1">
-              <p className="font-bold text-slate-800">{deletingCategory.name}</p>
-              <p className="text-slate-500">{deletingCategory.description || 'No description'}</p>
-              <p className="text-[11px] text-blue-600 font-semibold mt-1">{deletingCategory.count} active recipients</p>
-            </div>
-
-            <p className="text-[11px] text-slate-400">
-              This action will permanently delete this audience category from the database. Existing sent campaigns will retain their historical logs.
-            </p>
-
-            <div className="pt-2 flex justify-end gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => setDeletingCategory(null)}
-                className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDeleteCategory}
-                disabled={deletingLoading}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm cursor-pointer"
-              >
-                {deletingLoading ? 'Deleting...' : 'Delete Category'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -94,6 +94,15 @@ const orderSchema = new mongoose.Schema({
   superCoinsDiscount: { type: Number, default: 0 },
   superCoinsEarned: { type: Number, default: 0 },
   superCoinsRefunded: { type: Boolean, default: false },
+  // Product Voucher / Promotion Coupon Snapshot
+  appliedCoupon: {
+    code: { type: String, default: '' },
+    couponRef: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductCoupon' },
+    discountAmount: { type: Number, default: 0 },
+    discountType: { type: String, default: 'percentage' },
+    appliedProductId: { type: String, default: '' }
+  },
+  couponDiscount: { type: Number, default: 0 },
   deliveryPreference: { type: String, enum: ['home', 'postnet', 'pudo', 'locker'], default: 'home' },
   selectedPostnetStore: {
     id: { type: String },

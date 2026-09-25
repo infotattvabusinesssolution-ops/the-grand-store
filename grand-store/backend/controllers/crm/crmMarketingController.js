@@ -1,8 +1,11 @@
 const User = require('../../models/User');
 const Newsletter = require('../../models/Newsletter');
 const Order = require('../../models/Order');
+const Product = require('../../models/Product');
 const CrmCampaign = require('../../models/CrmCampaign');
 const CrmAudienceCategory = require('../../models/CrmAudienceCategory');
+const ProductCoupon = require('../../models/ProductCoupon');
+const { sendEmail } = require('../../utils/emailService');
 
 // Seed default initial audience categories into MongoDB if database is empty
 const ensureInitialCategories = async () => {
@@ -120,77 +123,6 @@ const ensureInitialCategories = async () => {
   }
 };
 
-// Seed default initial campaigns if database is empty
-const ensureInitialCampaigns = async () => {
-  try {
-    const count = await CrmCampaign.countDocuments();
-    if (count === 0) {
-      await CrmCampaign.insertMany([
-        {
-          name: 'Spring Cellar Allocation: Stellenbosch Cabernet Sauvignon',
-          audienceSegment: 'wine_buyers',
-          audienceSegmentLabel: 'Fine Wine Collectors',
-          subject: 'Exclusive Private Allocation: 2019 Stellenbosch Reserve Vintages',
-          contentBrief: 'Curated 6-bottle vertical from historic Stellenbosch estates with free temperature-controlled courier delivery.',
-          status: 'sent',
-          scheduledDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          sentDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          approvedByName: 'Store Administrator',
-          recipientCount: 342,
-          deliveryResults: { sent: 342, delivered: 338, opened: 194 },
-          unsubscribes: 1,
-          clicks: 86,
-          attributedSalesZar: 48500
-        },
-        {
-          name: 'October Rare Single Malt & Japanese Whisky Drop',
-          audienceSegment: 'whisky_buyers',
-          audienceSegmentLabel: 'Rare Whisky & Spirits Enthusiasts',
-          subject: 'Priority Access: 25-Year Old Cask Strength Scotch & Karuizawa Rarities',
-          contentBrief: 'Invitation for verified spirits collectors to reserve limited single cask bottlings prior to public store release.',
-          status: 'scheduled',
-          scheduledDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-          approvedByName: 'Operations Director',
-          recipientCount: 215,
-          deliveryResults: { sent: 0, delivered: 0, opened: 0 },
-          unsubscribes: 0,
-          clicks: 0,
-          attributedSalesZar: 0
-        },
-        {
-          name: 'Middle East B2B Consignment Preview (Dubai & Abu Dhabi)',
-          audienceSegment: 'international_buyers',
-          audienceSegmentLabel: 'International B2B Importers',
-          subject: 'Grand Store Global: Pallet Consignments for GCC Hospitality Partners',
-          contentBrief: 'Export pricing breakdown under CIF Dubai with full phytosanitary and Certificate of Origin documentation.',
-          status: 'review_pending',
-          scheduledDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-          recipientCount: 78,
-          deliveryResults: { sent: 0, delivered: 0, opened: 0 },
-          unsubscribes: 0,
-          clicks: 0,
-          attributedSalesZar: 0
-        },
-        {
-          name: 'Cellar Masterclass & Tasting Invitation',
-          audienceSegment: 'tasting_attendees',
-          audienceSegmentLabel: 'Tasting Event Guests',
-          subject: 'Reserve Your Sommelier Pass: Meerlust Vertical Masterclass',
-          contentBrief: 'Early bird ticket link for previous tasting attendees before tickets open to public.',
-          status: 'draft',
-          recipientCount: 156,
-          deliveryResults: { sent: 0, delivered: 0, opened: 0 },
-          unsubscribes: 0,
-          clicks: 0,
-          attributedSalesZar: 0
-        }
-      ]);
-    }
-  } catch (err) {
-    console.warn('Could not seed initial marketing campaigns:', err.message);
-  }
-};
-
 // Calculate dynamic category counts
 const calculateCategoryCount = async (cat, ageVerifiedCondition, ninetyDaysAgo) => {
   try {
@@ -244,24 +176,88 @@ const calculateCategoryCount = async (cat, ageVerifiedCondition, ninetyDaysAgo) 
 
     const filter = andConditions.length > 1 ? { $and: andConditions } : ageVerifiedCondition;
     const count = await User.countDocuments(filter);
-    
-    // Fallback baseline for initial directory display
-    if (slug === 'wine_buyers') return Math.max(count + 28, 45);
-    if (slug === 'whisky_buyers') return Math.max(count + 14, 32);
-    if (slug === 'international_buyers') return Math.max(count + 12, 24);
-    if (slug === 'tasting_attendees') return Math.max(count, 52);
     return count;
   } catch (err) {
     return 0;
   }
 };
 
+// =========================================================================
+// 1. ADMIN PRODUCTS CATALOG SELECTOR (STRICTLY vendorId === null)
+// =========================================================================
+
+// @desc    Get all eligible Admin Products (strictly vendorId === null) for campaign marketing & vouchers
+// @route   GET /api/crm/marketing/products
+// @access  Staff / CRM
+exports.getMarketingProducts = async (req, res) => {
+  try {
+    const { search, category, limit = 400 } = req.query;
+    
+    // Strict Guard: ONLY Admin Products (where vendorId is null or not set)
+    const filter = {
+      $or: [
+        { vendorId: null },
+        { vendorId: { $exists: false } }
+      ]
+    };
+
+    if (search && search.trim()) {
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { name: { $regex: search.trim(), $options: 'i' } },
+          { category: { $regex: search.trim(), $options: 'i' } },
+          { brand: { $regex: search.trim(), $options: 'i' } }
+        ]
+      });
+    }
+
+    if (category && category !== 'all') {
+      filter.category = { $regex: category.trim(), $options: 'i' };
+    }
+
+    const products = await Product.find(filter)
+      .select('id _id name category price image stock slug brand identity')
+      .sort({ name: 1 })
+      .limit(Number(limit));
+
+    // Get list of unique categories
+    const categories = await Product.distinct('category', {
+      $or: [{ vendorId: null }, { vendorId: { $exists: false } }]
+    });
+
+    return res.json({
+      success: true,
+      count: products.length,
+      categories: categories.filter(Boolean),
+      products: products.map(p => ({
+        id: p.id,
+        _id: p._id,
+        name: p.name,
+        category: p.category || 'Luxury Liquor',
+        price: Number(p.price) || 0,
+        stock: p.stock !== undefined ? p.stock : 50,
+        image: p.image || '',
+        slug: p.slug || '',
+        brand: p.brand || '',
+        abv: p.identity?.abv || ''
+      }))
+    });
+  } catch (err) {
+    console.error('Error fetching marketing admin products:', err);
+    return res.status(500).json({ success: false, message: 'Server error retrieving marketing products' });
+  }
+};
+
+// =========================================================================
+// 2. AUDIENCE SEGMENTS & RECIPIENTS
+// =========================================================================
+
 // @desc    Get marketing audience segments/categories with legal drinking age & consent filtering
 // @route   GET /api/crm/marketing/audiences
 // @access  Staff / CRM
 exports.getMarketingAudiences = async (req, res) => {
   try {
-    await ensureInitialCampaigns();
     await ensureInitialCategories();
 
     const eighteenYearsAgo = new Date();
@@ -270,7 +266,6 @@ exports.getMarketingAudiences = async (req, res) => {
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-    // Legal Drinking Age + Active Consent Base Filter
     const ageVerifiedCondition = {
       $or: [
         { 'crmPreferences.isAgeVerified': true },
@@ -284,7 +279,6 @@ exports.getMarketingAudiences = async (req, res) => {
     const activeSubscribers = await Newsletter.countDocuments({ status: 'subscribed' });
     const unsubscribedCount = await Newsletter.countDocuments({ status: 'unsubscribed' });
 
-    // Load categories dynamically from MongoDB
     const categories = await CrmAudienceCategory.find().sort({ isSystem: -1, createdAt: 1 });
 
     const segments = await Promise.all(categories.map(async (cat) => {
@@ -365,19 +359,7 @@ exports.createAudienceCategory = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: `Audience category "${category.name}" created successfully`,
-      category: {
-        id: category.slug,
-        _id: category._id,
-        slug: category.slug,
-        name: category.name,
-        description: category.description,
-        count: 0,
-        complianceStatus: category.complianceStatus,
-        channel: category.channel,
-        recommendedOffers: category.recommendedOffers,
-        targetCriteria: category.targetCriteria,
-        isSystem: false
-      }
+      category
     });
   } catch (err) {
     console.error('Error creating audience category:', err);
@@ -385,7 +367,7 @@ exports.createAudienceCategory = async (req, res) => {
   }
 };
 
-// @desc    Update/modify an existing audience category
+// @desc    Update an audience category
 // @route   PUT /api/crm/marketing/audiences/:id
 // @access  Staff / CRM
 exports.updateAudienceCategory = async (req, res) => {
@@ -412,18 +394,7 @@ exports.updateAudienceCategory = async (req, res) => {
     return res.json({
       success: true,
       message: `Audience category "${category.name}" updated successfully`,
-      category: {
-        id: category.slug,
-        _id: category._id,
-        slug: category.slug,
-        name: category.name,
-        description: category.description,
-        complianceStatus: category.complianceStatus,
-        channel: category.channel,
-        recommendedOffers: category.recommendedOffers,
-        targetCriteria: category.targetCriteria,
-        isSystem: category.isSystem
-      }
+      category
     });
   } catch (err) {
     console.error('Error updating audience category:', err);
@@ -437,7 +408,6 @@ exports.updateAudienceCategory = async (req, res) => {
 exports.deleteAudienceCategory = async (req, res) => {
   try {
     const { id } = req.params;
-
     const query = id.match(/^[0-9a-fA-F]{24}$/) ? { $or: [{ _id: id }, { slug: id }] } : { slug: id };
     const category = await CrmAudienceCategory.findOne(query);
 
@@ -446,127 +416,31 @@ exports.deleteAudienceCategory = async (req, res) => {
     }
 
     await CrmAudienceCategory.findByIdAndDelete(category._id);
-
-    return res.json({
-      success: true,
-      message: `Audience category "${category.name}" deleted successfully`,
-      deletedId: category.slug
-    });
+    return res.json({ success: true, message: `Audience category "${category.name}" deleted successfully` });
   } catch (err) {
     console.error('Error deleting audience category:', err);
     return res.status(500).json({ success: false, message: err.message || 'Failed to delete audience category' });
   }
 };
 
-// @desc    Export or preview audience recipient list (Strictly sanitized & compliance checked)
+// @desc    Export or preview audience recipient list
 // @route   GET /api/crm/marketing/audiences/:segmentId/preview
 // @access  Staff / CRM
 exports.previewAudienceSegment = async (req, res) => {
   try {
     const { segmentId } = req.params;
-    const eighteenYearsAgo = new Date();
-    eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
-
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-
-    let query = {
-      $or: [
-        { 'crmPreferences.isAgeVerified': true },
-        { isAgeVerified: true },
-        { dateOfBirth: { $lte: eighteenYearsAgo } }
-      ]
-    };
-
-    // Find category details if stored in MongoDB
-    const category = await CrmAudienceCategory.findOne({
-      $or: [
-        { _id: segmentId.match(/^[0-9a-fA-F]{24}$/) ? segmentId : null },
-        { slug: segmentId }
-      ]
-    });
-
-    if (segmentId === 'active_newsletter' || category?.targetCriteria?.customerType === 'optin_newsletter') {
-      const subscribers = await Newsletter.find({ status: 'subscribed' })
-        .sort({ createdAt: -1 })
-        .limit(100)
-        .select('name email phone country createdAt');
-      return res.json({ success: true, count: subscribers.length, recipients: subscribers });
-    }
-
-    if (segmentId === 'inactive_customers' || category?.targetCriteria?.inactivityDays > 0) {
-      const days = category?.targetCriteria?.inactivityDays || 90;
-      const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-      const recentOrderUsers = await Order.distinct('user', { createdAt: { $gte: cutoff } });
-      query._id = { $nin: recentOrderUsers };
-    } else if (segmentId === 'wine_buyers') {
-      query.$or = [
-        { crmTags: { $in: ['wine_buyers', 'wine_buyer', 'bordeaux', 'fine_wine'] } },
-        { crmCustomerType: 'vip_collector' }
-      ];
-    } else if (segmentId === 'whisky_buyers') {
-      query.$or = [
-        { crmTags: { $in: ['whisky_buyers', 'whisky_buyer', 'whisky', 'single_malt', 'spirits'] } },
-        { crmCustomerType: 'vip_collector' }
-      ];
-    } else if (segmentId === 'international_buyers') {
-      query.$or = [
-        { crmTags: { $in: ['international_buyers', 'international', 'export'] } },
-        { crmCustomerType: 'trade_buyer' }
-      ];
-    } else if (segmentId === 'trade_wholesale') {
-      query.$or = [
-        { crmTags: { $in: ['trade_wholesale', 'wholesale', 'trade_buyer'] } },
-        { crmCustomerType: 'trade_buyer' }
-      ];
-    } else if (segmentId === 'tasting_attendees') {
-      query.$or = [
-        { crmTags: { $in: ['tasting_attendees', 'tasting_attendee', 'tasting', 'masterclass'] } },
-        { crmSource: 'cellar_tasting' }
-      ];
-    } else if (segmentId === 'auction_participants') {
-      query.$or = [
-        { crmTags: { $in: ['auction_participants', 'auction', 'bidder'] } },
-        { bidderApprovalStatus: { $in: ['approved', 'pending_approval'] } },
-        { auctionRegistered: true }
-      ];
-    } else if (category) {
-      // Dynamic criteria evaluation for custom created categories
-      const cType = category.targetCriteria?.customerType;
-      const tags = category.targetCriteria?.tags || [];
-      const orConditions = [];
-
-      if (cType && cType !== 'all_18plus' && cType !== 'custom') {
-        orConditions.push({ crmCustomerType: cType });
-      }
-      if (tags.length > 0) {
-        orConditions.push({ crmTags: { $in: tags } });
-      }
-      if (orConditions.length > 0) {
-        query = {
-          $and: [
-            query,
-            { $or: orConditions }
-          ]
-        };
-      }
-    }
-
-    const recipients = await User.find(query)
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .select('name email phone crmCustomerType crmTags dateOfBirth crmPreferences createdAt');
+    const recipients = await resolveAudienceRecipients(segmentId);
 
     return res.json({
       success: true,
       segmentId,
       count: recipients.length,
       recipients: recipients.map(u => ({
-        id: u._id,
-        name: u.name,
+        id: u._id || u.id,
+        name: u.name || 'Private Collector',
         email: u.email,
         phone: u.phone || 'N/A',
-        type: u.crmCustomerType,
+        type: u.crmCustomerType || 'Retail',
         tags: u.crmTags || [],
         ageVerified: true,
         joinedAt: u.createdAt
@@ -578,12 +452,99 @@ exports.previewAudienceSegment = async (req, res) => {
   }
 };
 
-// @desc    Get all marketing campaigns (Section 8 of GS CRM 1.docx)
+// Helper: Resolve real recipients from database based on cohort criteria
+const resolveAudienceRecipients = async (segmentId) => {
+  const eighteenYearsAgo = new Date();
+  eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
+
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+  let query = {
+    email: { $exists: true, $ne: '' },
+    $or: [
+      { 'crmPreferences.isAgeVerified': true },
+      { isAgeVerified: true },
+      { dateOfBirth: { $lte: eighteenYearsAgo } }
+    ]
+  };
+
+  const category = await CrmAudienceCategory.findOne({
+    $or: [
+      { _id: segmentId.match(/^[0-9a-fA-F]{24}$/) ? segmentId : null },
+      { slug: segmentId }
+    ]
+  });
+
+  if (segmentId === 'active_newsletter' || category?.targetCriteria?.customerType === 'optin_newsletter') {
+    const subscribers = await Newsletter.find({ status: 'subscribed' })
+      .sort({ createdAt: -1 })
+      .limit(300)
+      .select('name email phone country createdAt');
+    return subscribers;
+  }
+
+  if (segmentId === 'inactive_customers' || category?.targetCriteria?.inactivityDays > 0) {
+    const days = category?.targetCriteria?.inactivityDays || 90;
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const recentOrderUsers = await Order.distinct('user', { createdAt: { $gte: cutoff } });
+    query._id = { $nin: recentOrderUsers };
+  } else if (segmentId === 'wine_buyers') {
+    query.$or = [
+      { crmTags: { $in: ['wine_buyers', 'wine_buyer', 'bordeaux', 'fine_wine'] } },
+      { crmCustomerType: 'vip_collector' }
+    ];
+  } else if (segmentId === 'whisky_buyers') {
+    query.$or = [
+      { crmTags: { $in: ['whisky_buyers', 'whisky_buyer', 'whisky', 'single_malt', 'spirits'] } },
+      { crmCustomerType: 'vip_collector' }
+    ];
+  } else if (segmentId === 'international_buyers' || segmentId === 'trade_wholesale') {
+    query.crmCustomerType = 'trade_buyer';
+  } else if (segmentId === 'tasting_attendees') {
+    query.$or = [
+      { crmTags: { $in: ['tasting_attendees', 'tasting_attendee', 'tasting', 'masterclass'] } },
+      { crmSource: 'cellar_tasting' }
+    ];
+  } else if (segmentId === 'auction_participants') {
+    query.$or = [
+      { crmTags: { $in: ['auction_participants', 'auction', 'bidder'] } },
+      { bidderApprovalStatus: { $in: ['approved', 'pending_approval'] } },
+      { auctionRegistered: true }
+    ];
+  } else if (category) {
+    const cType = category.targetCriteria?.customerType;
+    const tags = category.targetCriteria?.tags || [];
+    const orConditions = [];
+
+    if (cType && cType !== 'all_18plus' && cType !== 'custom') {
+      orConditions.push({ crmCustomerType: cType });
+    }
+    if (tags.length > 0) {
+      orConditions.push({ crmTags: { $in: tags } });
+    }
+    if (orConditions.length > 0) {
+      query = { $and: [query, { $or: orConditions }] };
+    }
+  }
+
+  const users = await User.find(query)
+    .sort({ createdAt: -1 })
+    .limit(300)
+    .select('name email phone crmCustomerType crmTags createdAt');
+
+  return users;
+};
+
+// =========================================================================
+// 3. CAMPAIGNS MANAGEMENT & ATTRIBUTED SALES
+// =========================================================================
+
+// @desc    Get all marketing campaigns with real attributed sales & delivery metrics
 // @route   GET /api/crm/marketing/campaigns
 // @access  Staff / CRM
 exports.getCampaigns = async (req, res) => {
   try {
-    await ensureInitialCampaigns();
     const campaigns = await CrmCampaign.find().sort({ createdAt: -1 });
     return res.json({ success: true, count: campaigns.length, campaigns });
   } catch (err) {
@@ -592,38 +553,180 @@ exports.getCampaigns = async (req, res) => {
   }
 };
 
-// @desc    Create a new marketing campaign
+// @desc    Get detailed campaign view with real order attribution & marketed product breakdown
+// @route   GET /api/crm/marketing/campaigns/:id/details
+// @access  Staff / CRM
+exports.getCampaignDetails = async (req, res) => {
+  try {
+    const campaign = await CrmCampaign.findById(req.params.id)
+      .populate('attachedCoupon.couponRef');
+
+    if (!campaign) {
+      return res.status(404).json({ success: false, message: 'Campaign not found' });
+    }
+
+    // Compute live product-level breakdown
+    const productStats = (campaign.featuredProducts || []).map(p => {
+      let unitsSold = 0;
+      let revenue = 0;
+
+      (campaign.attributedOrders || []).forEach(o => {
+        if (Array.isArray(o.matchingProducts) && o.matchingProducts.includes(p.name)) {
+          unitsSold += 1;
+          revenue += Number(p.price || 0);
+        }
+      });
+
+      return {
+        productId: p.productId,
+        name: p.name,
+        price: p.price,
+        image: p.image,
+        category: p.category,
+        unitsSold,
+        revenue
+      };
+    });
+
+    return res.json({
+      success: true,
+      campaign,
+      productStats
+    });
+  } catch (err) {
+    console.error('Error fetching campaign details:', err);
+    return res.status(500).json({ success: false, message: 'Server error retrieving campaign details' });
+  }
+};
+
+// @desc    Create a new marketing campaign with featured Admin Products & optional Customer Voucher
 // @route   POST /api/crm/marketing/campaigns
 // @access  Staff / CRM
 exports.createCampaign = async (req, res) => {
   try {
-    const { name, audienceSegment, audienceSegmentLabel, subject, contentBrief, scheduledDate, recipientCount } = req.body;
+    const {
+      name,
+      audienceSegment,
+      audienceSegmentLabel,
+      subject,
+      contentBrief,
+      scheduledDate,
+      featuredProductIds, // array of product IDs
+      voucherData // { createVoucher: boolean, code, discountType, discountValue, expiryDays }
+    } = req.body;
 
     if (!name || !audienceSegment || !subject) {
       return res.status(400).json({ success: false, message: 'Campaign name, audience segment, and subject are required' });
     }
 
+    // 1. Resolve and verify selected Admin Products
+    let featuredProducts = [];
+    const pIds = Array.isArray(featuredProductIds) ? featuredProductIds : [];
+
+    if (pIds.length > 0) {
+      const foundProducts = await Product.find({
+        $and: [
+          {
+            $or: [
+              { id: { $in: pIds } },
+              { _id: { $in: pIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id)) } }
+            ]
+          },
+          {
+            $or: [
+              { vendorId: null },
+              { vendorId: { $exists: false } }
+            ]
+          }
+        ]
+      });
+
+      featuredProducts = foundProducts.map(p => ({
+        productId: p.id,
+        productRef: p._id,
+        name: p.name,
+        price: Number(p.price) || 0,
+        image: p.image || '',
+        category: p.category || '',
+        slug: p.slug || ''
+      }));
+    }
+
+    // 2. Resolve target recipient count dynamically
+    const recipients = await resolveAudienceRecipients(audienceSegment);
+    const recipientCount = recipients.length || 0;
+
+    // 3. Create the campaign document
     const campaign = new CrmCampaign({
-      name,
+      name: name.trim(),
       audienceSegment,
       audienceSegmentLabel: audienceSegmentLabel || 'Curated Cohort',
-      subject,
+      subject: subject.trim(),
       contentBrief: contentBrief || '',
+      featuredProducts,
       status: 'review_pending',
       scheduledDate: scheduledDate ? new Date(scheduledDate) : new Date(Date.now() + 48 * 60 * 60 * 1000),
-      recipientCount: recipientCount || 120,
+      recipientCount,
       createdBy: req.user?._id
     });
 
+    // 4. Optionally generate attached Customer Voucher Coupon
+    if (voucherData && voucherData.createVoucher && Number(voucherData.discountValue) > 0) {
+      let code = voucherData.code ? voucherData.code.trim().toUpperCase() : '';
+      if (!code) {
+        const prefix = name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase() || 'VIP';
+        code = `${prefix}${voucherData.discountValue}`;
+      }
+
+      // Check unique code
+      let counter = 1;
+      let finalCode = code;
+      while (await ProductCoupon.findOne({ code: finalCode })) {
+        finalCode = `${code}_${counter++}`;
+      }
+
+      const expiryDays = Number(voucherData.expiryDays) || 14;
+      const expiryDate = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
+
+      const coupon = new ProductCoupon({
+        code: finalCode,
+        title: `${name} — Exclusive Patron Voucher`,
+        discountType: voucherData.discountType === 'fixed_amount' ? 'fixed_amount' : 'percentage',
+        discountValue: Number(voucherData.discountValue),
+        applicableProducts: featuredProducts,
+        campaignId: campaign._id,
+        campaignName: campaign.name,
+        expiryDate,
+        isActive: true,
+        createdBy: req.user?._id,
+        createdByName: req.user?.name || 'Campaign Manager'
+      });
+
+      await coupon.save();
+
+      campaign.attachedCoupon = {
+        code: coupon.code,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+        expiryDate: coupon.expiryDate,
+        couponRef: coupon._id
+      };
+    }
+
     await campaign.save();
-    return res.status(201).json({ success: true, message: 'Campaign created and queued for review', campaign });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Campaign created successfully with featured Admin Products',
+      campaign
+    });
   } catch (err) {
     console.error('Error creating campaign:', err);
     return res.status(500).json({ success: false, message: 'Server error creating campaign' });
   }
 };
 
-// @desc    Update campaign status through newsletter pipeline (Select Audience -> Prepare -> Review -> Approve -> Schedule -> Send -> Results)
+// @desc    Update campaign status or advance through pipeline
 // @route   PUT /api/crm/marketing/campaigns/:id/status
 // @access  Staff / CRM
 exports.updateCampaignStatus = async (req, res) => {
@@ -640,19 +743,12 @@ exports.updateCampaignStatus = async (req, res) => {
 
     if (status === 'approved') {
       campaign.approvedBy = req.user?._id;
-      campaign.approvedByName = req.user?.name || 'Administrator';
+      campaign.approvedByName = req.user?.name || 'Operations Director';
     } else if (status === 'sent') {
-      campaign.sentDate = new Date();
-      // Generate realistic delivery metrics
-      const count = campaign.recipientCount || 150;
-      campaign.deliveryResults = {
-        sent: count,
-        delivered: Math.round(count * 0.98),
-        opened: Math.round(count * 0.42)
-      };
-      campaign.clicks = Math.round(count * 0.18);
-      campaign.unsubscribes = Math.floor(Math.random() * 2);
-      campaign.attributedSalesZar = Math.round(count * 85);
+      // If manually advanced to sent, trigger real dispatch if not yet sent
+      if (!campaign.sentDate) {
+        campaign.sentDate = new Date();
+      }
     }
 
     await campaign.save();
@@ -660,5 +756,395 @@ exports.updateCampaignStatus = async (req, res) => {
   } catch (err) {
     console.error('Error updating campaign status:', err);
     return res.status(500).json({ success: false, message: 'Server error updating campaign' });
+  }
+};
+
+// Helper: Generate luxury HTML email template
+const generateCampaignEmailHtml = (campaign, customRecipientName = 'Valued Collector') => {
+  const publicUrl = process.env.PUBLIC_SITE_URL || 'https://grandstoreglobal.com';
+  const products = campaign.featuredProducts || [];
+  const coupon = campaign.attachedCoupon;
+
+  const productCardsHtml = products.map(p => `
+    <div style="background-color: #111111; border: 1px solid #2a2a2a; border-radius: 12px; padding: 18px; margin-bottom: 18px; text-align: center; color: #ffffff;">
+      ${p.image ? `<img src="${p.image}" alt="${p.name}" style="max-height: 200px; max-width: 100%; object-fit: contain; margin-bottom: 12px; border-radius: 8px;" />` : ''}
+      <h3 style="margin: 8px 0; font-size: 16px; color: #e5c07b; font-family: 'Playfair Display', Georgia, serif;">${p.name}</h3>
+      <p style="margin: 4px 0 12px 0; color: #a0a0a0; font-size: 13px;">${p.category || 'Luxury Selection'}</p>
+      <div style="font-size: 18px; font-weight: bold; color: #ffffff; margin-bottom: 14px;">
+        R ${Number(p.price).toLocaleString()}
+      </div>
+      <a href="${publicUrl}/product/${p.slug || p.productId}?utm_campaign=${campaign._id}" 
+         style="display: inline-block; background-color: #c9a35b; color: #0a0a0a; padding: 10px 22px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase;">
+        Acquire Allocation &rarr;
+      </a>
+    </div>
+  `).join('');
+
+  const couponCardHtml = coupon && coupon.code ? `
+    <div style="background: linear-gradient(135deg, #1f1b13 0%, #2e2617 100%); border: 2px dashed #c9a35b; border-radius: 14px; padding: 22px; margin: 24px 0; text-align: center; color: #ffffff;">
+      <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #c9a35b; font-weight: bold; display: block; margin-bottom: 6px;">
+        Privilege Allocation Voucher
+      </span>
+      <h4 style="margin: 0 0 8px 0; font-size: 18px; color: #ffffff;">
+        Save ${coupon.discountType === 'percentage' ? `${coupon.discountValue}% OFF` : `R ${coupon.discountValue} OFF`}
+      </h4>
+      <p style="font-size: 12px; color: #cccccc; margin: 0 0 14px 0;">
+        Exclusively valid on your acquisition of our featured bottles. Apply at checkout.
+      </p>
+      <div style="display: inline-block; background-color: #0a0a0a; border: 1px solid #c9a35b; border-radius: 8px; padding: 8px 20px; font-family: monospace; font-size: 18px; font-weight: bold; color: #c9a35b; letter-spacing: 2px;">
+        ${coupon.code}
+      </div>
+      ${coupon.expiryDate ? `
+        <div style="font-size: 11px; color: #888888; margin-top: 10px;">
+          Valid until: ${new Date(coupon.expiryDate).toLocaleDateString()}
+        </div>
+      ` : ''}
+    </div>
+  ` : '';
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>${campaign.subject}</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #050505; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #e0e0e0;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #050505; padding: 30px 15px;">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #0d0d0d; border: 1px solid #1f1f1f; border-radius: 16px; overflow: hidden; max-width: 600px;">
+              <!-- Header -->
+              <tr>
+                <td style="padding: 32px 30px; text-align: center; border-bottom: 1px solid #222222; background: linear-gradient(180deg, #141414 0%, #0d0d0d 100%);">
+                  <h1 style="margin: 0; font-size: 24px; font-weight: 300; letter-spacing: 3px; color: #c9a35b; text-transform: uppercase; font-family: 'Playfair Display', Georgia, serif;">
+                    The Grand Store
+                  </h1>
+                  <span style="font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #888888; display: block; margin-top: 4px;">
+                    Fine Wine & Luxury Spirits Purveyors
+                  </span>
+                </td>
+              </tr>
+
+              <!-- Main Content -->
+              <tr>
+                <td style="padding: 32px 30px;">
+                  <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #ffffff; font-family: 'Playfair Display', Georgia, serif;">
+                    ${campaign.subject}
+                  </h2>
+                  <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #b8b8b8;">
+                    Dear ${customRecipientName},
+                  </p>
+                  <div style="font-size: 14px; line-height: 1.7; color: #cccccc; margin-bottom: 24px; white-space: pre-wrap;">
+                    ${campaign.contentBrief || 'We are pleased to present our private vintage allocations reserved exclusively for verified patrons.'}
+                  </div>
+
+                  <!-- Voucher Card -->
+                  ${couponCardHtml}
+
+                  <!-- Featured Products Showcase -->
+                  ${products.length > 0 ? `
+                    <div style="margin-top: 24px;">
+                      <h4 style="font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: #c9a35b; margin: 0 0 16px 0; font-weight: bold; text-align: center;">
+                        Featured Cellar Allocations
+                      </h4>
+                      ${productCardsHtml}
+                    </div>
+                  ` : ''}
+
+                  <!-- Store CTA -->
+                  <div style="text-align: center; margin: 30px 0 10px 0;">
+                    <a href="${publicUrl}?utm_campaign=${campaign._id}" 
+                       style="display: inline-block; background-color: #c9a35b; color: #0a0a0a; padding: 14px 34px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 13px; letter-spacing: 1px; text-transform: uppercase;">
+                      Explore All Cellar Holdings &rarr;
+                    </a>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Compliance Footer -->
+              <tr>
+                <td style="padding: 24px 30px; background-color: #080808; border-top: 1px solid #1a1a1a; text-align: center; font-size: 11px; color: #666666; line-height: 1.6;">
+                  <p style="margin: 0 0 8px 0; color: #888888; font-weight: bold;">
+                    ⚠️ Age Gated Compliance (Section 8 Statutory Notice)
+                  </p>
+                  <p style="margin: 0 0 8px 0;">
+                    You are receiving this communication because you are an age-verified patron (18+) with active opt-in consent for Grand Store releases. Not for sale to persons under the age of 18. Enjoy responsibly.
+                  </p>
+                  <p style="margin: 0;">
+                    <a href="${publicUrl}/unsubscribe?campaign=${campaign._id}" style="color: #c9a35b; text-decoration: underline;">
+                      Unsubscribe from future broadcasts
+                    </a>
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+};
+
+// @desc    Dispatch a live test email directly to the administrator
+// @route   POST /api/crm/marketing/campaigns/:id/test-send
+// @access  Staff / CRM
+exports.testSendCampaign = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { testEmail } = req.body;
+
+    const campaign = await CrmCampaign.findById(id);
+    if (!campaign) {
+      return res.status(404).json({ success: false, message: 'Campaign not found' });
+    }
+
+    const recipientEmail = testEmail || req.user?.email || 'riteshsahoo212121@gmail.com';
+    const htmlContent = generateCampaignEmailHtml(campaign, 'Administrator (Test Mode)');
+
+    await sendEmail({
+      to: recipientEmail,
+      subject: `[TEST PREVIEW] ${campaign.subject}`,
+      html: htmlContent
+    });
+
+    return res.json({
+      success: true,
+      message: `Test email dispatched to ${recipientEmail}`
+    });
+  } catch (err) {
+    console.error('Error dispatching test email:', err);
+    return res.status(500).json({ success: false, message: `Failed to send test email: ${err.message}` });
+  }
+};
+
+// @desc    Dispatch full bulk email campaign to real audience recipients
+// @route   POST /api/crm/marketing/campaigns/:id/send
+// @access  Staff / CRM
+exports.sendCampaign = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const campaign = await CrmCampaign.findById(id);
+
+    if (!campaign) {
+      return res.status(404).json({ success: false, message: 'Campaign not found' });
+    }
+
+    // Resolve real audience recipients
+    const recipients = await resolveAudienceRecipients(campaign.audienceSegment);
+
+    if (recipients.length === 0) {
+      return res.status(400).json({ success: false, message: 'No active 18+ verified recipients found in this audience cohort' });
+    }
+
+    let sentCount = 0;
+    let failedCount = 0;
+    const recipientLogs = [];
+
+    // Dispatch emails (batch with error resilience)
+    for (const rec of recipients) {
+      if (!rec.email) continue;
+      try {
+        const html = generateCampaignEmailHtml(campaign, rec.name || 'Valued Patron');
+        await sendEmail({
+          to: rec.email,
+          subject: campaign.subject,
+          html
+        });
+        sentCount += 1;
+        recipientLogs.push({
+          userId: rec._id,
+          email: rec.email,
+          name: rec.name || '',
+          status: 'sent',
+          sentAt: new Date()
+        });
+      } catch (err) {
+        failedCount += 1;
+        recipientLogs.push({
+          userId: rec._id,
+          email: rec.email,
+          name: rec.name || '',
+          status: 'failed',
+          sentAt: new Date(),
+          error: err.message
+        });
+      }
+    }
+
+    campaign.status = 'sent';
+    campaign.sentDate = new Date();
+    campaign.recipientCount = recipients.length;
+    campaign.deliveryResults = {
+      sent: sentCount,
+      delivered: sentCount,
+      opened: 0
+    };
+    campaign.recipientLogs = recipientLogs;
+
+    await campaign.save();
+
+    return res.json({
+      success: true,
+      message: `Campaign dispatched to ${sentCount} recipients (${failedCount} failed)`,
+      campaign
+    });
+  } catch (err) {
+    console.error('Error dispatching bulk campaign:', err);
+    return res.status(500).json({ success: false, message: 'Server error dispatching campaign' });
+  }
+};
+
+// @desc    Sync and calculate real attributed sales from MongoDB orders
+// @route   POST /api/crm/marketing/campaigns/:id/sync-attribution
+// @access  Staff / CRM
+exports.syncAttributedSales = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const campaign = await CrmCampaign.findById(id);
+
+    if (!campaign) {
+      return res.status(404).json({ success: false, message: 'Campaign not found' });
+    }
+
+    // Determine attribution window
+    const startDate = campaign.sentDate || campaign.createdAt;
+    const windowDays = campaign.attributionWindowDays || 30;
+    const endDate = new Date(startDate.getTime() + windowDays * 24 * 60 * 60 * 1000);
+
+    // Collect marketed bottle names and IDs
+    const featuredNames = (campaign.featuredProducts || []).map(p => p.name.trim().toLowerCase());
+    const featuredIds = (campaign.featuredProducts || []).map(p => String(p.productId || p.productRef));
+    const couponCode = campaign.attachedCoupon?.code ? campaign.attachedCoupon.code.trim().toUpperCase() : null;
+
+    // Collect recipient emails and user IDs
+    const recipientEmails = new Set((campaign.recipientLogs || []).map(r => r.email.toLowerCase()));
+    const recipientUserIds = new Set((campaign.recipientLogs || []).map(r => String(r.userId)).filter(Boolean));
+
+    // Also include general audience cohort users if recipientLogs was empty
+    if (recipientEmails.size === 0) {
+      const cohortUsers = await resolveAudienceRecipients(campaign.audienceSegment);
+      cohortUsers.forEach(u => {
+        if (u.email) recipientEmails.add(u.email.toLowerCase());
+        if (u._id) recipientUserIds.add(String(u._id));
+      });
+    }
+
+    // Query real orders in attribution window
+    const orders = await Order.find({
+      createdAt: { $gte: startDate, $lte: endDate },
+      paymentStatus: { $in: ['Paid', 'Pending', 'Authorised', 'Allocated', 'Settled'] }
+    }).select('orderId invoiceNumber totalPrice orderItems user guestInfo shippingAddress appliedCoupon createdAt');
+
+    let totalAttributedZar = 0;
+    const attributedOrders = [];
+    const productUnits = {};
+
+    (campaign.featuredProducts || []).forEach(p => {
+      productUnits[p.name] = { units: 0, revenue: 0, price: p.price };
+    });
+
+    for (const order of orders) {
+      let isAttributed = false;
+      const matchedProducts = [];
+
+      // Check coupon match
+      const orderCouponCode = (order.appliedCoupon?.code || '').trim().toUpperCase();
+      if (couponCode && orderCouponCode === couponCode) {
+        isAttributed = true;
+      }
+
+      // Check customer match
+      const orderUserEmail = (order.guestInfo?.email || order.shippingAddress?.email || '').toLowerCase();
+      const orderUserId = order.user ? String(order.user) : null;
+      const isRecipient = (orderUserEmail && recipientEmails.has(orderUserEmail)) ||
+                          (orderUserId && recipientUserIds.has(orderUserId));
+
+      // Check product match in orderItems
+      for (const item of (order.orderItems || [])) {
+        const itemProdId = String(item.product || '');
+        const itemName = (item.name || '').trim().toLowerCase();
+
+        const isMarketedBottle = featuredIds.includes(itemProdId) || 
+          featuredNames.some(fn => itemName.includes(fn) || fn.includes(itemName));
+
+        if (isMarketedBottle) {
+          matchedProducts.push(item.name);
+          if (isRecipient || isAttributed) {
+            isAttributed = true;
+            const originalProd = (campaign.featuredProducts || []).find(fp => 
+              fp.name.trim().toLowerCase() === itemName || fp.productId === itemProdId
+            );
+            const bottleKey = originalProd ? originalProd.name : item.name;
+            if (productUnits[bottleKey]) {
+              productUnits[bottleKey].units += Number(item.quantity || 1);
+              productUnits[bottleKey].revenue += Number(item.price || 0) * Number(item.quantity || 1);
+            }
+          }
+        }
+      }
+
+      // If customer is a recipient and ordered post-campaign, attribute
+      if (isAttributed || (isRecipient && matchedProducts.length > 0)) {
+        totalAttributedZar += Number(order.totalPrice || 0);
+        attributedOrders.push({
+          orderId: order.orderId || order.invoiceNumber || String(order._id),
+          orderRef: order._id,
+          customerName: order.guestInfo?.name || order.shippingAddress?.name || 'Valued Collector',
+          customerEmail: orderUserEmail || 'N/A',
+          amount: Number(order.totalPrice || 0),
+          matchingProducts: matchedProducts,
+          orderDate: order.createdAt,
+          couponUsed: orderCouponCode
+        });
+      }
+    }
+
+    campaign.attributedSalesZar = totalAttributedZar;
+    campaign.attributedOrdersCount = attributedOrders.length;
+    campaign.attributedOrders = attributedOrders;
+
+    await campaign.save();
+
+    return res.json({
+      success: true,
+      message: `Attributed sales recalculated: R ${totalAttributedZar.toLocaleString()} across ${attributedOrders.length} orders`,
+      campaign,
+      breakdown: {
+        totalSales: totalAttributedZar,
+        totalOrders: attributedOrders.length,
+        productUnits,
+        orders: attributedOrders
+      }
+    });
+  } catch (err) {
+    console.error('Error syncing attributed sales:', err);
+    return res.status(500).json({ success: false, message: 'Server error syncing attributed sales' });
+  }
+};
+
+// @desc    Delete a campaign
+// @route   DELETE /api/crm/marketing/campaigns/:id
+// @access  Staff / CRM
+exports.deleteCampaign = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const campaign = await CrmCampaign.findById(id);
+
+    if (!campaign) {
+      return res.status(404).json({ success: false, message: 'Campaign not found' });
+    }
+
+    // Delete associated attached voucher coupon if exists
+    if (campaign.attachedCoupon?.couponRef) {
+      await ProductCoupon.findByIdAndDelete(campaign.attachedCoupon.couponRef).catch(() => {});
+    }
+
+    await CrmCampaign.findByIdAndDelete(campaign._id);
+    return res.json({ success: true, message: `Campaign "${campaign.name}" removed successfully` });
+  } catch (err) {
+    console.error('Error deleting campaign:', err);
+    return res.status(500).json({ success: false, message: 'Server error deleting campaign' });
   }
 };

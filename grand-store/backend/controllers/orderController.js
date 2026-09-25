@@ -351,7 +351,89 @@ const addOrderItems = async (req, res) => {
       await user.save().catch(err => console.warn('Error updating pendingSuperCoins on order creation:', err.message));
     }
 
-    const finalTotal = parseFloat(Math.max(0, calculatedTotal - appliedWelcomeDiscount - appliedRewards - superCoinsDiscount).toFixed(2));
+    // Product Voucher / Coupon Application (Exclusively for Admin Products)
+    let appliedCoupon = { code: '', couponRef: null, discountAmount: 0, discountType: 'percentage', appliedProductId: '' };
+    let couponDiscount = 0;
+
+    const rawCouponCode = req.body.couponCode || req.body.voucherCode;
+    if (rawCouponCode && typeof rawCouponCode === 'string') {
+      try {
+        const ProductCoupon = require('../models/ProductCoupon');
+        const cleanCode = rawCouponCode.trim().toUpperCase();
+        const couponDoc = await ProductCoupon.findOne({ code: cleanCode, isActive: true });
+        if (couponDoc && couponDoc.isValid()) {
+          let allCartItems = [];
+          (quote.shipments || []).forEach(s => {
+            if (Array.isArray(s.items)) allCartItems.push(...s.items);
+          });
+
+          const targetProductIds = new Set(
+            (couponDoc.applicableProducts || []).flatMap(p => [
+              p.productId ? String(p.productId) : null,
+              p.productRef ? String(p.productRef) : null,
+              p._id ? String(p._id) : null,
+              p.id ? String(p.id) : null
+            ]).filter(Boolean)
+          );
+          const targetProductNames = new Set(
+            (couponDoc.applicableProducts || []).map(p => (p.name || '').trim().toLowerCase()).filter(Boolean)
+          );
+          let matchingLineTotal = 0;
+          let matchedProductId = '';
+
+          for (const item of allCartItems) {
+            const itemIds = [
+              item.product ? String(item.product) : null,
+              item.id ? String(item.id) : null,
+              item._id ? String(item._id) : null,
+              item.productId ? String(item.productId) : null
+            ].filter(Boolean);
+            const itemName = (item.name || item.fullName || '').trim().toLowerCase();
+
+            const isMatch = (targetProductIds.size === 0 && targetProductNames.size === 0) ||
+                            itemIds.some(id => targetProductIds.has(id)) ||
+                            (itemName && targetProductNames.has(itemName));
+
+            if (isMatch) {
+              const itemPrice = Number(item.price) || 0;
+              const itemQty = Number(item.quantity) || 1;
+              matchingLineTotal += itemPrice * itemQty;
+              matchedProductId = itemIds[0] || '';
+            }
+          }
+
+          if (matchingLineTotal > 0 && (!couponDoc.minSpendZar || subTotal >= couponDoc.minSpendZar)) {
+            if (couponDoc.discountType === 'percentage') {
+              couponDiscount = parseFloat(((matchingLineTotal * couponDoc.discountValue) / 100).toFixed(2));
+            } else {
+              couponDiscount = Math.min(matchingLineTotal, couponDoc.discountValue);
+            }
+
+            appliedCoupon = {
+              code: couponDoc.code,
+              couponRef: couponDoc._id,
+              discountAmount: couponDiscount,
+              discountType: couponDoc.discountType,
+              appliedProductId: matchedProductId
+            };
+
+            couponDoc.usedCount = (couponDoc.usedCount || 0) + 1;
+            couponDoc.redeemedBy.push({
+              userId: user ? user._id : null,
+              userEmail: user ? user.email : guestEmail,
+              orderId: orderId,
+              discountApplied: couponDiscount,
+              redeemedAt: new Date()
+            });
+            await couponDoc.save().catch(e => console.warn('Could not record coupon redemption:', e.message));
+          }
+        }
+      } catch (couponErr) {
+        console.warn('Error processing product coupon during checkout:', couponErr.message);
+      }
+    }
+
+    const finalTotal = parseFloat(Math.max(0, calculatedTotal - appliedWelcomeDiscount - appliedRewards - superCoinsDiscount - couponDiscount).toFixed(2));
 
     let allOrderItems = [];
     let vendorPayables = [];
@@ -419,6 +501,8 @@ const addOrderItems = async (req, res) => {
       superCoinsUsed,
       superCoinsDiscount,
       superCoinsEarned,
+      appliedCoupon,
+      couponDiscount,
       totalPrice: finalTotal,
       transactionId,
       orderId,
