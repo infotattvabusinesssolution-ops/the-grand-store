@@ -25,7 +25,7 @@ export default function CrmVendorWorkflowPage() {
     pingVendor 
   } = useCrmVendors();
 
-  const [activeTab, setActiveTab] = useState('directory'); // 'directory' | 'kyc' | 'products' | 'orders' | 'payment_queries'
+  const [activeTab, setActiveTab] = useState('directory'); // 'directory' | 'kyc' | 'orders' | 'payment_queries'
   const [dossierSubTab, setDossierSubTab] = useState('dashboard'); // 'dashboard' | 'activity' | 'catalog' | 'orders' | 'settlement' | 'compliance'
   
   // Modals
@@ -48,7 +48,6 @@ export default function CrmVendorWorkflowPage() {
   const overdueOrders = summary?.ordersRequiringAction || [];
 
   // Dynamic queue items from backend summary
-  const productsAwaitingApproval = summary?.productsAwaitingApproval || [];
   const vendorPaymentQueries = summary?.vendorPaymentQueries || [];
 
   const handleOpenActionModal = (vendor, targetStage, title) => {
@@ -140,8 +139,8 @@ export default function CrmVendorWorkflowPage() {
         </div>
       </div>
 
-      {/* 5 Operational Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+      {/* 4 Operational Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div 
           onClick={() => setActiveTab('directory')}
           className={`bg-white rounded-2xl p-4 border transition-all cursor-pointer ${activeTab === 'directory' ? 'border-blue-600 ring-2 ring-blue-500/20 shadow-md' : 'border-slate-200 shadow-sm hover:border-blue-300'}`}
@@ -164,18 +163,6 @@ export default function CrmVendorWorkflowPage() {
           </div>
           <h3 className="text-2xl font-extrabold text-blue-600 mt-1">{counts.kycPending || 0}</h3>
           <span className="text-[10px] text-blue-600 font-semibold">Legal Compliance</span>
-        </div>
-
-        <div 
-          onClick={() => setActiveTab('products')}
-          className={`bg-white rounded-2xl p-4 border transition-all cursor-pointer ${activeTab === 'products' ? 'border-blue-600 ring-2 ring-blue-500/20 shadow-md' : 'border-slate-200 shadow-sm hover:border-blue-300'}`}
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-bold text-slate-500 uppercase">Products Awaiting</p>
-            <Package size={16} className="text-blue-600" />
-          </div>
-          <h3 className="text-2xl font-extrabold text-blue-600 mt-1">{productsAwaitingApproval.length}</h3>
-          <span className="text-[10px] text-blue-600 font-semibold">Listing Sign-off</span>
         </div>
 
         <div 
@@ -219,12 +206,6 @@ export default function CrmVendorWorkflowPage() {
               className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'kyc' ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/25' : 'text-slate-600 hover:bg-slate-200/60'}`}
             >
               KYC Awaiting Verification ({counts.kycPending || 0})
-            </button>
-            <button
-              onClick={() => setActiveTab('products')}
-              className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'products' ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/25' : 'text-slate-600 hover:bg-slate-200/60'}`}
-            >
-              Products Awaiting Sign-off ({productsAwaitingApproval.length})
             </button>
             <button
               onClick={() => setActiveTab('orders')}
@@ -444,62 +425,7 @@ export default function CrmVendorWorkflowPage() {
           </div>
         )}
 
-        {/* Tab 3: Products Awaiting Approval */}
-        {activeTab === 'products' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 text-slate-500 uppercase font-semibold border-b border-slate-100">
-                <tr>
-                  <th className="px-6 py-3.5">Product Listing</th>
-                  <th className="px-6 py-3.5">Vendor / Farm</th>
-                  <th className="px-6 py-3.5">Vintage & ABV</th>
-                  <th className="px-6 py-3.5">Price (ZAR)</th>
-                  <th className="px-6 py-3.5">Submitted</th>
-                  <th className="px-6 py-3.5 text-right">Listing Review</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {productsAwaitingApproval.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-slate-400">
-                      ✓ No vendor products currently awaiting approval. All supplier catalogs are up-to-date.
-                    </td>
-                  </tr>
-                ) : (
-                  productsAwaitingApproval.map((p) => (
-                    <tr key={p._id || p.id} className="hover:bg-blue-50/30 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="p-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200">
-                            <Package size={16} />
-                          </div>
-                          <div>
-                            <p className="font-bold text-slate-900">{p.productName}</p>
-                            <p className="text-[11px] text-slate-500">Ref: {p.id}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 font-semibold text-slate-700">{p.vendorName}</td>
-                      <td className="px-6 py-4 text-slate-600">{p.vintage} • {p.abv}</td>
-                      <td className="px-6 py-4 font-bold text-slate-900">R {(p.priceZar || 0).toLocaleString()}</td>
-                      <td className="px-6 py-4 text-slate-500">{p.submittedDate}</td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => toast.success(`Product "${p.productName}" approved and live on website!`)}
-                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-sm shadow-blue-500/20 transition-all inline-flex items-center gap-1 cursor-pointer"
-                        >
-                          <Check size={13} /> Approve Listing
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Tab 4: Orders Requiring Vendor Action */}
+        {/* Tab 3: Orders Requiring Vendor Action */}
         {activeTab === 'orders' && (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
