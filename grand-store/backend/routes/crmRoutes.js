@@ -209,19 +209,24 @@ router.put('/auctions/lot/:id/payment', crmAuctionController.recordHammerLotPaym
 router.post('/auctions/lot/:id/remind', crmAuctionController.sendPaymentReminder);
 router.put('/auctions/lot/:id/default', crmAuctionController.defaultLot);
 
-// Auction Lots CRUD, Floor Bids & Hammer
+// Auction Lots Review, Approvals, Floor Bids & Hammer
 router.post('/auctions/lots', crmAuctionController.createLot);
 router.put('/auctions/lots/:id', crmAuctionController.updateLot);
+router.put('/auctions/lots/:id/approve', crmAuctionController.approveLot);
+router.put('/auctions/lots/:id/reject', crmAuctionController.rejectLot);
 router.delete('/auctions/lots/:id', crmAuctionController.deleteLot);
 router.post('/auctions/lots/:id/floor-bid', crmAuctionController.placeFloorBid);
 router.put('/auctions/lots/:id/hammer', crmAuctionController.declareHammerFall);
+router.get('/auctions/lots/:id/bids', crmAuctionController.getLotBids);
 
-// Tasting Events Desk & Operations
+// Tasting Events Desk, Approvals & Operations
 router.get('/events/:id/guests', crmAuctionController.getEventGuestList);
 router.put('/events/bookings/:bookingId/checkin', crmAuctionController.toggleGuestCheckIn);
 router.post('/events/:id/walk-in', crmAuctionController.registerWalkInGuest);
 router.post('/events', crmAuctionController.createEvent);
 router.put('/events/:id', crmAuctionController.updateEvent);
+router.put('/events/:id/approve', crmAuctionController.approveEvent);
+router.put('/events/:id/reject', crmAuctionController.rejectEvent);
 router.delete('/events/:id', crmAuctionController.deleteEvent);
 
 // --- Module 11: 30-Day Vendor Settlement Tracking & Payouts ---
