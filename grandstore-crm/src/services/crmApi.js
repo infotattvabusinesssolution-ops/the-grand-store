@@ -116,6 +116,7 @@ export const crmApi = {
   getCustomer360: (id) => crmClient.get(`/customers/${id}/360`),
   updateCustomerTier: (id, data) => crmClient.put(`/customers/${id}/tier`, data),
   addCustomerNote: (id, note) => crmClient.post(`/customers/${id}/notes`, { note }),
+  bulkImportCustomers: (data) => crmClient.post('/customers/bulk-import', data),
 
   // Vendor 360 & Operations Directory
   getVendorSummary: () => crmClient.get('/vendors/summary'),
@@ -140,9 +141,13 @@ export const crmApi = {
   getCommunications: (params) => crmClient.get('/comms', { params }),
   logCommunication: (data) => crmClient.post('/comms', data),
 
-  // Marketing Audiences, Campaigns & Legal Age Compliance (Section 8 of GS CRM 1.docx)
+  // Marketing Audiences, Categories, Campaigns & Legal Age Compliance (Section 8 of GS CRM 1.docx)
   getMarketingAudiences: () => crmClient.get('/marketing/audiences'),
+  createAudienceCategory: (data) => crmClient.post('/marketing/audiences', data),
+  updateAudienceCategory: (id, data) => crmClient.put(`/marketing/audiences/${id}`, data),
+  deleteAudienceCategory: (id) => crmClient.delete(`/marketing/audiences/${id}`),
   previewAudienceSegment: (segmentId) => crmClient.get(`/marketing/audiences/${segmentId}/preview`),
+  importMarketingAudienceCsv: (data) => crmClient.post('/marketing/audiences/import-csv', data),
   getCampaigns: () => crmClient.get('/marketing/campaigns'),
   createCampaign: (data) => crmClient.post('/marketing/campaigns', data),
   updateCampaignStatus: (id, status) => crmClient.put(`/marketing/campaigns/${id}/status`, { status }),

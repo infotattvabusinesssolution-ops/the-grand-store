@@ -3,9 +3,10 @@ import {
   ShieldCheck, Users, Mail, UserCheck, AlertTriangle, 
   Download, Eye, RefreshCw, Send, CheckCircle2, Filter, X,
   Plus, Calendar, ArrowRight, Check, Play, TrendingUp, Sparkles,
-  Clock, BarChart3, FileText, Lock
+  Clock, BarChart3, FileText, Lock, Upload, Edit2, Trash2
 } from 'lucide-react';
 import StatCard from '../components/common/StatCard';
+import BulkImportCustomersModal from '../components/common/BulkImportCustomersModal';
 import { useCrmMarketing } from '../hooks/useCrmMarketing';
 import { useToast } from '../context/ToastContext';
 
@@ -24,13 +25,112 @@ export default function CrmMarketingPage() {
   const toast = useToast();
   const { 
     stats, segments, campaigns, recentSubscribers, loading, 
-    refresh, previewSegment, createCampaign, updateCampaignStatus 
+    refresh, previewSegment, createCampaign, updateCampaignStatus,
+    createCategory, updateCategory, deleteCategory
   } = useCrmMarketing();
 
   const [activeTab, setActiveTab] = useState('campaigns'); // 'campaigns' | 'segments' | 'subscribers'
   const [selectedSegment, setSelectedSegment] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+
+  // Audience Category (Create / Edit) Modal State
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [categoryFormData, setCategoryFormData] = useState({
+    name: '',
+    description: '',
+    channel: 'Newsletter & Direct Email',
+    complianceStatus: 'Verified (100% Legal Age)',
+    recommendedOffers: '',
+    customerType: 'all_18plus',
+    tags: ''
+  });
+  const [submittingCategory, setSubmittingCategory] = useState(false);
+
+  // Delete Category Confirmation Modal State
+  const [deletingCategory, setDeletingCategory] = useState(null);
+  const [deletingLoading, setDeletingLoading] = useState(false);
+
+  const handleOpenCreateCategory = () => {
+    setEditingCategory(null);
+    setCategoryFormData({
+      name: '',
+      description: '',
+      channel: 'Newsletter & Direct Email',
+      complianceStatus: 'Verified (100% Legal Age)',
+      recommendedOffers: '',
+      customerType: 'all_18plus',
+      tags: ''
+    });
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleOpenEditCategory = (seg) => {
+    setEditingCategory(seg);
+    setCategoryFormData({
+      name: seg.name || '',
+      description: seg.description || '',
+      channel: seg.channel || 'Newsletter & Direct Email',
+      complianceStatus: seg.complianceStatus || 'Verified (100% Legal Age)',
+      recommendedOffers: seg.recommendedOffers || '',
+      customerType: seg.targetCriteria?.customerType || 'all_18plus',
+      tags: (seg.targetCriteria?.tags || []).join(', ')
+    });
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleCategorySubmit = async (e) => {
+    e.preventDefault();
+    if (!categoryFormData.name.trim()) {
+      toast.error('Category name is required');
+      return;
+    }
+
+    setSubmittingCategory(true);
+    try {
+      const payload = {
+        name: categoryFormData.name.trim(),
+        description: categoryFormData.description.trim(),
+        channel: categoryFormData.channel,
+        complianceStatus: categoryFormData.complianceStatus,
+        recommendedOffers: categoryFormData.recommendedOffers.trim(),
+        targetCriteria: {
+          customerType: categoryFormData.customerType,
+          tags: categoryFormData.tags
+            ? categoryFormData.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean)
+            : []
+        }
+      };
+
+      if (editingCategory) {
+        await updateCategory(editingCategory.id || editingCategory._id, payload);
+        toast.success(`Audience category "${payload.name}" updated successfully!`);
+      } else {
+        await createCategory(payload);
+        toast.success(`New audience category "${payload.name}" created and saved!`);
+      }
+      setIsCategoryModalOpen(false);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to save audience category');
+    } finally {
+      setSubmittingCategory(false);
+    }
+  };
+
+  const handleConfirmDeleteCategory = async () => {
+    if (!deletingCategory) return;
+    setDeletingLoading(true);
+    try {
+      await deleteCategory(deletingCategory.id || deletingCategory._id);
+      toast.success(`Audience category "${deletingCategory.name}" removed successfully.`);
+      setDeletingCategory(null);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to delete audience category');
+    } finally {
+      setDeletingLoading(false);
+    }
+  };
 
   // New Campaign Modal
   const [isNewCampaignModalOpen, setIsNewCampaignModalOpen] = useState(false);
@@ -43,6 +143,15 @@ export default function CrmMarketingPage() {
     scheduledDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString().slice(0, 16)
   });
   const [submittingCampaign, setSubmittingCampaign] = useState(false);
+
+  // Bulk Customer Import CSV Modal
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importCohortId, setImportCohortId] = useState('auto');
+
+  const handleOpenImport = (cohortId = 'auto') => {
+    setImportCohortId(cohortId);
+    setIsImportModalOpen(true);
+  };
 
   // Campaign Review Modal
   const [reviewCampaign, setReviewCampaign] = useState(null);
@@ -173,6 +282,13 @@ export default function CrmMarketingPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button 
+            onClick={() => handleOpenImport('auto')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors shadow-xs cursor-pointer hover:border-blue-300 hover:text-blue-700"
+            title="Bulk import patrons, wine club allocations, or wholesale buyers via CSV"
+          >
+            <Upload size={14} className="text-blue-600" /> Import Customers (CSV)
+          </button>
           <button 
             onClick={() => setIsNewCampaignModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm shadow-blue-500/25 cursor-pointer"
@@ -451,23 +567,52 @@ export default function CrmMarketingPage() {
       {/* TAB 2: AUDIENCE SEGMENTS & LEGAL AGE COMPLIANCE */}
       {activeTab === 'segments' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-slate-900">Curated Compliance Audiences (Section 8)</h2>
               <p className="text-xs text-slate-500">Target specific luxury cohorts with zero non-compliant outreach</p>
             </div>
-            <span className="text-xs font-semibold text-slate-500">{segments.length} Active Cohorts</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+                {segments.length} Active Cohorts
+              </span>
+              <button
+                onClick={handleOpenCreateCategory}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors cursor-pointer shadow-sm shadow-blue-500/20"
+              >
+                <Plus size={14} /> Create Category
+              </button>
+              <button
+                onClick={() => handleOpenImport('auto')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors cursor-pointer shadow-xs"
+              >
+                <Upload size={14} /> Import Bulk Customers (CSV)
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {segments.map((seg) => (
               <div 
                 key={seg.id}
-                className="border border-slate-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between bg-white"
+                className="border border-slate-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all flex flex-col justify-between bg-white group"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-slate-900 text-sm">{seg.name}</h3>
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="font-semibold text-slate-900 text-sm">{seg.name}</h3>
+                        {seg.isSystem ? (
+                          <span className="px-1.5 py-0.5 text-[9px] font-bold bg-slate-100 text-slate-500 rounded border border-slate-200 uppercase tracking-wider">
+                            System Default
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 text-[9px] font-bold bg-blue-50 text-blue-700 rounded border border-blue-200 uppercase tracking-wider">
+                            Custom Category
+                          </span>
+                        )}
+                      </div>
+                    </div>
                     <span className="px-2.5 py-0.5 text-xs font-bold bg-blue-50 text-blue-700 rounded-full border border-blue-200 shrink-0">
                       {seg.count} Recipients
                     </span>
@@ -483,27 +628,56 @@ export default function CrmMarketingPage() {
                       <span className="font-medium text-slate-800">Channels:</span>
                       <span>{seg.channel}</span>
                     </div>
-                    <div className="text-slate-600">
-                      <span className="font-medium text-slate-800">Recommended Offers:</span> {seg.recommendedOffers}
-                    </div>
+                    {seg.recommendedOffers && (
+                      <div className="text-slate-600">
+                        <span className="font-medium text-slate-800">Recommended Offers:</span> {seg.recommendedOffers}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => handleOpenPreview(seg)}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <Eye size={13} />
-                    Preview Cohort ({seg.count})
-                  </button>
-                  <button
-                    onClick={() => handleExportCsv(seg)}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
-                  >
-                    <Download size={13} />
-                    Export 18+ CSV
-                  </button>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleOpenPreview(seg)}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Eye size={13} />
+                      Preview ({seg.count})
+                    </button>
+                    <button
+                      onClick={() => handleExportCsv(seg)}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                    >
+                      <Download size={13} />
+                      Export CSV
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleOpenImport(seg.id)}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 px-2 py-1.5 rounded-lg border border-emerald-200 transition-colors cursor-pointer"
+                      title={`Import CSV customers into ${seg.name}`}
+                    >
+                      <Upload size={13} />
+                      Import
+                    </button>
+                    <button
+                      onClick={() => handleOpenEditCategory(seg)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-blue-50 px-2 py-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                      title="Edit Category Details"
+                    >
+                      <Edit2 size={13} />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setDeletingCategory(seg)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2 py-1.5 rounded-lg border border-rose-200 transition-colors cursor-pointer"
+                      title="Delete Category"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -815,18 +989,225 @@ export default function CrmMarketingPage() {
               )}
             </div>
 
-            <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+            <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <button
-                onClick={() => { setSelectedSegment(null); setPreviewData(null); }}
-                className="px-4 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
+                onClick={() => {
+                  const sId = selectedSegment.id;
+                  setSelectedSegment(null);
+                  setPreviewData(null);
+                  handleOpenImport(sId);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors cursor-pointer"
               >
-                Close
+                <Upload size={13} />
+                Import More Customers (CSV)
+              </button>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => { setSelectedSegment(null); setPreviewData(null); }}
+                  className="px-4 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => handleExportCsv(selectedSegment)}
+                  className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm cursor-pointer"
+                >
+                  Download Sanitized CSV
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Customer Import CSV Modal */}
+      <BulkImportCustomersModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        initialCohortId={importCohortId}
+        onSuccess={() => {
+          refresh();
+        }}
+      />
+
+      {/* CREATE / EDIT AUDIENCE CATEGORY MODAL */}
+      {isCategoryModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto crm-scrollbar">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  {editingCategory ? 'Edit Audience Category' : 'Create New Audience Category'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Configure demographic targeting, legal age compliance gating, and outreach channels
+                </p>
+              </div>
+              <button 
+                onClick={() => setIsCategoryModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCategorySubmit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Category / Cohort Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Cap Classique & Sparkling Wine Lovers"
+                  value={categoryFormData.name}
+                  onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Audience Description</label>
+                <textarea
+                  rows={2}
+                  placeholder="Target criteria, vintage affinities, customer preferences..."
+                  value={categoryFormData.description}
+                  onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Target Customer Cohort</label>
+                  <select
+                    value={categoryFormData.customerType}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, customerType: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                  >
+                    <option value="all_18plus">All 18+ Verified Buyers</option>
+                    <option value="vip_collector">VIP Collectors (High Net Worth)</option>
+                    <option value="trade_buyer">B2B Trade & Wholesale Accounts</option>
+                    <option value="event_attendees">Tasting & Masterclass Attendees</option>
+                    <option value="auction_bidder">Live Auction & Lot Bidders</option>
+                    <option value="optin_newsletter">General Newsletter Opt-ins</option>
+                    <option value="custom">Custom Tag Match Only</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Marketing Channels</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Newsletter & Direct Email, WhatsApp Concierge"
+                    value={categoryFormData.channel}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, channel: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Compliance Status Label</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Verified (100% Legal Age)"
+                    value={categoryFormData.complianceStatus}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, complianceStatus: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Customer CRM Tags (Comma separated)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. sparkling, cap_classique, champagne"
+                    value={categoryFormData.tags}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, tags: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Recommended Offers & Highlights</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Vintage Blanc de Blancs Allocations, Private Cellar Previews"
+                  value={categoryFormData.recommendedOffers}
+                  onChange={(e) => setCategoryFormData({ ...categoryFormData, recommendedOffers: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                />
+              </div>
+
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-start gap-2 text-[11px] text-emerald-800">
+                <ShieldCheck size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Database Synchronization:</strong> This category is saved in the central database and immediately accessible across campaign builders and audience exports.
+                </span>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCategoryModalOpen(false)}
+                  className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingCategory}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm cursor-pointer"
+                >
+                  {submittingCategory ? 'Saving...' : editingCategory ? 'Save Changes' : 'Create Category'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CATEGORY CONFIRMATION MODAL */}
+      {deletingCategory && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Delete Audience Category</h3>
+                <p className="text-xs text-slate-500">Are you sure you want to remove this category?</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs space-y-1">
+              <p className="font-bold text-slate-800">{deletingCategory.name}</p>
+              <p className="text-slate-500">{deletingCategory.description || 'No description'}</p>
+              <p className="text-[11px] text-blue-600 font-semibold mt-1">{deletingCategory.count} active recipients</p>
+            </div>
+
+            <p className="text-[11px] text-slate-400">
+              This action will permanently delete this audience category from the database. Existing sent campaigns will retain their historical logs.
+            </p>
+
+            <div className="pt-2 flex justify-end gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setDeletingCategory(null)}
+                className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                Cancel
               </button>
               <button
-                onClick={() => handleExportCsv(selectedSegment)}
-                className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm cursor-pointer"
+                type="button"
+                onClick={handleConfirmDeleteCategory}
+                disabled={deletingLoading}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm cursor-pointer"
               >
-                Download Sanitized CSV
+                {deletingLoading ? 'Deleting...' : 'Delete Category'}
               </button>
             </div>
           </div>

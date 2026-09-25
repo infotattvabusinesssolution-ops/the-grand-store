@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCrmCustomers } from '../hooks/useCrmCustomers';
 import StatusBadge from '../components/common/StatusBadge';
-import { Users, Search, Phone, Mail, ChevronRight, UserCheck, Shield, Filter } from 'lucide-react';
+import BulkImportCustomersModal from '../components/common/BulkImportCustomersModal';
+import { Users, Search, Phone, Mail, ChevronRight, UserCheck, Shield, Filter, Upload } from 'lucide-react';
 
 export default function CrmCustomersPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const { customers, pagination, loading, params, setParams } = useCrmCustomers();
 
   const handleSearch = (e) => {
@@ -37,6 +39,13 @@ export default function CrmCustomersPage() {
             Search patrons, review lifetime purchase values, and view full communication dossiers
           </p>
         </div>
+
+        <button
+          onClick={() => setIsImportModalOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm shadow-blue-500/25 cursor-pointer self-start sm:self-auto"
+        >
+          <Upload size={14} /> Import Customers (CSV)
+        </button>
       </div>
 
       {/* Filter and Search Bar */}
@@ -173,6 +182,15 @@ export default function CrmCustomersPage() {
           </table>
         </div>
       </div>
+
+      {/* Bulk Customer Import CSV Modal */}
+      <BulkImportCustomersModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => {
+          setParams((prev) => ({ ...prev }));
+        }}
+      />
     </div>
   );
 }

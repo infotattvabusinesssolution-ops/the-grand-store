@@ -125,6 +125,7 @@ router.get('/customers', crmCustomerController.getCustomers);
 router.get('/customers/:id/360', crmCustomerController.getCustomer360);
 router.put('/customers/:id/tier', crmCustomerController.updateCustomerTier);
 router.post('/customers/:id/notes', crmCustomerController.addCustomerNote);
+router.post('/customers/bulk-import', crmCustomerController.bulkImportCustomers);
 
 // --- Module 3: Vendor Onboarding, Directory & 360° Management ---
 router.get('/vendors/summary', crmVendorController.getVendorOperationsSummary);
@@ -165,7 +166,11 @@ const crmStaffController = require('../controllers/crm/crmStaffController');
 
 // --- Module 9: Marketing Compliance & Audience Segmentation ---
 router.get('/marketing/audiences', crmMarketingController.getMarketingAudiences);
+router.post('/marketing/audiences', crmMarketingController.createAudienceCategory);
+router.put('/marketing/audiences/:id', crmMarketingController.updateAudienceCategory);
+router.delete('/marketing/audiences/:id', crmMarketingController.deleteAudienceCategory);
 router.get('/marketing/audiences/:segmentId/preview', crmMarketingController.previewAudienceSegment);
+router.post('/marketing/audiences/import-csv', crmCustomerController.bulkImportCustomers);
 router.get('/marketing/campaigns', crmMarketingController.getCampaigns);
 router.post('/marketing/campaigns', crmMarketingController.createCampaign);
 router.put('/marketing/campaigns/:id/status', crmMarketingController.updateCampaignStatus);

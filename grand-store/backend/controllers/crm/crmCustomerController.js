@@ -263,3 +263,202 @@ exports.addCustomerNote = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to add internal note' });
   }
 };
+
+/**
+ * Bulk import customers via CSV / JSON payload.
+ * Supports statutory 18+ verification, cohort tagging, customer tier assignment, and safe upsert.
+ */
+exports.bulkImportCustomers = async (req, res) => {
+  try {
+    const { 
+      customers, 
+      defaultCustomerType = 'retail', 
+      defaultAgeVerified = true,
+      defaultTags = [],
+      targetSegment = '',
+      updateExisting = true 
+    } = req.body;
+
+    if (!Array.isArray(customers) || customers.length === 0) {
+      return res.status(400).json({ success: false, message: 'No customer records provided for import' });
+    }
+
+    if (customers.length > 2000) {
+      return res.status(400).json({ success: false, message: 'Batch limit exceeded. Maximum 2,000 customers per import.' });
+    }
+
+    let createdCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+    const errors = [];
+
+    const validTypes = ['retail', 'vip_collector', 'trade_buyer', 'corporate_client'];
+
+    for (let i = 0; i < customers.length; i++) {
+      const row = customers[i];
+      const rowNumber = i + 1;
+
+      // Extract and normalize email
+      const rawEmail = row.email || row.Email || row['Email Address'] || row['email_address'];
+      if (!rawEmail || typeof rawEmail !== 'string' || !rawEmail.includes('@')) {
+        errors.push({ row: rowNumber, reason: `Invalid or missing email address (${rawEmail || 'empty'})` });
+        skippedCount++;
+        continue;
+      }
+      const email = rawEmail.toLowerCase().trim();
+
+      // Extract and normalize name
+      const rawName = row.name || row.Name || row['Full Name'] || row['Customer Name'] || row.fullName;
+      const name = (rawName && typeof rawName === 'string' && rawName.trim().length > 0)
+        ? rawName.trim()
+        : email.split('@')[0];
+
+      // Extract phone
+      const rawPhone = row.phone || row.Phone || row['Phone Number'] || row['Mobile'] || row.mobile || '';
+      const phone = typeof rawPhone === 'string' ? rawPhone.trim() : String(rawPhone || '').trim();
+
+      // Determine customer type
+      let customerType = (row.customerType || row.crmCustomerType || row.Type || row.Tier || row.tier || defaultCustomerType || 'retail')
+        .toLowerCase()
+        .trim()
+        .replace(/ /g, '_');
+      if (!validTypes.includes(customerType)) {
+        if (customerType.includes('vip') || customerType.includes('collector')) customerType = 'vip_collector';
+        else if (customerType.includes('trade') || customerType.includes('wholesale')) customerType = 'trade_buyer';
+        else if (customerType.includes('corp')) customerType = 'corporate_client';
+        else customerType = 'retail';
+      }
+
+      // Determine customer tier
+      let customerTier = 'retail';
+      if (customerType === 'vip_collector') customerTier = 'premium';
+      else if (customerType === 'trade_buyer') customerTier = 'trade_wholesale';
+      else if (customerType === 'corporate_client') customerTier = 'premium';
+
+      // Age verified check (South African statutory 18+ fine liquor compliance)
+      let isAgeVerified = defaultAgeVerified !== false;
+      const rawAgeVal = row.isAgeVerified ?? row.ageVerified ?? row['18+'] ?? row['18+ Verified'] ?? row['Age Verified'];
+      if (rawAgeVal !== undefined && rawAgeVal !== null) {
+        const strVal = String(rawAgeVal).toLowerCase().trim();
+        isAgeVerified = (strVal === 'true' || strVal === 'yes' || strVal === '1' || strVal === 'y');
+      }
+
+      // Collect tags
+      const tagSet = new Set();
+      if (Array.isArray(defaultTags)) {
+        defaultTags.forEach(t => t && tagSet.add(String(t).trim()));
+      }
+      if (targetSegment) {
+        tagSet.add(targetSegment.trim());
+      }
+      const rawTags = row.tags || row.crmTags || row.Tags || row.Tag;
+      if (Array.isArray(rawTags)) {
+        rawTags.forEach(t => t && tagSet.add(String(t).trim()));
+      } else if (typeof rawTags === 'string') {
+        rawTags.split(/[,;|]/).forEach(t => t && t.trim() && tagSet.add(t.trim()));
+      }
+      tagSet.add('import_csv');
+      const finalTags = Array.from(tagSet);
+
+      const notes = row.notes || row.Notes || row.note || row.Note || '';
+
+      try {
+        let existingUser = await User.findOne({ email });
+
+        if (existingUser) {
+          if (!updateExisting) {
+            skippedCount++;
+            continue;
+          }
+
+          // Update existing patron
+          if (name && (!existingUser.name || existingUser.name === email.split('@')[0])) {
+            existingUser.name = name;
+          }
+          if (phone && !existingUser.phone) {
+            existingUser.phone = phone;
+            existingUser.phoneNumber = phone;
+          }
+          if (customerType && customerType !== 'retail') {
+            existingUser.crmCustomerType = customerType;
+            existingUser.customerTier = customerTier;
+          }
+          if (isAgeVerified) {
+            existingUser.isAgeVerified = true;
+            if (!existingUser.crmPreferences) existingUser.crmPreferences = {};
+            existingUser.crmPreferences.isAgeVerified = true;
+            existingUser.crmPreferences.marketingConsent = true;
+          }
+
+          // Merge tags
+          const existingTags = new Set(existingUser.crmTags || []);
+          finalTags.forEach(t => existingTags.add(t));
+          existingUser.crmTags = Array.from(existingTags);
+
+          if (notes) {
+            if (!existingUser.crmInternalNotes) existingUser.crmInternalNotes = [];
+            existingUser.crmInternalNotes.push({
+              note: `[CSV Bulk Import] ${notes}`,
+              author: req.user?._id,
+              authorName: req.user?.name || 'CRM Staff'
+            });
+          }
+
+          await existingUser.save();
+          updatedCount++;
+        } else {
+          // Create new patron
+          const newUser = new User({
+            name,
+            email,
+            phone,
+            phoneNumber: phone,
+            role: 'customer',
+            crmCustomerType: customerType,
+            customerTier,
+            crmSource: 'import_csv',
+            crmTags: finalTags,
+            isAgeVerified,
+            crmPreferences: {
+              preferredContactMethod: phone ? 'whatsapp' : 'email',
+              marketingConsent: true,
+              consentDate: new Date(),
+              isAgeVerified,
+              ageVerifiedAt: isAgeVerified ? new Date() : undefined
+            }
+          });
+
+          if (notes) {
+            newUser.crmInternalNotes = [{
+              note: `[CSV Bulk Import] ${notes}`,
+              author: req.user?._id,
+              authorName: req.user?.name || 'CRM Staff'
+            }];
+          }
+
+          await newUser.save();
+          createdCount++;
+        }
+      } catch (rowErr) {
+        errors.push({ row: rowNumber, email, reason: rowErr.message });
+        skippedCount++;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Successfully processed ${customers.length} records: ${createdCount} created, ${updatedCount} updated${skippedCount > 0 ? `, ${skippedCount} skipped` : ''}.`,
+      summary: {
+        total: customers.length,
+        created: createdCount,
+        updated: updatedCount,
+        skipped: skippedCount,
+        errors
+      }
+    });
+  } catch (error) {
+    console.error('Failed to bulk import customers:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Server error during customer import' });
+  }
+};
+

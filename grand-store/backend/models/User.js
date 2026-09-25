@@ -243,7 +243,7 @@ const userSchema = new mongoose.Schema({
   },
   crmSource: {
     type: String,
-    enum: ['website_registration', 'auction_bidder', 'cellar_tasting', 'trade_enquiry', 'referral', 'concierge'],
+    enum: ['website_registration', 'auction_bidder', 'cellar_tasting', 'trade_enquiry', 'referral', 'concierge', 'import_csv'],
     default: 'website_registration'
   },
   crmAccountManager: {

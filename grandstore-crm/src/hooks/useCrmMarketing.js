@@ -85,6 +85,62 @@ export function useCrmMarketing() {
     }
   };
 
+  const bulkImportCustomers = async (payload) => {
+    try {
+      const res = await crmApi.bulkImportCustomers(payload);
+      if (res.data && res.data.success) {
+        await fetchAudiencesAndCampaigns();
+        return res.data;
+      }
+      return res.data;
+    } catch (err) {
+      console.error('Error importing customers via CSV:', err);
+      throw err;
+    }
+  };
+
+  const createCategory = async (categoryData) => {
+    try {
+      const res = await crmApi.createAudienceCategory(categoryData);
+      if (res.data && res.data.success) {
+        await fetchAudiencesAndCampaigns();
+        return res.data;
+      }
+      return res.data;
+    } catch (err) {
+      console.error('Error creating audience category:', err);
+      throw err;
+    }
+  };
+
+  const updateCategory = async (id, categoryData) => {
+    try {
+      const res = await crmApi.updateAudienceCategory(id, categoryData);
+      if (res.data && res.data.success) {
+        await fetchAudiencesAndCampaigns();
+        return res.data;
+      }
+      return res.data;
+    } catch (err) {
+      console.error('Error updating audience category:', err);
+      throw err;
+    }
+  };
+
+  const deleteCategory = async (id) => {
+    try {
+      const res = await crmApi.deleteAudienceCategory(id);
+      if (res.data && res.data.success) {
+        await fetchAudiencesAndCampaigns();
+        return res.data;
+      }
+      return res.data;
+    } catch (err) {
+      console.error('Error deleting audience category:', err);
+      throw err;
+    }
+  };
+
   return {
     ...data,
     campaigns,
@@ -93,6 +149,10 @@ export function useCrmMarketing() {
     refresh: fetchAudiencesAndCampaigns,
     previewSegment,
     createCampaign,
-    updateCampaignStatus
+    updateCampaignStatus,
+    bulkImportCustomers,
+    createCategory,
+    updateCategory,
+    deleteCategory
   };
 }
