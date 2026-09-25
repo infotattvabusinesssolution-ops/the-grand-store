@@ -47,17 +47,9 @@ export default function CrmVendorWorkflowPage() {
   const kycPending = summary?.documentsAwaitingVerification || [];
   const overdueOrders = summary?.ordersRequiringAction || [];
 
-  // Queue items for Products Awaiting Approval & Payment Queries
-  const productsAwaitingApproval = [
-    { id: 'PROD-101', vendorName: 'Maison Dobbé SAS', productName: 'Cognac XO Heritage Grand Reserve 700ml', vintage: 'XO Rare', abv: '40.0%', submittedDate: 'Today, 09:15', priceZar: 2850 },
-    { id: 'PROD-102', vendorName: 'Franschhoek Cellars', productName: 'Cap Classique Brut Vintage 2020', vintage: '2020', abv: '12.5%', submittedDate: 'Yesterday, 14:30', priceZar: 480 },
-    { id: 'PROD-103', vendorName: 'Stellenbosch Heritage Estate', productName: 'Single Vineyard Cabernet Sauvignon', vintage: '2019', abv: '14.0%', submittedDate: '23 Sept', priceZar: 850 }
-  ];
-
-  const vendorPaymentQueries = [
-    { id: 'PQ-201', vendorName: 'Maison Dobbé', query: 'Settlement reconciliation for Order #GS-1002 (30-day payout check)', amount: 'R 28,950', status: 'Pending Review', date: 'Today' },
-    { id: 'PQ-202', vendorName: 'Robertson Valley Wines', query: 'Commission tier breakdown on case lot exports', amount: 'R 14,250', status: 'Under Investigation', date: '22 Sept' }
-  ];
+  // Dynamic queue items from backend summary
+  const productsAwaitingApproval = summary?.productsAwaitingApproval || [];
+  const vendorPaymentQueries = summary?.vendorPaymentQueries || [];
 
   const handleOpenActionModal = (vendor, targetStage, title) => {
     setActionModal({
@@ -453,33 +445,41 @@ export default function CrmVendorWorkflowPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {productsAwaitingApproval.map((p) => (
-                  <tr key={p.id} className="hover:bg-blue-50/30 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className="p-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200">
-                          <Package size={16} />
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-900">{p.productName}</p>
-                          <p className="text-[11px] text-slate-500">Ref: {p.id}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-semibold text-slate-700">{p.vendorName}</td>
-                    <td className="px-6 py-4 text-slate-600">{p.vintage} • {p.abv}</td>
-                    <td className="px-6 py-4 font-bold text-slate-900">R {p.priceZar.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-slate-500">{p.submittedDate}</td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => toast.success(`Product "${p.productName}" approved and live on website!`)}
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-sm shadow-blue-500/20 transition-all inline-flex items-center gap-1 cursor-pointer"
-                      >
-                        <Check size={13} /> Approve Listing
-                      </button>
+                {productsAwaitingApproval.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-400">
+                      ✓ No vendor products currently awaiting approval. All supplier catalogs are up-to-date.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  productsAwaitingApproval.map((p) => (
+                    <tr key={p._id || p.id} className="hover:bg-blue-50/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200">
+                            <Package size={16} />
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900">{p.productName}</p>
+                            <p className="text-[11px] text-slate-500">Ref: {p.id}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 font-semibold text-slate-700">{p.vendorName}</td>
+                      <td className="px-6 py-4 text-slate-600">{p.vintage} • {p.abv}</td>
+                      <td className="px-6 py-4 font-bold text-slate-900">R {(p.priceZar || 0).toLocaleString()}</td>
+                      <td className="px-6 py-4 text-slate-500">{p.submittedDate}</td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => toast.success(`Product "${p.productName}" approved and live on website!`)}
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-sm shadow-blue-500/20 transition-all inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <Check size={13} /> Approve Listing
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -543,27 +543,35 @@ export default function CrmVendorWorkflowPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {vendorPaymentQueries.map((q) => (
-                  <tr key={q.id} className="hover:bg-emerald-50/30 transition-colors">
-                    <td className="px-6 py-4 font-bold text-slate-900">{q.id}</td>
-                    <td className="px-6 py-4 font-semibold text-slate-800">{q.vendorName}</td>
-                    <td className="px-6 py-4 text-slate-600 max-w-xs">{q.query}</td>
-                    <td className="px-6 py-4 font-bold text-emerald-700">{q.amount}</td>
-                    <td className="px-6 py-4">
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800">
-                        {q.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => toast.success(`Response drafted and sent to ${q.vendorName}`)}
-                        className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs transition-all cursor-pointer"
-                      >
-                        Resolve Query
-                      </button>
+                {vendorPaymentQueries.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-400">
+                      ✓ No pending payment queries or disputed payouts. All vendor accounts are settled in good standing.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  vendorPaymentQueries.map((q) => (
+                    <tr key={q._id || q.id} className="hover:bg-emerald-50/30 transition-colors">
+                      <td className="px-6 py-4 font-bold text-slate-900">{q.id}</td>
+                      <td className="px-6 py-4 font-semibold text-slate-800">{q.vendorName}</td>
+                      <td className="px-6 py-4 text-slate-600 max-w-xs">{q.query}</td>
+                      <td className="px-6 py-4 font-bold text-emerald-700">{q.amount}</td>
+                      <td className="px-6 py-4">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800">
+                          {q.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => toast.success(`Response drafted and sent to ${q.vendorName}`)}
+                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs transition-all cursor-pointer"
+                        >
+                          Resolve Query
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -860,28 +868,36 @@ export default function CrmVendorWorkflowPage() {
                   </div>
 
                   <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-blue-500/20">
-                    {activeVendor360.activities?.map((act) => (
-                      <div key={act.id} className="relative group">
-                        {/* Bullet */}
-                        <div className="absolute -left-[27px] top-1 w-3.5 h-3.5 rounded-full bg-slate-950 border-2 border-blue-500 group-hover:scale-125 transition-transform" />
-                        
-                        <div className="bg-slate-900/80 p-4 rounded-2xl border border-blue-500/20 group-hover:border-blue-500/50 transition-colors">
-                          <div className="flex items-center justify-between flex-wrap gap-2">
-                            <span className="font-extrabold text-white text-sm">{act.title}</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                                {act.badge}
-                              </span>
-                              <span className="text-[11px] text-slate-400 font-mono">
-                                {new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(act.timestamp).toLocaleDateString()}
-                              </span>
-                            </div>
-                          </div>
-                          <p className="text-xs text-slate-300 mt-1">{act.description}</p>
-                          <p className="text-[10px] text-slate-500 mt-2 font-medium">Actor: {act.performedBy}</p>
-                        </div>
+                    {(!activeVendor360.activities || activeVendor360.activities.length === 0) ? (
+                      <div className="p-8 text-center text-slate-400 bg-slate-900/40 rounded-2xl border border-blue-500/20">
+                        <History size={24} className="mx-auto mb-2 text-slate-500" />
+                        <p className="font-semibold text-slate-300">No operational activities recorded yet for this vendor.</p>
+                        <p className="text-xs text-slate-500 mt-1">Actions taken by the vendor or platform will stream here automatically.</p>
                       </div>
-                    ))}
+                    ) : (
+                      activeVendor360.activities.map((act) => (
+                        <div key={act.id} className="relative group">
+                          {/* Bullet */}
+                          <div className="absolute -left-[27px] top-1 w-3.5 h-3.5 rounded-full bg-slate-950 border-2 border-blue-500 group-hover:scale-125 transition-transform" />
+                          
+                          <div className="bg-slate-900/80 p-4 rounded-2xl border border-blue-500/20 group-hover:border-blue-500/50 transition-colors">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <span className="font-extrabold text-white text-sm">{act.title}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                  {act.badge}
+                                </span>
+                                <span className="text-[11px] text-slate-400 font-mono">
+                                  {new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(act.timestamp).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-300 mt-1">{act.description}</p>
+                            <p className="text-[10px] text-slate-500 mt-2 font-medium">Actor: {act.performedBy}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               )}
@@ -1029,23 +1045,23 @@ export default function CrmVendorWorkflowPage() {
                       <div className="space-y-2 text-xs">
                         <div className="flex justify-between py-1.5 border-b border-slate-800">
                           <span className="text-slate-400">Bank Name:</span>
-                          <span className="text-white font-bold">{activeVendor360.vendorInfo.bankingInfo?.bankName}</span>
+                          <span className="text-white font-bold">{activeVendor360.vendorInfo.bankingInfo?.bankName || 'Not submitted'}</span>
                         </div>
                         <div className="flex justify-between py-1.5 border-b border-slate-800">
                           <span className="text-slate-400">Account Name:</span>
-                          <span className="text-white font-bold">{activeVendor360.vendorInfo.bankingInfo?.accountName}</span>
+                          <span className="text-white font-bold">{activeVendor360.vendorInfo.bankingInfo?.accountName || 'Not submitted'}</span>
                         </div>
                         <div className="flex justify-between py-1.5 border-b border-slate-800">
                           <span className="text-slate-400">Account Number:</span>
-                          <span className="text-white font-mono font-bold">{activeVendor360.vendorInfo.bankingInfo?.accountNumber}</span>
+                          <span className="text-white font-mono font-bold">{activeVendor360.vendorInfo.bankingInfo?.accountNumber || 'Not submitted'}</span>
                         </div>
                         <div className="flex justify-between py-1.5 border-b border-slate-800">
                           <span className="text-slate-400">Branch Code:</span>
-                          <span className="text-white font-mono font-bold">{activeVendor360.vendorInfo.bankingInfo?.branchCode}</span>
+                          <span className="text-white font-mono font-bold">{activeVendor360.vendorInfo.bankingInfo?.branchCode || 'Not submitted'}</span>
                         </div>
                         <div className="flex justify-between py-1.5">
                           <span className="text-slate-400">Payout Preference:</span>
-                          <span className="text-blue-400 font-extrabold">{activeVendor360.vendorInfo.bankingInfo?.payoutPreference}</span>
+                          <span className="text-blue-400 font-extrabold">{activeVendor360.vendorInfo.bankingInfo?.payoutPreference || 'Monthly'}</span>
                         </div>
                       </div>
                     </div>
@@ -1056,20 +1072,69 @@ export default function CrmVendorWorkflowPage() {
                           <CheckCircle2 size={16} className="text-emerald-400" /> Immediate Payout Trigger
                         </h4>
                         <p className="text-xs text-slate-400 mt-1">
-                          Available Unsettled Escrow: <span className="text-blue-400 font-extrabold">R {activeVendor360.dashboardMirror?.financials?.pendingSettlement?.toLocaleString()}</span>
+                          Available Unsettled Escrow: <span className="text-blue-400 font-extrabold">R {(activeVendor360.dashboardMirror?.financials?.pendingSettlement || 0).toLocaleString()}</span>
                         </p>
                       </div>
 
                       <div className="p-3 bg-slate-950/80 rounded-xl border border-blue-500/20 text-xs text-slate-300">
-                        Funds will be automatically released to Standard Bank account on {activeVendor360.dashboardMirror?.financials?.nextPayoutDate} as per standard 30-day settlement window.
+                        Funds will be automatically released to {activeVendor360.vendorInfo.bankingInfo?.bankName || 'registered bank account'} on {activeVendor360.dashboardMirror?.financials?.nextPayoutDate || 'next scheduled date'} as per standard settlement window.
                       </div>
 
                       <button
-                        onClick={() => toast.success(`Early settlement payout of R ${activeVendor360.dashboardMirror?.financials?.pendingSettlement?.toLocaleString()} initiated via Standard Bank Host-to-Host API.`)}
+                        onClick={() => toast.success(`Early settlement payout of R ${(activeVendor360.dashboardMirror?.financials?.pendingSettlement || 0).toLocaleString()} initiated via Host-to-Host banking API.`)}
                         className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition-all shadow-md shadow-blue-600/30 cursor-pointer flex items-center justify-center gap-2"
                       >
                         <Zap size={14} /> Execute Early Settlement Payout
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Real Settlement Payout History */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                      <DollarSign size={16} className="text-blue-400" /> Settled Disbursements & Payout Records ({activeVendor360.settlements?.length || 0})
+                    </h4>
+                    <div className="overflow-x-auto rounded-2xl border border-blue-500/20">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-900 text-slate-400 uppercase font-semibold border-b border-blue-500/20">
+                          <tr>
+                            <th className="px-4 py-3">Settlement Ref</th>
+                            <th className="px-4 py-3">Order Number</th>
+                            <th className="px-4 py-3">Order Value</th>
+                            <th className="px-4 py-3">Platform Fee</th>
+                            <th className="px-4 py-3">Payout Amount</th>
+                            <th className="px-4 py-3">Status</th>
+                            <th className="px-4 py-3">Settled Date</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800 bg-slate-950/60">
+                          {(!activeVendor360.settlements || activeVendor360.settlements.length === 0) ? (
+                            <tr>
+                              <td colSpan={7} className="py-8 text-center text-slate-400">
+                                No historical settlement disbursements executed for this vendor yet.
+                              </td>
+                            </tr>
+                          ) : (
+                            activeVendor360.settlements.map((s) => (
+                              <tr key={s._id} className="hover:bg-blue-500/10 transition-colors">
+                                <td className="px-4 py-3 font-mono font-bold text-white">{s.settlementReference}</td>
+                                <td className="px-4 py-3 text-slate-300">#{s.orderNumber}</td>
+                                <td className="px-4 py-3 text-slate-300">R {(s.orderTotal || 0).toLocaleString()}</td>
+                                <td className="px-4 py-3 text-rose-400 font-semibold">- R {(s.commissionAmount || 0).toLocaleString()}</td>
+                                <td className="px-4 py-3 font-bold text-emerald-400">R {(s.payoutAmount || 0).toLocaleString()}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${s.status === 'settled' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
+                                    {s.status === 'settled' ? '✓ Settled' : 'Pending'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-slate-400 font-mono">
+                                  {s.settledAt ? new Date(s.settledAt).toLocaleDateString() : 'Pending'}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
@@ -1092,19 +1157,35 @@ export default function CrmVendorWorkflowPage() {
                       <div key={idx} className="bg-slate-900/90 p-4 rounded-2xl border border-blue-500/20 space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="font-extrabold text-white text-xs">{doc.type}</span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            ✓ Verified
-                          </span>
+                          {doc.status === 'verified' ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                              ✓ Verified
+                            </span>
+                          ) : doc.status === 'pending_verification' ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                              ⏳ Awaiting Sign-off
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                              Missing / Unsubmitted
+                            </span>
+                          )}
                         </div>
-                        <p className="text-xs font-mono text-blue-400">{doc.number}</p>
+                        <p className={`text-xs font-mono ${doc.status === 'not_submitted' ? 'text-slate-500 italic' : 'text-blue-400 font-bold'}`}>
+                          {doc.number}
+                        </p>
                         <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-                          <span>Expiry: {doc.expiryDate || 'Continuous Renewal'}</span>
+                          <span>
+                            {doc.status === 'not_submitted' ? 'No document on file' : `Expiry: ${doc.expiryDate || 'Continuous Renewal'}`}
+                          </span>
                           {doc.url ? (
                             <a href={doc.url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline flex items-center gap-1 font-semibold">
-                              <ExternalLink size={11} /> View PDF
+                              <ExternalLink size={11} /> View Document
                             </a>
                           ) : (
-                            <span className="text-slate-500 text-[11px]">Hardcopy on File</span>
+                            <span className="text-slate-500 text-[11px]">
+                              {doc.status === 'not_submitted' ? 'Pending Upload' : 'Hardcopy on File'}
+                            </span>
                           )}
                         </div>
                       </div>
