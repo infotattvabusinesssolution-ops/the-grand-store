@@ -171,17 +171,20 @@ export const crmApi = {
   recordHammerPayment: (id, data) => crmClient.put(`/auctions/lot/${id}/payment`, data),
   sendPaymentReminder: (id) => crmClient.post(`/auctions/lot/${id}/remind`),
   defaultLot: (id) => crmClient.put(`/auctions/lot/${id}/default`),
-  createAuctionLot: (data) => crmClient.post('/auctions/lots', data),
+  approveAuctionLot: (id, data) => crmClient.put(`/auctions/lots/${id}/approve`, data),
+  rejectAuctionLot: (id, data) => crmClient.put(`/auctions/lots/${id}/reject`, data),
   updateAuctionLot: (id, data) => crmClient.put(`/auctions/lots/${id}`, data),
   deleteAuctionLot: (id) => crmClient.delete(`/auctions/lots/${id}`),
   placeFloorBid: (id, data) => crmClient.post(`/auctions/lots/${id}/floor-bid`, data),
   declareHammerFall: (id, data) => crmClient.put(`/auctions/lots/${id}/hammer`, data),
+  getLotBids: (id) => crmClient.get(`/auctions/lots/${id}/bids`),
 
   // Events Operations & Walk-in Door Desk
   getEventGuests: (eventId) => crmClient.get(`/events/${eventId}/guests`),
   toggleGuestCheckIn: (bookingId) => crmClient.put(`/events/bookings/${bookingId}/checkin`),
   registerWalkInGuest: (eventId, data) => crmClient.post(`/events/${eventId}/walk-in`, data),
-  createTastingEvent: (data) => crmClient.post('/events', data),
+  approveTastingEvent: (id, data) => crmClient.put(`/events/${id}/approve`, data),
+  rejectTastingEvent: (id, data) => crmClient.put(`/events/${id}/reject`, data),
   updateTastingEvent: (id, data) => crmClient.put(`/events/${id}`, data),
   deleteTastingEvent: (id) => crmClient.delete(`/events/${id}`),
 
