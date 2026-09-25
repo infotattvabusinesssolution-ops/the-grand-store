@@ -14,6 +14,7 @@ import './trade/TradeProfessional.css'
 import WineFarmPage from './features/wine-farm/WineFarmPage'
 import Hero from './features/home/components/Hero'
 import Arrivals from './features/home/components/Arrivals'
+import LuxuryPosterSection from './features/home/components/LuxuryPosterSection'
 import WhiskyShowcase from './features/home/components/WhiskyShowcase'
 import TastingCampaign from './features/home/components/TastingCampaign'
 import TequilaShowcase from './features/home/components/TequilaShowcase'
@@ -29,6 +30,7 @@ import Testimonials from './features/home/components/Testimonials'
 import LuxuryBannerSection from './features/home/components/LuxuryBannerSection'
 import AuctionCampaign from './features/home/components/AuctionCampaign'
 import AdminProducts from './features/admin/AdminProducts'
+import AdminLuxuryShowcase from './features/admin/AdminLuxuryShowcase'
 import AdminOrders from './features/admin/AdminOrders'
 import AdminOrderDetail from './features/admin/AdminOrderDetail'
 import LatestBlogs from './features/home/components/LatestBlogs'
@@ -507,6 +509,10 @@ function App() {
                 onCompare={addToCompare}
                 compareItems={compareItems}
               />
+              <LuxuryPosterSection
+                onAdd={addToCart}
+                onWish={handleWishlist}
+              />
               <WhiskyShowcase
                 onAdd={addToCart}
                 onWish={handleWishlist}
@@ -883,6 +889,7 @@ function App() {
           <Route path="newsletter" element={<AdminNewsletter />} />
           <Route path="chatbot" element={<AdminChatbot />} />
           <Route path="products" element={<AdminProducts />} />
+          <Route path="luxury-showcase" element={<AdminLuxuryShowcase />} />
 
           <Route path="orders" element={<AdminOrders />} />
           <Route path="orders/:id" element={<AdminOrderDetail onNotify={showToast} />} />

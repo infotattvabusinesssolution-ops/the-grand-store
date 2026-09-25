@@ -28,17 +28,25 @@ import {
   Loader2,
 } from "lucide-react";
 import Price from "../../components/ui/Price";
+import ProductIssueModal from "./ProductIssueModal";
 
 export default function CustomerOrdersPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const [orders, setOrders] = useState([]);
+  const [customerTickets, setCustomerTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusTab, setStatusTab] = useState("active");
   const [cancellingId, setCancellingId] = useState(null);
+  const [issueModal, setIssueModal] = useState({
+    isOpen: false,
+    order: null,
+    productItem: null,
+    initialTicket: null
+  });
 
   useEffect(() => {
     if (!user) {
@@ -46,12 +54,27 @@ export default function CustomerOrdersPage() {
     }
   }, [user, navigate]);
 
+  const fetchTickets = async () => {
+    if (!user) return;
+    try {
+      const res = await api.get('/tickets/my-tickets');
+      if (res.data?.success) {
+        setCustomerTickets(res.data.tickets || []);
+      }
+    } catch (err) {
+      console.warn('Could not fetch support tickets:', err);
+    }
+  };
+
   const fetchOrders = async (isManual = false) => {
     if (user) {
       if (isManual) setRefreshing(true);
       try {
-        const { data } = await api.get(`/orders/myorders`);
-        setOrders(data);
+        const [{ data: ordersData }] = await Promise.all([
+          api.get(`/orders/myorders`),
+          fetchTickets()
+        ]);
+        setOrders(ordersData);
       } catch (error) {
         console.error("Failed to fetch orders", error);
       } finally {
@@ -205,6 +228,20 @@ export default function CustomerOrdersPage() {
         >
           All ({orders.length})
         </button>
+
+        <button
+          onClick={() => setStatusTab('tickets')}
+          className={`px-4 py-2 rounded-xl text-xs font-mono uppercase tracking-wider font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+            statusTab === 'tickets'
+              ? 'bg-amber-500 text-black shadow-md'
+              : customerTickets.length > 0
+                ? 'bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 border border-amber-500/40'
+                : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white border border-white/10'
+          }`}
+        >
+          <MessageSquare size={13} className={customerTickets.length > 0 ? "text-amber-400" : ""} />
+          Support Cases ({customerTickets.length})
+        </button>
       </div>
 
       {loading ? (
@@ -212,6 +249,98 @@ export default function CustomerOrdersPage() {
           <Package className="animate-pulse opacity-50" size={40} />
           <p>Retrieving your collection...</p>
         </div>
+      ) : statusTab === 'tickets' ? (
+        customerTickets.length === 0 ? (
+          <div className="flex-1 flex flex-col justify-center items-center text-center py-20 border border-white/5 rounded-3xl bg-white/[0.01]">
+            <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-5">
+              <ShieldCheck size={36} className="text-emerald-400" />
+            </div>
+            <h2 className="text-xl font-serif text-white mb-2">No Active Incidents or Cases</h2>
+            <p className="text-[var(--color-ivory-muted)] text-xs max-w-sm mb-6 font-light">
+              All your paid shipments are safeguarded by Grand Store Logistics. If you ever experience a broken bottle, delivery delay, or transit issue, you can report it directly from any order item.
+            </p>
+            <button
+              onClick={() => setStatusTab('active')}
+              className="px-6 py-2.5 rounded-full bg-[var(--color-gold)] text-black font-semibold text-xs tracking-wider uppercase hover:brightness-110 transition-all cursor-pointer"
+            >
+              View Active Orders
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {customerTickets.map((ticket) => {
+              const matchedOrder = orders.find(o => String(o._id) === String(ticket.order?._id || ticket.order));
+              const lastMsg = ticket.conversation?.[ticket.conversation.length - 1];
+              const getTicketStatusBadge = (status) => {
+                switch (status) {
+                  case 'courier_traced':
+                    return <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full text-[10px] font-mono font-bold">Courier Trace In Progress</span>;
+                  case 'reshipped':
+                    return <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-[10px] font-mono font-bold">Replacement Reshipped</span>;
+                  case 'refunded':
+                    return <span className="px-2.5 py-1 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full text-[10px] font-mono font-bold">Refund Issued</span>;
+                  case 'resolved':
+                  case 'closed':
+                    return <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-[10px] font-mono font-bold">Case Resolved</span>;
+                  default:
+                    return <span className="px-2.5 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-full text-[10px] font-mono font-bold animate-pulse">Under Priority Investigation</span>;
+                }
+              };
+
+              return (
+                <div
+                  key={ticket._id}
+                  className="bg-white/[0.02] backdrop-blur-md border border-white/10 hover:border-amber-500/30 transition-all rounded-2xl p-5 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                >
+                  <div className="flex items-center gap-4 min-w-0 flex-1">
+                    <div className="w-16 h-20 rounded-xl bg-black border border-white/10 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                      {ticket.orderItem?.image ? (
+                        <img src={ticket.orderItem.image} alt={ticket.orderItem.name} className="h-full object-contain" />
+                      ) : (
+                        <Package size={24} className="text-amber-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="font-mono font-bold text-white text-xs">#{ticket.ticketNumber}</span>
+                        {getTicketStatusBadge(ticket.status)}
+                        <span className="text-[10px] text-white/40 font-mono">
+                          Order #{ticket.orderId || ticket.order?._id || 'N/A'}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-serif font-bold text-[var(--color-ivory)] truncate">
+                        {ticket.orderItem?.name || ticket.subject}
+                      </h3>
+                      <p className="text-[11px] text-white/60 mt-0.5 line-clamp-1">
+                        <strong>Issue:</strong> {ticket.subject}
+                      </p>
+                      {lastMsg && (
+                        <div className="mt-2 text-[11px] text-white/70 bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 line-clamp-1 flex items-center gap-2">
+                          <span className="font-bold text-amber-300 shrink-0">{lastMsg.senderName}:</span>
+                          <span className="truncate">{lastMsg.message}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 w-full md:w-auto shrink-0 justify-end">
+                    <button
+                      onClick={() => setIssueModal({
+                        isOpen: true,
+                        order: matchedOrder || ticket.order || { _id: ticket.orderId, orderId: ticket.orderId },
+                        productItem: ticket.orderItem,
+                        initialTicket: ticket
+                      })}
+                      className="w-full md:w-auto px-5 py-2.5 rounded-xl bg-[var(--color-gold)] hover:brightness-110 text-black font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+                    >
+                      <MessageSquare size={14} /> Open Concierge Thread
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
       ) : filteredOrders.length === 0 ? (
         <div className="flex-1 flex flex-col justify-center items-center text-center py-20 border border-white/5 rounded-3xl bg-white/[0.01]">
           <div className="w-24 h-24 rounded-full bg-white/[0.02] border border-white/[0.05] flex items-center justify-center mb-6 shadow-inner">
@@ -591,43 +720,99 @@ export default function CustomerOrdersPage() {
 
               <div className="p-4 sm:p-6 md:px-8 bg-black/20">
                 <div className="grid grid-cols-1 md:flex gap-3 md:gap-4 md:overflow-x-auto custom-scrollbar md:pb-2">
-                  {order.orderItems?.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="w-full md:w-64 md:flex-shrink-0 bg-white/[0.025] border border-white/[0.07] rounded-xl p-3 sm:p-4 flex gap-3 sm:gap-4 items-center"
-                    >
-                      <div className="w-14 h-16 sm:w-16 sm:h-16 rounded-lg bg-black border border-white/10 flex items-center justify-center overflow-hidden shrink-0 p-1">
-                        {item.image ? (
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="h-full object-contain"
-                          />
-                        ) : (
-                          <Package size={20} className="text-gold-gradient" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm text-[var(--color-ivory)] font-medium truncate">
-                          {item.name}
+                  {order.orderItems?.map((item, idx) => {
+                    const isPaidOrder = Boolean(order.isPaid || order.paymentStatus === 'Paid');
+                    const matchingTicket = customerTickets.find(t => 
+                      String(t.order?._id || t.order) === String(order._id) &&
+                      (String(t.orderItem?.product) === String(item.product) || String(t.orderItem?.name) === String(item.name))
+                    );
+
+                    return (
+                      <div
+                        key={idx}
+                        className="w-full md:w-72 md:flex-shrink-0 bg-white/[0.025] border border-white/[0.07] rounded-xl p-3 sm:p-4 flex flex-col justify-between"
+                      >
+                        <div className="flex gap-3 sm:gap-4 items-center">
+                          <div className="w-14 h-16 sm:w-16 sm:h-16 rounded-lg bg-black border border-white/10 flex items-center justify-center overflow-hidden shrink-0 p-1">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="h-full object-contain"
+                              />
+                            ) : (
+                              <Package size={20} className="text-gold-gradient" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm text-[var(--color-ivory)] font-medium truncate">
+                              {item.name}
+                            </div>
+                            {item.option && (
+                              <div className="text-xs text-[var(--color-ivory-muted)] mt-1 truncate">
+                                {item.option}
+                              </div>
+                            )}
+                            <div className="text-xs text-gold-gradient mt-2 font-bold">
+                              Qty: {item.quantity}
+                            </div>
+                          </div>
                         </div>
-                        {item.option && (
-                          <div className="text-xs text-[var(--color-ivory-muted)] mt-1 truncate">
-                            {item.option}
+
+                        {/* Customer Support & Incident Reporting (Flipkart / Amazon Style) */}
+                        {isPaidOrder && (
+                          <div className="mt-3 pt-2.5 border-t border-white/10 w-full">
+                            {matchingTicket ? (
+                              <button
+                                onClick={() => setIssueModal({
+                                  isOpen: true,
+                                  order,
+                                  productItem: item,
+                                  initialTicket: matchingTicket
+                                })}
+                                className="w-full py-1.5 px-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-[11px] font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                              >
+                                <MessageSquare size={12} className="animate-pulse text-amber-400" />
+                                <span className="truncate">#{matchingTicket.ticketNumber} • {matchingTicket.status.replace('_', ' ')}</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setIssueModal({
+                                  isOpen: true,
+                                  order,
+                                  productItem: item,
+                                  initialTicket: null
+                                })}
+                                className="w-full py-1.5 px-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/10 text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                              >
+                                <AlertTriangle size={12} className="text-amber-400" />
+                                <span>Need Help with Item?</span>
+                              </button>
+                            )}
                           </div>
                         )}
-                        <div className="text-xs text-gold-gradient mt-2 font-bold">
-                          Qty: {item.quantity}
-                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Interactive Customer Support & Incident Modal */}
+      <ProductIssueModal
+        isOpen={issueModal.isOpen}
+        onClose={() => setIssueModal(prev => ({ ...prev, isOpen: false }))}
+        order={issueModal.order}
+        productItem={issueModal.productItem}
+        initialTicket={issueModal.initialTicket}
+        onTicketCreated={(newTicket) => {
+          fetchTickets();
+          setIssueModal(prev => ({ ...prev, initialTicket: newTicket }));
+        }}
+      />
     </div>
   );
 }

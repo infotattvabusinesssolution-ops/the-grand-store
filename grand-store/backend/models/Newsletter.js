@@ -29,7 +29,38 @@ const newsletterSchema = new mongoose.Schema(
       type: String,
       default: "grand-store",
       index: true,
-    }
+    },
+    name: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    isGiveawayEntry: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    isWinner: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    wonAt: {
+      type: Date,
+    },
+    prize: {
+      type: String,
+      default: "M Collection The Brut Reserve (750ml)",
+    },
+    drawNotes: {
+      type: String,
+      default: "",
+    },
   },
   {
     timestamps: true,

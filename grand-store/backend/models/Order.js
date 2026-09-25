@@ -138,6 +138,11 @@ const orderSchema = new mongoose.Schema({
     enum: ['Pending', 'Awaiting_Approval', 'Authorised', 'Paid', 'Allocated', 'Settled', 'Failed', 'Cancelled', 'Refunded', 'Disputed'],
     default: 'Pending'
   },
+  status: {
+    type: String,
+    enum: ['Placed', 'Processing', 'Vendor Processing', 'Awaiting Dispatch', 'In Transit', 'Delivered', 'Completed', 'Cancelled', 'Shipment Issue'],
+    default: 'Processing'
+  },
   isPaid: { type: Boolean, required: true, default: false },
   paidAt: { type: Date },
   failureEmailDispatched: { type: Boolean, default: false },

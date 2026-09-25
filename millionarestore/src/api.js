@@ -20,7 +20,11 @@ export const submitWineEnquiry = async (payload) => {
   return data;
 };
 
-export const subscribeNewsletter = async (email) => {
+export const subscribeNewsletter = async (dataOrEmail, name = '', phone = '') => {
+  const payload = typeof dataOrEmail === 'object'
+    ? { source: 'millionaires-collection', isGiveawayEntry: true, ...dataOrEmail }
+    : { email: dataOrEmail, name, phone, source: 'millionaires-collection', isGiveawayEntry: true };
+
   const response = await fetch(`${apiOrigin}/api/newsletter/subscribe`, {
     method: 'POST',
     credentials: 'omit',
@@ -28,10 +32,7 @@ export const subscribeNewsletter = async (email) => {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      email,
-      source: 'millionaires-collection',
-    }),
+    body: JSON.stringify(payload),
   });
 
   const data = await response.json().catch(() => ({}));

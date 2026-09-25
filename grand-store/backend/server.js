@@ -156,6 +156,8 @@ mongoose
     startReminderJobs();
     startEventJobs();
     startVendorJobs();
+    const startCrmEscalationJobs = require("./jobs/crmEscalationJob");
+    startCrmEscalationJobs();
   })
   .catch((err) => console.error("MongoDB connection error:", err));
 
@@ -215,6 +217,9 @@ app.use('/api/notifications', require("./routes/notificationRoutes"));
 app.use('/api/academy', require("./routes/vendorAcademyRoutes"));
 app.use('/api/partners', require("./routes/partnerDestinationRoutes"));
 app.use('/api/blogs', require("./routes/blogPostRoutes"));
+app.use('/api/luxury-showcase', require("./routes/luxuryShowcaseRoutes"));
+app.use('/api/tickets', require("./routes/ticketRoutes"));
+app.use('/api/crm', require("./routes/crmRoutes"));
 
 // Sitemap endpoints (Dynamic XML for Google and crawlers)
 const sitemapRoutes = require("./routes/sitemapRoutes");

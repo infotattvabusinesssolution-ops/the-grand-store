@@ -233,7 +233,40 @@ const userSchema = new mongoose.Schema({
   },
   legacySource: {
     type: String
-  }
+  },
+  // === CRM & CUSTOMER 360 EXTENSIONS (Non-breaking) ===
+  crmCustomerType: {
+    type: String,
+    enum: ['retail', 'vip_collector', 'trade_buyer', 'corporate_client'],
+    default: 'retail',
+    index: true
+  },
+  crmSource: {
+    type: String,
+    enum: ['website_registration', 'auction_bidder', 'cellar_tasting', 'trade_enquiry', 'referral', 'concierge'],
+    default: 'website_registration'
+  },
+  crmAccountManager: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  crmTags: [{
+    type: String,
+    trim: true
+  }],
+  crmPreferences: {
+    preferredContactMethod: { type: String, enum: ['email', 'whatsapp', 'phone'], default: 'email' },
+    marketingConsent: { type: Boolean, default: false },
+    consentDate: { type: Date },
+    isAgeVerified: { type: Boolean, default: false },
+    ageVerifiedAt: { type: Date }
+  },
+  crmInternalNotes: [{
+    note: { type: String, required: true },
+    author: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    authorName: { type: String },
+    createdAt: { type: Date, default: Date.now }
+  }]
 }, { timestamps: true });
 
 // High-scale query indexes for admin filtering and auth

@@ -240,7 +240,42 @@ const vendorSchema = new mongoose.Schema({
       status: { type: String, default: 'cleared' },
       proofUrl: String
     }]
-  }
+  },
+  // === CRM & ONBOARDING WORKFLOW EXTENSIONS (Non-breaking) ===
+  crmWorkflowStage: {
+    type: String,
+    enum: [
+      'application_received',
+      'kyc_verification_pending',
+      'commercial_review',
+      'product_onboarding',
+      'live_active',
+      'suspended'
+    ],
+    default: 'application_received',
+    index: true
+  },
+  crmExportCapability: {
+    type: Boolean,
+    default: false
+  },
+  crmExportLicenceVerified: {
+    type: Boolean,
+    default: false
+  },
+  crmAssignedAccountManager: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  crmAuditTrail: [{
+    action: { type: String, required: true },
+    performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    performerName: { type: String },
+    previousState: mongoose.Schema.Types.Mixed,
+    newState: mongoose.Schema.Types.Mixed,
+    timestamp: { type: Date, default: Date.now },
+    notes: { type: String }
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Vendor', vendorSchema);

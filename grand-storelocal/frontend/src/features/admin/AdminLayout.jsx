@@ -193,6 +193,9 @@ export default function AdminLayout() {
                 <button onClick={() => handleNavigate('/admin/products')} className={navItemClass('/admin/products')}>
                   <Package size={16} /> Retail Products
                 </button>
+                <button onClick={() => handleNavigate('/admin/luxury-showcase')} className={navItemClass('/admin/luxury-showcase')}>
+                  <Crown size={16} /> M Collection Poster
+                </button>
                 <button onClick={() => handleNavigate('/admin/orders')} className={navItemClass('/admin/orders')}>
                   <ShoppingBag size={16} /> Retail Orders
                 </button>
