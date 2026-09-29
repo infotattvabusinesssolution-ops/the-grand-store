@@ -13,7 +13,6 @@ import {
 import IconButton from "./IconButton";
 import { useWishlist } from "../wishlistContext";
 import Price from "./ui/Price";
-import TribalCardBorder from "../features/home/components/TribalCardBorder";
 import CardChakra from "../features/home/components/CardChakra";
 
 const fallbackBadges = [
