@@ -241,6 +241,21 @@ const createProduct = async (req, res) => {
       ? Math.max(0, Math.min(100, Number(req.body.referralDiscountPct) || 0))
       : 5;
 
+    const rawShipping = parseJsonValue(req.body.shipping, {});
+    const shipping = {
+      box_type: rawShipping.box_type || req.body.box_type || 'Standard Box',
+      weight_kg: Number(rawShipping.weight_kg !== undefined ? rawShipping.weight_kg : (req.body.weight_kg !== undefined ? req.body.weight_kg : 1.85)),
+      length_cm: Number(rawShipping.length_cm !== undefined ? rawShipping.length_cm : (req.body.length_cm !== undefined ? req.body.length_cm : 12.0)),
+      width_cm: Number(rawShipping.width_cm !== undefined ? rawShipping.width_cm : (req.body.width_cm !== undefined ? req.body.width_cm : 12.0)),
+      height_cm: Number(rawShipping.height_cm !== undefined ? rawShipping.height_cm : (req.body.height_cm !== undefined ? req.body.height_cm : 34.0)),
+      is_fragile: rawShipping.is_fragile !== undefined 
+        ? (String(rawShipping.is_fragile) === 'true' || rawShipping.is_fragile === true)
+        : (req.body.is_fragile !== undefined ? (String(req.body.is_fragile) === 'true' || req.body.is_fragile === true) : true),
+      parcel_value: Number(rawShipping.parcel_value || req.body.parcel_value || price || 0),
+      hs_code: rawShipping.hs_code || req.body.hs_code || '2208.30',
+      aramexServiceType: rawShipping.aramexServiceType || req.body.aramexServiceType || 'ONP'
+    };
+
     const newProduct = new Product({
       id: `prod_${Date.now()}`,
       name: normalizedProduct.name,
@@ -268,6 +283,7 @@ const createProduct = async (req, res) => {
       metaDescription: req.body.metaDescription ? String(req.body.metaDescription).trim() : undefined,
       vendorId: canManageInternalProducts(req.user) ? null : req.user._id,
       approvalStatus: 'approved',
+      shipping,
       isSuperCoinEligible,
       maxSuperCoinDiscountPct,
       isReferralEligible,
@@ -380,6 +396,23 @@ const updateProduct = async (req, res) => {
     }
     if (req.body.referralDiscountPct !== undefined && req.body.referralDiscountPct !== '') {
       product.referralDiscountPct = Math.max(0, Math.min(100, Number(req.body.referralDiscountPct) || 0));
+    }
+
+    if (req.body.shipping !== undefined || req.body.weight_kg !== undefined || req.body.length_cm !== undefined || req.body.box_type !== undefined) {
+      const rawShipping = parseJsonValue(req.body.shipping, {});
+      product.shipping = {
+        box_type: rawShipping.box_type || req.body.box_type || product.shipping?.box_type || 'Standard Box',
+        weight_kg: Number(rawShipping.weight_kg !== undefined ? rawShipping.weight_kg : (req.body.weight_kg !== undefined ? req.body.weight_kg : (product.shipping?.weight_kg || 1.85))),
+        length_cm: Number(rawShipping.length_cm !== undefined ? rawShipping.length_cm : (req.body.length_cm !== undefined ? req.body.length_cm : (product.shipping?.length_cm || 12.0))),
+        width_cm: Number(rawShipping.width_cm !== undefined ? rawShipping.width_cm : (req.body.width_cm !== undefined ? req.body.width_cm : (product.shipping?.width_cm || 12.0))),
+        height_cm: Number(rawShipping.height_cm !== undefined ? rawShipping.height_cm : (req.body.height_cm !== undefined ? req.body.height_cm : (product.shipping?.height_cm || 34.0))),
+        is_fragile: rawShipping.is_fragile !== undefined 
+          ? (String(rawShipping.is_fragile) === 'true' || rawShipping.is_fragile === true) 
+          : (req.body.is_fragile !== undefined ? (String(req.body.is_fragile) === 'true' || req.body.is_fragile === true) : (product.shipping?.is_fragile ?? true)),
+        parcel_value: Number(rawShipping.parcel_value || req.body.parcel_value || product.shipping?.parcel_value || price || product.price || 0),
+        hs_code: rawShipping.hs_code || req.body.hs_code || product.shipping?.hs_code || '2208.30',
+        aramexServiceType: rawShipping.aramexServiceType || req.body.aramexServiceType || product.shipping?.aramexServiceType || 'ONP'
+      };
     }
 
     let uploadedImages = [];

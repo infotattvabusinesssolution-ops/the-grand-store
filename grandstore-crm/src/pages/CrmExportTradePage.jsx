@@ -6,8 +6,41 @@ import StatusBadge from '../components/common/StatusBadge';
 import { 
   Globe, FileText, CheckCircle2, Clock, Plus, 
   ExternalLink, X, MapPin, Building, ShieldCheck, Printer,
-  Wine, Package, Layers, Info
+  Wine, Package, Layers, Info, MessageSquare, Send, User, Check, FileCheck
 } from 'lucide-react';
+
+const EXPORT_CHECKLIST_DOCS = [
+  { 
+    key: 'commercialInvoice', 
+    label: 'Commercial Invoice', 
+    desc: 'Official valuation, tariff codes & SA export clearance invoice' 
+  },
+  { 
+    key: 'packingList', 
+    label: 'Packing List', 
+    desc: 'Container manifest, carton & pallet count, tare/net/gross weights' 
+  },
+  { 
+    key: 'labelInstructions', 
+    label: 'Label Instructions / Compliance', 
+    desc: 'Destination market health warning, importer back-label & barcode specs' 
+  },
+  { 
+    key: 'certificateOfOrigin', 
+    label: 'Certificate of Origin (SA)', 
+    desc: 'South African Wine & Spirit Board official chamber certification' 
+  },
+  { 
+    key: 'phytosanitaryCertificate', 
+    label: 'Phytosanitary Health Certificate', 
+    desc: 'Department of Agriculture biosecurity and port health clearance' 
+  },
+  { 
+    key: 'billOfLading', 
+    label: 'Ocean Bill of Lading / Airway Bill', 
+    desc: 'Carrier transport manifest and title document for port discharge' 
+  }
+];
 
 const STANDARD_PACK_FORMATS = [
   { label: '6*6 / 6x750ml (6 btls/case - Standard Export)', value: '6x750ml (6 btls/case)', bottles: 6 },
@@ -19,8 +52,11 @@ const STANDARD_PACK_FORMATS = [
 
 export default function CrmExportTradePage() {
   const toast = useToast();
-  const { enquiries, loading, createEnquiry, updateDocumentation, updateStage } = useCrmExport();
+  const { enquiries, loading, createEnquiry, updateDocumentation, updateStage, addNote } = useCrmExport();
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
+  const [modalTab, setModalTab] = useState('checklist'); // 'checklist' | 'notes' | 'packaging'
+  const [newNoteText, setNewNoteText] = useState('');
+  const [submittingNote, setSubmittingNote] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [catalogProducts, setCatalogProducts] = useState([]);
 
@@ -131,10 +167,85 @@ export default function CrmExportTradePage() {
     }
   };
 
+  const getDocVerificationStatus = (enquiry, docKey) => {
+    if (!enquiry?.documentationChecklist) return false;
+    if (docKey === 'labelInstructions') {
+      return Boolean(
+        enquiry.documentationChecklist?.labelInstructions?.verified ?? 
+        enquiry.documentationChecklist?.labelInstruction?.verified
+      );
+    }
+    return Boolean(enquiry.documentationChecklist?.[docKey]?.verified);
+  };
+
+  const getVerifiedCount = (enquiry) => {
+    if (!enquiry) return 0;
+    return EXPORT_CHECKLIST_DOCS.filter(doc => getDocVerificationStatus(enquiry, doc.key)).length;
+  };
+
+  const openEnquiryModal = (enquiry, tab = 'checklist') => {
+    setSelectedEnquiry(enquiry);
+    setModalTab(tab);
+    setNewNoteText('');
+  };
+
   const handleDocToggle = async (enquiryId, docKey, currentStatus) => {
-    await updateDocumentation(enquiryId, docKey, !currentStatus);
+    const nextStatus = !currentStatus;
+    // Optimistically update selectedEnquiry in state for instant feedback
+    setSelectedEnquiry(prev => {
+      if (!prev || prev._id !== enquiryId) return prev;
+      return {
+        ...prev,
+        documentationChecklist: {
+          ...(prev.documentationChecklist || {}),
+          [docKey]: {
+            ...(prev.documentationChecklist?.[docKey] || {}),
+            verified: nextStatus
+          }
+        }
+      };
+    });
+
+    const res = await updateDocumentation(enquiryId, docKey, nextStatus);
+    if (res?.success && res.enquiry) {
+      setSelectedEnquiry(res.enquiry);
+    }
     toast.success(`Customs document status updated.`);
   };
+
+  const handleAddNote = async (e) => {
+    e.preventDefault();
+    if (!newNoteText.trim() || !selectedEnquiry) return;
+    setSubmittingNote(true);
+
+    const noteContent = newNoteText.trim();
+    try {
+      const res = await addNote(selectedEnquiry._id, noteContent);
+      if (res?.success) {
+        toast.success(`Note saved for ${selectedEnquiry.buyer?.companyName || 'customer'}`);
+        const newNoteItem = res.note || {
+          note: noteContent,
+          authorName: 'Trade Manager',
+          createdAt: new Date().toISOString()
+        };
+        setSelectedEnquiry(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            internalNotes: [...(prev.internalNotes || []), newNoteItem]
+          };
+        });
+        setNewNoteText('');
+      } else {
+        toast.error(res?.message || 'Failed to save note');
+      }
+    } catch (err) {
+      toast.error('Failed to save customer note');
+    } finally {
+      setSubmittingNote(false);
+    }
+  };
+
 
   const handlePrintProforma = (enquiry) => {
     const printWindow = window.open('', '_blank');
@@ -309,13 +420,35 @@ export default function CrmExportTradePage() {
                   const pack = firstItem.packFormat || `${firstItem.bottlesPerCase || 6} btls/case (6x750ml)`;
 
                   return (
-                    <tr key={item._id} className="hover:bg-blue-50/40 transition-colors">
-                      <td className="px-6 py-4 font-bold text-blue-700">{item.enquiryCode}</td>
+                    <tr 
+                      key={item._id} 
+                      onClick={() => openEnquiryModal(item, 'checklist')}
+                      className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
+                      title="Click to inspect export dossier and customer notes"
+                    >
+                      <td className="px-6 py-4 font-bold text-blue-700 group-hover:underline">
+                        {item.enquiryCode}
+                      </td>
                       <td className="px-6 py-4">
                         <p className="font-bold text-slate-900">{item.buyer?.companyName || item.buyer?.contactPerson}</p>
-                        <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                          <Globe size={11} className="text-blue-500 shrink-0" /> {item.destination?.country} ({item.destination?.destinationPort || 'Port TBD'})
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                          <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                            <Globe size={11} className="text-blue-500 shrink-0" /> {item.destination?.country} ({item.destination?.destinationPort || 'Port TBD'})
+                          </span>
+                          {item.internalNotes?.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEnquiryModal(item, 'notes');
+                              }}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded border border-blue-200 transition-colors cursor-pointer"
+                              title="View customer notes"
+                            >
+                              <MessageSquare size={10} /> {item.internalNotes.length} note{item.internalNotes.length === 1 ? '' : 's'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <p className="font-bold text-slate-900 flex items-center gap-1.5">
@@ -342,13 +475,24 @@ export default function CrmExportTradePage() {
                       <td className="px-6 py-4">
                         <StatusBadge status={item.stage} />
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => setSelectedEnquiry(item)}
-                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded-xl font-bold transition-all text-xs cursor-pointer"
-                        >
-                          Inspect Docs
-                        </button>
+                      <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openEnquiryModal(item, 'notes')}
+                            className="px-2.5 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-xl font-bold transition-all text-xs border border-slate-200 cursor-pointer flex items-center gap-1 shadow-2xs"
+                            title="Add or view customer notes"
+                          >
+                            <MessageSquare size={12} /> Notes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEnquiryModal(item, 'checklist')}
+                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded-xl font-bold transition-all text-xs cursor-pointer shadow-xs flex items-center gap-1"
+                          >
+                            <FileCheck size={12} /> Inspect Docs
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -359,105 +503,299 @@ export default function CrmExportTradePage() {
         </div>
       </div>
 
-      {/* Document Checklist & Stage Drawer Modal */}
+      {/* Document Checklist, Customer Notes & Details Modal */}
       {selectedEnquiry && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full p-6 space-y-4 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
               <div>
-                <h3 className="font-bold text-slate-900 text-sm">Export Checklist: {selectedEnquiry.enquiryCode}</h3>
-                <p className="text-[11px] text-slate-500">{selectedEnquiry.buyer?.companyName} • {selectedEnquiry.destination?.country}</p>
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-blue-700 text-sm tracking-tight">{selectedEnquiry.enquiryCode}</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md border border-blue-200">
+                    {selectedEnquiry.incoterms || 'CIF'} • {selectedEnquiry.currency || 'USD'}
+                  </span>
+                  <StatusBadge status={selectedEnquiry.stage} />
+                </div>
+                <h3 className="font-bold text-slate-900 text-base mt-1">
+                  {selectedEnquiry.buyer?.companyName || selectedEnquiry.buyer?.contactPerson}
+                </h3>
+                <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
+                  <span>Contact: <strong className="text-slate-700">{selectedEnquiry.buyer?.contactPerson || 'Procurement Officer'}</strong></span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <Globe size={11} className="text-blue-500 shrink-0" />
+                    {selectedEnquiry.destination?.country} ({selectedEnquiry.destination?.destinationPort || 'Port TBD'})
+                  </span>
+                  {selectedEnquiry.buyer?.email && (
+                    <>
+                      <span>•</span>
+                      <span className="text-slate-500">{selectedEnquiry.buyer.email}</span>
+                    </>
+                  )}
+                  {selectedEnquiry.buyer?.phone && (
+                    <>
+                      <span>•</span>
+                      <span className="text-slate-500">{selectedEnquiry.buyer.phone}</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <button onClick={() => setSelectedEnquiry(null)} className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer">
+              <button 
+                type="button"
+                onClick={() => setSelectedEnquiry(null)} 
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
+                title="Close modal"
+              >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Export Product & Packaging Details Card (6*6 / 6x750ml) */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <Wine size={14} className="text-blue-600" /> Export Product & Packaging
-                </p>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md border border-blue-200">
-                  {selectedEnquiry.incoterms || 'CIF'} • {selectedEnquiry.currency || 'USD'}
+            {/* Modal Tab Switcher */}
+            <div className="flex border-b border-slate-200 gap-1">
+              <button
+                type="button"
+                onClick={() => setModalTab('checklist')}
+                className={`flex items-center gap-1.5 px-3.5 py-2 font-bold text-xs border-b-2 transition-all cursor-pointer ${
+                  modalTab === 'checklist'
+                    ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-lg'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <FileCheck size={14} />
+                <span>Verified Checklist</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                  modalTab === 'checklist' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {getVerifiedCount(selectedEnquiry)}/{EXPORT_CHECKLIST_DOCS.length}
                 </span>
-              </div>
+              </button>
 
-              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 space-y-2">
-                {(selectedEnquiry.itemsRequested && selectedEnquiry.itemsRequested.length > 0
-                  ? selectedEnquiry.itemsRequested
-                  : [{
-                      productName: 'South African Fine Wine Collection',
-                      caseQuantity: 20,
-                      bottlesPerCase: 6,
-                      packFormat: '6x750ml (6 btls/case)'
-                    }]
-                ).map((item, idx) => {
-                  const bpc = item.bottlesPerCase || 6;
-                  const cases = item.caseQuantity || 1;
-                  const totalBottles = cases * bpc;
-                  const pack = item.packFormat || `${bpc}x750ml (${bpc} btls/case)`;
+              <button
+                type="button"
+                onClick={() => setModalTab('notes')}
+                className={`flex items-center gap-1.5 px-3.5 py-2 font-bold text-xs border-b-2 transition-all cursor-pointer ${
+                  modalTab === 'notes'
+                    ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-lg'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <MessageSquare size={14} />
+                <span>Customer Notes</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                  modalTab === 'notes' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {selectedEnquiry.internalNotes?.length || 0}
+                </span>
+              </button>
 
-                  return (
-                    <div key={idx} className="p-2.5 bg-white rounded-lg border border-slate-200/60 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-slate-900 text-xs truncate">{item.productName}</span>
-                          {item.vintage && (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">
-                              {item.vintage}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-1">
-                          <span className="flex items-center gap-1">
-                            <Package size={12} className="text-blue-500 shrink-0" />
-                            Format: <strong className="text-slate-700">{pack}</strong>
-                          </span>
-                          <span>•</span>
-                          <span>{bpc} btls/case</span>
-                        </div>
-                      </div>
-
-                      <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 pt-1.5 sm:pt-0 border-slate-100 shrink-0">
-                        <span className="text-xs font-extrabold text-blue-700">{cases} Cases</span>
-                        <span className="text-[11px] text-slate-500 font-medium">({totalBottles} bottles)</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <button
+                type="button"
+                onClick={() => setModalTab('packaging')}
+                className={`flex items-center gap-1.5 px-3.5 py-2 font-bold text-xs border-b-2 transition-all cursor-pointer ${
+                  modalTab === 'packaging'
+                    ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-lg'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Package size={14} />
+                <span>Product & Packaging</span>
+              </button>
             </div>
 
-            {/* Mandatory Customs Checklist */}
-            <div className="space-y-3 pt-1 border-t border-slate-100">
-              <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Mandatory Customs Documentation</p>
-              
-              {[
-                { key: 'commercialInvoice', label: 'Commercial Invoice' },
-                { key: 'certificateOfOrigin', label: 'Certificate of Origin (SA)' },
-                { key: 'phytosanitaryCertificate', label: 'Phytosanitary Health Certificate' },
-                { key: 'billOfLading', label: 'Ocean Bill of Lading / Airway Bill' }
-              ].map((doc) => {
-                const isVerified = selectedEnquiry.documentationChecklist?.[doc.key]?.verified;
-                return (
-                  <div key={doc.key} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-800">{doc.label}</span>
+            {/* TAB 1: Verified Checklist */}
+            {modalTab === 'checklist' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between bg-blue-50/70 p-3 rounded-xl border border-blue-100">
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                      <ShieldCheck size={14} className="text-blue-600" /> Mandatory Customs & Export Documentation
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Verify commercial and port documents required for ocean/air freight customs clearance
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-extrabold text-blue-700">
+                      {getVerifiedCount(selectedEnquiry)} of {EXPORT_CHECKLIST_DOCS.length}
+                    </span>
+                    <p className="text-[10px] text-slate-500 font-medium">Verified</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {EXPORT_CHECKLIST_DOCS.map((doc) => {
+                    const isVerified = getDocVerificationStatus(selectedEnquiry, doc.key);
+                    return (
+                      <div 
+                        key={doc.key} 
+                        className={`p-3 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
+                          isVerified ? 'bg-emerald-50/40 border-emerald-200/70' : 'bg-slate-50 border-slate-200/70'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900 text-xs">{doc.label}</span>
+                            {isVerified ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-300">
+                                <CheckCircle2 size={11} /> Verified
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-md">
+                                Pending Verification
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">{doc.desc}</p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDocToggle(selectedEnquiry._id, doc.key, isVerified)}
+                          className={`px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer shrink-0 shadow-xs ${
+                            isVerified 
+                              ? 'bg-emerald-600 hover:bg-rose-600 text-white' 
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          }`}
+                          title={isVerified ? 'Click to unmark document' : 'Click to verify document'}
+                        >
+                          {isVerified ? '✓ Verified (Unmark)' : 'Mark Verified'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: Customer Notes */}
+            {modalTab === 'notes' && (
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                    <MessageSquare size={14} className="text-blue-600" /> Customer Trade Notes & Instructions
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Log custom packing requests, buyer communications, tariff specifics, and inspection directives for {selectedEnquiry.buyer?.companyName || 'this customer'}
+                  </p>
+                </div>
+
+                {/* Add Note Form */}
+                <form onSubmit={handleAddNote} className="space-y-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    Add Note for {selectedEnquiry.buyer?.companyName || 'Customer'}
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    placeholder={`e.g. Customer requested packing list with gross/net pallet breakdown and custom bilingual export labels (Arabic/English). Verified by trade desk...`}
+                    value={newNoteText}
+                    onChange={(e) => setNewNoteText(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-slate-400">Notes are permanently logged to this customer's dossier</span>
                     <button
-                      onClick={() => handleDocToggle(selectedEnquiry._id, doc.key, isVerified)}
-                      className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-colors cursor-pointer ${
-                        isVerified ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                      }`}
+                      type="submit"
+                      disabled={submittingNote || !newNoteText.trim()}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-sm shadow-blue-500/20 transition-all cursor-pointer"
                     >
-                      {isVerified ? '✓ Verified' : 'Mark Verified'}
+                      <Send size={13} /> {submittingNote ? 'Saving Note...' : 'Add Customer Note'}
                     </button>
                   </div>
-                );
-              })}
-            </div>
+                </form>
 
-            <div className="pt-2 flex items-center justify-between gap-2 border-t border-slate-100">
+                {/* Notes Stream */}
+                <div className="space-y-2.5 max-h-64 overflow-y-auto crm-scrollbar">
+                  {(!selectedEnquiry.internalNotes || selectedEnquiry.internalNotes.length === 0) ? (
+                    <div className="py-8 text-center text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                      <MessageSquare size={28} className="mx-auto text-slate-300 mb-1.5" />
+                      <p className="text-xs font-semibold">No notes recorded for this customer yet</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Use the box above to add notes, preferences, or packing instructions.</p>
+                    </div>
+                  ) : (
+                    selectedEnquiry.internalNotes.slice().reverse().map((noteItem, idx) => (
+                      <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200/70 text-xs">
+                        <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1.5">
+                          <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-blue-600 inline-block"></span>
+                            {noteItem.authorName || 'Trade Manager'}
+                          </span>
+                          <span className="flex items-center gap-1 text-slate-400">
+                            <Clock size={11} /> {new Date(noteItem.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-slate-800 bg-white p-2.5 rounded-lg border border-slate-200/60 whitespace-pre-wrap leading-relaxed">
+                          {noteItem.note}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: Product & Packaging */}
+            {modalTab === 'packaging' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Wine size={14} className="text-blue-600" /> Export Product & Packaging Specifications
+                  </p>
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md border border-blue-200">
+                    {selectedEnquiry.incoterms || 'CIF'} • {selectedEnquiry.currency || 'USD'}
+                  </span>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 space-y-2">
+                  {(selectedEnquiry.itemsRequested && selectedEnquiry.itemsRequested.length > 0
+                    ? selectedEnquiry.itemsRequested
+                    : [{
+                        productName: 'South African Fine Wine Collection',
+                        caseQuantity: 20,
+                        bottlesPerCase: 6,
+                        packFormat: '6x750ml (6 btls/case)'
+                      }]
+                  ).map((item, idx) => {
+                    const bpc = item.bottlesPerCase || 6;
+                    const cases = item.caseQuantity || 1;
+                    const totalBottles = cases * bpc;
+                    const pack = item.packFormat || `${bpc}x750ml (${bpc} btls/case)`;
+
+                    return (
+                      <div key={idx} className="p-2.5 bg-white rounded-lg border border-slate-200/60 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-slate-900 text-xs truncate">{item.productName}</span>
+                            {item.vintage && (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">
+                                {item.vintage}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-1">
+                            <span className="flex items-center gap-1">
+                              <Package size={12} className="text-blue-500 shrink-0" />
+                              Format: <strong className="text-slate-700">{pack}</strong>
+                            </span>
+                            <span>•</span>
+                            <span>{bpc} btls/case</span>
+                          </div>
+                        </div>
+
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 pt-1.5 sm:pt-0 border-slate-100 shrink-0">
+                          <span className="text-xs font-extrabold text-blue-700">{cases} Cases</span>
+                          <span className="text-[11px] text-slate-500 font-medium">({totalBottles} bottles)</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Modal Bottom Actions */}
+            <div className="pt-3 flex items-center justify-between gap-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => handlePrintProforma(selectedEnquiry)}
@@ -470,7 +808,7 @@ export default function CrmExportTradePage() {
                 onClick={() => setSelectedEnquiry(null)}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
               >
-                Close Checklist
+                Close Dossier
               </button>
             </div>
           </div>

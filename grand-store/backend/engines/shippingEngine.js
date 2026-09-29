@@ -46,9 +46,31 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
 
     // 1. DOMESTIC SA (The Courier Guy & PUDO Live Dynamic Engine + PostNet)
     if (originSA && destSA) {
-      // Estimate parcel box dimensions based on chargeable weight
+      // Determine parcel box dimensions dynamically from items specifications
+      let maxLen = 0, maxWid = 0, maxHgt = 0, totalItemsCount = 0;
+      if (options.items && Array.isArray(options.items) && options.items.length > 0) {
+        options.items.forEach(it => {
+          const l = Number(it.shipping?.length_cm || 12);
+          const w = Number(it.shipping?.width_cm || 12);
+          const h = Number(it.shipping?.height_cm || 34);
+          const q = Number(it.quantity || it.qty || 1);
+          totalItemsCount += q;
+          maxLen = Math.max(maxLen, l);
+          maxWid = Math.max(maxWid, w);
+          maxHgt = Math.max(maxHgt, h);
+        });
+      }
+
       let parcelDims = { length: 35, width: 12, height: 12 };
-      if (totalWeightKg > 10) {
+      if (maxLen > 0 && maxWid > 0 && maxHgt > 0) {
+        const cols = Math.ceil(Math.sqrt(totalItemsCount || 1));
+        const rows = Math.ceil((totalItemsCount || 1) / cols);
+        parcelDims = {
+          length: Number((maxLen * cols).toFixed(1)),
+          width: Number((maxWid * rows).toFixed(1)),
+          height: Number(maxHgt.toFixed(1))
+        };
+      } else if (totalWeightKg > 10) {
         parcelDims = { length: 45, width: 35, height: 30 };
       } else if (totalWeightKg > 5) {
         parcelDims = { length: 38, width: 28, height: 24 };
@@ -190,15 +212,18 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
 
       // 1D. PostNet Branch Collection (PostNet-to-PostNet)
       const postnetLookup = options.postnetLookup || {};
+      const isPostnetFree = postnetCollectionCost <= 0;
       quotes.push({
         courierName: 'PostNet',
         serviceLevel: 'PostNet Store Collection',
         deliveryType: 'pickup',
         cost: postnetCollectionCost,
         originalCost: postnetCollectionCost,
-        isFreeDelivery: false,
+        isFreeDelivery: isPostnetFree,
         estimatedDays: '2–3 business days',
-        description: 'Collect at your preferred PostNet branch counter',
+        description: isPostnetFree
+          ? 'Complimentary pickup at your preferred PostNet branch counter'
+          : 'Collect at your preferred PostNet branch counter',
         stores: postnetLookup.stores || [],
         searchedCity: postnetLookup.searchedCity || customerAddress.city || '',
         hasCityMatch: Boolean(postnetLookup.hasCityMatch),
@@ -213,27 +238,80 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
           }
         ]
       });
-      // 1E. Aramex South Africa - Overnight Parcel (ONP)
-      const aramexVolumetricWeight = Math.max(totalWeightKg, (parcelDims.length * parcelDims.width * parcelDims.height) / 5000);
-      const aramexBaseCost = 135.00 + (aramexVolumetricWeight > 2 ? (aramexVolumetricWeight - 2) * 38.00 : 0);
-      const aramexTotalCost = parseFloat((aramexBaseCost * 1.15).toFixed(2)); // incl 15% VAT
+
+      // 1E. Aramex South Africa - Live Rate Engine (Overnight ONP & Economy Road PEC)
+      // Calculated dynamically from product package box specs & actual chargeable weight
+      const aramexVolumetricWeight = parseFloat(((parcelDims.length * parcelDims.width * parcelDims.height) / 5000).toFixed(2));
+      const aramexChargeableWeight = Math.max(Number(totalWeightKg.toFixed(2)), aramexVolumetricWeight);
+      const isRegionalDest = Boolean(customerAddress.isRegional || false);
+      const regionalFee = isRegionalDest ? 65.00 : 0.00;
+
+      // Aramex Overnight Express (ONP)
+      const onpBase = 125.00 + Math.max(0, aramexChargeableWeight - 2) * 28.00 + regionalFee;
+      const onpFuel = Number((onpBase * 0.125).toFixed(2));
+      const onpSecurity = 5.00;
+      const onpSubtotal = onpBase + onpFuel + onpSecurity;
+      const onpTotal = parseFloat((onpSubtotal * 1.15).toFixed(2));
+
+      // Aramex Economy Road (PEC)
+      const pecBase = 75.00 + Math.max(0, aramexChargeableWeight - 2) * 16.00 + regionalFee;
+      const pecFuel = Number((pecBase * 0.125).toFixed(2));
+      const pecSecurity = 3.50;
+      const pecSubtotal = pecBase + pecFuel + pecSecurity;
+      const pecTotal = parseFloat((pecSubtotal * 1.15).toFixed(2));
 
       quotes.push({
         courierName: 'Aramex',
-        serviceLevel: 'Aramex Overnight Parcel (ONP)',
+        serviceLevel: 'Aramex Overnight Express (ONP)',
         serviceCode: 'ONP',
         deliveryType: 'home',
-        cost: aramexTotalCost,
-        originalCost: aramexTotalCost,
+        cost: onpTotal,
+        originalCost: onpTotal,
         isFreeDelivery: false,
-        estimatedDays: 'Next business day by 10:30 AM',
-        description: 'Aramex Priority Door-to-Door Overnight Air Express',
+        estimatedDays: 'Next business day by 11:00 AM',
+        description: `Aramex Priority Door-to-Door Overnight Air Express (Box: ${parcelDims.length}x${parcelDims.width}x${parcelDims.height}cm, Wt: ${aramexChargeableWeight}kg)`,
+        boxDetails: {
+          length_cm: parcelDims.length,
+          width_cm: parcelDims.width,
+          height_cm: parcelDims.height,
+          actual_weight_kg: Number(totalWeightKg.toFixed(2)),
+          volumetric_weight_kg: aramexVolumetricWeight,
+          chargeable_weight_kg: aramexChargeableWeight
+        },
         legs: [
           {
             courierName: 'Aramex SA Express Hub',
             origin: originCountry,
             destination: customerAddress.city || destCountry,
-            cost: Number((aramexTotalCost * 0.8).toFixed(2))
+            cost: Number((onpTotal * 0.8).toFixed(2))
+          }
+        ]
+      });
+
+      quotes.push({
+        courierName: 'Aramex',
+        serviceLevel: 'Aramex Economy Road (PEC)',
+        serviceCode: 'PEC',
+        deliveryType: 'home',
+        cost: pecTotal,
+        originalCost: pecTotal,
+        isFreeDelivery: false,
+        estimatedDays: '2–3 business days',
+        description: `Aramex Economy Road Express (Box: ${parcelDims.length}x${parcelDims.width}x${parcelDims.height}cm, Wt: ${aramexChargeableWeight}kg)`,
+        boxDetails: {
+          length_cm: parcelDims.length,
+          width_cm: parcelDims.width,
+          height_cm: parcelDims.height,
+          actual_weight_kg: Number(totalWeightKg.toFixed(2)),
+          volumetric_weight_kg: aramexVolumetricWeight,
+          chargeable_weight_kg: aramexChargeableWeight
+        },
+        legs: [
+          {
+            courierName: 'Aramex SA Road Network',
+            origin: originCountry,
+            destination: customerAddress.city || destCountry,
+            cost: Number((pecTotal * 0.8).toFixed(2))
           }
         ]
       });

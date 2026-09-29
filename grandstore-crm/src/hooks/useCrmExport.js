@@ -43,7 +43,7 @@ export function useCrmExport() {
       const res = await crmApi.updateExportDocumentation(id, { documentKey, verified, fileUrl });
       if (res.data?.success) {
         setEnquiries((prev) => prev.map((e) => (e._id === id ? res.data.enquiry : e)));
-        return { success: true };
+        return { success: true, enquiry: res.data.enquiry };
       }
     } catch (err) {
       return { success: false, message: err.response?.data?.message || 'Failed to update docs' };
@@ -55,10 +55,22 @@ export function useCrmExport() {
       const res = await crmApi.updateExportStage(id, { stage, notes });
       if (res.data?.success) {
         setEnquiries((prev) => prev.map((e) => (e._id === id ? res.data.enquiry : e)));
-        return { success: true };
+        return { success: true, enquiry: res.data.enquiry };
       }
     } catch (err) {
       return { success: false, message: err.response?.data?.message || 'Failed to update stage' };
+    }
+  };
+
+  const addNote = async (id, note) => {
+    try {
+      const res = await crmApi.addExportNote(id, note);
+      if (res.data?.success) {
+        setEnquiries((prev) => prev.map((e) => (e._id === id ? res.data.enquiry : e)));
+        return { success: true, enquiry: res.data.enquiry, note: res.data.note };
+      }
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Failed to add note' };
     }
   };
 
@@ -69,6 +81,7 @@ export function useCrmExport() {
     refresh: fetchEnquiries,
     createEnquiry,
     updateDocumentation,
-    updateStage
+    updateStage,
+    addNote
   };
 }

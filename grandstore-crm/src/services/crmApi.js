@@ -138,6 +138,7 @@ export const crmApi = {
   createExportEnquiry: (data) => crmClient.post('/export', data),
   updateExportDocumentation: (id, data) => crmClient.put(`/export/${id}/docs`, data),
   updateExportStage: (id, data) => crmClient.put(`/export/${id}/stage`, data),
+  addExportNote: (id, note) => crmClient.post(`/export/${id}/notes`, { note }),
 
   // Communications Hub & Phone Logs
   getCommunications: (params) => crmClient.get('/comms', { params }),

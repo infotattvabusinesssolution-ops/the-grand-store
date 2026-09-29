@@ -91,6 +91,11 @@ const generateQuote = async (req, res) => {
       const isReferralEligible = !(product.isReferralEligible === false || product.isReferralEligible === 'false' || product.isReferralEligible === 0 || product.isReferralEligible === '0');
       const referralDiscountPct = Number(product.referralDiscountPct !== undefined ? product.referralDiscountPct : 5);
 
+      const prodWeight = Number(product.shipping?.weight_kg || product.weight_kg || 1.85);
+      const prodLength = Number(product.shipping?.length_cm || product.length_cm || 12);
+      const prodWidth = Number(product.shipping?.width_cm || product.width_cm || 12);
+      const prodHeight = Number(product.shipping?.height_cm || product.height_cm || 34);
+
       vendorGroups[vId].items.push({
         ...item,
         price: itemPrice, // overriding with server price
@@ -103,12 +108,19 @@ const generateQuote = async (req, res) => {
         isSuperCoinEligible,
         maxSuperCoinDiscountPct,
         isReferralEligible,
-        referralDiscountPct
+        referralDiscountPct,
+        shipping: {
+          weight_kg: prodWeight,
+          length_cm: prodLength,
+          width_cm: prodWidth,
+          height_cm: prodHeight,
+          box_type: product.shipping?.box_type || 'Standard Box',
+          is_fragile: product.shipping?.is_fragile !== undefined ? product.shipping.is_fragile : true,
+          aramexServiceType: product.shipping?.aramexServiceType || 'ONP'
+        }
       });
       vendorGroups[vId].subtotal += itemSubtotal;
-      
-      // Default weight assumption if missing: 1.5kg per bottle
-      vendorGroups[vId].totalWeightKg += (1.5 * item.quantity); 
+      vendorGroups[vId].totalWeightKg += (prodWeight * item.quantity); 
       globalSubtotal += itemSubtotal;
     }
 
@@ -135,7 +147,7 @@ const generateQuote = async (req, res) => {
         shippingAddress, 
         group.subtotal, 
         group.totalWeightKg,
-        { postnetLookup, settings }
+        { postnetLookup, settings, items: group.items }
       );
 
       if (shippingData.isInternational) hasInternational = true;
@@ -158,8 +170,8 @@ const generateQuote = async (req, res) => {
         if (shippingQuote.serviceLevel === 'PostNet Standard Delivery') {
           return false;
         }
-        const isFree = shippingQuote.isFreeDelivery || (shippingQuote.serviceLevel && shippingQuote.serviceLevel.includes('Economy Road'));
-        if (Number(shippingQuote.cost) <= 0 && !isFree) {
+        const isFree = shippingQuote.isFreeDelivery || (shippingQuote.serviceLevel && shippingQuote.serviceLevel.includes('Economy Road')) || shippingQuote.courierName === 'PostNet';
+        if (Number(shippingQuote.cost) < 0 || (Number(shippingQuote.cost) === 0 && !isFree)) {
           return false;
         }
         if (deliveryPreference === 'postnet') {

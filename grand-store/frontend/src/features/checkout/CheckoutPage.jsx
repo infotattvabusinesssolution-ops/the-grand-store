@@ -653,10 +653,10 @@ export default function CheckoutPage({
           address: deliveryPreference === 'pudo' && preferredLocker
             ? preferredLocker.address
             : deliveryPreference === 'postnet' && effectiveStore
-            ? effectiveStore.address
+            ? (effectiveStore.address || 'PostNet Collection Branch')
             : (shippingAddress.address || 'Collection Address'),
-          city: (deliveryPreference === 'pudo' && preferredLocker?.city) || shippingAddress.city,
-          postalCode: (deliveryPreference === 'pudo' && preferredLocker?.postalCode) || (deliveryPreference === 'postnet' && effectiveStore?.postalCode) || shippingAddress.postalCode || '0001',
+          city: (deliveryPreference === 'pudo' && preferredLocker?.city) || (deliveryPreference === 'postnet' && (effectiveStore?.city || selectedPostnetBranch?.city || shippingAddress.city)) || shippingAddress.city || 'Johannesburg',
+          postalCode: (deliveryPreference === 'pudo' && preferredLocker?.postalCode) || (deliveryPreference === 'postnet' && (effectiveStore?.postalCode || selectedPostnetBranch?.postalCode || shippingAddress.postalCode)) || shippingAddress.postalCode || '0001',
           country: shippingAddress.country || 'South Africa',
           lat: shippingAddress.lat,
           lng: shippingAddress.lng
@@ -761,7 +761,7 @@ export default function CheckoutPage({
     handleConfirmPostnetStore(store);
   };
 
-  const handleConfirmPostnetStore = (storeToConfirm) => {
+  const handleConfirmPostnetStore = async (storeToConfirm, proceedToQuotes = false) => {
     const store = storeToConfirm || selectedPostnetBranch;
     if (!store) {
       onNotify('Please choose a PostNet branch from the list.');
@@ -770,12 +770,16 @@ export default function CheckoutPage({
     setPreferredPostnetStore(store);
     setSelectedPostnetBranch(store);
     setIsChangingPostnetBranch(false);
-    if (store?.postalCode) {
-      setFormData((current) => ({
-        ...current,
-        postalCode: store.postalCode
-      }));
+
+    const updatedFormData = {
+      ...formData,
+      postalCode: store.postalCode || formData.postalCode,
+      city: formData.city || store.city || ''
+    };
+    if (store?.postalCode || store?.city) {
+      setFormData(updatedFormData);
     }
+
     if (quote) {
       setQuote((currentQuote) => ({
         ...currentQuote,
@@ -786,11 +790,19 @@ export default function CheckoutPage({
         }))
       }));
     }
+
+    if (proceedToQuotes) {
+      const currentQuote = await fetchQuote(updatedFormData, store);
+      if (currentQuote) {
+        setCheckoutStep(2);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
   };
 
   // Step 1 -> Step 2 validation
-  const handleProceedToDeliveryMethod = async (e) => {
-    if (e) e.preventDefault();
+  const handleProceedToDeliveryMethod = async (e, storeOverride = null) => {
+    if (e && e.preventDefault) e.preventDefault();
 
     const effectiveFullName = (formData.fullName || `${formData.firstName || ''} ${formData.lastName || ''}`).trim();
     if (!effectiveFullName || !formData.phone || !formData.email) {
@@ -801,32 +813,6 @@ export default function CheckoutPage({
       onNotify('Please select a country code and enter a valid phone number for that country.');
       return;
     }
-
-    /*
-    ========================================================================================
-    [COMMENTED OUT FOR NOW - 18+ DOCUMENT VERIFICATION IS ONLY REQUIRED FOR AUCTIONS, NOT NORMAL CHECKOUT]
-    ========================================================================================
-    if (!isAgeConfirmed) {
-      onNotify('You must certify that you are 18 years of age or older to purchase alcoholic beverages.');
-      return;
-    }
-
-    if (!user) {
-      if (!guestIdNumber.trim()) {
-        onNotify("Please provide your official ID, Passport, or Driver's License number.");
-        return;
-      }
-      if (!guestDob) {
-        onNotify('Please select your Date of Birth for mandatory 18+ age verification.');
-        return;
-      }
-      if (!guestDocumentUrl) {
-        onNotify('Please upload a photo or scan of your official ID document to proceed.');
-        return;
-      }
-    }
-    ========================================================================================
-    */
 
     if (deliveryPreference === 'home' && (!formData.address || !formData.city || !formData.postalCode)) {
       onNotify('Please provide your complete street address, city, and postal code for door delivery.');
@@ -841,20 +827,27 @@ export default function CheckoutPage({
     }
 
     if (deliveryPreference === 'postnet') {
-      if (!formData.city) {
-        onNotify('Please search for your city or suburb for PostNet collection.');
-        return;
-      }
-      const branchToConfirm = preferredPostnetStore || selectedPostnetBranch;
+      const branchToConfirm = storeOverride || preferredPostnetStore || selectedPostnetBranch;
       if (!branchToConfirm) {
         onNotify('Please select and confirm your preferred PostNet collection branch.');
         return;
       }
-      handleConfirmPostnetStore(branchToConfirm);
+      handleConfirmPostnetStore(branchToConfirm, false);
     }
 
-    const effectiveStore = preferredPostnetStore || selectedPostnetBranch;
-    const currentQuote = await fetchQuote(formData, effectiveStore);
+    const effectiveStore = storeOverride || preferredPostnetStore || selectedPostnetBranch;
+    const effectiveCity = (deliveryPreference === 'postnet' && (effectiveStore?.city || formData.city)) ||
+      (deliveryPreference === 'pudo' && (preferredLocker?.city || formData.city)) ||
+      formData.city;
+    const formWithLocation = {
+      ...formData,
+      city: effectiveCity,
+      postalCode: (deliveryPreference === 'postnet' && (effectiveStore?.postalCode || formData.postalCode)) ||
+        (deliveryPreference === 'pudo' && (preferredLocker?.postalCode || formData.postalCode)) ||
+        formData.postalCode
+    };
+
+    const currentQuote = await fetchQuote(formWithLocation, effectiveStore);
     if (currentQuote) {
       setCheckoutStep(2);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1771,55 +1764,9 @@ export default function CheckoutPage({
                       </div>
                     </div>
 
-                    {/* Popular SA Cities Quick Chips */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] uppercase tracking-wider text-white/50">Popular Cities:</span>
-                        {POSTNET_AVAILABLE_CITIES.length > 6 && (
-                          <button
-                            type="button"
-                            onClick={() => setShowAllPostnetCities(!showAllPostnetCities)}
-                            className="text-[10px] text-[var(--color-gold)] hover:underline"
-                          >
-                            {showAllPostnetCities ? 'Show fewer' : 'Show all'}
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {(showAllPostnetCities ? POSTNET_AVAILABLE_CITIES : POSTNET_AVAILABLE_CITIES.slice(0, 6)).map((city) => {
-                          const isSelected = String(formData.city || '').trim().toLowerCase() === city.name.toLowerCase();
-                          return (
-                            <button
-                              key={city.name}
-                              type="button"
-                              onClick={() => {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  city: city.name,
-                                  postalCode: city.postalCode,
-                                  lat: city.lat,
-                                  lng: city.lng
-                                }));
-                                setPreferredPostnetStore(null);
-                                setIsChangingPostnetBranch(false);
-                                setQuote(null);
-                              }}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                                isSelected
-                                  ? 'bg-[var(--color-gold)] text-black font-bold shadow-md'
-                                  : 'bg-white/5 hover:bg-white/10 text-white/80 border border-white/10'
-                              }`}
-                            >
-                              📍 {city.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
                     {/* Confirmed Collection Point Card (shown when a store is confirmed and not currently changing) */}
                     {preferredPostnetStore && !isChangingPostnetBranch && (
-                      <div className="rounded-xl border border-[var(--color-gold)] bg-[var(--color-gold)]/10 p-4 md:p-5 flex items-start justify-between gap-4 transition-all">
+                      <div className="rounded-xl border border-[var(--color-gold)] bg-[var(--color-gold)]/10 p-4 md:p-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 transition-all">
                         <div className="flex items-start gap-3.5 min-w-0">
                           <div className="w-10 h-10 rounded-xl bg-[var(--color-gold)]/20 border border-[var(--color-gold)]/40 flex items-center justify-center text-[var(--color-gold)] shrink-0 mt-0.5">
                             <Store size={20} />
@@ -1839,16 +1786,30 @@ export default function CheckoutPage({
                             <p className="text-xs text-[var(--color-ivory-muted)] mt-1 leading-relaxed">{preferredPostnetStore.address}</p>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsChangingPostnetBranch(true);
-                            setSelectedPostnetBranch(preferredPostnetStore);
-                          }}
-                          className="px-3.5 py-2 rounded-lg border border-[var(--color-gold)]/50 bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)] hover:text-black text-xs font-bold text-[var(--color-gold)] uppercase tracking-wider transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
-                        >
-                          Change Branch
-                        </button>
+                        <div className="flex items-center gap-2.5 shrink-0 self-end md:self-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsChangingPostnetBranch(true);
+                              setSelectedPostnetBranch(preferredPostnetStore);
+                            }}
+                            className="px-3.5 py-2.5 rounded-lg border border-white/20 bg-white/5 hover:bg-white/10 text-xs font-semibold text-white uppercase tracking-wider transition-all cursor-pointer"
+                          >
+                            Change Branch
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleProceedToDeliveryMethod(e, preferredPostnetStore)}
+                            disabled={quoteLoading}
+                            className="px-4 py-2.5 rounded-lg bg-[var(--color-gold)] hover:shadow-[0_0_15px_rgba(212,175,55,0.4)] text-black text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            {quoteLoading ? (
+                              <><Loader2 size={14} className="animate-spin" /> Calculating Rates...</>
+                            ) : (
+                              <><span>Get Prices & Rates</span> <ArrowRight size={14} /></>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     )}
 
@@ -1998,12 +1959,15 @@ export default function CheckoutPage({
                                 )}
                                 <button
                                   type="button"
-                                  disabled={!selectedPostnetBranch}
-                                  onClick={() => handleConfirmPostnetStore(selectedPostnetBranch)}
+                                  disabled={!selectedPostnetBranch || quoteLoading}
+                                  onClick={() => handleConfirmPostnetStore(selectedPostnetBranch, true)}
                                   className="px-5 py-2.5 rounded-lg bg-[var(--color-gold)] text-black text-xs font-bold uppercase tracking-wider hover:shadow-[0_0_15px_rgba(212,175,55,0.4)] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
-                                  <CheckCircle2 size={14} />
-                                  <span>Confirm Collection Point</span>
+                                  {quoteLoading ? (
+                                    <><Loader2 size={14} className="animate-spin" /> Calculating Rates...</>
+                                  ) : (
+                                    <><CheckCircle2 size={14} /><span>Confirm & Get Delivery Rates</span></>
+                                  )}
                                 </button>
                               </div>
                             </div>

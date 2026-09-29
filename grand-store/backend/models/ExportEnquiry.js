@@ -44,6 +44,9 @@ const exportEnquirySchema = new mongoose.Schema({
   },
   documentationChecklist: {
     commercialInvoice: { verified: { type: Boolean, default: false }, fileUrl: String },
+    packingList: { verified: { type: Boolean, default: false }, fileUrl: String },
+    labelInstructions: { verified: { type: Boolean, default: false }, fileUrl: String },
+    labelInstruction: { verified: { type: Boolean, default: false }, fileUrl: String },
     certificateOfOrigin: { verified: { type: Boolean, default: false }, fileUrl: String },
     phytosanitaryCertificate: { verified: { type: Boolean, default: false }, fileUrl: String },
     billOfLading: { verified: { type: Boolean, default: false }, fileUrl: String }

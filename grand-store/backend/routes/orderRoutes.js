@@ -12,7 +12,8 @@ const {
   sendAdminOrderMessage,
   sendVendorOrderMessage,
   getVendorOrderById,
-  cancelOrderPaymentHandler
+  cancelOrderPaymentHandler,
+  downloadOrderReceiptPdf
 } = require('../controllers/orderController');
 const { protect, optionalAuth, requireRoles, financeStaff } = require('../middleware/authMiddleware');
 
@@ -59,6 +60,8 @@ router.route('/vendor/sales/:shipmentId/message').post(
   sendVendorOrderMessage,
 );
 
+router.route('/:id/receipt-pdf').get(optionalAuth, downloadOrderReceiptPdf);
+router.route('/:id/invoice-pdf').get(optionalAuth, downloadOrderReceiptPdf);
 router.route('/:id').get(optionalAuth, getOrderById);
 
 // Bank Transfer Routes

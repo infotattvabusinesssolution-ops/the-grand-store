@@ -86,6 +86,7 @@ const productSchema = new mongoose.Schema(
       default: 0,
     },
     shipping: {
+      box_type: { type: String, default: 'Standard Box' },
       weight_kg: { type: Number, default: 1.5 },
       length_cm: { type: Number, default: 10.0 },
       width_cm: { type: Number, default: 10.0 },

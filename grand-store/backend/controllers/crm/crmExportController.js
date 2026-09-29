@@ -149,3 +149,69 @@ exports.updateExportStage = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to update export stage' });
   }
 };
+
+/**
+ * Add an internal note to the export enquiry / customer dossier.
+ */
+exports.addExportNote = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { note, authorName } = req.body;
+
+    if (!note || !note.trim()) {
+      return res.status(400).json({ success: false, message: 'Note text cannot be empty' });
+    }
+
+    const enquiry = await ExportEnquiry.findById(id);
+    if (!enquiry) {
+      return res.status(404).json({ success: false, message: 'Export record not found' });
+    }
+
+    if (!enquiry.internalNotes) {
+      enquiry.internalNotes = [];
+    }
+
+    const staffName = req.user?.name || authorName || 'Trade Manager';
+    const newNote = {
+      note: note.trim(),
+      author: req.user?._id,
+      authorName: staffName,
+      createdAt: new Date()
+    };
+
+    enquiry.internalNotes.push(newNote);
+    await enquiry.save();
+
+    // Optionally sync note to Customer profile if registered in User model
+    if (enquiry.buyer?.email) {
+      try {
+        const User = require('../../models/User');
+        const customer = await User.findOne({ email: enquiry.buyer.email.toLowerCase() });
+        if (customer) {
+          if (!customer.crmInternalNotes) customer.crmInternalNotes = [];
+          customer.crmInternalNotes.push({
+            note: `[Export ${enquiry.enquiryCode}]: ${note.trim()}`,
+            author: req.user?._id,
+            authorName: staffName,
+            createdAt: new Date()
+          });
+          await customer.save();
+        }
+      } catch (syncErr) {
+        console.warn('Note synced to enquiry, customer sync skipped:', syncErr.message);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Note added to export dossier',
+      enquiry,
+      note: newNote,
+      internalNotes: enquiry.internalNotes
+    });
+  } catch (error) {
+    console.error('Error adding export note:', error);
+    return res.status(500).json({ success: false, message: 'Failed to add note to export enquiry' });
+  }
+};
+

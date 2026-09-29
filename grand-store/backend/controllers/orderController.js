@@ -2111,6 +2111,38 @@ const sendAdminOrderMessage = async (req, res) => {
   }
 };
 
+// @desc    Download / Stream Order Tax Invoice Receipt PDF
+// @route   GET /api/orders/:id/receipt-pdf
+// @access  Public / Optional Auth
+const downloadOrderReceiptPdf = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let order = await Order.findById(id).populate('user', 'name email').catch(() => null);
+    if (!order && id) {
+      order = await Order.findOne({ orderId: id }).populate('user', 'name email').catch(() => null);
+    }
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const customer = order.user || {
+      name: order.guestInfo?.name || order.shippingAddress?.name || 'Valued Customer',
+      email: order.guestInfo?.email || order.shippingAddress?.email || 'customer@grandstoreglobal.com',
+      phone: order.guestInfo?.phone || order.shippingAddress?.phone || ''
+    };
+
+    const { generateOrderReceiptBuffer } = require('../utils/pdfService');
+    const pdfBuffer = await generateOrderReceiptBuffer(order, customer);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Tax_Invoice_${order.invoiceNumber || order.orderId || order._id}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('Download Order Receipt PDF Error:', err);
+    res.status(500).json({ message: 'Failed to generate tax invoice PDF', error: err.message });
+  }
+};
+
 module.exports = {
   addOrderItems,
   getOrderById,
@@ -2125,5 +2157,6 @@ module.exports = {
   getAdminOrderById,
   sendAdminOrderMessage,
   sendVendorOrderMessage,
-  getVendorOrderById
+  getVendorOrderById,
+  downloadOrderReceiptPdf
 };

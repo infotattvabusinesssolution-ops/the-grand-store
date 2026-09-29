@@ -158,6 +158,7 @@ router.get('/export', crmExportController.getExportEnquiries);
 router.post('/export', crmExportController.createExportEnquiry);
 router.put('/export/:id/docs', crmExportController.updateExportDocumentation);
 router.put('/export/:id/stage', crmExportController.updateExportStage);
+router.post('/export/:id/notes', crmExportController.addExportNote);
 
 // --- Module 7 & 8: Communications Hub & Task Reminders ---
 router.get('/comms', crmCommsController.getCommunications);
