@@ -5,7 +5,6 @@ import { useProducts } from '../../../context/ProductContext';
 import Price from '../../../components/ui/Price';
 import ProteaEmblem from './ProteaEmblem';
 import ArrivalsMandala from './ArrivalsMandala';
-import TribalCardBorder from './TribalCardBorder';
 import CardChakra from './CardChakra';
 
 const preparedVendorImages = {
@@ -264,9 +263,6 @@ export default function PrivateCollection() {
                   </Link>
                 </div>
               </div>
-
-              {/* Authentic South African Tribal Geometric Gold Border Strip */}
-              <TribalCardBorder />
             </div>
           ))}
         </div>

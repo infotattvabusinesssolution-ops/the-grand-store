@@ -410,9 +410,6 @@ export default function ProductCard({
             </div>
           </div>
         </div>
-
-        {/* Authentic South African Tribal Geometric Gold Border Strip */}
-        <TribalCardBorder />
       </article>
 
       <ConfirmCheckoutModal

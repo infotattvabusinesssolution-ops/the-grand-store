@@ -4,7 +4,6 @@ import api from '../../api';
 import { Calendar, Filter, MapPin, Users } from 'lucide-react';
 import Price from '../../components/ui/Price';
 import { getEventPhase, resolveEventImage } from './eventPhase';
-import TribalCardBorder from '../home/components/TribalCardBorder';
 import ProteaEmblem from '../home/components/ProteaEmblem';
 import ArrivalsMandala from '../home/components/ArrivalsMandala';
 
@@ -86,9 +85,6 @@ const EventCard = ({ event }) => {
           </div>
         </div>
       </div>
-
-      {/* Authentic South African Tribal Geometric Gold Border Strip */}
-      <TribalCardBorder />
     </article>
   );
 };

@@ -11,7 +11,6 @@ import ConfirmCheckoutModal from "../../../components/modals/ConfirmCheckoutModa
 import IconButton from "../../../components/IconButton";
 import ProductQuickView from "../../../components/ProductQuickView";
 import ArrivalsMandala from "./ArrivalsMandala";
-import TribalCardBorder from "./TribalCardBorder";
 import ProteaEmblem from "./ProteaEmblem";
 import CardChakra from "./CardChakra";
 import { isSouthAfricanProduct } from "../../../utils/productTaxonomy";
@@ -559,9 +558,6 @@ export default function Arrivals({ onAdd, onWish, onCompare, compareItems }) {
                     </div>
                   </div>
                 </div>
-
-                {/* 4. Authentic South African Tribal Geometric Gold Border Strip */}
-                <TribalCardBorder />
               </div>
             );
           })}

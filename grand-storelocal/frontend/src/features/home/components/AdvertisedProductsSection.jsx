@@ -5,7 +5,6 @@ import api from '../../../api';
 import Price from '../../../components/ui/Price';
 import ProteaEmblem from './ProteaEmblem';
 import ArrivalsMandala from './ArrivalsMandala';
-import TribalCardBorder from './TribalCardBorder';
 import CardChakra from './CardChakra';
 
 const preparedVendorImages = {
@@ -212,9 +211,6 @@ const AdvertisedProductCard = ({ product }) => {
           )}
         </div>
       </div>
-
-      {/* Authentic South African Tribal Geometric Gold Border Strip */}
-      <TribalCardBorder />
     </article>
   );
 };
@@ -305,7 +301,6 @@ export default function AdvertisedProductsSection() {
                 <ArrowRight size={14} />
               </Link>
             </div>
-            <TribalCardBorder className="absolute bottom-0 left-0 right-0" />
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mt-6">

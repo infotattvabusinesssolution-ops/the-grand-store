@@ -7,7 +7,6 @@ import api from '../../../api';
 import AppDownloadBadges from '../../../components/AppDownloadBadges';
 import ProteaEmblem from './ProteaEmblem';
 import ArrivalsMandala from './ArrivalsMandala';
-import TribalCardBorder from './TribalCardBorder';
 
 export default function AppPromoSection() {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
@@ -348,9 +347,6 @@ export default function AppPromoSection() {
                 </form>
               </div>
             </div>
-
-            {/* Authentic South African Tribal Geometric Gold Border Strip */}
-            <TribalCardBorder />
           </div>
         </div>
 

@@ -6,7 +6,6 @@ import { useAuth } from '../../context/AuthContext';
 import Price from '../../components/ui/Price';
 import ProteaEmblem from '../home/components/ProteaEmblem';
 import ArrivalsMandala from '../home/components/ArrivalsMandala';
-import TribalCardBorder from '../home/components/TribalCardBorder';
 import CardChakra from '../home/components/CardChakra';
 
 export default function CartPage({ cartItems, onUpdateQuantity, onRemove, onClear, onNotify }) {
@@ -135,11 +134,6 @@ export default function CartPage({ cartItems, onUpdateQuantity, onRemove, onClea
                 Explore The Cellar <ArrowRight size={16} />
               </Link>
             </div>
-
-            {/* Decorative Tribal Border Accent at Bottom of Card */}
-            <div className="mt-8 -mx-8 sm:-mx-14 -mb-8 sm:-mb-14">
-              <TribalCardBorder className="opacity-50" />
-            </div>
           </div>
         </section>
       ) : (
@@ -153,9 +147,6 @@ export default function CartPage({ cartItems, onUpdateQuantity, onRemove, onClea
                   className="cart-vendor-group bg-[#0e0e0c] border border-[#caa458]/25 shadow-[0_15px_40px_rgba(0,0,0,0.6)] overflow-hidden relative" 
                   key={group.vendorId}
                 >
-                  {/* Subtle Card Tribal Top Border */}
-                  <TribalCardBorder className="opacity-45" />
-
                   <div className="cart-panel-heading px-6 py-5 border-b border-white/10 flex items-center justify-between gap-4 bg-[#121210]">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
@@ -254,11 +245,6 @@ export default function CartPage({ cartItems, onUpdateQuantity, onRemove, onClea
               {/* Subtle Card Chakra Watermark in top right of card */}
               <div className="absolute -top-10 -right-10 w-44 h-44 opacity-15 pointer-events-none" aria-hidden="true">
                 <CardChakra className="w-full h-full text-[#caa458]" />
-              </div>
-
-              {/* Decorative Tribal Top Line */}
-              <div className="-mx-6 sm:-mx-8 -mt-6 sm:-mt-8 mb-6">
-                <TribalCardBorder className="opacity-50" />
               </div>
 
               <div className="relative z-10">
