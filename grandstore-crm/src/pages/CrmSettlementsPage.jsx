@@ -13,6 +13,7 @@ import { downloadRemittancePdf, downloadRemittanceBatchPdf } from '../utils/remi
 export default function CrmSettlementsPage() {
   const toast = useToast();
   const { stats, settlements, loading, refresh, syncOrders, processPayment, disputeSettlement } = useCrmSettlements();
+  const [filterType, setFilterType] = useState('all'); // 'all' | 'vendor_consignment' | 'flagship_direct'
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'due' | 'pending' | 'settled' | 'disputed'
   const [filterScope, setFilterScope] = useState('all'); // 'all' | 'local' | 'global_export'
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,8 +25,16 @@ export default function CrmSettlementsPage() {
   const [disputeModalSettlement, setDisputeModalSettlement] = useState(null);
   const [disputeReasonInput, setDisputeReasonInput] = useState('');
   const [syncing, setSyncing] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   const filteredSettlements = settlements.filter(s => {
+    const isFlagship = s.isFlagship || s.commissionRatePct === 0 || /grand store/i.test(s.vendorName || '');
+
+    const matchesType = 
+      filterType === 'all' ? true :
+      filterType === 'vendor_consignment' ? !isFlagship :
+      filterType === 'flagship_direct' ? isFlagship : true;
+
     const matchesFilter = 
       filterStatus === 'all' ? true :
       filterStatus === 'due' ? s.status === 'due_for_payment' :
@@ -44,7 +53,7 @@ export default function CrmSettlementsPage() {
       (s.destinationCountry?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (s.reference?.toLowerCase() || '').includes(searchTerm.toLowerCase());
 
-    return matchesFilter && matchesScope && matchesSearch;
+    return matchesType && matchesFilter && matchesScope && matchesSearch;
   });
 
   const handleDownloadPdf = (settlement) => {
@@ -81,38 +90,126 @@ export default function CrmSettlementsPage() {
     }
   };
 
+  const handleExportRemittanceExcel = async () => {
+    try {
+      if (filteredSettlements.length === 0) {
+        toast.warning('No settlement records match current filters to export.');
+        return;
+      }
+      setExportingExcel(true);
+      let ExcelJS;
+      try {
+        const mod = await import('exceljs/dist/exceljs.min.js');
+        ExcelJS = mod.default || mod;
+      } catch {
+        const mod = await import('exceljs');
+        ExcelJS = mod.default || mod;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'The Grand Store Operations Command';
+      workbook.created = new Date();
+
+      const sheet = workbook.addWorksheet('Settlements & Escrow');
+      sheet.columns = [
+        { header: 'Settlement Ref', key: 'reference', width: 22 },
+        { header: 'Order Number', key: 'orderNumber', width: 20 },
+        { header: 'Type / Scope', key: 'type', width: 26 },
+        { header: 'Vendor / Partner Estate', key: 'vendorName', width: 32 },
+        { header: 'Destination', key: 'destinationCountry', width: 16 },
+        { header: 'Gross Total (ZAR)', key: 'orderTotal', width: 18 },
+        { header: 'Commission Rate (%)', key: 'commissionRatePct', width: 20 },
+        { header: 'Platform Commission (ZAR)', key: 'commissionAmount', width: 24 },
+        { header: 'Net Vendor Payout (ZAR)', key: 'payoutAmount', width: 22 },
+        { header: 'Payout Method', key: 'payoutMethod', width: 18 },
+        { header: 'Maturity / Due Date', key: 'payoutDueDate', width: 20 },
+        { header: 'Payment Status', key: 'status', width: 18 },
+        { header: 'Payment Reference', key: 'paymentReference', width: 22 }
+      ];
+
+      // Style header row
+      const headerRow = sheet.getRow(1);
+      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1E293B' } // slate-800
+      };
+      headerRow.height = 24;
+
+      filteredSettlements.forEach(s => {
+        const isFlagship = s.isFlagship || s.commissionRatePct === 0 || /grand store/i.test(s.vendorName || '');
+        sheet.addRow({
+          reference: s.reference || s.id,
+          orderNumber: s.orderNumber,
+          type: isFlagship ? 'Platform Direct (Flagship)' : 'Vendor Partner Consignment',
+          vendorName: s.vendorName,
+          destinationCountry: s.destinationCountry || 'South Africa',
+          orderTotal: s.orderTotal || 0,
+          commissionRatePct: isFlagship ? 0 : (s.commissionRatePct || 15),
+          commissionAmount: s.commissionAmount || 0,
+          payoutAmount: s.payoutAmount || 0,
+          payoutMethod: s.payoutMethod === 'swift_wire' ? 'SWIFT Wire' : (s.payoutMethod === 'direct_treasury' ? 'Direct Treasury' : 'Domestic EFT'),
+          payoutDueDate: s.payoutDueDate ? new Date(s.payoutDueDate).toISOString().slice(0, 10) : '',
+          status: s.status === 'settled' ? 'Paid / Settled' : (s.status === 'due_for_payment' ? 'Due for Payment' : 'Pending (Escrow)'),
+          paymentReference: s.paymentReference || 'Unpaid / In Escrow'
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `grandstore_settlements_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success(`Exported ${filteredSettlements.length} authentic settlement records to Excel (.xlsx)!`);
+    } catch (err) {
+      toast.error('Failed to export Excel workbook: ' + (err.message || 'Error'));
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   const handleExportRemittanceCsv = () => {
     try {
-      if (settlements.length === 0) {
+      if (filteredSettlements.length === 0) {
         toast.warning('No settlement records to export.');
         return;
       }
-      const headers = ['Settlement ID', 'Order Reference', 'Scope', 'Destination', 'Vendor / Wine Farm', 'Gross Total (ZAR)', 'VAT Rate (%)', 'Commission (15%)', 'Net Payable to Vendor', 'Payout Method', 'Maturity Due Date', 'Status', 'Payment Ref'];
-      const rows = settlements.map(s => [
-        `"${s.id || s.reference || ''}"`,
-        `"${s.orderNumber || ''}"`,
-        `"${s.orderType === 'global_export' ? 'Global Export' : 'Local Domestic'}"`,
-        `"${s.destinationCountry || 'South Africa'}"`,
-        `"${s.vendorName || ''}"`,
-        `"${s.orderTotal || 0}"`,
-        `"${s.vatRatePct !== undefined ? s.vatRatePct : 15}%"`,
-        `"${s.commissionAmount || 0}"`,
-        `"${s.payoutAmount || 0}"`,
-        `"${s.payoutMethod || 'domestic_eft'}"`,
-        `"${s.payoutDueDate ? new Date(s.payoutDueDate).toLocaleDateString() : ''}"`,
-        `"${s.status || ''}"`,
-        `"${s.paymentReference || ''}"`
-      ]);
+      const headers = ['Settlement ID', 'Order Reference', 'Classification', 'Scope', 'Destination', 'Vendor / Wine Farm', 'Gross Total (ZAR)', 'VAT Rate (%)', 'Commission Rate (%)', 'Platform Commission (ZAR)', 'Net Payable to Vendor (ZAR)', 'Payout Method', 'Maturity Due Date', 'Status', 'Payment Ref'];
+      const rows = filteredSettlements.map(s => {
+        const isFlagship = s.isFlagship || s.commissionRatePct === 0 || /grand store/i.test(s.vendorName || '');
+        return [
+          `"${s.id || s.reference || ''}"`,
+          `"${s.orderNumber || ''}"`,
+          `"${isFlagship ? 'Platform Direct (Flagship)' : 'Vendor Partner Consignment'}"`,
+          `"${s.orderType === 'global_export' ? 'Global Export' : 'Local Domestic'}"`,
+          `"${s.destinationCountry || 'South Africa'}"`,
+          `"${s.vendorName || ''}"`,
+          `"${s.orderTotal || 0}"`,
+          `"${s.vatRatePct !== undefined ? s.vatRatePct : 15}%"`,
+          `"${isFlagship ? 0 : (s.commissionRatePct || 15)}%"`,
+          `"${s.commissionAmount || 0}"`,
+          `"${s.payoutAmount || 0}"`,
+          `"${s.payoutMethod || 'domestic_eft'}"`,
+          `"${s.payoutDueDate ? new Date(s.payoutDueDate).toLocaleDateString() : ''}"`,
+          `"${s.status || ''}"`,
+          `"${s.paymentReference || ''}"`
+        ];
+      });
       const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
-      link.setAttribute('download', `grandstore_vendor_remittance_${filterScope}_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.setAttribute('download', `grandstore_vendor_remittance_${filterType}_${new Date().toISOString().slice(0, 10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast.success(`Exported ${settlements.length} settlement records to remittance CSV.`);
+      toast.success(`Exported ${filteredSettlements.length} settlement records to remittance CSV.`);
     } catch (err) {
       toast.error('Failed to export remittance batch');
     }
@@ -178,6 +275,15 @@ export default function CrmSettlementsPage() {
             Download Batch PDF
           </button>
           <button 
+            onClick={handleExportRemittanceExcel}
+            disabled={exportingExcel}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-300 rounded-xl hover:bg-emerald-100 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+            title="Download complete Remittance Ledger to Microsoft Excel (.xlsx)"
+          >
+            <Download size={14} className={exportingExcel ? 'animate-spin' : ''} />
+            {exportingExcel ? 'Generating Excel...' : 'Export Excel (.xlsx)'}
+          </button>
+          <button 
             onClick={handleExportRemittanceCsv}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-blue-600 transition-colors shadow-sm cursor-pointer"
           >
@@ -197,7 +303,7 @@ export default function CrmSettlementsPage() {
       </div>
 
       {/* KPI Cards (Interactive Dynamic Navigation) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
         <div
           onClick={() => setFilterStatus(filterStatus === 'due' ? 'all' : 'due')}
           className={`cursor-pointer rounded-2xl transition-all duration-200 ${
@@ -223,26 +329,42 @@ export default function CrmSettlementsPage() {
         >
           <StatCard 
             title="Pending (30-Day Window)" 
-            value={stats.pendingCount || 0} 
+            value={`R ${(stats.totalPendingAmount || 0).toLocaleString()}`} 
             icon={Clock} 
             color="blue"
-            subtitle="Inspection & claim buffer active"
+            subtitle={`${stats.pendingCount || 0} batches in inspection buffer`}
           />
         </div>
 
         <div
-          onClick={() => setFilterStatus(filterStatus === 'settled' ? 'all' : 'settled')}
+          onClick={() => setFilterType(filterType === 'vendor_consignment' ? 'all' : 'vendor_consignment')}
           className={`cursor-pointer rounded-2xl transition-all duration-200 ${
-            filterStatus === 'settled' ? 'ring-2 ring-emerald-500 shadow-md -translate-y-0.5' : 'hover:-translate-y-0.5 hover:shadow-md'
+            filterType === 'vendor_consignment' ? 'ring-2 ring-emerald-500 shadow-md -translate-y-0.5' : 'hover:-translate-y-0.5 hover:shadow-md'
           }`}
-          title="Filter: Settled & disbursed remittances"
+          title="Filter: Platform commissions earned from third-party vendor partners"
         >
           <StatCard 
-            title="Total Settled (30d)" 
-            value={`R ${(stats.totalSettledAmount || 0).toLocaleString()}`} 
-            icon={Wallet} 
+            title="Platform Commission" 
+            value={`R ${(stats.totalCommissionEarned || 0).toLocaleString()}`} 
+            icon={DollarSign} 
             color="emerald"
-            subtitle={`${stats.settledCount || 0} disbursements complete`}
+            subtitle={`${stats.vendorConsignmentCount || settlements.filter(s => !s.isFlagship).length} partner estate orders`}
+          />
+        </div>
+
+        <div
+          onClick={() => setFilterType(filterType === 'flagship_direct' ? 'all' : 'flagship_direct')}
+          className={`cursor-pointer rounded-2xl transition-all duration-200 ${
+            filterType === 'flagship_direct' ? 'ring-2 ring-indigo-500 shadow-md -translate-y-0.5' : 'hover:-translate-y-0.5 hover:shadow-md'
+          }`}
+          title="Platform Direct Flagship sales (100% retained platform treasury)"
+        >
+          <StatCard 
+            title="Platform Direct Sales" 
+            value={`${stats.flagshipDirectCount || settlements.filter(s => s.isFlagship).length} Orders`} 
+            icon={Building2} 
+            color="purple"
+            subtitle="0% Comm • Direct Treasury"
           />
         </div>
 
@@ -257,80 +379,123 @@ export default function CrmSettlementsPage() {
             title="Consignment Scope" 
             value={`${stats.localCount || 0} Local • ${stats.globalCount || 0} Export`} 
             icon={Globe} 
-            color="purple"
+            color="slate"
             subtitle="Domestic SA vs Global DDP"
           />
         </div>
       </div>
 
       {/* Controls & Filter Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* Status Filters & Scope Toggles */}
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          {[
-            { id: 'all', label: 'All Records' },
-            { id: 'due', label: `Due Today (${stats.dueCount || 0})` },
-            { id: 'pending', label: `Pending Window (${stats.pendingCount || 0})` },
-            { id: 'settled', label: `Settled (${stats.settledCount || 0})` },
-            { id: 'disputed', label: `Disputed (${stats.disputedCount || 0})` }
-          ].map(f => (
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+        {/* Source Segmented Control (Admin / Platform Direct vs Vendor Consignments) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl gap-1">
             <button
-              key={f.id}
-              onClick={() => setFilterStatus(f.id)}
-              className={`px-3 py-1.5 rounded-xl font-semibold transition-colors cursor-pointer ${
-                filterStatus === f.id 
-                  ? 'bg-blue-600 text-white shadow-sm' 
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              onClick={() => setFilterType('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                filterType === 'all'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              {f.label}
+              All Paid Orders ({stats.totalOrdersCount || settlements.length})
             </button>
-          ))}
+            <button
+              onClick={() => setFilterType('vendor_consignment')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                filterType === 'vendor_consignment'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>🍷 Vendor Consignments</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-blue-100 text-blue-800 font-bold">
+                {stats.vendorConsignmentCount || settlements.filter(s => !s.isFlagship).length}
+              </span>
+            </button>
+            <button
+              onClick={() => setFilterType('flagship_direct')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                filterType === 'flagship_direct'
+                  ? 'bg-white text-amber-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>👑 Platform Direct (Flagship)</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 text-amber-800 font-bold">
+                {stats.flagshipDirectCount || settlements.filter(s => s.isFlagship).length}
+              </span>
+            </button>
+          </div>
 
-          <span className="text-slate-300 mx-1">|</span>
-
-          {/* Scope Filters */}
-          <button
-            onClick={() => setFilterScope('all')}
-            className={`px-2.5 py-1.5 rounded-xl font-semibold transition-colors cursor-pointer ${
-              filterScope === 'all'
-                ? 'bg-slate-800 text-white shadow-xs'
-                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            All Scopes
-          </button>
-          <button
-            onClick={() => setFilterScope('local')}
-            className={`px-2.5 py-1.5 rounded-xl font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
-              filterScope === 'local'
-                ? 'bg-emerald-700 text-white shadow-xs'
-                : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
-            }`}
-          >
-            🇿🇦 Domestic ZA
-          </button>
-          <button
-            onClick={() => setFilterScope('global_export')}
-            className={`px-2.5 py-1.5 rounded-xl font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
-              filterScope === 'global_export'
-                ? 'bg-purple-700 text-white shadow-xs'
-                : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200'
-            }`}
-          >
-            🌍 Global Export
-          </button>
+          <div className="relative w-full sm:w-72">
+            <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+            <input 
+              type="text"
+              placeholder="Search vendor, order #, country..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            />
+          </div>
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
-          <input 
-            type="text"
-            placeholder="Search vendor, order #, country..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-          />
+        {/* Status Filters & Scope Toggles */}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { id: 'all', label: 'All Milestones' },
+              { id: 'due', label: `Due Today (${stats.dueCount || 0})` },
+              { id: 'pending', label: `Pending Window (${stats.pendingCount || 0})` },
+              { id: 'settled', label: `Settled (${stats.settledCount || 0})` },
+              { id: 'disputed', label: `Disputed (${stats.disputedCount || 0})` }
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFilterStatus(f.id)}
+                className={`px-3 py-1.5 rounded-xl font-semibold transition-colors cursor-pointer ${
+                  filterStatus === f.id 
+                    ? 'bg-blue-600 text-white shadow-sm' 
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setFilterScope('all')}
+              className={`px-2.5 py-1.5 rounded-xl font-semibold transition-colors cursor-pointer ${
+                filterScope === 'all'
+                  ? 'bg-slate-800 text-white shadow-xs'
+                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              All Scopes
+            </button>
+            <button
+              onClick={() => setFilterScope('local')}
+              className={`px-2.5 py-1.5 rounded-xl font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                filterScope === 'local'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+              }`}
+            >
+              🇿🇦 Domestic ZA
+            </button>
+            <button
+              onClick={() => setFilterScope('global_export')}
+              className={`px-2.5 py-1.5 rounded-xl font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                filterScope === 'global_export'
+                  ? 'bg-purple-700 text-white shadow-xs'
+                  : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200'
+              }`}
+            >
+              🌍 Global Export
+            </button>
+          </div>
         </div>
       </div>
 
@@ -375,12 +540,31 @@ export default function CrmSettlementsPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-900">{s.vendorName}</div>
-                      <div className="text-slate-400 text-[10px] flex items-center gap-1">
-                        <span>{s.bankDetails?.bankName || 'FNB Corporate'}</span>
-                        <span>•</span>
-                        <span>{s.payoutMethod === 'swift_wire' ? 'SWIFT Wire' : 'Domestic EFT'}</span>
-                      </div>
+                      {s.isFlagship ? (
+                        <div>
+                          <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                            <span>The Grand Store Flagship</span>
+                          </div>
+                          <div className="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 mt-0.5 font-medium">
+                            Platform Direct (0% Comm)
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                            <span>{s.vendorName}</span>
+                          </div>
+                          <div className="text-slate-400 text-[10px] flex items-center gap-1 mt-0.5">
+                            <span>{s.bankDetails?.bankName || 'FNB Corporate'}</span>
+                            <span>•</span>
+                            <span>{s.payoutMethod === 'swift_wire' ? 'SWIFT Wire' : 'Domestic EFT'}</span>
+                            <span>•</span>
+                            <span className="text-blue-600 font-semibold">{s.commissionRatePct || 15}% Comm</span>
+                          </div>
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-4">
                       <div className="font-medium text-slate-800">Order #{s.orderNumber}</div>
@@ -417,12 +601,25 @@ export default function CrmSettlementsPage() {
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-bold text-slate-900">
-                        R {Number(s.payoutAmount || 0).toLocaleString()}
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        Gross: R {s.orderTotal?.toLocaleString()} ({s.commissionRatePct || 15}% comm)
-                      </div>
+                      {s.isFlagship ? (
+                        <div>
+                          <div className="font-bold text-slate-900 font-mono">
+                            R {Number(s.orderTotal || s.payoutAmount || 0).toLocaleString()}
+                          </div>
+                          <div className="text-[10px] text-emerald-600 font-medium">
+                            100% Platform Treasury
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="font-bold text-slate-900 font-mono">
+                            R {Number(s.payoutAmount || 0).toLocaleString()}
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            Gross: R {s.orderTotal?.toLocaleString()} (Comm: R {s.commissionAmount?.toLocaleString()})
+                          </div>
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-4">
                       <StatusBadge status={s.status} />
@@ -438,13 +635,22 @@ export default function CrmSettlementsPage() {
                           </button>
                         )}
                         {s.status === 'pending_30day_window' && (
-                          <button
-                            onClick={() => setDisputeModalSettlement(s)}
-                            className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
-                            title="Flag customer claim or freeze payout timer"
-                          >
-                            Hold / Claim
-                          </button>
+                          <>
+                            <button
+                              onClick={() => setPayoutModalSettlement(s)}
+                              className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors flex items-center gap-1 cursor-pointer"
+                              title="Process disbursement or mark paid ahead of 30-day milestone"
+                            >
+                              <DollarSign size={11} /> Mark Paid
+                            </button>
+                            <button
+                              onClick={() => setDisputeModalSettlement(s)}
+                              className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                              title="Flag customer claim or freeze payout timer"
+                            >
+                              Hold
+                            </button>
+                          </>
                         )}
                         <button
                           onClick={() => handleDownloadPdf(s)}

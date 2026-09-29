@@ -213,35 +213,60 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
           }
         ]
       });
+      // 1E. Aramex South Africa - Overnight Parcel (ONP)
+      const aramexVolumetricWeight = Math.max(totalWeightKg, (parcelDims.length * parcelDims.width * parcelDims.height) / 5000);
+      const aramexBaseCost = 135.00 + (aramexVolumetricWeight > 2 ? (aramexVolumetricWeight - 2) * 38.00 : 0);
+      const aramexTotalCost = parseFloat((aramexBaseCost * 1.15).toFixed(2)); // incl 15% VAT
+
+      quotes.push({
+        courierName: 'Aramex',
+        serviceLevel: 'Aramex Overnight Parcel (ONP)',
+        serviceCode: 'ONP',
+        deliveryType: 'home',
+        cost: aramexTotalCost,
+        originalCost: aramexTotalCost,
+        isFreeDelivery: false,
+        estimatedDays: 'Next business day by 10:30 AM',
+        description: 'Aramex Priority Door-to-Door Overnight Air Express',
+        legs: [
+          {
+            courierName: 'Aramex SA Express Hub',
+            origin: originCountry,
+            destination: customerAddress.city || destCountry,
+            cost: Number((aramexTotalCost * 0.8).toFixed(2))
+          }
+        ]
+      });
     } 
     // 2. EXPORT (SA -> Intl)
     else if (originSA && !destSA) {
       isInternational = true;
-      let baseRate = 1800; // R1800 flat rate mock
+      let baseRate = 1800; // R1800 flat rate
       if (totalWeightKg > 10) baseRate += 500;
       
       quotes.push({
-        courierName: 'DHL Express',
-        serviceLevel: 'International Express',
+        courierName: 'Aramex',
+        serviceLevel: 'Aramex Worldwide Express',
+        serviceCode: 'EPX',
         deliveryType: 'home',
         cost: baseRate,
-        estimatedDays: '5-8 business days',
+        estimatedDays: '4-7 business days',
         legs: [
           {
-            courierName: 'Local Courier',
+            courierName: 'Aramex Local Partner Hub',
             origin: originCountry,
-            destination: 'SA Export Hub',
+            destination: 'Aramex JNB Air Cargo Gateway',
             cost: 200
           },
           {
-            courierName: 'DHL International',
-            origin: 'SA Export Hub',
-            destination: `${destCountry} Import Hub`,
+            courierName: 'Aramex International Air Transport',
+            origin: 'Aramex JNB Air Cargo Gateway',
+            destination: `${destCountry} Aramex International Hub`,
             cost: baseRate * 0.6
           },
           {
-            courierName: 'DHL Local Partner',
-            origin: `${destCountry} Import Hub`,
+            courierName: 'Aramex Last-Mile Courier Partner',
+            origin: `${destCountry} Aramex International Hub`,
             destination: customerAddress.city || destCountry,
             cost: baseRate * 0.15
           }
@@ -257,21 +282,22 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
       isInternational = true;
       let baseRate = 2500;
       quotes.push({
-        courierName: 'DHL Express',
-        serviceLevel: 'International Priority',
+        courierName: 'Aramex',
+        serviceLevel: 'Aramex International Priority',
+        serviceCode: 'EPX',
         deliveryType: 'home',
         cost: baseRate,
-        estimatedDays: '7-14 business days',
+        estimatedDays: '5-10 business days',
         legs: [
           {
-            courierName: 'Global Logistics',
+            courierName: 'Aramex Global Air Freight',
             origin: originCountry,
-            destination: 'SA Import Hub',
+            destination: 'Aramex SA Import Hub (JNB/CPT)',
             cost: baseRate * 0.65
           },
           {
-            courierName: 'GS Domestic Logistics',
-            origin: 'SA Import Hub',
+            courierName: 'Aramex South Africa Domestic Delivery',
+            origin: 'Aramex SA Import Hub (JNB/CPT)',
             destination: customerAddress.city || 'Customer',
             cost: baseRate * 0.15
           }

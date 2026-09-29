@@ -135,7 +135,9 @@ router.get('/vendors', crmVendorController.getAllVendors);
 router.get('/vendors/:id/360', crmVendorController.getVendor360);
 router.put('/vendors/:id/stage', crmVendorController.updateVendorWorkflowStage);
 router.put('/vendors/:id/status', crmVendorController.updateVendorStatus);
+router.put('/vendors/:id/freeze', crmVendorController.toggleVendorFreeze);
 router.post('/vendors/:id/ping', crmVendorController.pingVendor);
+router.post('/vendors/broadcast-advisory', crmVendorController.broadcastAdvisory);
 
 // --- Module 4 & 5: Order Operations Board & Logistics Exceptions ---
 router.get('/orders/board', crmOrderOpsController.getOrderOperationsBoard);
@@ -160,11 +162,20 @@ router.put('/export/:id/stage', crmExportController.updateExportStage);
 // --- Module 7 & 8: Communications Hub & Task Reminders ---
 router.get('/comms', crmCommsController.getCommunications);
 router.post('/comms', crmCommsController.logCommunication);
+router.post('/comms/bulk', crmCommsController.logBulkCommunication);
 
 const crmMarketingController = require('../controllers/crm/crmMarketingController');
 const crmAuctionController = require('../controllers/crm/crmAuctionController');
 const crmSettlementController = require('../controllers/crm/crmSettlementController');
 const crmStaffController = require('../controllers/crm/crmStaffController');
+const crmCompetitorPriceController = require('../controllers/crm/crmCompetitorPriceController');
+
+// --- Competitor Price Intelligence & Monitoring (Norman Goodfellows) ---
+router.get('/competitor-prices', crmCompetitorPriceController.getCompetitorPrices);
+router.get('/competitor-prices/summary', crmCompetitorPriceController.getCompetitorPriceSummary);
+router.get('/competitor-prices/monthly', crmCompetitorPriceController.getMonthlyPriceSummary);
+router.post('/competitor-prices/sync-now', crmCompetitorPriceController.triggerManualSync);
+router.put('/competitor-prices/:id/match', crmCompetitorPriceController.manualMatchProduct);
 
 // --- Module 9: Marketing Compliance & Audience Segmentation ---
 router.get('/marketing/products', crmMarketingController.getMarketingProducts);

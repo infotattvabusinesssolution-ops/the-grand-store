@@ -775,10 +775,10 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
 
                 <div className="p-2.5 bg-black/30 border border-white/5 text-left">
                   <div className="flex items-center gap-1.5 text-white font-medium text-xs mb-0.5">
-                    <Globe size={13} className="text-blue-400" /> DHL Express Int'l
+                    <Globe size={13} className="text-red-400" /> Aramex Worldwide
                   </div>
-                  <div className="text-[11px] text-[#eee8dd]/80 font-mono">3–6 Business Days</div>
-                  <div className="text-[9px] text-[#918a7f] mt-0.5">Insured Worldwide Air Freight</div>
+                  <div className="text-[11px] text-[#eee8dd]/80 font-mono">3–5 Business Days</div>
+                  <div className="text-[9px] text-[#918a7f] mt-0.5">Insured Express Air Courier</div>
                 </div>
               </div>
             </div>
@@ -794,7 +794,7 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                 </span>
               </div>
               <p className="text-[11px] text-[#918a7f] leading-relaxed m-0">
-                Live rates from The Courier Guy, PostNet, and DHL Express are computed at checkout based on destination address, parcel volumetric weight, and insurance value.
+                Live rates from The Courier Guy, PostNet, and Aramex are computed at checkout based on destination address, parcel volumetric weight, and insurance value.
               </p>
 
               {/* Protective Packaging Assurance */}

@@ -87,14 +87,47 @@ export function useCrmVendors() {
     }
   };
 
-  const pingVendor = async (vendorId, message, type) => {
+  const pingVendor = async (vendorId, message, type = 'executive_inquiry', title = 'Operational Notice', priority = 'normal') => {
     try {
-      const res = await crmApi.pingVendor(vendorId, { message, type });
+      const res = await crmApi.pingVendor(vendorId, { message, type, title, priority });
       if (res.data?.success) {
+        if (activeVendor360 && activeVendor360.vendorInfo?._id === vendorId) {
+          fetchVendor360(vendorId);
+        }
         return { success: true, message: res.data.message };
       }
+      return { success: false, message: res.data?.message || 'Failed to ping vendor' };
     } catch (err) {
       return { success: false, message: err.response?.data?.message || 'Failed to ping vendor' };
+    }
+  };
+
+  const toggleFreeze = async (vendorId, { freeze, reason, advisoryMessage }) => {
+    try {
+      const res = await crmApi.toggleVendorFreeze(vendorId, { freeze, reason, advisoryMessage });
+      if (res.data?.success) {
+        fetchData();
+        if (activeVendor360 && activeVendor360.vendorInfo?._id === vendorId) {
+          fetchVendor360(vendorId);
+        }
+        return { success: true, message: res.data.message };
+      }
+      return { success: false, message: res.data?.message || 'Failed to update store freeze state' };
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Failed to update store freeze state' };
+    }
+  };
+
+  const broadcastAdvisory = async ({ title, message, priority, type }) => {
+    try {
+      const res = await crmApi.broadcastVendorAdvisory({ title, message, priority, type });
+      if (res.data?.success) {
+        fetchData();
+        return { success: true, message: res.data.message, count: res.data.count };
+      }
+      return { success: false, message: res.data?.message || 'Failed to broadcast advisory' };
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Failed to broadcast advisory' };
     }
   };
 
@@ -112,6 +145,8 @@ export function useCrmVendors() {
     fetchVendor360,
     updateStage,
     updateStatus,
-    pingVendor
+    toggleFreeze,
+    pingVendor,
+    broadcastAdvisory
   };
 }

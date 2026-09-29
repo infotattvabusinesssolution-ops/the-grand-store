@@ -6,7 +6,8 @@ import {
   Building2, FileText, CheckCircle2, Clock, AlertTriangle, 
   ExternalLink, ShieldCheck, History, ArrowRight, X, Eye, 
   UserX, Check, Package, DollarSign, MessageCircle,
-  Search, RefreshCw, MapPin, Mail, Zap, Send, Sparkles, Crown
+  Search, RefreshCw, MapPin, Mail, Zap, Send, Sparkles, Crown,
+  PauseCircle, PlayCircle, Radio, BellRing, Info
 } from 'lucide-react';
 
 export default function CrmVendorWorkflowPage() {
@@ -22,7 +23,9 @@ export default function CrmVendorWorkflowPage() {
     refresh, 
     fetchVendor360, 
     updateStage, 
-    pingVendor 
+    toggleFreeze,
+    pingVendor,
+    broadcastAdvisory
   } = useCrmVendors();
 
   const [activeTab, setActiveTab] = useState('directory'); // 'directory' | 'kyc' | 'orders' | 'payment_queries'
@@ -36,11 +39,25 @@ export default function CrmVendorWorkflowPage() {
     title: '',
     reason: ''
   });
-  const [messageModal, setMessageModal] = useState({
+
+  const [freezeModal, setFreezeModal] = useState({
     isOpen: false,
     vendor: null,
-    message: ''
+    isFreezing: true, // true = freeze, false = unfreeze
+    reason: '',
+    advisoryMessage: '',
+    broadcastNotice: true
   });
+
+  const [messageModal, setMessageModal] = useState({
+    isOpen: false,
+    vendor: null, // vendor object or { _id: 'all', tradingName: 'All Vendor Partners' }
+    title: '',
+    message: '',
+    priority: 'normal', // 'normal' | 'urgent' | 'critical'
+    type: 'operational_advisory'
+  });
+
   const [submitting, setSubmitting] = useState(false);
 
   const counts = summary?.counts || {};
@@ -87,19 +104,84 @@ export default function CrmVendorWorkflowPage() {
     }
   };
 
+  const handleOpenFreezeModal = (vendor, isFreezing = true) => {
+    setFreezeModal({
+      isOpen: true,
+      vendor,
+      isFreezing,
+      reason: isFreezing ? 'Annual Inventory Stocktake' : '',
+      advisoryMessage: isFreezing ? 'This winery store is temporarily paused for annual vintage stocktaking. Order fulfillment will resume on schedule.' : '',
+      broadcastNotice: true
+    });
+  };
+
+  const handleConfirmFreeze = async (e) => {
+    e.preventDefault();
+    if (!freezeModal.vendor) return;
+    if (freezeModal.vendor.vendorType === 'flagship' || /grand store/i.test(freezeModal.vendor.tradingName || freezeModal.vendor.name || '')) {
+      toast.error('The Grand Store is the central platform operator and cannot be frozen.');
+      setFreezeModal({ isOpen: false, vendor: null, isFreezing: true, reason: '', advisoryMessage: '', broadcastNotice: true });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await toggleFreeze(freezeModal.vendor._id, {
+        freeze: freezeModal.isFreezing,
+        reason: freezeModal.reason,
+        advisoryMessage: freezeModal.advisoryMessage
+      });
+      if (res.success) {
+        toast.success(res.message);
+        setFreezeModal({ isOpen: false, vendor: null, isFreezing: true, reason: '', advisoryMessage: '', broadcastNotice: true });
+        if (activeVendor360 && activeVendor360.vendorInfo?._id === freezeModal.vendor._id) {
+          fetchVendor360(freezeModal.vendor._id);
+        }
+      } else {
+        toast.error(res.message);
+      }
+    } catch (err) {
+      toast.error('Failed to update store freeze state');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!messageModal.vendor || !messageModal.message.trim()) return;
     setSubmitting(true);
     try {
-      const res = await pingVendor(messageModal.vendor._id, messageModal.message, 'executive_inquiry');
-      if (res.success) {
-        toast.success(`Message dispatched directly to ${messageModal.vendor.tradingName || messageModal.vendor.name}'s winery dashboard.`);
-        setMessageModal({ isOpen: false, vendor: null, message: '' });
-        if (activeVendor360) fetchVendor360(activeVendor360.vendorInfo._id);
+      if (messageModal.vendor._id === 'all') {
+        const res = await broadcastAdvisory({
+          title: messageModal.title || 'Executive Operations Advisory',
+          message: messageModal.message.trim(),
+          priority: messageModal.priority,
+          type: messageModal.type
+        });
+        if (res.success) {
+          toast.success(res.message);
+          setMessageModal({ isOpen: false, vendor: null, title: '', message: '', priority: 'normal', type: 'operational_advisory' });
+        } else {
+          toast.error(res.message);
+        }
       } else {
-        toast.error(res.message);
+        const res = await pingVendor(
+          messageModal.vendor._id, 
+          messageModal.message.trim(), 
+          messageModal.type,
+          messageModal.title || 'Executive Advisory',
+          messageModal.priority
+        );
+        if (res.success) {
+          toast.success(`Advisory successfully dispatched to ${messageModal.vendor.tradingName || messageModal.vendor.name}'s winery dashboard.`);
+          setMessageModal({ isOpen: false, vendor: null, title: '', message: '', priority: 'normal', type: 'operational_advisory' });
+          if (activeVendor360) fetchVendor360(activeVendor360.vendorInfo._id);
+        } else {
+          toast.error(res.message);
+        }
       }
+    } catch (err) {
+      toast.error('Failed to dispatch message advisory');
     } finally {
       setSubmitting(false);
     }
@@ -149,8 +231,15 @@ export default function CrmVendorWorkflowPage() {
             <p className="text-[10px] font-bold text-slate-500 uppercase">Vendor Directory</p>
             <Building2 size={16} className="text-blue-600" />
           </div>
-          <h3 className="text-2xl font-extrabold text-slate-900 mt-1">{vendors.length || counts.totalVendors || 8}</h3>
-          <span className="text-[10px] text-blue-600 font-semibold">Active & Registered</span>
+          <h3 className="text-2xl font-extrabold text-slate-900 mt-1">{vendors.length || counts.totalVendors || 0}</h3>
+          <div className="flex items-center justify-between text-[10px] mt-1 font-semibold">
+            <span className="text-blue-600">{vendors.filter(v => !v.isFrozen && (v.status === 'approved' || v.crmWorkflowStage === 'live_active')).length} Active Live</span>
+            {vendors.filter(v => v.isFrozen || v.status === 'suspended').length > 0 && (
+              <span className="text-rose-600 font-extrabold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                ❄️ {vendors.filter(v => v.isFrozen || v.status === 'suspended').length} Frozen
+              </span>
+            )}
+          </div>
         </div>
 
         <div 
@@ -221,17 +310,27 @@ export default function CrmVendorWorkflowPage() {
             </button>
           </div>
 
-          {/* Search bar for directory */}
+          {/* Search bar & Broadcast trigger for directory */}
           {activeTab === 'directory' && (
-            <div className="relative min-w-[260px]">
-              <Search size={14} className="absolute left-3 top-2.5 text-blue-500" />
-              <input
-                type="text"
-                placeholder="Search winery, farm, email..."
-                value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setMessageModal({ isOpen: true, vendor: { _id: 'all', tradingName: 'All Vendor Partners', name: 'All Partners' }, title: 'Operational Advisory Broadcast', message: '', priority: 'urgent', type: 'operational_advisory' })}
+                className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl border border-blue-200 transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+                title="Broadcast advisory message across all wineries"
+              >
+                <Radio size={13} className="text-blue-600 animate-pulse" /> Broadcast Advisory
+              </button>
+
+              <div className="relative min-w-[240px]">
+                <Search size={14} className="absolute left-3 top-2.5 text-blue-500" />
+                <input
+                  type="text"
+                  placeholder="Search winery, farm, email..."
+                  value={filters.search}
+                  onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                  className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
             </div>
           )}
         </div>
@@ -262,20 +361,22 @@ export default function CrmVendorWorkflowPage() {
                 ) : (
                   vendors.map((v) => {
                     const isRowAdmin = v.vendorType === 'flagship' || /grand store/i.test(v.tradingName);
+                    const isRowFrozen = Boolean(v.isFrozen || v.status === 'suspended' || v.crmWorkflowStage === 'suspended');
+
                     return (
                     <tr 
                       key={v._id} 
-                      className={`transition-colors group cursor-pointer ${isRowAdmin ? 'bg-amber-50/20 hover:bg-amber-50/40' : 'hover:bg-blue-50/40'}`}
+                      className={`transition-colors group cursor-pointer ${isRowAdmin ? 'bg-amber-50/20 hover:bg-amber-50/40' : (isRowFrozen ? 'bg-rose-50/25 hover:bg-rose-50/45' : 'hover:bg-blue-50/40')}`}
                       onClick={() => handleOpen360(v)}
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl border flex items-center justify-center font-extrabold text-sm shrink-0 shadow-sm transition-colors ${isRowAdmin ? 'bg-amber-100/60 border-amber-300 text-amber-800 group-hover:bg-amber-600 group-hover:text-white' : 'bg-blue-50 border-blue-200 text-blue-700 group-hover:bg-blue-600 group-hover:text-white'}`}>
-                            {isRowAdmin ? <Crown size={18} /> : v.tradingName.slice(0, 2).toUpperCase()}
+                          <div className={`w-10 h-10 rounded-xl border flex items-center justify-center font-extrabold text-sm shrink-0 shadow-sm transition-colors ${isRowAdmin ? 'bg-amber-100/60 border-amber-300 text-amber-800 group-hover:bg-amber-600 group-hover:text-white' : (isRowFrozen ? 'bg-rose-100/60 border-rose-300 text-rose-700' : 'bg-blue-50 border-blue-200 text-blue-700 group-hover:bg-blue-600 group-hover:text-white')}`}>
+                            {isRowAdmin ? <Crown size={18} /> : (isRowFrozen ? '❄️' : v.tradingName.slice(0, 2).toUpperCase())}
                           </div>
                           <div>
-                            <div className="flex items-center gap-1.5">
-                              <p className={`font-extrabold text-sm transition-colors ${isRowAdmin ? 'text-amber-950 group-hover:text-amber-700' : 'text-slate-900 group-hover:text-blue-600'}`}>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className={`font-extrabold text-sm transition-colors ${isRowAdmin ? 'text-amber-950 group-hover:text-amber-700' : (isRowFrozen ? 'text-rose-950' : 'text-slate-900 group-hover:text-blue-600')}`}>
                                 {v.tradingName}
                               </p>
                               {isRowAdmin && (
@@ -283,32 +384,42 @@ export default function CrmVendorWorkflowPage() {
                                   <Crown size={9} /> MAIN ADMIN
                                 </span>
                               )}
+                              {isRowFrozen && (
+                                <span className="px-1.5 py-0.5 text-[9px] font-extrabold bg-rose-100 text-rose-800 rounded border border-rose-300 flex items-center gap-0.5 animate-pulse">
+                                  FROZEN
+                                </span>
+                              )}
                             </div>
                             <p className="text-[11px] text-slate-500">{isRowAdmin ? 'Central Platform Headquarters & Master Vault' : (v.legalName !== v.tradingName ? v.legalName : 'Verified South African Estate')}</p>
+                            {isRowFrozen && v.freezeAdvisoryMessage && (
+                              <p className="text-[10px] text-rose-600 font-semibold italic mt-0.5 max-w-sm truncate" title={v.freezeAdvisoryMessage}>
+                                Advisory: "{v.freezeAdvisoryMessage}"
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
 
                       <td className="px-6 py-4">
                         <p className="text-slate-800 font-semibold flex items-center gap-1.5">
-                          <Mail size={12} className={isRowAdmin ? "text-amber-600" : "text-blue-500"} /> {v.email}
+                          <Mail size={12} className={isRowAdmin ? "text-amber-600" : (isRowFrozen ? "text-rose-500" : "text-blue-500")} /> {v.email}
                         </p>
                         <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5">
-                          <MapPin size={12} className={isRowAdmin ? "text-amber-500" : "text-blue-400"} /> {v.address}
+                          <MapPin size={12} className={isRowAdmin ? "text-amber-500" : (isRowFrozen ? "text-rose-400" : "text-blue-400")} /> {v.address}
                         </p>
                       </td>
 
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <span className={`font-extrabold text-sm ${isRowAdmin ? 'text-amber-900' : 'text-blue-900'}`}>
-                            R {v.totalGmv ? v.totalGmv.toLocaleString() : '38,500'}
+                            R {(Number(v.totalGmv) || 0).toLocaleString()}
                           </span>
                           <span className={`text-[10px] font-semibold uppercase ${isRowAdmin ? 'text-amber-700' : 'text-blue-600'}`}>
                             {isRowAdmin ? 'REVENUE' : 'GMV'}
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500 mt-0.5">
-                          {v.productCount || 343} Live SKUs • {v.orderCount || 8} Orders
+                          {v.productCount ?? 0} Live SKUs • {v.orderCount ?? 0} Orders
                         </p>
                       </td>
 
@@ -319,28 +430,58 @@ export default function CrmVendorWorkflowPage() {
                             {isRowAdmin ? 'Master Licenced' : (v.kycVerified ? 'KYC Compliant' : 'Review In-Progress')}
                           </span>
                           <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${isRowAdmin ? 'text-amber-900 bg-amber-50 border-amber-300' : 'text-blue-800 bg-blue-50 border border-blue-200'}`}>
-                            {isRowAdmin ? 100 : v.trustScore}/100
+                            {isRowAdmin ? 100 : (v.trustScore ?? 70)}/100
                           </span>
                         </div>
                       </td>
 
                       <td className="px-6 py-4">
-                        <StatusBadge status={isRowAdmin ? 'platform_flagship' : (v.crmWorkflowStage || 'live_active')} />
+                        {isRowFrozen ? (
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-300">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
+                              ❄️ STORE FROZEN
+                            </span>
+                          </div>
+                        ) : (
+                          <StatusBadge status={isRowAdmin ? 'platform_flagship' : (v.crmWorkflowStage || 'live_active')} />
+                        )}
                       </td>
 
                       <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
+                          {!isRowAdmin && (
+                            isRowFrozen ? (
+                              <button
+                                onClick={() => handleOpenFreezeModal(v, false)}
+                                className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-xs inline-flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
+                                title="Lift freeze and restore storefront"
+                              >
+                                <CheckCircle2 size={12} /> Lift Freeze
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleOpenFreezeModal(v, true)}
+                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs inline-flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
+                                title="Temporarily freeze store & broadcast advisory"
+                              >
+                                <UserX size={12} /> Freeze Store
+                              </button>
+                            )
+                          )}
+
                           <button
                             onClick={() => handleOpen360(v)}
                             className={`px-3.5 py-1.5 rounded-xl font-bold text-xs shadow-sm transition-all inline-flex items-center gap-1.5 cursor-pointer ${isRowAdmin ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-500/25' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25'}`}
                           >
                             <Sparkles size={12} /> {isRowAdmin ? 'Master 360' : 'Vendor 360'}
                           </button>
+                          
                           {!isRowAdmin && (
                             <button
-                              onClick={() => setMessageModal({ isOpen: true, vendor: v, message: '' })}
+                              onClick={() => setMessageModal({ isOpen: true, vendor: v, title: `Direct Advisory to ${v.tradingName}`, message: '', priority: 'normal', type: 'operational_advisory' })}
                               className="p-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-600 rounded-xl transition-all cursor-pointer border border-transparent hover:border-blue-200"
-                              title="Direct Concierge Message"
+                              title="Direct Concierge Advisory Message"
                             >
                               <MessageCircle size={14} />
                             </button>
@@ -618,16 +759,28 @@ export default function CrmVendorWorkflowPage() {
                   ) : (
                     <>
                       <button
-                        onClick={() => setMessageModal({ isOpen: true, vendor: activeVendor360.vendorInfo, message: '' })}
+                        onClick={() => setMessageModal({ 
+                          isOpen: true, 
+                          vendor: activeVendor360.vendorInfo, 
+                          title: `Executive Advisory: ${activeVendor360.vendorInfo?.tradingName || activeVendor360.vendorInfo?.name}`,
+                          message: '', 
+                          priority: 'urgent', 
+                          type: 'operational_advisory' 
+                        })}
                         className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/30"
                       >
-                        <MessageCircle size={14} /> Message Vendor
+                        <MessageCircle size={14} /> Message Advisory
                       </button>
                       <button
-                        onClick={() => handleOpenActionModal(activeVendor360.vendorInfo, 'suspended', 'Freeze or Suspend Vendor Store')}
-                        className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 cursor-pointer"
+                        onClick={() => handleOpenFreezeModal(activeVendor360.vendorInfo, !activeVendor360.vendorInfo?.isFrozen)}
+                        className={`px-3.5 py-2 border font-extrabold rounded-xl text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-md ${
+                          activeVendor360.vendorInfo?.isFrozen 
+                            ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40 shadow-emerald-500/10' 
+                            : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border-cyan-500/40 shadow-cyan-500/10'
+                        }`}
                       >
-                        <UserX size={14} /> Suspend
+                        {activeVendor360.vendorInfo?.isFrozen ? <PlayCircle size={14} /> : <PauseCircle size={14} />}
+                        {activeVendor360.vendorInfo?.isFrozen ? 'Lift Store Freeze' : 'Freeze Store'}
                       </button>
                     </>
                   )}
@@ -639,6 +792,41 @@ export default function CrmVendorWorkflowPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Temporary Store Freeze Alert Banner (Persistent if frozen) */}
+              {activeVendor360.vendorInfo?.isFrozen && (
+                <div className="mx-6 mt-4 p-4 bg-cyan-950/70 border border-cyan-500/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-cyan-950/50">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 shrink-0">
+                      <PauseCircle size={22} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-500/30 text-cyan-200 border border-cyan-500/40">
+                          ❄️ STOREFRONT LISTINGS TEMPORARILY FROZEN
+                        </span>
+                        {activeVendor360.vendorInfo?.frozenAt && (
+                          <span className="text-[11px] text-slate-400">
+                            Frozen since {new Date(activeVendor360.vendorInfo.frozenAt).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-cyan-100 mt-1">
+                        <strong className="text-white">Reason:</strong> {activeVendor360.vendorInfo?.freezeReason || 'Operational Review'}
+                        {activeVendor360.vendorInfo?.freezeAdvisoryMessage && (
+                          <span className="text-slate-300"> — "{activeVendor360.vendorInfo.freezeAdvisoryMessage}"</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleOpenFreezeModal(activeVendor360.vendorInfo, false)}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-xs transition-all inline-flex items-center gap-1.5 shrink-0 shadow-lg shadow-emerald-600/30 cursor-pointer self-start sm:self-auto"
+                  >
+                    <PlayCircle size={14} /> Lift Freeze & Resume Store
+                  </button>
+                </div>
+              )}
 
               {/* Sub-Tabs Navigation */}
               <div className={`px-6 py-2.5 bg-slate-900/90 border-b ${isMainAdmin ? 'border-amber-500/20' : 'border-blue-500/20'} flex items-center gap-2 overflow-x-auto text-xs`}>
@@ -880,14 +1068,21 @@ export default function CrmVendorWorkflowPage() {
 
                           <div className="space-y-2">
                             <button
-                              onClick={() => toast.success('Master Vault inventory synchronized! All 343 luxury items are active across Global & Local storefronts.')}
+                              onClick={() => toast.success(`Master Vault inventory synchronized! All ${activeVendor360.products?.length || activeVendor360.dashboardMirror?.catalog?.totalProducts || 0} luxury items are active across Global & Local storefronts.`)}
                               className="w-full py-2 bg-amber-600/30 hover:bg-amber-600/40 text-amber-200 border border-amber-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
                             >
                               <span>Sync Master Vault Inventory</span>
                               <RefreshCw size={14} />
                             </button>
                             <button
-                              onClick={() => setMessageModal({ isOpen: true, vendor: { _id: 'all', tradingName: 'All Vendor Partners', name: 'All Partners' }, message: '' })}
+                              onClick={() => setMessageModal({ 
+                                isOpen: true, 
+                                vendor: { _id: 'all', tradingName: 'All Vendor Partners', name: 'All Partners' }, 
+                                title: 'Platform Operations Broadcast',
+                                message: '', 
+                                priority: 'urgent', 
+                                type: 'system_alert' 
+                              })}
                               className="w-full py-2 bg-blue-600/30 hover:bg-blue-600/40 text-blue-300 border border-blue-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
                             >
                               <span>Broadcast Partner Advisory</span>
@@ -922,18 +1117,29 @@ export default function CrmVendorWorkflowPage() {
                               <Check size={14} />
                             </button>
                             <button
-                              onClick={() => setMessageModal({ isOpen: true, vendor: activeVendor360.vendorInfo, message: '' })}
+                              onClick={() => setMessageModal({ 
+                                isOpen: true, 
+                                vendor: activeVendor360.vendorInfo, 
+                                title: `Direct Operational Advisory: ${activeVendor360.vendorInfo?.tradingName || activeVendor360.vendorInfo?.name}`,
+                                message: '', 
+                                priority: 'urgent', 
+                                type: 'operational_advisory' 
+                              })}
                               className="w-full py-2 bg-blue-600/30 hover:bg-blue-600/40 text-blue-300 border border-blue-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
                             >
-                              <span>Dispatch Urgent Notice</span>
+                              <span>Dispatch Urgent Advisory</span>
                               <Send size={14} />
                             </button>
                             <button
-                              onClick={() => handleOpenActionModal(activeVendor360.vendorInfo, 'suspended', 'Freeze or Suspend Vendor Store')}
-                              className="w-full py-2 bg-rose-600/30 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
+                              onClick={() => handleOpenFreezeModal(activeVendor360.vendorInfo, !activeVendor360.vendorInfo?.isFrozen)}
+                              className={`w-full py-2 border font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer ${
+                                activeVendor360.vendorInfo?.isFrozen
+                                  ? 'bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 border-emerald-500/40'
+                                  : 'bg-cyan-600/30 hover:bg-cyan-600/40 text-cyan-300 border-cyan-500/40'
+                              }`}
                             >
-                              <span>Temporary Freeze Store</span>
-                              <UserX size={14} />
+                              <span>{activeVendor360.vendorInfo?.isFrozen ? 'Lift Store Freeze & Resume' : 'Temporary Freeze Store'}</span>
+                              {activeVendor360.vendorInfo?.isFrozen ? <PlayCircle size={14} /> : <PauseCircle size={14} />}
                             </button>
                           </div>
 
@@ -963,7 +1169,61 @@ export default function CrmVendorWorkflowPage() {
                     </div>
 
                     <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-blue-500/20">
-                      {(!activeVendor360.activities || activeVendor360.activities.length === 0) ? (
+                      {/* Pinned Store Freeze Status Card */}
+                      {activeVendor360.vendorInfo?.isFrozen && (
+                        <div className="relative group">
+                          <div className="absolute -left-[27px] top-1 w-3.5 h-3.5 rounded-full bg-cyan-400 border-2 border-slate-950 animate-ping" />
+                          <div className="bg-cyan-950/80 p-4 rounded-2xl border border-cyan-500/40 shadow-lg shadow-cyan-950/40">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <span className="font-extrabold text-cyan-200 text-sm flex items-center gap-1.5">
+                                <PauseCircle size={16} /> PINNED ADVISORY: Storefront Listings Temporarily Frozen
+                              </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
+                                ACTIVE RESTRICTION
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-200 mt-2 font-medium">
+                              <strong>Freeze Reason:</strong> {activeVendor360.vendorInfo.freezeReason || 'Operational Review'}
+                            </p>
+                            {activeVendor360.vendorInfo.freezeAdvisoryMessage && (
+                              <p className="text-xs text-cyan-100 mt-1.5 italic bg-cyan-900/40 p-2.5 rounded-xl border border-cyan-500/20">
+                                "{activeVendor360.vendorInfo.freezeAdvisoryMessage}"
+                              </p>
+                            )}
+                            <div className="mt-2 pt-2 border-t border-cyan-500/20 flex items-center justify-between text-[10px] text-cyan-300/80 font-mono">
+                              <span>Actor: {activeVendor360.vendorInfo.frozenBy || 'Operations Command'}</span>
+                              <span>Customer catalog checkout blocked</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Active Advisories Broadcast to Vendor */}
+                      {activeVendor360.vendorInfo?.activeAdvisories?.filter(a => a.active !== false).map((adv, aIdx) => (
+                        <div key={aIdx} className="relative group">
+                          <div className="absolute -left-[27px] top-1 w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-slate-950" />
+                          <div className="bg-blue-950/60 p-4 rounded-2xl border border-blue-500/30">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <span className="font-extrabold text-blue-200 text-sm flex items-center gap-1.5">
+                                <BellRing size={15} /> {adv.title || 'Platform Advisory Broadcast'}
+                              </span>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                                adv.priority === 'critical' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
+                                adv.priority === 'urgent' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+                                'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                              }`}>
+                                {(adv.priority || 'NORMAL').toUpperCase()}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-300 mt-1">{adv.message}</p>
+                            <div className="mt-2 text-[10px] text-slate-400 font-mono">
+                              Dispatched: {new Date(adv.createdAt || Date.now()).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {(!activeVendor360.activities || activeVendor360.activities.length === 0) && !activeVendor360.vendorInfo?.isFrozen ? (
                         <div className="p-8 text-center text-slate-400 bg-slate-900/40 rounded-2xl border border-blue-500/20">
                           <History size={24} className="mx-auto mb-2 text-slate-500" />
                           <p className="font-semibold text-slate-300">No operational activities recorded yet.</p>
@@ -1400,24 +1660,198 @@ export default function CrmVendorWorkflowPage() {
         </div>
       )}
 
-      {/* Message Vendor Modal */}
-      {messageModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm">Message {messageModal.vendor?.tradingName || messageModal.vendor?.name}</h3>
-                <p className="text-xs text-slate-500">Transmits priority dispatch advisory to vendor dashboard.</p>
+      {/* Freeze / Unfreeze Store Modal */}
+      {freezeModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 rounded-3xl border border-cyan-500/40 shadow-2xl max-w-lg w-full p-6 space-y-5 text-white">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${
+                  freezeModal.isFreezing 
+                    ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40' 
+                    : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                }`}>
+                  {freezeModal.isFreezing ? <PauseCircle size={20} /> : <PlayCircle size={20} />}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-white text-base">
+                    {freezeModal.isFreezing ? 'Temporary Freeze Store' : 'Lift Store Freeze & Resume'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Target Estate: <strong className="text-cyan-300">{freezeModal.vendor?.tradingName || freezeModal.vendor?.name}</strong>
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setMessageModal({ isOpen: false, vendor: null, message: '' })} className="p-1 text-slate-400 hover:text-slate-600">
+              <button 
+                onClick={() => setFreezeModal({ isOpen: false, vendor: null, isFreezing: true, reason: '', advisoryMessage: '', broadcastNotice: true })} 
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmFreeze} className="space-y-4">
+              {freezeModal.isFreezing ? (
+                <>
+                  <div className="p-3.5 bg-cyan-950/50 border border-cyan-500/30 rounded-2xl text-xs text-cyan-200/90 leading-relaxed space-y-1">
+                    <p className="font-bold flex items-center gap-1.5 text-cyan-300">
+                      <Info size={14} /> Immediate Operational Interventions:
+                    </p>
+                    <ul className="list-disc list-inside space-y-0.5 text-[11px] text-slate-300 pl-1">
+                      <li>Instantly hides all catalog products from Grand Store customer search & collections.</li>
+                      <li>Halts new customer checkout orders for this vendor estate.</li>
+                      <li>Sets operational status to <span className="text-cyan-300 font-semibold">suspended / frozen</span> in CRM directory.</li>
+                      <li>Dispatches advisory message to vendor portal and alerts customer storefront visitors.</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Internal Freeze Reason (Audit Log)
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={freezeModal.reason}
+                      onChange={(e) => setFreezeModal(prev => ({ ...prev, reason: e.target.value }))}
+                      placeholder="e.g. Annual Inventory Stocktake / Cellar Maintenance"
+                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Public Storefront & Partner Advisory Message
+                    </label>
+                    <textarea
+                      required
+                      rows={3}
+                      value={freezeModal.advisoryMessage}
+                      onChange={(e) => setFreezeModal(prev => ({ ...prev, advisoryMessage: e.target.value }))}
+                      placeholder="e.g. This winery store is temporarily paused for annual vintage stocktaking. Order fulfillment will resume on schedule."
+                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Will display as an official advisory banner across all estate touchpoints.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="p-4 bg-emerald-950/40 border border-emerald-500/30 rounded-2xl text-xs text-emerald-200/90 space-y-2">
+                  <p className="font-bold text-sm text-emerald-300 flex items-center gap-1.5">
+                    <CheckCircle2 size={16} /> Confirm Store Unfreeze & Listing Restoration
+                  </p>
+                  <p className="text-slate-300 text-xs leading-relaxed">
+                    Lifting the freeze will immediately reinstate active catalog SKUs across the Grand Store storefront, re-enable customer ordering, and return vendor status to <span className="text-emerald-400 font-bold">Approved (Live Active)</span>.
+                  </p>
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-slate-800 flex justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setFreezeModal({ isOpen: false, vendor: null, isFreezing: true, reason: '', advisoryMessage: '', broadcastNotice: true })}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                    freezeModal.isFreezing 
+                      ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-600/30' 
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30'
+                  }`}
+                >
+                  {submitting ? 'Applying...' : freezeModal.isFreezing ? '❄️ Freeze Store Now' : '▶️ Resume Storefront'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Message / Broadcast Advisory Modal */}
+      {messageModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 rounded-3xl border border-blue-500/40 shadow-2xl max-w-lg w-full p-6 space-y-5 text-white">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${
+                  messageModal.vendor?._id === 'all'
+                    ? 'bg-purple-500/20 text-purple-400 border-purple-500/40'
+                    : 'bg-blue-500/20 text-blue-400 border-blue-500/40'
+                }`}>
+                  {messageModal.vendor?._id === 'all' ? <Radio size={18} /> : <MessageCircle size={18} />}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-white text-base">
+                    {messageModal.vendor?._id === 'all' ? 'Broadcast Partner Advisory' : 'Dispatch Vendor Advisory'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Recipient: <strong className="text-blue-300">{messageModal.vendor?.tradingName || messageModal.vendor?.name}</strong>
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setMessageModal({ isOpen: false, vendor: null, title: '', message: '', priority: 'normal', type: 'operational_advisory' })} 
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              >
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleSendMessage} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Advisory Message
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Advisory Subject / Title
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={messageModal.title}
+                  onChange={(e) => setMessageModal(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="e.g. Vintage Stock Count Verification / Courier Holiday Schedule"
+                  className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Priority Level
+                  </label>
+                  <select
+                    value={messageModal.priority}
+                    onChange={(e) => setMessageModal(prev => ({ ...prev, priority: e.target.value }))}
+                    className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="normal">Normal (Notice)</option>
+                    <option value="urgent">Urgent (Action Required)</option>
+                    <option value="critical">Critical (Immediate SLA)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Advisory Classification
+                  </label>
+                  <select
+                    value={messageModal.type}
+                    onChange={(e) => setMessageModal(prev => ({ ...prev, type: e.target.value }))}
+                    className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="operational_advisory">Operational Advisory</option>
+                    <option value="system_alert">System Alert</option>
+                    <option value="payout_notice">Payout & Settlement</option>
+                    <option value="compliance_warning">Compliance & License</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Advisory Content
                 </label>
                 <textarea
                   required
@@ -1425,24 +1859,28 @@ export default function CrmVendorWorkflowPage() {
                   value={messageModal.message}
                   onChange={(e) => setMessageModal(prev => ({ ...prev, message: e.target.value }))}
                   placeholder="e.g. Please verify remaining stock for Cap Classique Brut. An express consignment is scheduled for collection tomorrow at 10:00."
-                  className="w-full p-2.5 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                  className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
                 />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Transmits in real-time to {messageModal.vendor?._id === 'all' ? 'all registered partner estate dashboards' : `${messageModal.vendor?.tradingName || messageModal.vendor?.name}'s dashboard`}.
+                </p>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+              <div className="pt-3 border-t border-slate-800 flex justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setMessageModal({ isOpen: false, vendor: null, message: '' })}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+                  onClick={() => setMessageModal({ isOpen: false, vendor: null, title: '', message: '', priority: 'normal', type: 'operational_advisory' })}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs shadow-md shadow-blue-600/30 cursor-pointer"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl text-xs shadow-lg shadow-blue-600/30 flex items-center gap-1.5 cursor-pointer"
                 >
-                  {submitting ? 'Transmitting...' : 'Dispatch Message'}
+                  <Send size={13} />
+                  {submitting ? 'Transmitting...' : messageModal.vendor?._id === 'all' ? 'Broadcast Advisory' : 'Dispatch Message'}
                 </button>
               </div>
             </form>

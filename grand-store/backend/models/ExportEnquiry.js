@@ -28,6 +28,7 @@ const exportEnquirySchema = new mongoose.Schema({
     productName: { type: String, required: true },
     vintage: { type: String },
     bottlesPerCase: { type: Number, default: 6 },
+    packFormat: { type: String, default: '6x750ml (6 btls/case)' },
     caseQuantity: { type: Number, required: true, min: 1 },
     targetPricePerCase: { type: Number }
   }],

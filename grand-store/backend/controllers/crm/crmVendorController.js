@@ -3,6 +3,7 @@ const Order = require('../../models/Order');
 const Product = require('../../models/Product');
 const VendorSettlement = require('../../models/VendorSettlement');
 const User = require('../../models/User');
+const Notification = require('../../models/Notification');
 
 /**
  * Returns the Vendor Management Operations Dashboard data.
@@ -135,8 +136,9 @@ exports.getAllVendors = async (req, res) => {
       .sort({ updatedAt: -1 })
       .lean();
 
-    // Known 3rd-party vendor user IDs to separate flagship inventory
-    const thirdPartyVendorIds = ['6a82d96f3576df8b5680e527', '6a96eae190403e014613e6ae'];
+    // Dynamically identify all third-party vendor user IDs to isolate flagship inventory
+    const nonFlagshipVendors = vendors.filter(v => v.vendorType !== 'flagship' && !/grand store/i.test(v.businessInfo?.tradingName || v.storeName || ''));
+    const thirdPartyVendorIds = nonFlagshipVendors.map(v => String(v.userId?._id || v.userId)).filter(Boolean);
 
     // Enrich each vendor with real counts & performance telemetry
     const enrichedVendors = await Promise.all(
@@ -214,8 +216,11 @@ exports.getAllVendors = async (req, res) => {
         const commissionRate = isFlagship ? 0 : 12;
         const netEarnings = isFlagship ? Math.round(totalGmv) : Math.round(totalGmv * (1 - commissionRate / 100));
 
-        // Determine current status label
-        const isLive = v.status === 'approved' || v.crmWorkflowStage === 'live_active';
+        // Determine current status & freeze status
+        const isFrozen = Boolean(v.isFrozen || v.status === 'suspended' || v.crmWorkflowStage === 'suspended');
+        const freezeReason = v.freezeReason || (isFrozen ? 'Operational suspension' : null);
+        const freezeAdvisoryMessage = v.freezeAdvisoryMessage || null;
+        const isLive = !isFrozen && (v.status === 'approved' || v.crmWorkflowStage === 'live_active');
         const isKycVerified = Boolean(
           v.verificationScore?.businessVerified && 
           v.verificationScore?.licenceVerified
@@ -230,11 +235,16 @@ exports.getAllVendors = async (req, res) => {
           address: v.businessInfo?.address || v.shippingProfile?.pickupAddress?.city || 'South Africa',
           logoUrl: v.businessInfo?.logoUrl || null,
           bannerUrl: v.businessInfo?.bannerUrl || null,
-          status: v.status || 'draft',
-          crmWorkflowStage: isFlagship ? 'platform_flagship' : (v.crmWorkflowStage || (isLive ? 'live_active' : 'application_received')),
+          status: isFrozen ? 'suspended' : (v.status || 'draft'),
+          crmWorkflowStage: isFlagship ? 'platform_flagship' : (isFrozen ? 'suspended' : (v.crmWorkflowStage || (isLive ? 'live_active' : 'application_received'))),
           vendorType: isFlagship ? 'flagship' : (v.vendorType || 'local'),
           isMainAdmin: isFlagship,
           isFlagship: isFlagship,
+          isFrozen,
+          freezeReason,
+          freezeAdvisoryMessage,
+          frozenAt: v.frozenAt || null,
+          activeAdvisories: v.activeAdvisories || [],
           payoutPreference: isFlagship ? 'Direct Merchant Capture' : (v.bankingInfo?.payoutPreference || 'Monthly'),
           bankName: isFlagship ? 'Standard Bank Corporate Treasury' : (v.bankingInfo?.bankName || 'Not submitted'),
           accountNumber: isFlagship ? '•••• 5261' : (v.bankingInfo?.accountNumber ? `•••• ${String(v.bankingInfo.accountNumber).slice(-4)}` : 'Not submitted'),
@@ -294,7 +304,16 @@ exports.getVendor360 = async (req, res) => {
     const legalName = vendor.businessInfo?.legalName || tradingName;
     const vendorUserId = vendor.userId?._id;
     const isFlagship = vendor.vendorType === 'flagship' || /grand store/i.test(tradingName);
-    const thirdPartyVendorIds = ['6a82d96f3576df8b5680e527', '6a96eae190403e014613e6ae'];
+
+    // Dynamically identify all third-party vendor user IDs to isolate flagship inventory
+    const allOtherVendors = await Vendor.find({
+      $and: [
+        { vendorType: { $ne: 'flagship' } },
+        { 'businessInfo.tradingName': { $not: /grand store/i } },
+        { storeName: { $not: /grand store/i } }
+      ]
+    }).select('userId').lean().catch(() => []);
+    const thirdPartyVendorIds = allOtherVendors.map(v => String(v.userId)).filter(Boolean);
 
     // 1. Fetch Real Vendor Products (Live Catalog Mirror)
     let rawProducts = [];
@@ -331,8 +350,19 @@ exports.getVendor360 = async (req, res) => {
       createdAt: p.createdAt
     }));
 
-    const totalProducts = isFlagship ? 343 : mappedProducts.length;
-    const liveProducts = mappedProducts.filter(p => p.approvalStatus === 'approved').length || (isFlagship ? 343 : 0);
+    const flagshipProductCount = isFlagship ? await Product.countDocuments({
+      $or: [
+        { vendorId: null },
+        { vendorId: { $exists: false } },
+        ...(vendorUserId ? [{ vendorId: vendorUserId }] : []),
+        { brand: /grand store/i }
+      ]
+    }).catch(() => 0) : 0;
+
+    const totalProducts = isFlagship ? (flagshipProductCount || mappedProducts.length) : mappedProducts.length;
+    const liveProducts = isFlagship 
+      ? (flagshipProductCount || mappedProducts.length)
+      : mappedProducts.filter(p => p.approvalStatus === 'approved').length;
     const lowStockProducts = mappedProducts.filter(p => (Number(p.stock) || 0) < 10 && (Number(p.stock) || 0) > 0).length;
     const outOfStockProducts = mappedProducts.filter(p => (Number(p.stock) || 0) === 0).length;
     const awaitingApprovalCount = mappedProducts.filter(p => p.approvalStatus === 'pending').length;
@@ -717,10 +747,19 @@ exports.getVendor360 = async (req, res) => {
       bankDetailsSnapshot: s.bankDetailsSnapshot
     }));
 
+    const isFrozen = Boolean(vendor.isFrozen || vendor.status === 'suspended' || vendor.crmWorkflowStage === 'suspended');
+    const freezeReason = vendor.freezeReason || (isFrozen ? 'Operational suspension' : null);
+    const freezeAdvisoryMessage = vendor.freezeAdvisoryMessage || null;
+
     // Assemble Full 360 Dossier
     const dossier = {
       isFlagship,
       isMainAdmin: isFlagship,
+      isFrozen,
+      freezeReason,
+      freezeAdvisoryMessage,
+      frozenAt: vendor.frozenAt || null,
+      activeAdvisories: vendor.activeAdvisories || [],
       vendorInfo: {
         _id: vendor._id,
         tradingName,
@@ -731,9 +770,14 @@ exports.getVendor360 = async (req, res) => {
         address: isFlagship ? 'The Grand Store Flagship Vault, Cape Town, South Africa' : (vendor.businessInfo?.address || vendor.shippingProfile?.pickupAddress?.city || 'South Africa'),
         logoUrl: vendor.businessInfo?.logoUrl || null,
         bannerUrl: vendor.businessInfo?.bannerUrl || null,
-        status: isFlagship ? 'platform_master' : (vendor.status || 'draft'),
-        crmWorkflowStage: isFlagship ? 'platform_flagship' : (vendor.crmWorkflowStage || (vendor.status === 'approved' ? 'live_active' : 'application_received')),
+        status: isFlagship ? 'platform_master' : (isFrozen ? 'suspended' : (vendor.status || 'draft')),
+        crmWorkflowStage: isFlagship ? 'platform_flagship' : (isFrozen ? 'suspended' : (vendor.crmWorkflowStage || (vendor.status === 'approved' ? 'live_active' : 'application_received'))),
         vendorType: isFlagship ? 'flagship' : (vendor.vendorType || 'local'),
+        isFrozen,
+        freezeReason,
+        freezeAdvisoryMessage,
+        frozenAt: vendor.frozenAt || null,
+        activeAdvisories: vendor.activeAdvisories || [],
         directorName: isFlagship ? 'Executive Store Administrator (admin@grandstore.com)' : (vendor.kycInfo?.directorName || vendor.userId?.name || 'Not specified'),
         accountManager: isFlagship ? {
           name: 'Master Platform Operations Command',
@@ -868,33 +912,260 @@ exports.updateVendorWorkflowStage = async (req, res) => {
 
 /**
  * Dispatch an operational concierge alert or dispatch reminder to the vendor.
+ * Supports single vendor ping or 'all' broadcast.
  */
 exports.pingVendor = async (req, res) => {
   try {
     const { id } = req.params;
-    const { message, type = 'dispatch_reminder' } = req.body;
+    const { message, title = 'Direct Operational Notice', type = 'executive_inquiry', priority = 'normal' } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ success: false, message: 'Message content is required' });
+    }
+
+    if (id === 'all') {
+      return exports.broadcastAdvisory(req, res);
+    }
 
     const vendor = await Vendor.findById(id);
     if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+
+    const performer = req.user?.name || 'Executive Staff';
+    const advisoryItem = {
+      id: `msg-${Date.now()}`,
+      type,
+      title,
+      message: message.trim(),
+      priority,
+      createdAt: new Date(),
+      createdBy: performer
+    };
+
+    vendor.activeAdvisories = vendor.activeAdvisories || [];
+    vendor.activeAdvisories.unshift(advisoryItem);
 
     // Append to audit trail
     vendor.crmAuditTrail.push({
       action: `Concierge Notification Dispatched (${type})`,
       performedBy: req.user?._id,
-      performerName: req.user?.name || 'Executive Staff',
+      performerName: performer,
       timestamp: new Date(),
-      notes: message || 'Priority fulfillment notification sent'
+      notes: message.trim()
     });
 
     await vendor.save();
 
+    // Create real Notification document for vendor user
+    if (vendor.userId) {
+      await Notification.create({
+        recipient: vendor.userId,
+        recipientType: 'vendor',
+        title: `📩 ${title}`,
+        message: message.trim(),
+        type: 'system',
+        isRead: false
+      }).catch(() => null);
+    }
+
     return res.status(200).json({
       success: true,
-      message: `Notification successfully dispatched to ${vendor.businessInfo?.tradingName || vendor.name || 'Vendor'}`
+      message: `Advisory message successfully dispatched to ${vendor.businessInfo?.tradingName || vendor.name || 'Vendor'}`
     });
   } catch (error) {
     console.error('Error pinging vendor:', error);
     return res.status(500).json({ success: false, message: 'Failed to notify vendor' });
+  }
+};
+
+/**
+ * Toggle vendor store freeze state (Temporary Freeze Store / Lift Freeze)
+ * and broadcast an active advisory message.
+ */
+exports.toggleVendorFreeze = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { freeze = true, reason, advisoryMessage } = req.body;
+
+    const vendor = await Vendor.findById(id);
+    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+
+    const isFlagship = vendor.vendorType === 'flagship' || /grand store/i.test(vendor.businessInfo?.tradingName || vendor.storeName || '');
+    if (isFlagship) {
+      return res.status(400).json({ success: false, message: 'The Grand Store Flagship is the central platform operator and cannot be frozen.' });
+    }
+
+    const performer = req.user?.name || 'Operations Executive';
+    const storeName = vendor.businessInfo?.tradingName || vendor.storeName || vendor.name || 'Vendor Store';
+
+    if (freeze) {
+      vendor.isFrozen = true;
+      vendor.status = 'suspended';
+      vendor.crmWorkflowStage = 'suspended';
+      vendor.freezeReason = reason || 'Temporary operational hold';
+      vendor.freezeAdvisoryMessage = advisoryMessage || reason || 'This store is temporarily paused by operations management.';
+      vendor.frozenAt = new Date();
+      vendor.frozenBy = req.user?._id;
+
+      const advisoryItem = {
+        id: `freeze-${Date.now()}`,
+        type: 'freeze_notice',
+        title: 'Temporary Store Freeze Active',
+        message: vendor.freezeAdvisoryMessage,
+        priority: 'critical',
+        createdAt: new Date(),
+        createdBy: performer
+      };
+      vendor.activeAdvisories = vendor.activeAdvisories || [];
+      vendor.activeAdvisories.unshift(advisoryItem);
+
+      vendor.crmAuditTrail.push({
+        action: `Store Operations Temporarily Frozen`,
+        performedBy: req.user?._id,
+        performerName: performer,
+        timestamp: new Date(),
+        notes: `Reason: ${vendor.freezeReason} | Advisory: "${vendor.freezeAdvisoryMessage}"`
+      });
+
+      // Notify vendor user
+      if (vendor.userId) {
+        await Notification.create({
+          recipient: vendor.userId,
+          recipientType: 'vendor',
+          title: '🚨 Store Operations Temporarily Frozen',
+          message: `Your winery storefront has been temporarily paused by Grand Store Operations. Advisory: "${vendor.freezeAdvisoryMessage}". Please review your portal or contact concierge.`,
+          type: 'system',
+          isRead: false
+        }).catch(() => null);
+      }
+
+      await vendor.save();
+
+      return res.status(200).json({
+        success: true,
+        message: `Store for ${storeName} temporarily frozen with broadcast advisory active.`,
+        vendor: {
+          _id: vendor._id,
+          isFrozen: true,
+          status: 'suspended',
+          freezeReason: vendor.freezeReason,
+          freezeAdvisoryMessage: vendor.freezeAdvisoryMessage,
+          frozenAt: vendor.frozenAt
+        }
+      });
+    } else {
+      // Unfreeze / Lift Freeze
+      vendor.isFrozen = false;
+      vendor.status = 'approved';
+      vendor.crmWorkflowStage = 'live_active';
+      vendor.freezeReason = null;
+      vendor.freezeAdvisoryMessage = null;
+      vendor.frozenAt = null;
+      vendor.frozenBy = null;
+
+      // Filter out active freeze notices
+      if (vendor.activeAdvisories && vendor.activeAdvisories.length > 0) {
+        vendor.activeAdvisories = vendor.activeAdvisories.filter(a => a.type !== 'freeze_notice');
+      }
+
+      vendor.crmAuditTrail.push({
+        action: `Store Freeze Lifted — Restored to Live Active`,
+        performedBy: req.user?._id,
+        performerName: performer,
+        timestamp: new Date(),
+        notes: `Store unfreezed and live catalog restored.`
+      });
+
+      // Notify vendor user
+      if (vendor.userId) {
+        await Notification.create({
+          recipient: vendor.userId,
+          recipientType: 'vendor',
+          title: '✅ Store Freeze Lifted - Operations Live',
+          message: `Your storefront and catalog listings have been restored to Live Active on Grand Store Global & Local.`,
+          type: 'system',
+          isRead: false
+        }).catch(() => null);
+      }
+
+      await vendor.save();
+
+      return res.status(200).json({
+        success: true,
+        message: `Store freeze lifted for ${storeName}. Vendor is now Live & Active.`,
+        vendor: {
+          _id: vendor._id,
+          isFrozen: false,
+          status: 'approved',
+          crmWorkflowStage: 'live_active'
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error toggling vendor freeze:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update store freeze state' });
+  }
+};
+
+/**
+ * Broadcast an operational advisory to all vendor partner dashboards.
+ */
+exports.broadcastAdvisory = async (req, res) => {
+  try {
+    const { message, title = 'Executive Operations Advisory', type = 'operational_advisory', priority = 'normal' } = req.body;
+    if (!message || !message.trim()) {
+      return res.status(400).json({ success: false, message: 'Advisory message text is required' });
+    }
+
+    const performer = req.user?.name || 'Executive Staff';
+    const vendors = await Vendor.find({
+      vendorType: { $ne: 'flagship' },
+      'businessInfo.tradingName': { $not: /grand store/i }
+    });
+
+    const advisoryObj = {
+      id: `adv-${Date.now()}`,
+      type,
+      title,
+      message: message.trim(),
+      priority,
+      createdAt: new Date(),
+      createdBy: performer
+    };
+
+    let notifiedCount = 0;
+    for (const v of vendors) {
+      v.activeAdvisories = v.activeAdvisories || [];
+      v.activeAdvisories.unshift(advisoryObj);
+      v.crmAuditTrail.push({
+        action: `Broadcast Advisory Received: "${title}"`,
+        performedBy: req.user?._id,
+        performerName: performer,
+        timestamp: new Date(),
+        notes: message.trim()
+      });
+      await v.save();
+
+      if (v.userId) {
+        await Notification.create({
+          recipient: v.userId,
+          recipientType: 'vendor',
+          title: `📢 ${title}`,
+          message: message.trim(),
+          type: 'system',
+          isRead: false
+        }).catch(() => null);
+      }
+      notifiedCount++;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Partner advisory successfully broadcast to ${notifiedCount} wineries and vendor portals.`,
+      count: notifiedCount
+    });
+  } catch (error) {
+    console.error('Error broadcasting advisory:', error);
+    return res.status(500).json({ success: false, message: 'Failed to broadcast advisory' });
   }
 };
 
@@ -913,8 +1184,14 @@ exports.updateVendorStatus = async (req, res) => {
     vendor.status = status;
     if (status === 'suspended') {
       vendor.crmWorkflowStage = 'suspended';
+      vendor.isFrozen = true;
+      vendor.freezeReason = reason || 'Suspended by Administrator';
+      vendor.frozenAt = new Date();
     } else if (status === 'approved') {
       vendor.crmWorkflowStage = 'live_active';
+      vendor.isFrozen = false;
+      vendor.freezeReason = null;
+      vendor.frozenAt = null;
     }
 
     vendor.crmAuditTrail.push({

@@ -820,3 +820,366 @@
   box-shadow: 0 6px 20px -3px rgba(223, 153, 38, 0.35);
 }
 
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE VIEW OPTIMIZATION (SOUTH AFRICA / LOCAL)
+   Editorial Elegance, Touch-Friendly Ergonomics & Cinematic Proportions
+   ========================================================================== */
+
+@media (max-width: 899px) {
+  /* Unified editorial layout flow on mobile and tablets */
+  .poster-body-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.35rem;
+    align-items: stretch;
+  }
+
+  /* Unrolls children of poster-text-col into flex container for structured narrative ordering */
+  .poster-text-col {
+    display: contents;
+  }
+
+  .poster-brand-row {
+    order: 1;
+  }
+
+  .poster-headline,
+  .poster-headline.african-headline {
+    order: 2;
+  }
+
+  .poster-subline {
+    order: 3;
+  }
+
+  /* Showcase bottle heroically right after narrative intro */
+  .poster-bottle-col {
+    order: 4;
+    min-height: auto;
+    padding: 0.75rem 0 1rem 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .poster-bottle-wrap {
+    display: inline-block;
+  }
+
+  .poster-bottle-img {
+    max-height: 290px;
+    width: auto;
+  }
+
+  .poster-bottle-glow,
+  .poster-bottle-glow.african-bottle-glow {
+    width: 220px;
+    height: 300px;
+    filter: blur(28px);
+  }
+
+  .poster-bottle-shadow,
+  .poster-bottle-shadow.african-bottle-shadow {
+    width: 140px;
+    height: 14px;
+    margin-top: -10px;
+  }
+
+  .poster-minimal-specs {
+    order: 5;
+  }
+
+  .poster-tasting-row,
+  .poster-tasting-row.african-tasting-row {
+    order: 6;
+  }
+
+  .poster-giveaway-card,
+  .poster-giveaway-card.african-giveaway-card {
+    order: 7;
+  }
+
+  .poster-action-group {
+    order: 8;
+  }
+}
+
+@media (max-width: 767px) {
+  /* Section & Card padding adjustment to prevent horizontal text cramping */
+  .pinterest-poster-section,
+  .pinterest-poster-section.african-taste-section {
+    padding: 2.25rem 0 3rem 0;
+  }
+
+  .pinterest-poster-shell {
+    padding: 0 0.85rem;
+  }
+
+  .pinterest-poster-card,
+  .pinterest-poster-card.african-poster-card {
+    padding: 1.6rem 1.15rem 1.35rem 1.15rem;
+    border-radius: 1.35rem;
+  }
+
+  .poster-inner-frame {
+    inset: 7px;
+    border-radius: 1.1rem;
+  }
+
+  .frame-corner {
+    font-size: 0.95rem;
+  }
+
+  .frame-corner.top-left { top: 4px; left: 5px; }
+  .frame-corner.top-right { top: 4px; right: 5px; }
+  .frame-corner.bottom-left { bottom: 4px; left: 5px; }
+  .frame-corner.bottom-right { bottom: 4px; right: 5px; }
+
+  .poster-watermark-text,
+  .poster-watermark-text.african-watermark-text {
+    display: none;
+  }
+
+  /* Top Bar refinements */
+  .poster-top-bar {
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.85rem;
+    gap: 0.5rem;
+  }
+
+  .poster-kicker-badge,
+  .poster-kicker-badge.african-kicker-badge {
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    padding: 0.32rem 0.7rem;
+    line-height: 1.3;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .poster-allocation-code {
+    font-size: 0.55rem;
+    letter-spacing: 0.12em;
+  }
+
+  /* Typography adaptations */
+  .poster-brand-row {
+    gap: 0.5rem;
+  }
+
+  .poster-brand-caps {
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+  }
+
+  .poster-brand-line {
+    width: 28px;
+  }
+
+  .poster-headline,
+  .poster-headline.african-headline {
+    font-size: clamp(2.1rem, 8.5vw, 2.85rem);
+    line-height: 1.08;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .poster-subline {
+    font-size: 0.92rem;
+    line-height: 1.58;
+    max-width: 100%;
+  }
+
+  /* Spec Badges */
+  .poster-minimal-specs {
+    gap: 0.45rem;
+  }
+
+  .spec-pill,
+  .spec-pill.african-pill {
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    padding: 0.32rem 0.65rem;
+  }
+
+  /* Tasting Row */
+  .poster-tasting-row,
+  .poster-tasting-row.african-tasting-row {
+    padding: 0.55rem 0;
+    gap: 0.5rem;
+    align-items: flex-start;
+    max-width: 100%;
+  }
+
+  .tasting-icon {
+    font-size: 0.75rem;
+    margin-top: 2px;
+  }
+
+  .tasting-text {
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  /* Bottom Bar */
+  .poster-bottom-bar,
+  .poster-bottom-bar.african-bottom-bar {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    font-size: 0.54rem;
+    letter-spacing: 0.14em;
+    gap: 0.35rem;
+  }
+}
+
+@media (max-width: 639px) {
+  /* Giveaway Card mobile touch optimization */
+  .poster-giveaway-card,
+  .poster-giveaway-card.african-giveaway-card {
+    padding: 1rem 1.05rem;
+    gap: 0.85rem;
+    border-radius: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .giveaway-card-heading {
+    font-size: 1.02rem;
+    line-height: 1.3;
+  }
+
+  .giveaway-card-desc {
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+
+  .poster-giveaway-btn,
+  .poster-giveaway-btn.african-giveaway-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.72rem 1rem;
+    font-size: 0.66rem;
+    letter-spacing: 0.15em;
+  }
+
+  /* Price block & Action button stack */
+  .poster-action-group {
+    gap: 1rem;
+    padding-top: 0.85rem;
+    margin-top: 0.15rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .poster-price-block {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    width: 100%;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid rgba(223, 153, 38, 0.18);
+  }
+
+  .poster-price-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.16em;
+  }
+
+  .poster-price-row {
+    gap: 0.25rem;
+  }
+
+  .poster-zar {
+    font-size: 1.15rem;
+  }
+
+  .poster-price-num {
+    font-size: 2.25rem;
+  }
+
+  .poster-buttons {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 0.65rem;
+  }
+
+  .poster-cta-btn,
+  .poster-cta-btn.african-cta-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.88rem 1.25rem;
+    font-size: 0.74rem;
+    letter-spacing: 0.18em;
+  }
+
+  .poster-win-link-btn,
+  .poster-win-link-btn.african-win-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.7rem 1rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+  }
+
+  .poster-view-link,
+  .poster-view-link.african-view-link {
+    justify-content: center;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.68rem;
+  }
+}
+
+@media (max-width: 420px) {
+  /* Ultra-compact phones (320px - 400px) */
+  .pinterest-poster-shell {
+    padding: 0 0.5rem;
+  }
+
+  .pinterest-poster-card,
+  .pinterest-poster-card.african-poster-card {
+    padding: 1.35rem 0.85rem 1.15rem 0.85rem;
+    border-radius: 1.15rem;
+  }
+
+  .poster-inner-frame {
+    inset: 5px;
+  }
+
+  .poster-headline,
+  .poster-headline.african-headline {
+    font-size: clamp(1.85rem, 8vw, 2.3rem);
+  }
+
+  .poster-bottle-img {
+    max-height: 250px;
+  }
+
+  .poster-bottle-glow,
+  .poster-bottle-glow.african-bottle-glow {
+    width: 180px;
+    height: 260px;
+  }
+
+  .poster-bottle-shadow,
+  .poster-bottle-shadow.african-bottle-shadow {
+    width: 120px;
+    height: 12px;
+  }
+
+  .spec-pill,
+  .spec-pill.african-pill {
+    font-size: 0.52rem;
+    letter-spacing: 0.08em;
+    padding: 0.28rem 0.55rem;
+  }
+
+  .poster-brand-caps {
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+  }
+}
+

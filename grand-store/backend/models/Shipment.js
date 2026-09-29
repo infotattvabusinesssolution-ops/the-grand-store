@@ -32,7 +32,7 @@ const shipmentSchema = new mongoose.Schema(
     },
     deliveryMethod: {
       type: String,
-      enum: ["home_delivery", "postnet_pickup", "pudo_locker", "international_courier"],
+      enum: ["home_delivery", "postnet_pickup", "pudo_locker", "international_courier", "aramex_delivery"],
       default: "home_delivery",
     },
     pickupLocation: {
@@ -45,6 +45,11 @@ const shipmentSchema = new mongoose.Schema(
     tcgWaybillNumber: { type: String },
     tcgTrackingUrl: { type: String },
     tcgLabelUrl: { type: String },
+    aramexWaybillNumber: { type: String },
+    aramexServiceType: { type: String, default: 'ONP' },
+    aramexLabelUrl: { type: String },
+    aramexCollectionRef: { type: String },
+    aramexTrackingUrl: { type: String },
 
     packageDetails: {
       weight: Number,

@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Building2, ShoppingBag, Globe, 
   MessageSquare, Gavel, Wallet, ShieldCheck, CheckSquare, Menu, X, 
-  Search, ArrowLeft, LogOut, Activity, ChevronRight, Loader2, TrendingUp 
+  Search, ArrowLeft, LogOut, Activity, ChevronRight, Loader2, TrendingUp, Compass 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { crmClient } from '../../services/crmApi';
@@ -86,6 +86,9 @@ export default function CrmLayout() {
         if ('staff sla telemetry performance kpis'.includes(q)) {
           quickNavs.push({ id: 'staff-lane', title: 'Staff SLA Telemetry & Leaderboard', subtitle: 'Response benchmarks & 30d task SLA metrics', type: 'module', link: '/staff-telemetry' });
         }
+        if ('price competitor intelligence ngf norman goodfellows vs tracking'.includes(q)) {
+          quickNavs.push({ id: 'price-lane', title: 'Price Intelligence (NGF vs GS)', subtitle: 'Daily competitor prices, automated sync & monthly drift', type: 'module', link: '/price-intelligence' });
+        }
 
         setSearchResults([...quickNavs, ...customers, ...tasks]);
       } catch (err) {
@@ -122,6 +125,7 @@ export default function CrmLayout() {
   const navLinks = [
     { to: '/', icon: LayoutDashboard, label: 'Morning Screen', end: true },
     { to: '/sales', icon: TrendingUp, label: 'Sales' },
+    { to: '/price-intelligence', icon: Compass, label: 'Price Intelligence' },
     { to: '/customers', icon: Users, label: 'Customer 360°' },
     { to: '/vendors', icon: Building2, label: 'Vendor Workflow' },
     { to: '/orders', icon: ShoppingBag, label: 'Order Kanban Board' },
@@ -134,9 +138,9 @@ export default function CrmLayout() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[#0f172a] flex flex-col font-sans antialiased">
+    <div className="h-screen bg-[#f8fafc] text-[#0f172a] flex flex-col font-sans antialiased overflow-hidden">
       {/* Executive White Topbar with Blue Accents */}
-      <header className="h-16 bg-white border-b border-slate-200 sticky top-0 z-40 px-4 sm:px-6 flex items-center justify-between shadow-sm">
+      <header className="h-16 shrink-0 bg-white border-b border-slate-200 z-40 px-4 sm:px-6 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -246,7 +250,7 @@ export default function CrmLayout() {
       </header>
 
       {/* Main Content Area with White & Blue Sidebar */}
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden relative min-h-0 min-w-0">
         {/* Mobile Backdrop */}
         {sidebarOpen && (
           <div 
@@ -258,7 +262,7 @@ export default function CrmLayout() {
         {/* Crisp White Sidebar with Royal Blue Active Highlights */}
         <aside className={`
           w-64 shrink-0 bg-white border-r border-slate-200 flex flex-col fixed lg:static top-16 bottom-0 left-0 z-30
-          transition-transform duration-200 ease-in-out
+          transition-transform duration-200 ease-in-out h-full overflow-hidden
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
           <div className="p-4 flex flex-col gap-1 flex-1 overflow-y-auto crm-scrollbar">
@@ -284,7 +288,7 @@ export default function CrmLayout() {
             ))}
           </div>
 
-          <div className="p-4 border-t border-slate-100 bg-slate-50/60">
+          <div className="p-4 border-t border-slate-100 bg-slate-50/60 shrink-0">
             <button
               onClick={() => {
                 if (logout) logout();
@@ -298,7 +302,7 @@ export default function CrmLayout() {
         </aside>
 
         {/* Dynamic Page Outlet */}
-        <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 crm-scrollbar">
+        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 crm-scrollbar flex flex-col">
           <Outlet />
         </main>
       </div>

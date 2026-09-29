@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 
 const protect = async (req, res, next) => {
@@ -24,6 +25,10 @@ const protect = async (req, res, next) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
+      if (!decoded?.id || !mongoose.Types.ObjectId.isValid(decoded.id)) {
+        return res.status(401).json({ message: 'Invalid authentication credentials' });
+      }
+
       const user = await User.findById(decoded.id).select('-password');
       if (!user) {
         return res.status(401).json({

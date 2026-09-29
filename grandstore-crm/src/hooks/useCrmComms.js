@@ -39,6 +39,21 @@ export function useCrmComms() {
     }
   };
 
+  const logBulkComm = async (data) => {
+    try {
+      const res = await crmApi.logBulkCommunication(data);
+      if (res.data?.success) {
+        if (res.data.communications && res.data.communications.length > 0) {
+          setComms((prev) => [...res.data.communications, ...prev]);
+        }
+        return { success: true, count: res.data.count };
+      }
+      return { success: false, message: res.data?.message || 'Failed to dispatch bulk communications' };
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Failed to dispatch bulk communications' };
+    }
+  };
+
   return {
     comms,
     loading,
@@ -46,6 +61,7 @@ export function useCrmComms() {
     channelFilter,
     setChannelFilter,
     refresh: fetchComms,
-    logComm
+    logComm,
+    logBulkComm
   };
 }

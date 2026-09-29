@@ -175,6 +175,7 @@ const estateRoutes = require("./routes/estateRoutes");
 const hostApplicationRoutes = require("./routes/hostApplicationRoutes");
 const postnetRoutes = require("./routes/postnetRoutes");
 const tcgRoutes = require("./routes/tcgRoutes");
+const aramexRoutes = require("./routes/aramexRoutes");
 const payfastRoutes = require("./routes/payfastRoutes");
 const configRoutes = require("./routes/configRoutes");
 const newsletterRoutes = require("./routes/newsletterRoutes");
@@ -202,6 +203,7 @@ app.use("/api/estates", estateRoutes);
 app.use("/api/host-applications", hostApplicationRoutes);
 app.use("/api/postnet", postnetRoutes);
 app.use("/api/tcg", tcgRoutes);
+app.use("/api/aramex", aramexRoutes);
 app.use("/api/payfast", paymentLimiter, payfastRoutes);
 app.use("/api/testimonials", testimonialRoutes);
 app.use("/api/attributes", attributeRoutes);
@@ -245,6 +247,14 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5015;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
+
+  // Initialize Daily Competitor Price Intelligence Cron (Norman Goodfellows at 06:00 SAST)
+  try {
+    const { initCompetitorPriceCron } = require('./cron/competitorPriceCron');
+    initCompetitorPriceCron();
+  } catch (cronErr) {
+    console.warn('Competitor price cron initialization deferred:', cronErr.message);
+  }
 
   // Auto-reverse port 5015, 5000 and 8081 for connected Android devices (local dev only)
   if (process.env.NODE_ENV !== 'production') {

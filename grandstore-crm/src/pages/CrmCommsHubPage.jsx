@@ -4,9 +4,13 @@ import StatusBadge from '../components/common/StatusBadge';
 import { 
   MessageSquare, Mail, Phone, Clock, Plus, 
   Send, User, CheckCircle2, AlertCircle, X, Calendar,
-  FileText, ExternalLink, ShieldCheck, Tag, Reply, Copy
+  FileText, ExternalLink, ShieldCheck, Tag, Reply, Copy,
+  FileSpreadsheet, Users, Image as ImageIcon, Sparkles, Loader2
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import DOMPurify from 'dompurify';
+import CrmRichTextEditor from '../components/common/CrmRichTextEditor';
+import BulkExcelRecipientsUploader from '../components/common/BulkExcelRecipientsUploader';
 
 const EMAIL_TEMPLATES = [
   {
@@ -107,14 +111,30 @@ Grand Store Finance & Accounts Desk`
   }
 ];
 
+// Helper to strip HTML tags for clean 2-line snippet preview
+const stripHtml = (html) => {
+  if (!html) return '';
+  return String(html)
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 export default function CrmCommsHubPage() {
-  const { comms, loading, channelFilter, setChannelFilter, logComm } = useCrmComms();
+  const { comms, loading, channelFilter, setChannelFilter, logComm, logBulkComm } = useCrmComms();
   const toast = useToast();
   
   const [selectedComm, setSelectedComm] = useState(null);
   const [isLogCallModalOpen, setIsLogCallModalOpen] = useState(false);
   const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
   
+  // Recipient Dispatch Mode: 'single' | 'bulk'
+  const [recipientMode, setRecipientMode] = useState('single');
+  const [bulkRecipients, setBulkRecipients] = useState([]);
+  const [bulkProgress, setBulkProgress] = useState({ active: false, current: 0, total: 0 });
+
   // Call Log State
   const [callData, setCallData] = useState({
     recipient: '',
@@ -140,63 +160,167 @@ export default function CrmCommsHubPage() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  // Apply template selection
+  const resetComposeForm = () => {
+    setComposeData({
+      templateId: '',
+      channel: 'email',
+      direction: 'outbound',
+      recipientName: '',
+      recipientEmailOrPhone: '',
+      subject: '',
+      messageBody: '',
+      createFollowUp: false,
+      followUpDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
+    });
+    setBulkRecipients([]);
+    setRecipientMode('single');
+    setBulkProgress({ active: false, current: 0, total: 0 });
+  };
+
+  // Apply template selection and format into rich HTML
   const handleSelectTemplate = (templateId) => {
     const tmpl = EMAIL_TEMPLATES.find(t => t.id === templateId);
     if (!tmpl) {
       setComposeData(prev => ({ ...prev, templateId: '', subject: '', messageBody: '' }));
       return;
     }
+
+    // Convert plain text breaks into HTML paragraphs for the rich editor
+    const formattedHtml = tmpl.body
+      .split(/\r?\n\r?\n/)
+      .map(paragraph => `<p>${paragraph.replace(/\r?\n/g, '<br/>')}</p>`)
+      .join('');
+
     setComposeData(prev => ({
       ...prev,
       templateId,
       channel: tmpl.channel,
       subject: tmpl.subject,
-      messageBody: tmpl.body
+      messageBody: formattedHtml
     }));
     toast.info(`Loaded "${tmpl.name}" template`);
   };
 
   const handleComposeSubmit = async (e) => {
     e.preventDefault();
-    if (!composeData.messageBody || !composeData.subject) {
+    if (!composeData.messageBody || !composeData.messageBody.trim() || !composeData.subject) {
       toast.error('Subject and message body are required');
       return;
     }
 
-    setSubmitting(true);
-    try {
-      await logComm({
-        channel: composeData.channel,
-        direction: composeData.direction,
-        subject: composeData.subject,
-        messageBody: composeData.messageBody,
-        recipient: {
-          name: composeData.recipientName || 'Customer / Partner',
-          email: composeData.channel === 'email' ? composeData.recipientEmailOrPhone : undefined,
-          phone: composeData.channel === 'whatsapp' ? composeData.recipientEmailOrPhone : undefined
-        },
-        createFollowUp: composeData.createFollowUp,
-        followUpDueDate: composeData.createFollowUp ? composeData.followUpDate : undefined
-      });
+    if (recipientMode === 'single') {
+      if (!composeData.recipientName && !composeData.recipientEmailOrPhone) {
+        toast.error('Recipient name or contact address is required');
+        return;
+      }
 
-      toast.success(`${composeData.channel === 'email' ? 'Email' : 'Message'} recorded and logged successfully`);
-      setIsComposeModalOpen(false);
-      setComposeData({
-        templateId: '',
-        channel: 'email',
-        direction: 'outbound',
-        recipientName: '',
-        recipientEmailOrPhone: '',
-        subject: '',
-        messageBody: '',
-        createFollowUp: false,
-        followUpDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
-      });
-    } catch (err) {
-      toast.error('Failed to log communication');
-    } finally {
-      setSubmitting(false);
+      setSubmitting(true);
+      try {
+        const res = await logComm({
+          channel: composeData.channel,
+          direction: composeData.direction,
+          subject: composeData.subject,
+          messageBody: composeData.messageBody,
+          recipient: {
+            name: composeData.recipientName || 'Customer / Partner',
+            email: composeData.channel === 'email' ? composeData.recipientEmailOrPhone : undefined,
+            phone: composeData.channel !== 'email' ? composeData.recipientEmailOrPhone : undefined
+          },
+          createFollowUp: composeData.createFollowUp,
+          followUpDueDate: composeData.createFollowUp ? composeData.followUpDate : undefined
+        });
+
+        if (res?.success) {
+          toast.success(`${composeData.channel === 'email' ? 'Email' : 'Message'} recorded and dispatched successfully`);
+          setIsComposeModalOpen(false);
+          resetComposeForm();
+        } else {
+          toast.error(res?.message || 'Failed to dispatch communication');
+        }
+      } catch (err) {
+        toast.error('Failed to log communication');
+      } finally {
+        setSubmitting(false);
+      }
+    } else {
+      // Bulk Campaign Mode
+      if (bulkRecipients.length === 0) {
+        toast.warning('Please upload an Excel spreadsheet or list with valid recipients first');
+        return;
+      }
+
+      setSubmitting(true);
+      setBulkProgress({ active: true, current: 0, total: bulkRecipients.length });
+
+      try {
+        // Try dedicated bulk backend endpoint first
+        const bulkPayload = {
+          channel: composeData.channel,
+          direction: 'outbound',
+          subject: composeData.subject,
+          messageBody: composeData.messageBody,
+          recipients: bulkRecipients.map(r => ({
+            name: r.name,
+            email: r.email,
+            phone: r.phone
+          })),
+          createFollowUp: composeData.createFollowUp,
+          followUpDueDate: composeData.createFollowUp ? composeData.followUpDate : undefined
+        };
+
+        const bulkResult = await logBulkComm(bulkPayload);
+
+        if (bulkResult && bulkResult.success) {
+          toast.success(`Successfully dispatched bulk campaign to ${bulkRecipients.length} recipients!`);
+          setIsComposeModalOpen(false);
+          resetComposeForm();
+        } else {
+          // Fallback: Dispatch with client loop and progress bar
+          let sentCount = 0;
+          for (let i = 0; i < bulkRecipients.length; i++) {
+            const recipient = bulkRecipients[i];
+            setBulkProgress({ active: true, current: i + 1, total: bulkRecipients.length });
+
+            // Personalize tokens if present
+            const personalizedSubject = composeData.subject
+              .replace(/\{\{name\}\}/gi, recipient.name || 'Valued Patron')
+              .replace(/\{\{company\}\}/gi, recipient.company || '')
+              .replace(/\{\{email\}\}/gi, recipient.email || '')
+              .replace(/\{\{phone\}\}/gi, recipient.phone || '');
+
+            const personalizedBody = composeData.messageBody
+              .replace(/\{\{name\}\}/gi, recipient.name || 'Valued Patron')
+              .replace(/\{\{company\}\}/gi, recipient.company || '')
+              .replace(/\{\{email\}\}/gi, recipient.email || '')
+              .replace(/\{\{phone\}\}/gi, recipient.phone || '');
+
+            await logComm({
+              channel: composeData.channel,
+              direction: 'outbound',
+              subject: personalizedSubject,
+              messageBody: personalizedBody,
+              recipient: {
+                name: recipient.name,
+                email: composeData.channel === 'email' ? recipient.email : undefined,
+                phone: composeData.channel !== 'email' ? recipient.phone : undefined
+              },
+              createFollowUp: i === 0 && composeData.createFollowUp,
+              followUpDueDate: composeData.createFollowUp ? composeData.followUpDate : undefined
+            });
+            sentCount++;
+          }
+
+          toast.success(`Bulk campaign complete: ${sentCount} communications recorded!`);
+          setIsComposeModalOpen(false);
+          resetComposeForm();
+        }
+      } catch (err) {
+        console.error('Bulk dispatch error:', err);
+        toast.error('An error occurred during bulk dispatch: ' + err.message);
+      } finally {
+        setSubmitting(false);
+        setBulkProgress({ active: false, current: 0, total: 0 });
+      }
     }
   };
 
@@ -373,7 +497,7 @@ export default function CrmCommsHubPage() {
                     </div>
 
                     <p className="text-slate-600 line-clamp-2 text-xs">
-                      {comm.messageBody}
+                      {stripHtml(comm.messageBody)}
                     </p>
 
                     <div className="flex items-center gap-2 text-[10px] text-slate-400 pt-0.5">
@@ -451,12 +575,31 @@ export default function CrmCommsHubPage() {
 
                 {/* Message Body Box */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                    Message Content & Dialogue
-                  </label>
-                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">
-                    {selectedComm.messageBody}
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Message Content & Dialogue
+                    </label>
+                    {selectedComm.messageBody?.includes('<img') && (
+                      <span className="flex items-center gap-1 text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded font-bold">
+                        <ImageIcon size={11} /> Rich Message with Images
+                      </span>
+                    )}
                   </div>
+                  {/<[a-z][\s\S]*>/i.test(selectedComm.messageBody || '') ? (
+                    <div 
+                      className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-800 leading-relaxed font-sans prose prose-sm max-w-none space-y-2 [&_img]:max-w-full [&_img]:rounded-xl [&_img]:border [&_img]:border-slate-200 [&_img]:my-2"
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(selectedComm.messageBody, {
+                          ADD_TAGS: ['img', 'hr'],
+                          ADD_ATTR: ['src', 'alt', 'style', 'class', 'target', 'width']
+                        })
+                      }}
+                    />
+                  ) : (
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">
+                      {selectedComm.messageBody}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -497,26 +640,89 @@ export default function CrmCommsHubPage() {
 
       {/* Compose Message with Template Modal */}
       {isComposeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto crm-scrollbar">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-3xl w-full p-6 max-h-[92vh] overflow-y-auto crm-scrollbar">
+            {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
               <div>
-                <h3 className="font-bold text-slate-900 text-sm">Compose & Dispatch Communication</h3>
-                <p className="text-xs text-slate-400">Select an approved standard template or write a custom message</p>
+                <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                  <span>Compose & Dispatch Communication</span>
+                  {recipientMode === 'bulk' && (
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-[10px] font-extrabold uppercase tracking-wide">
+                      Bulk Campaign
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Standard templates, individual client dispatch, or bulk Excel/CSV campaign with inline images
+                </p>
               </div>
-              <button onClick={() => setIsComposeModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-600">
+              <button 
+                type="button" 
+                onClick={() => {
+                  setIsComposeModalOpen(false);
+                  resetComposeForm();
+                }} 
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleComposeSubmit} className="space-y-4 text-xs">
+              {/* Recipient Mode Switcher: Single vs Bulk */}
+              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setRecipientMode('single')}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    recipientMode === 'single'
+                      ? 'bg-white text-blue-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <User size={14} />
+                  <span>Single Recipient</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecipientMode('bulk')}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    recipientMode === 'bulk'
+                      ? 'bg-white text-blue-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <FileSpreadsheet size={14} />
+                  <span>Bulk Campaign (Excel Upload / Phone List)</span>
+                  {bulkRecipients.length > 0 && (
+                    <span className="px-1.5 py-0.2 bg-blue-100 text-blue-800 rounded-full text-[10px] font-extrabold">
+                      {bulkRecipients.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
               {/* Template Picker */}
-              <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-                <label className="block font-bold text-blue-900 mb-1">Select Reusable Standard Template (Section 7)</label>
+              <div className="bg-blue-50/60 p-3 rounded-xl border border-blue-100">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-blue-900">
+                    Select Reusable Standard Template (Section 7)
+                  </label>
+                  {composeData.templateId && (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTemplate('')}
+                      className="text-[10px] text-blue-600 hover:underline font-semibold"
+                    >
+                      Clear Template
+                    </button>
+                  )}
+                </div>
                 <select
                   value={composeData.templateId}
                   onChange={(e) => handleSelectTemplate(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl font-medium text-slate-800"
+                  className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="">-- Choose Standard Template or Start Blank --</option>
                   {EMAIL_TEMPLATES.map(t => (
@@ -525,66 +731,105 @@ export default function CrmCommsHubPage() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Communication Channel *</label>
-                  <select
-                    value={composeData.channel}
-                    onChange={(e) => setComposeData({ ...composeData, channel: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
-                  >
-                    <option value="email">Official Business Email</option>
-                    <option value="whatsapp">Approved WhatsApp Message</option>
-                    <option value="phone_call">Phone Callback Record</option>
-                  </select>
+              {/* Channel Selector */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Communication Channel *</label>
+                <select
+                  value={composeData.channel}
+                  onChange={(e) => setComposeData({ ...composeData, channel: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="email">Official Business Email</option>
+                  <option value="whatsapp">Approved WhatsApp Message / Broadcast</option>
+                  <option value="phone_call">Phone Callback Record / Outreach List</option>
+                </select>
+              </div>
+
+              {/* Conditional Recipient Inputs: Single vs Bulk */}
+              {recipientMode === 'single' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-200">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Recipient Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. VIP Collector / Winery Host"
+                      value={composeData.recipientName}
+                      onChange={(e) => setComposeData({ ...composeData, recipientName: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      {composeData.channel === 'whatsapp' || composeData.channel === 'phone_call' 
+                        ? 'Phone Number (+27...)' 
+                        : 'Email Address *'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder={
+                        composeData.channel === 'whatsapp' || composeData.channel === 'phone_call'
+                          ? '+27 82 123 4567' 
+                          : 'buyer@domain.com'
+                      }
+                      value={composeData.recipientEmailOrPhone}
+                      onChange={(e) => setComposeData({ ...composeData, recipientEmailOrPhone: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Recipient Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. VIP Collector / Winery Host"
-                    value={composeData.recipientName}
-                    onChange={(e) => setComposeData({ ...composeData, recipientName: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+              ) : (
+                <div className="bg-slate-50/50 p-3.5 rounded-xl border border-slate-200">
+                  <div className="mb-2">
+                    <p className="font-bold text-slate-800 text-xs">
+                      Bulk {composeData.channel === 'email' ? 'Email' : 'Phone / WhatsApp'} Recipients
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Upload an Excel spreadsheet (`.xlsx`, `.xls`) or CSV. Download the template below if you need the recommended columns.
+                    </p>
+                  </div>
+                  <BulkExcelRecipientsUploader
+                    channel={composeData.channel}
+                    onRecipientsChange={(validOnes) => setBulkRecipients(validOnes)}
                   />
                 </div>
-              </div>
+              )}
 
+              {/* Subject Line */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  {composeData.channel === 'whatsapp' ? 'Phone Number (+27...)' : 'Email Address'}
-                </label>
-                <input
-                  type="text"
-                  placeholder={composeData.channel === 'whatsapp' ? '+27 82 123 4567' : 'buyer@domain.com'}
-                  value={composeData.recipientEmailOrPhone}
-                  onChange={(e) => setComposeData({ ...composeData, recipientEmailOrPhone: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Subject / Header *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700">Subject / Header *</label>
+                  {recipientMode === 'bulk' && (
+                    <span className="text-[10px] text-slate-400">
+                      Supports {'{{name}}'}, {'{{company}}'}
+                    </span>
+                  )}
+                </div>
                 <input
                   type="text"
                   required
                   placeholder="Subject line..."
                   value={composeData.subject}
                   onChange={(e) => setComposeData({ ...composeData, subject: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
 
+              {/* Rich Text Editor for Message Body with Inline Images */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Message Body *</label>
-                <textarea
-                  rows={8}
-                  required
-                  placeholder="Write message content here..."
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700">Message Body (Rich Text & Inline Images) *</label>
+                  <span className="text-[10px] text-blue-600 font-medium">
+                    WYSIWYG editor • Click "Insert Image" or paste screenshots directly
+                  </span>
+                </div>
+                <CrmRichTextEditor
                   value={composeData.messageBody}
-                  onChange={(e) => setComposeData({ ...composeData, messageBody: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs leading-relaxed"
+                  onChange={(html) => setComposeData(prev => ({ ...prev, messageBody: html }))}
+                  placeholder="Write message content here... Use the toolbar above for formatting, insert images anywhere in between text, or drag & drop files."
+                  minHeight="190px"
+                  allowVariables={recipientMode === 'bulk'}
                 />
               </div>
 
@@ -613,21 +858,73 @@ export default function CrmCommsHubPage() {
                 )}
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsComposeModalOpen(false)}
-                  className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm cursor-pointer"
-                >
-                  <Send size={13} /> {submitting ? 'Sending...' : 'Send & Record to CRM'}
-                </button>
+              {/* Bulk Dispatch Progress Indicator */}
+              {bulkProgress.active && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-1.5 animate-fadeIn">
+                  <div className="flex items-center justify-between text-xs font-bold text-blue-900">
+                    <span className="flex items-center gap-1.5">
+                      <Loader2 size={13} className="animate-spin text-blue-600" />
+                      Dispatching bulk communications ({bulkProgress.current} of {bulkProgress.total})...
+                    </span>
+                    <span>
+                      {Math.round((bulkProgress.current / Math.max(bulkProgress.total, 1)) * 100)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-blue-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{
+                        width: `${Math.round((bulkProgress.current / Math.max(bulkProgress.total, 1)) * 100)}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Action Buttons */}
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100">
+                <div className="text-slate-400 text-[11px]">
+                  {recipientMode === 'bulk' ? (
+                    <span>Ready: <strong className="text-slate-700">{bulkRecipients.length}</strong> recipients</span>
+                  ) : (
+                    <span>Direct single transmission</span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsComposeModalOpen(false);
+                      resetComposeForm();
+                    }}
+                    disabled={submitting}
+                    className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting || (recipientMode === 'bulk' && bulkRecipients.length === 0)}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 size={13} className="animate-spin" />
+                        <span>{bulkProgress.active ? `Dispatching (${bulkProgress.current}/${bulkProgress.total})...` : 'Sending...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send size={13} />
+                        <span>
+                          {recipientMode === 'bulk'
+                            ? `Dispatch Bulk Campaign (${bulkRecipients.length} Recipients)`
+                            : 'Send & Record to CRM'}
+                        </span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

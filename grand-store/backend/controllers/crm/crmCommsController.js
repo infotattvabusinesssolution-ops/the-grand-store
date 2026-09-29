@@ -104,3 +104,65 @@ exports.logCommunication = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to log communication' });
   }
 };
+
+/**
+ * Log bulk communication dispatch (Excel upload campaigns for Email / WhatsApp).
+ */
+exports.logBulkCommunication = async (req, res) => {
+  try {
+    const {
+      channel,
+      direction = 'outbound',
+      subject,
+      messageBody,
+      recipients, // Array of { name, email, phone }
+      createFollowUp,
+      followUpDueDate
+    } = req.body;
+
+    if (!channel || !messageBody || !Array.isArray(recipients) || recipients.length === 0) {
+      return res.status(400).json({ success: false, message: 'Channel, messageBody, and at least one recipient are required' });
+    }
+
+    const docs = recipients.map(r => ({
+      channel,
+      direction,
+      subject: subject || `${channel.toUpperCase()} Bulk Campaign`,
+      messageBody,
+      sender: {
+        name: req.user?.name || 'Staff',
+        email: req.user?.email,
+        userId: req.user?._id
+      },
+      recipient: {
+        name: r.name || 'Valued Recipient',
+        email: r.email,
+        phone: r.phone
+      },
+      assignedStaff: req.user?._id
+    }));
+
+    const inserted = await CrmCommunication.insertMany(docs);
+
+    if (createFollowUp && followUpDueDate) {
+      await CrmTask.create({
+        title: `Follow-up on Bulk ${channel.toUpperCase()}: ${subject} (${recipients.length} recipients)`,
+        category: 'customer_enquiry',
+        priority: 'high',
+        dueDate: followUpDueDate,
+        assignedTo: req.user?._id,
+        assignedBy: req.user?._id
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: `Bulk communication logged for ${inserted.length} recipients`,
+      count: inserted.length,
+      communications: inserted
+    });
+  } catch (error) {
+    console.error('Error logging bulk communication:', error);
+    return res.status(500).json({ success: false, message: 'Failed to log bulk communications' });
+  }
+};

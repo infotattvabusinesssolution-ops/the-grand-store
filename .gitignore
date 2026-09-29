@@ -153,3 +153,10 @@ _agents/
 _agent/
 SKILL.md
 *.skill.md
+
+# Media and archive files
+*.docx
+*.mp4
+*.tar.gz
+*.zip
+

@@ -124,7 +124,9 @@ export const crmApi = {
   getVendor360: (id) => crmClient.get(`/vendors/${id}/360`),
   updateVendorStage: (id, data) => crmClient.put(`/vendors/${id}/stage`, data),
   updateVendorStatus: (id, data) => crmClient.put(`/vendors/${id}/status`, data),
+  toggleVendorFreeze: (id, data) => crmClient.put(`/vendors/${id}/freeze`, data),
   pingVendor: (id, data) => crmClient.post(`/vendors/${id}/ping`, data),
+  broadcastVendorAdvisory: (data) => crmClient.post('/vendors/broadcast-advisory', data),
 
   // Order Operations Kanban & Logistics Exceptions
   getOrderBoard: () => crmClient.get('/orders/board'),
@@ -140,6 +142,14 @@ export const crmApi = {
   // Communications Hub & Phone Logs
   getCommunications: (params) => crmClient.get('/comms', { params }),
   logCommunication: (data) => crmClient.post('/comms', data),
+  logBulkCommunication: (data) => crmClient.post('/comms/bulk', data),
+
+  // Competitor Price Intelligence (Norman Goodfellows vs. Grand Store Admin Products)
+  getCompetitorPrices: (params) => crmClient.get('/competitor-prices', { params }),
+  getCompetitorPriceSummary: () => crmClient.get('/competitor-prices/summary'),
+  getMonthlyPriceSummary: (params) => crmClient.get('/competitor-prices/monthly', { params }),
+  syncCompetitorPricesNow: (data) => crmClient.post('/competitor-prices/sync-now', data),
+  matchCompetitorProduct: (id, data) => crmClient.put(`/competitor-prices/${id}/match`, data),
 
   // Marketing Audiences, Categories, Campaigns & Legal Age Compliance (Section 8 of GS CRM 1.docx)
   getMarketingProducts: (params) => crmClient.get('/marketing/products', { params }),

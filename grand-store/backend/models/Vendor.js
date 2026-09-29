@@ -275,6 +275,37 @@ const vendorSchema = new mongoose.Schema({
     newState: mongoose.Schema.Types.Mixed,
     timestamp: { type: Date, default: Date.now },
     notes: { type: String }
+  }],
+  // Temporary Store Freeze & Advisory Controls (CRM & Operations)
+  isFrozen: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  freezeReason: {
+    type: String,
+    default: null
+  },
+  freezeAdvisoryMessage: {
+    type: String,
+    default: null
+  },
+  frozenAt: {
+    type: Date,
+    default: null
+  },
+  frozenBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  activeAdvisories: [{
+    id: { type: String },
+    type: { type: String, default: 'operational_advisory' },
+    title: { type: String },
+    message: { type: String, required: true },
+    priority: { type: String, enum: ['normal', 'urgent', 'critical'], default: 'normal' },
+    createdAt: { type: Date, default: Date.now },
+    createdBy: { type: String, default: 'Operations Command' }
   }]
 }, { timestamps: true });
 
