@@ -3,6 +3,7 @@
  * Simulates shipping options, rates, and landed costs based on vendor profiles and destinations.
  */
 
+const axios = require('axios');
 const Vendor = require('../models/Vendor');
 const PlatformSettings = require('../models/PlatformSettings');
 const { tcgService } = require('../services/tcgService');
@@ -316,37 +317,137 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
         ]
       });
     } 
-    // 2. EXPORT (SA -> Intl)
+    // 2. EXPORT (SA -> Intl, e.g. India, UAE, UK, USA)
     else if (originSA && !destSA) {
       isInternational = true;
-      let baseRate = 1800; // R1800 flat rate
-      if (totalWeightKg > 10) baseRate += 500;
-      
+
+      // Determine parcel box dimensions and weights dynamically from items
+      let maxLen = 12, maxWid = 12, maxHgt = 34, totalActualWeight = totalWeightKg || 1.85;
+      let totalVolumetric = 0;
+      let isFragileParcel = true;
+      let totalItemQty = 0;
+
+      if (options.items && Array.isArray(options.items) && options.items.length > 0) {
+        options.items.forEach(it => {
+          const l = Number(it.shipping?.length_cm || 12);
+          const w = Number(it.shipping?.width_cm || 12);
+          const h = Number(it.shipping?.height_cm || 34);
+          const wt = Number(it.shipping?.weight_kg || 1.85);
+          const q = Number(it.quantity || it.qty || 1);
+          totalItemQty += q;
+          maxLen = Math.max(maxLen, l);
+          maxWid = Math.max(maxWid, w);
+          maxHgt = Math.max(maxHgt, h);
+          totalVolumetric += ((l * w * h) / 5000) * q;
+          if (it.shipping?.is_fragile !== undefined) isFragileParcel = it.shipping.is_fragile;
+        });
+      } else {
+        totalVolumetric = (maxLen * maxWid * maxHgt) / 5000;
+      }
+
+      // Chargeable weight is the greater of actual weight and volumetric weight
+      const chargeableWeight = Math.max(totalActualWeight, totalVolumetric);
+      const roundedChargeable = Math.max(0.5, Math.ceil(chargeableWeight * 2) / 2); // 0.5kg brackets
+
+      let liveAramexRate = null;
+      let aramexEta = '4-7 business days';
+
+      // 1. Attempt Live Aramex Rate Calculator API (https://nservice.aramex.co.za/Json/JsonV1/GetRate)
+      const aramexEmail = process.env.ARAMEX_EMAIL || 'shipping@grandstoreglobal.com';
+      const aramexPassword = process.env.ARAMEX_PASSWORD;
+      const aramexAccount = process.env.ARAMEX_ACCOUNT_NUMBER || 'ZA123456';
+
+      if (aramexPassword) {
+        try {
+          const destCountryCode = customerAddress.countryCode || (destCountry.toLowerCase() === 'india' ? 'IN' : 'US');
+          const aramexPayload = {
+            email_address: aramexEmail,
+            password: aramexPassword,
+            account_number: aramexAccount,
+            sender_country_code: 'ZA',
+            sender_country_name: 'South Africa',
+            sender_suburb: 'Sandton',
+            sender_postal_code: '2196',
+            receiver_country_code: destCountryCode,
+            receiver_country_name: destCountry,
+            receiver_suburb: customerAddress.city || 'Metro',
+            receiver_postal_code: customerAddress.postalCode || '0000',
+            payment_type: 'P',
+            service_type: 'PPX',
+            is_documents: false,
+            require_insurance: false,
+            insurance_value: 0,
+            parcels: [
+              {
+                parcel_value: shipmentItemsSubtotal,
+                quantity: Math.max(1, totalItemQty || 1),
+                length: Math.round(maxLen),
+                width: Math.round(maxWid),
+                height: Math.round(maxHgt),
+                weight: Number(chargeableWeight.toFixed(2))
+              }
+            ],
+            additonalservices: [{ service_code: '' }]
+          };
+
+          const aramexRes = await axios.post('https://nservice.aramex.co.za/Json/JsonV1/GetRate', aramexPayload, { timeout: 4000 });
+          if (aramexRes.data && aramexRes.data.status_code === 0 && Number(aramexRes.data.rate) > 0) {
+            liveAramexRate = Number(aramexRes.data.rate);
+            if (aramexRes.data.expected_delivery_date) {
+              aramexEta = `Delivery by ${aramexRes.data.expected_delivery_date}`;
+            }
+          }
+        } catch (aramexErr) {
+          console.warn('Aramex live JSON API rate call failed, using dynamic tariff:', aramexErr.message);
+        }
+      }
+
+      // 2. Dynamic Tariff Formula for Aramex International Export (Zone 6 / Asia-Indian Subcontinent)
+      let dynamicRate = liveAramexRate;
+      if (!dynamicRate) {
+        const base05Kg = 450.0;
+        const additionalHalfKgs = Math.max(0, Math.round((roundedChargeable - 0.5) / 0.5));
+        const freightBase = base05Kg + (additionalHalfKgs * 120.0);
+        const fuelSurcharge = Number((freightBase * 0.125).toFixed(2));
+        const securityFee = 65.0;
+        const fragileCare = isFragileParcel ? 85.0 : 0.0;
+        dynamicRate = Number((freightBase + fuelSurcharge + securityFee + fragileCare).toFixed(2));
+      }
+
       quotes.push({
         courierName: 'Aramex',
         serviceLevel: 'Aramex Worldwide Express',
         serviceCode: 'EPX',
         deliveryType: 'home',
-        cost: baseRate,
-        estimatedDays: '4-7 business days',
+        cost: dynamicRate,
+        estimatedDays: aramexEta,
+        description: `Aramex Worldwide Express (Box: ${maxLen}x${maxWid}x${maxHgt}cm, Wt: ${Number(chargeableWeight.toFixed(2))}kg)`,
+        boxDetails: {
+          length_cm: maxLen,
+          width_cm: maxWid,
+          height_cm: maxHgt,
+          actual_weight_kg: Number(totalActualWeight.toFixed(2)),
+          volumetric_weight_kg: Number(totalVolumetric.toFixed(2)),
+          chargeable_weight_kg: Number(chargeableWeight.toFixed(2))
+        },
         legs: [
           {
             courierName: 'Aramex Local Partner Hub',
             origin: originCountry,
             destination: 'Aramex JNB Air Cargo Gateway',
-            cost: 200
+            cost: Number((dynamicRate * 0.15).toFixed(2))
           },
           {
             courierName: 'Aramex International Air Transport',
             origin: 'Aramex JNB Air Cargo Gateway',
             destination: `${destCountry} Aramex International Hub`,
-            cost: baseRate * 0.6
+            cost: Number((dynamicRate * 0.70).toFixed(2))
           },
           {
             courierName: 'Aramex Last-Mile Courier Partner',
             origin: `${destCountry} Aramex International Hub`,
             destination: customerAddress.city || destCountry,
-            cost: baseRate * 0.15
+            cost: Number((dynamicRate * 0.15).toFixed(2))
           }
         ]
       });
