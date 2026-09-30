@@ -15,11 +15,18 @@ exports.uploadProofOfPayment = async (req, res) => {
       return res.status(400).json({ message: 'Proof of payment URL is required' });
     }
 
-    let order;
+    let order = null;
     if (mongoose.Types.ObjectId.isValid(orderId)) {
       order = await Order.findById(orderId);
-    } else {
-      order = await Order.findOne({ orderId: orderId });
+    }
+    if (!order) {
+      order = await Order.findOne({
+        $or: [
+          { orderId: orderId },
+          { depositReference: orderId },
+          { invoiceNumber: orderId }
+        ]
+      });
     }
 
     if (!order) {
@@ -72,7 +79,19 @@ exports.approvePayment = async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    const order = await Order.findById(orderId);
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(orderId)) {
+      order = await Order.findById(orderId);
+    }
+    if (!order) {
+      order = await Order.findOne({
+        $or: [
+          { orderId: orderId },
+          { depositReference: orderId },
+          { invoiceNumber: orderId }
+        ]
+      });
+    }
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
@@ -99,7 +118,19 @@ exports.rejectPayment = async (req, res) => {
     const { orderId } = req.params;
     const { reason } = req.body;
 
-    const order = await Order.findById(orderId);
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(orderId)) {
+      order = await Order.findById(orderId);
+    }
+    if (!order) {
+      order = await Order.findOne({
+        $or: [
+          { orderId: orderId },
+          { depositReference: orderId },
+          { invoiceNumber: orderId }
+        ]
+      });
+    }
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
@@ -128,15 +159,19 @@ exports.rejectPayment = async (req, res) => {
     try {
       const { sendEmail } = require('../utils/emailService');
       const { genericNotificationTemplate } = require('../utils/emailTemplates');
+      const { getOrderDepositReference } = require('../utils/referenceHelper');
       const User = require('../models/User');
       const user = await User.findById(order.user);
-      if (user) {
+      const recipientEmail = user ? user.email : (order.guestInfo?.email || order.shippingAddress?.email);
+      const depositRef = getOrderDepositReference(order);
+
+      if (recipientEmail) {
         await sendEmail({
-          to: user.email,
-          subject: `Payment Rejected - Order #${order._id}`,
+          to: recipientEmail,
+          subject: `Payment Update - Order ${depositRef} Declined`,
           html: genericNotificationTemplate(
-            'Payment Rejected',
-            `Your bank transfer payment for Order #${order._id} was rejected. Reason: ${reason}. Please contact support or try a different payment method.`
+            'Payment Notice',
+            `We were unable to verify your bank transfer for Order <strong>${depositRef}</strong>.<br><br><strong>Reason:</strong> ${reason || 'Proof of payment could not be validated'}.<br><br>Please check your banking details and upload a valid PDF or receipt image, or contact our concierge team at support@grandstoreglobal.com.`
           )
         });
       }

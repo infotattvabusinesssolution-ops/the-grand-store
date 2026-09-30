@@ -1,4 +1,5 @@
 const { emailLogoHeader } = require('./emailBranding');
+const { getOrderDepositReference } = require('./referenceHelper');
 
 const BRAND_COLOR_GOLD = '#c9a35b';
 const BRAND_COLOR_DARK = '#050505';
@@ -400,51 +401,170 @@ const orderConfirmationTemplate = (order) => {
   return generateEmailTemplate(`Payment Receipt #${orderReference}`, content);
 };
 
-const bankTransferInstructionsTemplate = (order, bankDetails) => {
+const bankTransferInstructionsTemplate = (order, bankDetails = {}) => {
+  const depositRef = getOrderDepositReference(order);
+  const formattedAmount = formatRand(order.totalPrice);
+  const customerName = order.user?.name || order.shippingAddress?.name || order.guestInfo?.name || 'Valued Customer';
+  const frontendUrl = process.env.FRONTEND_URL || 'https://grandstoreglobal.com';
+  const uploadUrl = order.isGuest
+    ? `${frontendUrl}/order-success/${order._id}?token=${order.guestAccessToken || ''}&payment=bank-transfer`
+    : `${frontendUrl}/customer/order/${order._id}?payment=bank-transfer`;
+
   const content = `
-    <h1>Bank Transfer Instructions</h1>
-    <p>Dear Customer,</p>
-    <p>Thank you for placing your order (<strong>#${order._id}</strong>). To complete your purchase, please transfer the total amount to the bank account below.</p>
+    <h1 style="margin-bottom: 8px;">Bank Transfer Instructions</h1>
+    <p style="margin-top: 0; color: #a1a1aa; font-size: 14px;">Order Invoice & Deposit Reference: <strong style="color: #ffffff;">${depositRef}</strong></p>
     
-    <div class="details-box">
-      <h3 style="margin-top: 0;">Payment Details</h3>
-      <p><strong style="color: ${BRAND_COLOR_GOLD}">Amount Due:</strong> $${order.totalPrice}</p>
-      <p><strong style="color: ${BRAND_COLOR_GOLD}">Order Reference:</strong> ${order._id}</p>
-      <div class="divider"></div>
-      <h3 style="margin-top: 0;">Bank Information</h3>
-      <p><strong>Bank Name:</strong> ${bankDetails.bankName || 'FNB'}</p>
-      <p><strong>Account Name:</strong> ${bankDetails.accountName || 'The Grand Store'}</p>
-      <p><strong>Account Number:</strong> ${bankDetails.accountNumber || '62000000000'}</p>
-      <p><strong>Branch Code:</strong> ${bankDetails.branchCode || '250655'}</p>
+    <p>Dear ${customerName},</p>
+    <p>Thank you for shopping at The Grand Store. To finalize your order and initiate immediate dispatch, please transfer the exact total to our official banking account below.</p>
+    
+    <!-- HIGHLIGHTED AMOUNT & SHORT DEPOSIT REFERENCE HERO CARD -->
+    <div style="background: linear-gradient(145deg, #161410 0%, #0a0a09 100%); border: 1.5px solid ${BRAND_COLOR_GOLD}; border-radius: 12px; padding: 22px 20px; margin: 24px 0; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #a1a1aa; margin-bottom: 4px;">Total Amount Due</div>
+      <div style="font-size: 32px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px; margin-bottom: 16px;">
+        ${formattedAmount}
+      </div>
+      
+      <div style="background: rgba(201, 163, 91, 0.12); border: 1px dashed ${BRAND_COLOR_GOLD}; border-radius: 8px; padding: 12px 18px; display: inline-block; width: 100%; max-width: 440px; box-sizing: border-box;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: ${BRAND_COLOR_GOLD}; font-weight: 700; margin-bottom: 4px;">
+          Your Deposit Reference (Required)
+        </div>
+        <div style="font-family: 'Courier New', Courier, monospace; font-size: 22px; font-weight: bold; color: #ffffff; letter-spacing: 2px;">
+          ${depositRef}
+        </div>
+        <div style="font-size: 11px; color: #d4d4d8; margin-top: 4px;">
+          ⚠️ Please use this exact reference in your banking app to avoid clearance delays.
+        </div>
+      </div>
     </div>
     
-    <p>Please use your Order Reference (<strong>${order._id}</strong>) as the payment reference. Your order will be processed once the funds have cleared in our account.</p>
-    <p>You can upload your proof of payment on your order details page.</p>
-    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/customer/orders" class="btn">View Order</a>
+    <!-- BENEFICIARY BANKING DETAILS TABLE -->
+    <div class="details-box" style="background-color: #111111; border: 1px solid #262626; border-radius: 10px; padding: 20px; margin: 20px 0;">
+      <h3 style="margin-top: 0; margin-bottom: 14px; font-size: 16px; color: ${BRAND_COLOR_GOLD}; border-bottom: 1px solid #222; padding-bottom: 8px;">
+        Beneficiary Bank Account Details
+      </h3>
+      
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="padding: 9px 0; color: #888; width: 42%;">Bank Name:</td>
+          <td style="padding: 9px 0; color: #fff; font-weight: 600; text-align: right;">${bankDetails.bankName || 'FNB'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Account Name:</td>
+          <td style="padding: 9px 0; color: #fff; font-weight: 600; text-align: right;">${bankDetails.accountName || 'The Grand Store'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Account Number:</td>
+          <td style="padding: 9px 0; color: #fff; font-family: monospace; font-size: 16px; font-weight: 700; text-align: right; letter-spacing: 1px;">${bankDetails.accountNumber || '62000000000'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Branch Code:</td>
+          <td style="padding: 9px 0; color: #fff; font-family: monospace; font-weight: 600; text-align: right;">${bankDetails.branchCode || '250655'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Account Type:</td>
+          <td style="padding: 9px 0; color: #fff; text-align: right;">${bankDetails.accountType || 'Business Cheque'}</td>
+        </tr>
+        ${bankDetails.swiftCode ? `
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">SWIFT Code:</td>
+          <td style="padding: 9px 0; color: #fff; font-family: monospace; text-align: right;">${bankDetails.swiftCode}</td>
+        </tr>
+        ` : ''}
+      </table>
+    </div>
+    
+    <!-- 3 SIMPLE STEPS -->
+    <div style="background-color: #0d0d0d; border-radius: 8px; border: 1px solid #222; padding: 16px 20px; margin: 20px 0; font-size: 13px; line-height: 1.6; color: #d4d4d8;">
+      <strong style="color: #ffffff; font-size: 14px; display: block; margin-bottom: 8px;">Next Steps:</strong>
+      <ol style="margin: 0; padding-left: 20px;">
+        <li style="margin-bottom: 6px;">Open your banking app (FNB, Capitec, Standard Bank, Nedbank, ABSA).</li>
+        <li style="margin-bottom: 6px;">Transfer <strong>${formattedAmount}</strong> using <strong>${depositRef}</strong> as your recipient reference.</li>
+        <li>Tap the button below to upload your Proof of Payment (POP) so we can dispatch your items immediately.</li>
+      </ol>
+    </div>
+    
+    <!-- CALL TO ACTION -->
+    <div style="text-align: center; margin: 30px 0 15px 0;">
+      <a href="${uploadUrl}" class="btn" style="display: inline-block; background-color: ${BRAND_COLOR_GOLD}; color: #050505; font-weight: bold; padding: 14px 32px; border-radius: 4px; text-decoration: none; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; min-width: 220px;">
+        Upload Proof of Payment
+      </a>
+    </div>
+    
+    <p style="font-size: 12px; color: #777; text-align: center; margin-top: 15px;">
+      Alternatively, you can reply directly to this email or send your POP to <a href="mailto:support@grandstoreglobal.com" style="color: ${BRAND_COLOR_GOLD}; text-decoration: underline;">support@grandstoreglobal.com</a> referencing <strong>${depositRef}</strong>.
+    </p>
   `;
-  return generateEmailTemplate(`Payment Required - Order #${order._id}`, content);
+  return generateEmailTemplate(`Payment Required - Order ${depositRef}`, content);
 };
 
-const eventBankTransferInstructionsTemplate = (booking, event, bankDetails) => {
-  const reference = booking.gsReference || booking._id;
-  const content = `
-    <h1>Event Ticket Bank Transfer</h1>
-    <p>Thank you for reserving tickets for <strong>${event.title}</strong>. Transfer the exact amount below and upload your proof of payment for verification.</p>
+const eventBankTransferInstructionsTemplate = (booking, event, bankDetails = {}) => {
+  const reference = booking.gsReference || (booking._id ? `GS-${String(booking._id).slice(-6).toUpperCase()}` : 'GS-EVENT');
+  const formattedAmount = formatRand(booking.totalPrice);
+  const frontendUrl = process.env.FRONTEND_URL || 'https://grandstoreglobal.com';
+  const uploadUrl = `${frontendUrl}/customer/event-order/${booking._id}?payment=bank-transfer`;
 
-    <div class="details-box">
-      <h3 style="margin-top: 0;">Payment Details</h3>
-      <p><strong style="color: ${BRAND_COLOR_GOLD}">Amount Due:</strong> R${Number(booking.totalPrice).toFixed(2)}</p>
-      <p><strong style="color: ${BRAND_COLOR_GOLD}">Payment Reference:</strong> ${reference}</p>
-      <div class="divider"></div>
-      <h3 style="margin-top: 0;">Bank Information</h3>
-      <p><strong>Bank Name:</strong> ${bankDetails.bankName || 'Standard Bank'}</p>
-      <p><strong>Account Name:</strong> ${bankDetails.accountName || 'The Grand Store PTY LTD'}</p>
-      <p><strong>Account Number:</strong> ${bankDetails.accountNumber || '0123456789'}</p>
-      <p><strong>Branch Code:</strong> ${bankDetails.branchCode || '051001'}</p>
+  const content = `
+    <h1 style="margin-bottom: 8px;">Event Ticket Bank Transfer</h1>
+    <p style="margin-top: 0; color: #a1a1aa; font-size: 14px;">Booking Reference: <strong style="color: #ffffff;">${reference}</strong></p>
+
+    <p>Thank you for reserving tickets for <strong>${event.title}</strong>. Transfer the exact amount below and upload your proof of payment for fast verification.</p>
+
+    <!-- HIGHLIGHTED AMOUNT & SHORT DEPOSIT REFERENCE HERO CARD -->
+    <div style="background: linear-gradient(145deg, #161410 0%, #0a0a09 100%); border: 1.5px solid ${BRAND_COLOR_GOLD}; border-radius: 12px; padding: 22px 20px; margin: 24px 0; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #a1a1aa; margin-bottom: 4px;">Total Amount Due</div>
+      <div style="font-size: 32px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px; margin-bottom: 16px;">
+        ${formattedAmount}
+      </div>
+      
+      <div style="background: rgba(201, 163, 91, 0.12); border: 1px dashed ${BRAND_COLOR_GOLD}; border-radius: 8px; padding: 12px 18px; display: inline-block; width: 100%; max-width: 440px; box-sizing: border-box;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: ${BRAND_COLOR_GOLD}; font-weight: 700; margin-bottom: 4px;">
+          Your Payment Reference (Required)
+        </div>
+        <div style="font-family: 'Courier New', Courier, monospace; font-size: 22px; font-weight: bold; color: #ffffff; letter-spacing: 2px;">
+          ${reference}
+        </div>
+        <div style="font-size: 11px; color: #d4d4d8; margin-top: 4px;">
+          ⚠️ Please use this exact reference in your banking app so your tickets can be issued immediately.
+        </div>
+      </div>
     </div>
 
-    <p>Your ticket is issued only after the transfer is approved. Use the booking reference exactly so the finance team can match your payment.</p>
-    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/customer/event-order/${booking._id}?payment=bank-transfer" class="btn">Upload Proof of Payment</a>
+    <!-- BENEFICIARY BANKING DETAILS TABLE -->
+    <div class="details-box" style="background-color: #111111; border: 1px solid #262626; border-radius: 10px; padding: 20px; margin: 20px 0;">
+      <h3 style="margin-top: 0; margin-bottom: 14px; font-size: 16px; color: ${BRAND_COLOR_GOLD}; border-bottom: 1px solid #222; padding-bottom: 8px;">
+        Beneficiary Bank Account Details
+      </h3>
+      
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="padding: 9px 0; color: #888; width: 42%;">Bank Name:</td>
+          <td style="padding: 9px 0; color: #fff; font-weight: 600; text-align: right;">${bankDetails.bankName || 'Standard Bank'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Account Name:</td>
+          <td style="padding: 9px 0; color: #fff; font-weight: 600; text-align: right;">${bankDetails.accountName || 'The Grand Store PTY LTD'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Account Number:</td>
+          <td style="padding: 9px 0; color: #fff; font-family: monospace; font-size: 16px; font-weight: 700; text-align: right; letter-spacing: 1px;">${bankDetails.accountNumber || '0123456789'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Branch Code:</td>
+          <td style="padding: 9px 0; color: #fff; font-family: monospace; font-weight: 600; text-align: right;">${bankDetails.branchCode || '051001'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Account Type:</td>
+          <td style="padding: 9px 0; color: #fff; text-align: right;">${bankDetails.accountType || 'Business Cheque'}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- CALL TO ACTION -->
+    <div style="text-align: center; margin: 30px 0 15px 0;">
+      <a href="${uploadUrl}" class="btn" style="display: inline-block; background-color: ${BRAND_COLOR_GOLD}; color: #050505; font-weight: bold; padding: 14px 32px; border-radius: 4px; text-decoration: none; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; min-width: 220px;">
+        Upload Proof of Payment
+      </a>
+    </div>
   `;
   return generateEmailTemplate(`Payment Required - ${reference}`, content);
 };

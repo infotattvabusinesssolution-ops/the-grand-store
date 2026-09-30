@@ -1031,8 +1031,8 @@ export default function OrderSuccessPage({ onClearCart }) {
                 </p>
 
                 <StoreBankDetailsCard
-                  reference={(order.invoiceNumber || order._id).slice(-6).toUpperCase()}
-                  referenceLabel="Order Reference"
+                  reference={order.depositReference || (order.orderId ? 'GS-' + order.orderId.split('-').pop() : (order.invoiceNumber ? 'GS-' + order.invoiceNumber.split('-').pop() : `GS-${String(order._id).slice(-6).toUpperCase()}`))}
+                  referenceLabel="Deposit Reference"
                   className="max-w-xl mx-auto mb-6"
                 />
 

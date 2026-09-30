@@ -9,6 +9,7 @@ import { auth, googleProvider, appleProvider, signInWithPopup } from '../../fire
 import CountryCodeSelect from '../../components/CountryCodeSelect';
 
 export default function RegisterPage() {
+  const [searchParams] = useSearchParams();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -21,7 +22,7 @@ export default function RegisterPage() {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [referralCode, setReferralCode] = useState(() => {
-    const urlRef = searchParams.get('ref');
+    const urlRef = searchParams?.get?.('ref') || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('ref') : null);
     if (urlRef) {
       try { localStorage.setItem('grandstore_referral_code', urlRef.trim().toUpperCase()); } catch (_) {}
       return urlRef.trim().toUpperCase();

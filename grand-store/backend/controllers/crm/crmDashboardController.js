@@ -5,6 +5,9 @@ const TradeEnquiry = require('../../models/TradeEnquiry');
 const WineEnquiry = require('../../models/WineEnquiry');
 const CigarEnquiry = require('../../models/CigarEnquiry');
 const CrmTask = require('../../models/CrmTask');
+const AuctionLot = require('../../models/AuctionLot');
+const VendorSettlement = require('../../models/VendorSettlement');
+const CrmCommunication = require('../../models/CrmCommunication');
 
 /**
  * Returns consolidated Morning Screen metrics and actionable work queues.
@@ -25,13 +28,18 @@ exports.getDailyOperationsSummary = async (req, res) => {
       pendingVendorsList,
       delayedShipmentsList,
       overdueTasksList,
-      todayTasksList
+      todayTasksList,
+      unpaidLotsList,
+      dueSettlementsList,
+      recentCommsList,
+      processingOrdersCount,
+      todayOrdersRevenueResult
     ] = await Promise.all([
       // 1. Orders Today Count
       Order.countDocuments({ createdAt: { $gte: todayStart } }),
 
-      // 2. Recent Orders Today
-      Order.find({ createdAt: { $gte: todayStart } })
+      // 2. Recent Orders
+      Order.find()
         .select('orderId totalAmount status isPaid createdAt user orderItems shippingAddress')
         .populate('user', 'name email phone')
         .sort({ createdAt: -1 })
@@ -73,35 +81,184 @@ exports.getDailyOperationsSummary = async (req, res) => {
       })
       .populate('assignedTo', 'name email')
       .sort({ priority: 1, dueDate: 1 })
-      .limit(50)
+      .limit(50),
+
+      // 8. Unpaid Auction Lots (Awaiting Payment from buyer)
+      AuctionLot.find({
+        fulfilmentStatus: 'Awaiting Payment',
+        status: { $in: ['sold', 'closed'] }
+      })
+      .populate('winner', 'name email phone')
+      .populate('vendor', 'name email')
+      .sort({ updatedAt: -1 })
+      .limit(20),
+
+      // 9. Due Vendor Settlements (30-day window elapsed)
+      VendorSettlement.find({
+        status: 'due_for_payment'
+      })
+      .populate('vendor', 'name storeName email phone')
+      .sort({ payoutDueDate: 1 })
+      .limit(20),
+
+      // 10. Recent CRM Communications
+      CrmCommunication.find()
+        .sort({ createdAt: -1 })
+        .limit(10),
+
+      // 11. Orders in dispatch / processing
+      Order.countDocuments({ status: { $in: ['Processing', 'Pending', 'Packed'] } }),
+
+      // 12. Today's Orders Revenue Aggregation
+      Order.aggregate([
+        { $match: { createdAt: { $gte: todayStart } } },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+      ])
     ]);
 
     const totalNewEnquiries = tradeEnquiriesCount + wineEnquiriesCount + cigarEnquiriesCount;
     const vendorTasksCount = pendingVendorsList.length;
 
+    const unpaidLotsTotal = unpaidLotsList.reduce((acc, lot) => {
+      return acc + (lot.totalPaidByBuyer || lot.winningBid || 0);
+    }, 0);
+
+    const dueSettlementsTotal = dueSettlementsList.reduce((acc, s) => {
+      return acc + (s.payoutAmount || 0);
+    }, 0);
+
+    const todayRevenue = todayOrdersRevenueResult?.[0]?.total || 0;
+
+    // Synthesize high-fidelity dynamic Live Operational Pulse stream
+    const pulseEvents = [];
+
+    // Order events
+    newOrdersList.slice(0, 5).forEach(o => {
+      pulseEvents.push({
+        id: `ord-${o._id}`,
+        type: 'order',
+        department: 'LOGISTICS',
+        title: `Order #${o.orderId || o._id.toString().slice(-6)} ${o.status || 'Received'}`,
+        detail: `${o.shippingAddress?.city || 'South Africa'} • R ${(o.totalAmount || 0).toLocaleString()} • ${o.isPaid ? 'Payment Confirmed' : 'Payment Processing'}`,
+        timestamp: o.createdAt,
+        badgeColor: 'blue',
+        link: '/orders'
+      });
+    });
+
+    // Shipment delay/exception events
+    delayedShipmentsList.slice(0, 4).forEach(s => {
+      pulseEvents.push({
+        id: `shp-${s._id}`,
+        type: 'shipment_delay',
+        department: 'LOGISTICS',
+        title: `Hold: ${s.shipmentId || 'Consignment'} (${s.status})`,
+        detail: `${s.courierPartner || 'Carrier'} • Delivery to ${s.deliveryAddress?.city || 'South Africa'} pending investigation`,
+        timestamp: s.updatedAt || s.createdAt,
+        badgeColor: 'amber',
+        link: '/orders'
+      });
+    });
+
+    // Auction Lot events
+    unpaidLotsList.slice(0, 4).forEach(l => {
+      pulseEvents.push({
+        id: `lot-${l._id}`,
+        type: 'auction',
+        department: 'AUCTION DESK',
+        title: `Lot #${l.lotNumber || 'GS-LOT'}: Hammer Fell`,
+        detail: `Hammer closed at R ${(l.winningBid || 0).toLocaleString()} • 48h payment collection window active`,
+        timestamp: l.updatedAt || l.createdAt,
+        badgeColor: 'purple',
+        link: '/auctions-events'
+      });
+    });
+
+    // Vendor settlement events
+    dueSettlementsList.slice(0, 4).forEach(s => {
+      pulseEvents.push({
+        id: `set-${s._id}`,
+        type: 'settlement',
+        department: 'SETTLEMENTS',
+        title: `EFT Authorization: ${s.settlementReference}`,
+        detail: `${s.vendorName} • R ${(s.payoutAmount || 0).toLocaleString()} 30-day payout matured`,
+        timestamp: s.payoutDueDate || s.updatedAt || s.createdAt,
+        badgeColor: 'emerald',
+        link: '/settlements'
+      });
+    });
+
+    // Communication events
+    recentCommsList.slice(0, 4).forEach(c => {
+      const channelLabel = c.channel === 'phone_call' ? 'Phone Call' : c.channel === 'whatsapp' ? 'WhatsApp' : 'Customer Note';
+      pulseEvents.push({
+        id: `comm-${c._id}`,
+        type: 'communication',
+        department: 'CLIENT COMMS',
+        title: `${channelLabel}: ${c.subject || 'Client Interaction'}`,
+        detail: `${c.recipient?.name || c.sender?.name || 'Customer'}: ${(c.messageBody || '').slice(0, 65)}...`,
+        timestamp: c.createdAt,
+        badgeColor: 'cyan',
+        link: '/communications'
+      });
+    });
+
+    // Overdue tasks
+    overdueTasksList.slice(0, 3).forEach(t => {
+      pulseEvents.push({
+        id: `task-${t._id}`,
+        type: 'sla_breach',
+        department: (t.category || 'OPERATIONS').toUpperCase().replace(/_/g, ' '),
+        title: `SLA Alert: ${t.title}`,
+        detail: `Assigned to ${t.assignedTo?.name || 'Staff'} • Due date breached`,
+        timestamp: t.dueDate || t.updatedAt,
+        badgeColor: 'red',
+        link: '/'
+      });
+    });
+
+    // Sort descending by timestamp and take top 6
+    pulseEvents.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const livePulse = pulseEvents.slice(0, 6);
+
     return res.status(200).json({
       success: true,
       metrics: {
         ordersToday: ordersTodayCount,
+        ordersTodayRevenue: todayRevenue,
+        ordersInProcessing: processingOrdersCount,
         newEnquiries: totalNewEnquiries,
         vendorTasks: vendorTasksCount,
         overdueFollowups: overdueTasksList.length,
+        unpaidLotsCount: unpaidLotsList.length,
+        unpaidLotsTotal: unpaidLotsTotal,
+        dueSettlementsCount: dueSettlementsList.length,
+        dueSettlementsTotal: dueSettlementsTotal,
         breakdown: {
           tradeEnquiries: tradeEnquiriesCount,
           wineEnquiries: wineEnquiriesCount,
           cigarEnquiries: cigarEnquiriesCount,
-          pendingVendorDocs: pendingVendorsList.length
+          pendingVendorDocs: pendingVendorsList.length,
+          unpaidLotsCount: unpaidLotsList.length,
+          dueSettlementsCount: dueSettlementsList.length
         }
       },
       attentionRequired: {
         overdueTasks: overdueTasksList,
         delayedShipments: delayedShipmentsList,
-        pendingVendorRegistrations: pendingVendorsList
+        pendingVendorRegistrations: pendingVendorsList,
+        unpaidLotsCount: unpaidLotsList.length,
+        unpaidLotsTotal: unpaidLotsTotal,
+        unpaidLots: unpaidLotsList,
+        dueSettlementsCount: dueSettlementsList.length,
+        dueSettlementsTotal: dueSettlementsTotal,
+        dueSettlements: dueSettlementsList
       },
       workQueue: {
         todayTasks: todayTasksList,
         recentOrders: newOrdersList
-      }
+      },
+      livePulse
     });
   } catch (error) {
     console.error('Error in getDailyOperationsSummary:', error);

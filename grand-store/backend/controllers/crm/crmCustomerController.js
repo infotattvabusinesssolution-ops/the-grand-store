@@ -11,36 +11,61 @@ const SupportTicket = require('../../models/SupportTicket');
 
 /**
  * Returns paginated customer list with rich CRM filters.
+ * Reflects all Grand Store patrons (retail, VIP, trade, bidders) excluding admin staff.
  */
 exports.getCustomers = async (req, res) => {
   try {
     const { search, customerType, tag, page = 1, limit = 25 } = req.query;
-    const query = { role: { $in: ['customer', 'vendor'] } };
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(1000, Math.max(1, parseInt(limit) || 25));
 
-    if (customerType) {
-      query.crmCustomerType = customerType;
+    // Exclude platform administrative/system staff accounts
+    const queryConditions = [
+      { role: { $nin: ['admin', 'super_admin', 'accountant', 'product_manager'] } }
+    ];
+
+    if (customerType === 'retail') {
+      // Accommodate default/migrated patrons without explicit crmCustomerType key
+      queryConditions.push({
+        $or: [
+          { crmCustomerType: 'retail' },
+          { crmCustomerType: { $exists: false } },
+          { crmCustomerType: null },
+          { crmCustomerType: '' }
+        ]
+      });
+    } else if (customerType) {
+      queryConditions.push({ crmCustomerType: customerType });
     }
 
     if (tag) {
-      query.crmTags = tag;
+      queryConditions.push({ crmTags: tag });
     }
 
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }
-      ];
+    if (search && search.trim()) {
+      const sanitized = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = { $regex: sanitized, $options: 'i' };
+      queryConditions.push({
+        $or: [
+          { name: searchRegex },
+          { email: searchRegex },
+          { phone: searchRegex },
+          { phoneNumber: searchRegex },
+          { legacyCustCode: searchRegex },
+          { referralCode: searchRegex }
+        ]
+      });
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const query = queryConditions.length > 1 ? { $and: queryConditions } : queryConditions[0];
+    const skip = (pageNum - 1) * limitNum;
 
     const [customers, total] = await Promise.all([
       User.find(query)
-        .select('name email phone role crmCustomerType crmSource crmTags createdAt bidderLevel bidderApprovalStatus')
+        .select('name email phone phoneNumber role customerTier crmCustomerType crmSource crmTags createdAt bidderLevel bidderApprovalStatus legacyCustCode legacyCustId referralCode')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(parseInt(limit)),
+        .limit(limitNum),
       User.countDocuments(query)
     ]);
 
@@ -49,8 +74,9 @@ exports.getCustomers = async (req, res) => {
       customers,
       pagination: {
         total,
-        page: parseInt(page),
-        pages: Math.ceil(total / parseInt(limit))
+        page: pageNum,
+        limit: limitNum,
+        pages: Math.ceil(total / limitNum) || 1
       }
     });
   } catch (error) {

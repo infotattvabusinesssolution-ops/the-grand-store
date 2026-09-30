@@ -28,6 +28,9 @@ const samples = [
   ['genericNotificationTemplate', ['Order update', 'Ready for delivery']],
   ['birthdayCelebrationEmailTemplate', [{ name: 'Alex' }]],
   ['eventTicketConfirmationTemplate', [{ booking, event, user: { name: 'Alex' }, qrCodeCid: 'cid:ticketqrcode' }]],
+  ['millionaireNewsletterWelcomeTemplate', []],
+  ['cigarNewsletterWelcomeTemplate', []],
+  ['paymentFailedEmailTemplate', [{ customerName: 'Alex', reference: 'GS-123', itemName: 'Wine', amount: 150, retryUrl: 'https://example.invalid', reason: 'Declined' }]],
   ['adminOrderMessageEmailTemplate', [{ orderReference: 'GS-123', customerName: 'Alex', message: 'Ready for delivery' }]],
   ['giftOrderAdminNotificationTemplate', [order]],
 ];

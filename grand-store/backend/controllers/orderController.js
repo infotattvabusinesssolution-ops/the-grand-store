@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const SystemCode = require('../models/SystemCode');
@@ -129,6 +130,7 @@ const addOrderItems = async (req, res) => {
     const orderId = `GS-${year}-${moduleCode}-ORD-${sequence}`;
     const paymentId = `GS-${year}-${moduleCode}-PAY-${sequence}`;
     const invoiceNumber = `GS-${year}-${moduleCode}-INV-${sequence}`;
+    const depositReference = `GS-${sequence}`;
 
     const commissionPct = settings.marketplaceCommissionPct || 15;
     const gatewayFeePct = settings.gatewayFeePct || 2.5;
@@ -508,6 +510,7 @@ const addOrderItems = async (req, res) => {
       orderId,
       paymentId,
       invoiceNumber,
+      depositReference,
       isPaid: false, // Changed for PayFast integration
       paymentStatus: 'Pending', // Changed for PayFast integration
       orderItems: [],
@@ -752,19 +755,23 @@ const addOrderItems = async (req, res) => {
     try {
       const { sendEmail } = require('../utils/emailService');
       const { bankTransferInstructionsTemplate } = require('../utils/emailTemplates');
+      const { getOrderDepositReference } = require('../utils/referenceHelper');
       const recipientEmail = user ? user.email : guestEmail;
 
       if (recipientEmail && paymentMethod === 'Bank Transfer') {
-        const bankDetails = {
-          bankName: 'FNB',
-          accountName: 'The Grand Store',
-          accountNumber: '62000000000',
-          branchCode: '250655'
+        const depositRef = getOrderDepositReference(createdOrder);
+        const resolvedBankDetails = {
+          bankName: settings?.bankDetails?.bankName || 'FNB',
+          accountName: settings?.bankDetails?.accountName || 'The Grand Store',
+          accountNumber: settings?.bankDetails?.accountNumber || '62000000000',
+          branchCode: settings?.bankDetails?.branchCode || '250655',
+          accountType: settings?.bankDetails?.accountType || 'Business Cheque',
+          swiftCode: settings?.bankDetails?.swiftCode || ''
         };
         await sendEmail({
           to: recipientEmail,
-          subject: `Payment Required - Order #${createdOrder._id}`,
-          html: bankTransferInstructionsTemplate(createdOrder, bankDetails)
+          subject: `Payment Instructions - Order ${depositRef} (The Grand Store)`,
+          html: bankTransferInstructionsTemplate(createdOrder, resolvedBankDetails)
         });
       }
     } catch (err) {
@@ -1466,9 +1473,27 @@ const getMyOrders = async (req, res) => {
 // @access  Private
 const getOrderById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id)
+    const lookupId = req.params.id;
+    let order = null;
+
+    if (mongoose.Types.ObjectId.isValid(lookupId)) {
+      order = await Order.findById(lookupId)
+        .populate('user', 'name email')
+        .populate('shipments');
+    }
+
+    if (!order && lookupId) {
+      order = await Order.findOne({
+        $or: [
+          { orderId: lookupId },
+          { depositReference: lookupId },
+          { invoiceNumber: lookupId }
+        ]
+      })
       .populate('user', 'name email')
       .populate('shipments');
+    }
+
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }

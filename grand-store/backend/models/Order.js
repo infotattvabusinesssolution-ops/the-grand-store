@@ -40,6 +40,7 @@ const orderSchema = new mongoose.Schema({
   orderId: { type: String, unique: true },
   paymentId: { type: String, unique: true },
   invoiceNumber: { type: String, unique: true },
+  depositReference: { type: String, index: true },
 
   orderItems: [
     {

@@ -877,6 +877,7 @@ export default function CheckoutPage({
 
   const [paymentMethod, setPaymentMethod] = useState('payfast');
   const [createdOrderId, setCreatedOrderId] = useState(null);
+  const [createdOrderDepositRef, setCreatedOrderDepositRef] = useState(null);
   const [createdOrderGuestToken, setCreatedOrderGuestToken] = useState(null);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [proofUrl, setProofUrl] = useState('');
@@ -988,6 +989,8 @@ export default function CheckoutPage({
       const res = await api.post('/orders', orderData);
       const data = res.data;
       setCreatedOrderId(data._id);
+      const resolvedRef = data.depositReference || (data.orderId ? 'GS-' + data.orderId.split('-').pop() : (data._id ? `GS-${String(data._id).slice(-6).toUpperCase()}` : ''));
+      setCreatedOrderDepositRef(resolvedRef);
       if (data.guestAccessToken) {
         setCreatedOrderGuestToken(data.guestAccessToken);
         try {
@@ -2906,12 +2909,12 @@ export default function CheckoutPage({
                 </div>
                 <h3 className="text-xl font-serif text-[var(--color-gold)] mb-2">Order Created Successfully!</h3>
                 <p className="text-sm text-[var(--color-ivory-muted)] mb-6 max-w-md mx-auto">
-                  Order <span className="text-white font-mono font-bold">{createdOrderId}</span> is awaiting payment. Please transfer exactly <strong className="text-white font-serif"><Price amount={displayedTotal} /></strong> to our official bank account.
+                  Order <span className="text-white font-mono font-bold">{createdOrderDepositRef || createdOrderId}</span> is awaiting payment. Please transfer exactly <strong className="text-white font-serif"><Price amount={displayedTotal} /></strong> to our official bank account.
                 </p>
 
                 <StoreBankDetailsCard
-                  reference={createdOrderId?.slice(-6).toUpperCase()}
-                  referenceLabel="Order Reference"
+                  reference={createdOrderDepositRef || (createdOrderId ? `GS-${String(createdOrderId).slice(-6).toUpperCase()}` : '')}
+                  referenceLabel="Deposit Reference"
                   className="max-w-xl mx-auto mb-6"
                   onNotify={onNotify}
                 />

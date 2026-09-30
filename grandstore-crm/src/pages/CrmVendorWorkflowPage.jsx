@@ -660,7 +660,7 @@ export default function CrmVendorWorkflowPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* VENDOR 360° DOSSIER & DASHBOARD MIRROR (EXECUTIVE BLUE & SLATE THEME)     */}
+      {/* VENDOR 360° DOSSIER & DASHBOARD MIRROR (EXECUTIVE LIGHT WEIGHT WHITE THEME)*/}
       {/* ========================================================================= */}
       {activeVendor360 && (() => {
         const isMainAdmin = Boolean(
@@ -671,37 +671,37 @@ export default function CrmVendorWorkflowPage() {
         );
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
-            <div className={`bg-slate-950 text-slate-100 rounded-3xl border ${isMainAdmin ? 'border-amber-500/40 shadow-2xl shadow-amber-950/50' : 'border-blue-500/30 shadow-2xl shadow-blue-950/60'} max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden`}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/40 backdrop-blur-xs animate-fadeIn">
+            <div className={`bg-white text-slate-900 rounded-2xl border ${isMainAdmin ? 'border-amber-200 shadow-2xl shadow-amber-950/10' : 'border-slate-200 shadow-2xl shadow-slate-900/15'} max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden`}>
               {/* Modal Header */}
-              <div className={`p-5 border-b ${isMainAdmin ? 'border-amber-500/30 bg-gradient-to-r from-slate-950 via-amber-950/40 to-slate-950' : 'border-blue-500/20 bg-gradient-to-r from-slate-950 via-blue-950/70 to-slate-950'} flex items-start justify-between gap-4`}>
+              <div className={`p-5 border-b ${isMainAdmin ? 'border-amber-200 bg-gradient-to-r from-amber-50/60 via-white to-amber-50/30' : 'border-slate-200 bg-white'} flex items-start justify-between gap-4`}>
                 <div className="flex items-center gap-4">
                   {isMainAdmin ? (
-                    <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 font-black text-2xl shadow-lg shadow-amber-500/20">
-                      <Crown size={28} className="text-amber-400" />
+                    <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 font-bold text-xl shadow-xs">
+                      <Crown size={24} className="text-amber-600" />
                     </div>
                   ) : (
-                    <div className="w-14 h-14 rounded-2xl bg-blue-600/20 border-2 border-blue-500 flex items-center justify-center text-blue-400 font-black text-xl shadow-lg">
+                    <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 font-extrabold text-lg shadow-xs">
                       {activeVendor360.vendorInfo.tradingName.slice(0, 2).toUpperCase()}
                     </div>
                   )}
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-black text-white tracking-tight">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xl font-bold text-slate-900 tracking-tight">
                         {activeVendor360.vendorInfo.tradingName}
                       </h2>
                       {isMainAdmin ? (
                         <>
-                          <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-400/50 flex items-center gap-1">
-                            <Crown size={11} className="text-amber-400" /> PLATFORM MASTER • CENTRAL FLAGSHIP
+                          <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1 uppercase tracking-wide">
+                            <Crown size={11} className="text-amber-600" /> PLATFORM MASTER • CENTRAL FLAGSHIP
                           </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-400/40">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase tracking-wide">
                             MAIN ADMIN
                           </span>
                         </>
                       ) : (
                         <>
-                          <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-400/40">
+                          <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase tracking-wide">
                             360° DASHBOARD MIRROR
                           </span>
                           <StatusBadge status={activeVendor360.vendorInfo.crmWorkflowStage || 'live_active'} />
@@ -709,30 +709,30 @@ export default function CrmVendorWorkflowPage() {
                       )}
                     </div>
                     {isMainAdmin ? (
-                      <p className="text-xs text-slate-400 mt-1 flex items-center gap-3 flex-wrap">
-                        <span className="text-slate-200 font-semibold">{activeVendor360.vendorInfo.legalName}</span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1 text-slate-300">
-                          <MapPin size={11} className="text-amber-400" /> {activeVendor360.vendorInfo.address}
+                      <p className="text-xs text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-slate-700">{activeVendor360.vendorInfo.legalName}</span>
+                        <span className="text-slate-300">•</span>
+                        <span className="flex items-center gap-1 text-slate-500">
+                          <MapPin size={11} className="text-amber-600" /> {activeVendor360.vendorInfo.address}
                         </span>
-                        <span>•</span>
-                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                          <ShieldCheck size={12} /> 100/100 Master Trust Authority
+                        <span className="text-slate-300">•</span>
+                        <span className="text-emerald-700 font-semibold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          <ShieldCheck size={12} /> 100/100 Master Authority
                         </span>
-                        <span>•</span>
-                        <span className="text-amber-400 font-semibold">
-                          0% Platform Commission (100% Direct Retention)
+                        <span className="text-slate-300">•</span>
+                        <span className="text-amber-800 font-semibold">
+                          0% Platform Commission
                         </span>
                       </p>
                     ) : (
-                      <p className="text-xs text-slate-400 mt-1 flex items-center gap-3 flex-wrap">
-                        <span>{activeVendor360.vendorInfo.legalName}</span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1 text-slate-300">
-                          <MapPin size={11} className="text-blue-400" /> {activeVendor360.vendorInfo.address}
+                      <p className="text-xs text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-slate-700">{activeVendor360.vendorInfo.legalName}</span>
+                        <span className="text-slate-300">•</span>
+                        <span className="flex items-center gap-1 text-slate-500">
+                          <MapPin size={11} className="text-blue-600" /> {activeVendor360.vendorInfo.address}
                         </span>
-                        <span>•</span>
-                        <span className="text-blue-400 font-semibold">
+                        <span className="text-slate-300">•</span>
+                        <span className="text-blue-700 font-semibold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                           Trust Score: {activeVendor360.dashboardMirror?.rating?.trustScore}/100
                         </span>
                       </p>
@@ -740,18 +740,18 @@ export default function CrmVendorWorkflowPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   {isMainAdmin ? (
                     <>
                       <button
                         onClick={() => setDossierSubTab('catalog')}
-                        className="px-3.5 py-2 bg-amber-600/30 hover:bg-amber-600/40 text-amber-200 border border-amber-500/40 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                        className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-semibold rounded-xl text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
                       >
-                        <Package size={14} /> Master Vault ({activeVendor360.products?.length || 0})
+                        <Package size={14} className="text-amber-600" /> Master Vault ({activeVendor360.products?.length || 0})
                       </button>
                       <button
                         onClick={() => setDossierSubTab('settlement')}
-                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/30"
+                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
                       >
                         <DollarSign size={14} /> Corporate Treasury
                       </button>
@@ -767,16 +767,16 @@ export default function CrmVendorWorkflowPage() {
                           priority: 'urgent', 
                           type: 'operational_advisory' 
                         })}
-                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/30"
+                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
                       >
                         <MessageCircle size={14} /> Message Advisory
                       </button>
                       <button
                         onClick={() => handleOpenFreezeModal(activeVendor360.vendorInfo, !activeVendor360.vendorInfo?.isFrozen)}
-                        className={`px-3.5 py-2 border font-extrabold rounded-xl text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-md ${
+                        className={`px-3.5 py-2 border font-semibold rounded-xl text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-xs ${
                           activeVendor360.vendorInfo?.isFrozen 
-                            ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40 shadow-emerald-500/10' 
-                            : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border-cyan-500/40 shadow-cyan-500/10'
+                            ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300' 
+                            : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300'
                         }`}
                       >
                         {activeVendor360.vendorInfo?.isFrozen ? <PlayCircle size={14} /> : <PauseCircle size={14} />}
@@ -786,7 +786,7 @@ export default function CrmVendorWorkflowPage() {
                   )}
                   <button
                     onClick={() => setActiveVendor360(null)}
-                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                    className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
                   >
                     <X size={18} />
                   </button>
@@ -795,122 +795,152 @@ export default function CrmVendorWorkflowPage() {
 
               {/* Temporary Store Freeze Alert Banner (Persistent if frozen) */}
               {activeVendor360.vendorInfo?.isFrozen && (
-                <div className="mx-6 mt-4 p-4 bg-cyan-950/70 border border-cyan-500/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-cyan-950/50">
+                <div className="mx-6 mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
                   <div className="flex items-start sm:items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0">
                       <PauseCircle size={22} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-500/30 text-cyan-200 border border-cyan-500/40">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
                           ❄️ STOREFRONT LISTINGS TEMPORARILY FROZEN
                         </span>
                         {activeVendor360.vendorInfo?.frozenAt && (
-                          <span className="text-[11px] text-slate-400">
+                          <span className="text-[11px] text-slate-500">
                             Frozen since {new Date(activeVendor360.vendorInfo.frozenAt).toLocaleDateString()}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-cyan-100 mt-1">
-                        <strong className="text-white">Reason:</strong> {activeVendor360.vendorInfo?.freezeReason || 'Operational Review'}
+                      <p className="text-xs text-slate-700 mt-1">
+                        <strong className="text-slate-900">Reason:</strong> {activeVendor360.vendorInfo?.freezeReason || 'Operational Review'}
                         {activeVendor360.vendorInfo?.freezeAdvisoryMessage && (
-                          <span className="text-slate-300"> — "{activeVendor360.vendorInfo.freezeAdvisoryMessage}"</span>
+                          <span className="text-slate-600"> — "{activeVendor360.vendorInfo.freezeAdvisoryMessage}"</span>
                         )}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => handleOpenFreezeModal(activeVendor360.vendorInfo, false)}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-xs transition-all inline-flex items-center gap-1.5 shrink-0 shadow-lg shadow-emerald-600/30 cursor-pointer self-start sm:self-auto"
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition-colors inline-flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer self-start sm:self-auto"
                   >
                     <PlayCircle size={14} /> Lift Freeze & Resume Store
                   </button>
                 </div>
               )}
 
-              {/* Sub-Tabs Navigation */}
-              <div className={`px-6 py-2.5 bg-slate-900/90 border-b ${isMainAdmin ? 'border-amber-500/20' : 'border-blue-500/20'} flex items-center gap-2 overflow-x-auto text-xs`}>
+              {/* Sub-Tabs Navigation (Always single line whitespace-nowrap, never clumsy) */}
+              <div className="px-6 py-2 bg-slate-50 border-b border-slate-200 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap text-xs">
                 <button
                   onClick={() => setDossierSubTab('dashboard')}
-                  className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'dashboard' ? (isMainAdmin ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-blue-600 text-white shadow-md shadow-blue-600/30') : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                  className={`px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                    dossierSubTab === 'dashboard'
+                      ? (isMainAdmin ? 'bg-white text-amber-800 shadow-xs border border-amber-300' : 'bg-white text-blue-700 shadow-xs border border-slate-200')
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
                 >
-                  <Sparkles size={12} /> {isMainAdmin ? 'Master Command Dashboard' : 'Dashboard Mirror'}
+                  <Sparkles size={13} className={dossierSubTab === 'dashboard' ? (isMainAdmin ? 'text-amber-600' : 'text-blue-600') : 'text-slate-400'} />
+                  <span>{isMainAdmin ? 'Master Command Dashboard' : 'Dashboard Mirror'}</span>
                 </button>
                 <button
                   onClick={() => setDossierSubTab('activity')}
-                  className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'activity' ? (isMainAdmin ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-blue-600 text-white shadow-md shadow-blue-600/30') : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                  className={`px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                    dossierSubTab === 'activity'
+                      ? (isMainAdmin ? 'bg-white text-amber-800 shadow-xs border border-amber-300' : 'bg-white text-blue-700 shadow-xs border border-slate-200')
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
                 >
-                  <History size={12} /> {isMainAdmin ? 'Platform & Vault Logs' : 'Live Activity ("What are they doing")'}
+                  <History size={13} className={dossierSubTab === 'activity' ? (isMainAdmin ? 'text-amber-600' : 'text-blue-600') : 'text-slate-400'} />
+                  <span>{isMainAdmin ? 'Platform & Vault Logs' : 'Live Activity'}</span>
                 </button>
                 <button
                   onClick={() => setDossierSubTab('catalog')}
-                  className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'catalog' ? (isMainAdmin ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-blue-600 text-white shadow-md shadow-blue-600/30') : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                  className={`px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                    dossierSubTab === 'catalog'
+                      ? (isMainAdmin ? 'bg-white text-amber-800 shadow-xs border border-amber-300' : 'bg-white text-blue-700 shadow-xs border border-slate-200')
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
                 >
-                  <Package size={12} /> {isMainAdmin ? `Master Vault Catalog (${activeVendor360.products?.length || 0})` : `Products Catalog (${activeVendor360.products?.length || 0})`}
+                  <Package size={13} className={dossierSubTab === 'catalog' ? (isMainAdmin ? 'text-amber-600' : 'text-blue-600') : 'text-slate-400'} />
+                  <span>{isMainAdmin ? `Master Vault Catalog (${activeVendor360.products?.length || 0})` : `Products Catalog (${activeVendor360.products?.length || 0})`}</span>
                 </button>
                 <button
                   onClick={() => setDossierSubTab('orders')}
-                  className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'orders' ? (isMainAdmin ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-blue-600 text-white shadow-md shadow-blue-600/30') : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                  className={`px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                    dossierSubTab === 'orders'
+                      ? (isMainAdmin ? 'bg-white text-amber-800 shadow-xs border border-amber-300' : 'bg-white text-blue-700 shadow-xs border border-slate-200')
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
                 >
-                  <Clock size={12} /> {isMainAdmin ? `Direct Retail Orders (${activeVendor360.orders?.length || 0})` : `Assigned Orders (${activeVendor360.orders?.length || 0})`}
+                  <Clock size={13} className={dossierSubTab === 'orders' ? (isMainAdmin ? 'text-amber-600' : 'text-blue-600') : 'text-slate-400'} />
+                  <span>{isMainAdmin ? `Direct Retail Orders (${activeVendor360.orders?.length || 0})` : `Assigned Orders (${activeVendor360.orders?.length || 0})`}</span>
                 </button>
                 <button
                   onClick={() => setDossierSubTab('settlement')}
-                  className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'settlement' ? (isMainAdmin ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-blue-600 text-white shadow-md shadow-blue-600/30') : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                  className={`px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                    dossierSubTab === 'settlement'
+                      ? (isMainAdmin ? 'bg-white text-amber-800 shadow-xs border border-amber-300' : 'bg-white text-blue-700 shadow-xs border border-slate-200')
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
                 >
-                  <DollarSign size={12} /> {isMainAdmin ? 'Corporate Treasury & Merchant Settlement' : 'Settlements & Banking'}
+                  <DollarSign size={13} className={dossierSubTab === 'settlement' ? (isMainAdmin ? 'text-amber-600' : 'text-blue-600') : 'text-slate-400'} />
+                  <span>{isMainAdmin ? 'Corporate Treasury & Merchant Settlement' : 'Settlements & Banking'}</span>
                 </button>
                 <button
                   onClick={() => setDossierSubTab('compliance')}
-                  className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${dossierSubTab === 'compliance' ? (isMainAdmin ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-blue-600 text-white shadow-md shadow-blue-600/30') : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                  className={`px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                    dossierSubTab === 'compliance'
+                      ? (isMainAdmin ? 'bg-white text-amber-800 shadow-xs border border-amber-300' : 'bg-white text-blue-700 shadow-xs border border-slate-200')
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
                 >
-                  <ShieldCheck size={12} /> {isMainAdmin ? 'Master Accreditations & Licences' : 'Licences & Compliance'}
+                  <ShieldCheck size={13} className={dossierSubTab === 'compliance' ? (isMainAdmin ? 'text-amber-600' : 'text-blue-600') : 'text-slate-400'} />
+                  <span>{isMainAdmin ? 'Master Accreditations & Licences' : 'Licences & Compliance'}</span>
                 </button>
               </div>
 
               {/* Dossier Content Body */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
                 {/* SUBTAB 1: Mirrored Dashboard / Master Command */}
                 {dossierSubTab === 'dashboard' && (
                   <div className="space-y-6 animate-fadeIn">
                     {/* Top 4 Bento Metrics */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       {/* Financials */}
                       {isMainAdmin ? (
-                        <div className="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/30 space-y-2">
-                          <div className="flex items-center justify-between text-slate-400 text-xs">
-                            <span className="font-semibold uppercase tracking-wider text-amber-300">Flagship Sales (GMV)</span>
-                            <DollarSign size={16} className="text-amber-400" />
+                        <div className="bg-white rounded-xl p-4 border border-amber-200 shadow-xs space-y-2">
+                          <div className="flex items-center justify-between text-slate-500 text-xs">
+                            <span className="font-semibold uppercase tracking-wider text-amber-800">Flagship Sales (GMV)</span>
+                            <DollarSign size={16} className="text-amber-600" />
                           </div>
-                          <h4 className="text-2xl font-black text-white">
+                          <h4 className="text-2xl font-black text-slate-900">
                             R {activeVendor360.dashboardMirror?.financials?.grossMerchandiseValue?.toLocaleString()}
                           </h4>
-                          <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+                          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 space-y-1">
                             <div className="flex justify-between">
                               <span>Platform Commission:</span>
-                              <span className="text-emerald-400 font-bold">0% (Platform Operator)</span>
+                              <span className="text-emerald-700 font-bold">0% (Platform Operator)</span>
                             </div>
-                            <div className="flex justify-between font-bold text-amber-300">
-                              <span>Retained Platform Revenue:</span>
+                            <div className="flex justify-between font-bold text-amber-800">
+                              <span>Retained Revenue:</span>
                               <span>100% (R {activeVendor360.dashboardMirror?.financials?.grossMerchandiseValue?.toLocaleString()})</span>
                             </div>
                           </div>
                         </div>
                       ) : (
-                        <div className="bg-slate-900/90 rounded-2xl p-4 border border-blue-500/20 space-y-2">
-                          <div className="flex items-center justify-between text-slate-400 text-xs">
+                        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs space-y-2">
+                          <div className="flex items-center justify-between text-slate-500 text-xs">
                             <span className="font-semibold uppercase tracking-wider">Gross Sales (GMV)</span>
-                            <DollarSign size={16} className="text-blue-400" />
+                            <DollarSign size={16} className="text-blue-600" />
                           </div>
-                          <h4 className="text-2xl font-black text-white">
+                          <h4 className="text-2xl font-black text-slate-900">
                             R {activeVendor360.dashboardMirror?.financials?.grossMerchandiseValue?.toLocaleString()}
                           </h4>
-                          <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+                          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 space-y-1">
                             <div className="flex justify-between">
                               <span>GS Commission (12%):</span>
-                              <span className="text-rose-400 font-semibold">- R {activeVendor360.dashboardMirror?.financials?.commissionDeducted?.toLocaleString()}</span>
+                              <span className="text-rose-600 font-semibold">- R {activeVendor360.dashboardMirror?.financials?.commissionDeducted?.toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between font-bold text-blue-400">
+                            <div className="flex justify-between font-bold text-blue-700">
                               <span>Net Vendor Earnings:</span>
                               <span>R {activeVendor360.dashboardMirror?.financials?.netVendorEarnings?.toLocaleString()}</span>
                             </div>
@@ -920,89 +950,89 @@ export default function CrmVendorWorkflowPage() {
 
                       {/* Escrow & Payout Status / Treasury Capture */}
                       {isMainAdmin ? (
-                        <div className="bg-slate-900/90 rounded-2xl p-4 border border-emerald-500/30 space-y-2">
-                          <div className="flex items-center justify-between text-slate-400 text-xs">
-                            <span className="font-semibold uppercase tracking-wider text-emerald-400">Direct Treasury Settlement</span>
-                            <CheckCircle2 size={16} className="text-emerald-400" />
+                        <div className="bg-white rounded-xl p-4 border border-emerald-200 shadow-xs space-y-2">
+                          <div className="flex items-center justify-between text-slate-500 text-xs">
+                            <span className="font-semibold uppercase tracking-wider text-emerald-700">Direct Treasury Settlement</span>
+                            <CheckCircle2 size={16} className="text-emerald-600" />
                           </div>
-                          <h4 className="text-2xl font-black text-emerald-400">
+                          <h4 className="text-2xl font-black text-emerald-700">
                             R {activeVendor360.dashboardMirror?.financials?.alreadyPaidOut?.toLocaleString()}
                           </h4>
-                          <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+                          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 space-y-1">
                             <div className="flex justify-between">
                               <span>Settlement Model:</span>
-                              <span className="text-emerald-400 font-bold">Direct Merchant Settlement</span>
+                              <span className="text-emerald-700 font-bold">Direct Settlement</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Corporate Treasury:</span>
-                              <span className="text-slate-200 font-semibold">Standard Bank EFT (Real-Time)</span>
+                              <span className="text-slate-700 font-semibold">Standard Bank EFT (Real-Time)</span>
                             </div>
                           </div>
                         </div>
                       ) : (
-                        <div className="bg-slate-900/90 rounded-2xl p-4 border border-blue-500/20 space-y-2">
-                          <div className="flex items-center justify-between text-slate-400 text-xs">
+                        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs space-y-2">
+                          <div className="flex items-center justify-between text-slate-500 text-xs">
                             <span className="font-semibold uppercase tracking-wider">In-Escrow Payout</span>
-                            <Clock size={16} className="text-sky-400" />
+                            <Clock size={16} className="text-sky-600" />
                           </div>
-                          <h4 className="text-2xl font-black text-sky-400">
+                          <h4 className="text-2xl font-black text-sky-700">
                             R {activeVendor360.dashboardMirror?.financials?.pendingSettlement?.toLocaleString()}
                           </h4>
-                          <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+                          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 space-y-1">
                             <div className="flex justify-between">
                               <span>Already Settled:</span>
-                              <span className="text-slate-200">R {activeVendor360.dashboardMirror?.financials?.alreadyPaidOut?.toLocaleString()}</span>
+                              <span className="text-slate-700 font-medium">R {activeVendor360.dashboardMirror?.financials?.alreadyPaidOut?.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Next Settlement Date:</span>
-                              <span className="text-blue-400 font-semibold">{activeVendor360.dashboardMirror?.financials?.nextPayoutDate}</span>
+                              <span className="text-blue-700 font-semibold">{activeVendor360.dashboardMirror?.financials?.nextPayoutDate}</span>
                             </div>
                           </div>
                         </div>
                       )}
 
                       {/* Catalog Health */}
-                      <div className={`bg-slate-900/90 rounded-2xl p-4 border ${isMainAdmin ? 'border-indigo-500/30' : 'border-blue-500/20'} space-y-2`}>
-                        <div className="flex items-center justify-between text-slate-400 text-xs">
-                          <span className={`font-semibold uppercase tracking-wider ${isMainAdmin ? 'text-indigo-300' : ''}`}>
+                      <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs space-y-2">
+                        <div className="flex items-center justify-between text-slate-500 text-xs">
+                          <span className={`font-semibold uppercase tracking-wider ${isMainAdmin ? 'text-indigo-800' : ''}`}>
                             {isMainAdmin ? 'Master Vault Catalog' : 'Catalog Health'}
                           </span>
-                          <Package size={16} className="text-indigo-400" />
+                          <Package size={16} className="text-indigo-600" />
                         </div>
-                        <h4 className="text-2xl font-black text-white">
-                          {activeVendor360.dashboardMirror?.catalog?.totalProducts} <span className="text-xs text-slate-400 font-normal">{isMainAdmin ? 'Master SKUs' : 'Products Listed'}</span>
+                        <h4 className="text-2xl font-black text-slate-900">
+                          {activeVendor360.dashboardMirror?.catalog?.totalProducts} <span className="text-xs text-slate-500 font-normal">{isMainAdmin ? 'Master SKUs' : 'Products Listed'}</span>
                         </h4>
-                        <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+                        <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 space-y-1">
                           <div className="flex justify-between">
                             <span>Live Active SKUs:</span>
-                            <span className="text-emerald-400 font-bold">{activeVendor360.dashboardMirror?.catalog?.liveProducts}</span>
+                            <span className="text-emerald-700 font-bold">{activeVendor360.dashboardMirror?.catalog?.liveProducts}</span>
                           </div>
                           <div className="flex justify-between">
                             <span>Low / Out of Stock:</span>
-                            <span className="text-rose-400 font-bold">{activeVendor360.dashboardMirror?.catalog?.outOfStockProducts}</span>
+                            <span className="text-rose-600 font-bold">{activeVendor360.dashboardMirror?.catalog?.outOfStockProducts}</span>
                           </div>
                         </div>
                       </div>
 
                       {/* Fulfillment Performance */}
-                      <div className="bg-slate-900/90 rounded-2xl p-4 border border-blue-500/20 space-y-2">
-                        <div className="flex items-center justify-between text-slate-400 text-xs">
+                      <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs space-y-2">
+                        <div className="flex items-center justify-between text-slate-500 text-xs">
                           <span className="font-semibold uppercase tracking-wider">
                             {isMainAdmin ? 'Flagship Fulfillment SLA' : 'Fulfillment SLA'}
                           </span>
-                          <Zap size={16} className="text-emerald-400" />
+                          <Zap size={16} className="text-emerald-600" />
                         </div>
-                        <h4 className="text-2xl font-black text-emerald-400">
+                        <h4 className="text-2xl font-black text-emerald-600">
                           {activeVendor360.dashboardMirror?.fulfillment?.onTimeDispatchRatePct}%
                         </h4>
-                        <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+                        <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 space-y-1">
                           <div className="flex justify-between">
                             <span>{isMainAdmin ? 'Vault Orders Fulfilled:' : 'Orders Fulfilled:'}</span>
-                            <span className="text-white font-bold">{activeVendor360.dashboardMirror?.fulfillment?.fulfilledCount}</span>
+                            <span className="text-slate-900 font-bold">{activeVendor360.dashboardMirror?.fulfillment?.fulfilledCount}</span>
                           </div>
                           <div className="flex justify-between">
                             <span>Overdue Dispatch:</span>
-                            <span className={activeVendor360.dashboardMirror?.fulfillment?.overdueDispatchCount > 0 ? "text-rose-400 font-bold" : "text-slate-400"}>
+                            <span className={activeVendor360.dashboardMirror?.fulfillment?.overdueDispatchCount > 0 ? "text-rose-600 font-bold" : "text-slate-600 font-medium"}>
                               {activeVendor360.dashboardMirror?.fulfillment?.overdueDispatchCount}
                             </span>
                           </div>
@@ -1013,43 +1043,43 @@ export default function CrmVendorWorkflowPage() {
                     {/* Dual Grid: Estate Details & Actions */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       {/* Left 2 Cols: Operational Identity */}
-                      <div className={`md:col-span-2 bg-slate-900/70 rounded-2xl p-5 border ${isMainAdmin ? 'border-amber-500/20' : 'border-blue-500/20'} space-y-4`}>
-                        <h4 className={`text-sm font-black ${isMainAdmin ? 'text-amber-400' : 'text-blue-400'} uppercase tracking-wider flex items-center gap-2`}>
-                          {isMainAdmin ? <Crown size={16} /> : <Building2 size={16} />}
+                      <div className="md:col-span-2 bg-white rounded-xl p-5 border border-slate-200 shadow-xs space-y-4">
+                        <h4 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isMainAdmin ? 'text-amber-800' : 'text-slate-900'}`}>
+                          {isMainAdmin ? <Crown size={15} className="text-amber-600" /> : <Building2 size={15} className="text-blue-600" />}
                           {isMainAdmin ? 'Master Platform Headquarters & Flagship Cellar Dossier' : 'Winery & Estate Operational Dossier'}
                         </h4>
                         
-                        <div className="grid grid-cols-2 gap-4 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3.5 gap-x-6 text-xs">
                           <div>
-                            <p className="text-slate-400 font-medium">{isMainAdmin ? 'Platform Authority / Executive' : 'Estate Director / Contact'}</p>
-                            <p className="text-white font-bold mt-0.5">{activeVendor360.vendorInfo.directorName}</p>
-                            <p className="text-slate-400 mt-1">{activeVendor360.vendorInfo.phone}</p>
+                            <p className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">{isMainAdmin ? 'Platform Authority / Executive' : 'Estate Director / Contact'}</p>
+                            <p className="text-slate-900 font-bold mt-0.5">{activeVendor360.vendorInfo.directorName}</p>
+                            <p className="text-slate-500 mt-0.5">{activeVendor360.vendorInfo.phone}</p>
                           </div>
                           <div>
-                            <p className="text-slate-400 font-medium">{isMainAdmin ? 'Operations Command' : 'Assigned Account Manager'}</p>
-                            <p className={`font-bold mt-0.5 ${isMainAdmin ? 'text-amber-400' : 'text-blue-400'}`}>{activeVendor360.vendorInfo.accountManager?.name}</p>
-                            <p className="text-slate-400 mt-1">{activeVendor360.vendorInfo.accountManager?.email}</p>
+                            <p className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">{isMainAdmin ? 'Operations Command' : 'Assigned Account Manager'}</p>
+                            <p className={`font-bold mt-0.5 ${isMainAdmin ? 'text-amber-700' : 'text-blue-600'}`}>{activeVendor360.vendorInfo.accountManager?.name}</p>
+                            <p className="text-slate-500 mt-0.5">{activeVendor360.vendorInfo.accountManager?.email}</p>
                           </div>
                           <div>
-                            <p className="text-slate-400 font-medium">Company Registration (CIPC)</p>
-                            <p className="text-white font-bold mt-0.5">{activeVendor360.vendorInfo.registrationNumber}</p>
+                            <p className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">Company Registration (CIPC)</p>
+                            <p className="text-slate-900 font-bold font-mono mt-0.5">{activeVendor360.vendorInfo.registrationNumber}</p>
                           </div>
                           <div>
-                            <p className="text-slate-400 font-medium">{isMainAdmin ? 'Central Cellar & Vault' : 'Winery Location / Vault'}</p>
-                            <p className="text-white font-bold mt-0.5">{activeVendor360.vendorInfo.address}</p>
+                            <p className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">{isMainAdmin ? 'Central Cellar & Vault' : 'Winery Location / Vault'}</p>
+                            <p className="text-slate-900 font-semibold mt-0.5">{activeVendor360.vendorInfo.address}</p>
                           </div>
                         </div>
 
-                        <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
                           <div className="flex items-center gap-2 text-xs">
-                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                            <span className="text-slate-300 font-semibold">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span className="text-slate-600 font-medium">
                               {isMainAdmin ? 'Master Platform Authority: Central Storefront & Vendor Marketplace Core' : 'Storefront Status: Live on Grand Store Global & Local'}
                             </span>
                           </div>
                           <button 
                             onClick={() => setDossierSubTab('activity')}
-                            className={`text-xs font-bold hover:underline inline-flex items-center gap-1 cursor-pointer ${isMainAdmin ? 'text-amber-400' : 'text-blue-400'}`}
+                            className={`text-xs font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer ${isMainAdmin ? 'text-amber-700' : 'text-blue-600'}`}
                           >
                             {isMainAdmin ? 'View master audit logs' : 'View real-time event logs'} <ArrowRight size={12} />
                           </button>
@@ -1058,21 +1088,21 @@ export default function CrmVendorWorkflowPage() {
 
                       {/* Right 1 Col: Executive Interventions */}
                       {isMainAdmin ? (
-                        <div className="bg-slate-900/70 rounded-2xl p-5 border border-amber-500/20 space-y-3 flex flex-col justify-between">
+                        <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 shadow-xs space-y-3 flex flex-col justify-between">
                           <div>
-                            <h4 className="text-sm font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                              <Crown size={15} className="text-amber-400" /> Master Platform Authority
+                            <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wider flex items-center gap-2">
+                              <Crown size={15} className="text-amber-600" /> Master Platform Authority
                             </h4>
-                            <p className="text-xs text-slate-400 mt-1">Core platform actions for Central Flagship.</p>
+                            <p className="text-xs text-slate-500 mt-1">Core platform actions for Central Flagship.</p>
                           </div>
 
                           <div className="space-y-2">
                             <button
                               onClick={() => toast.success(`Master Vault inventory synchronized! All ${activeVendor360.products?.length || activeVendor360.dashboardMirror?.catalog?.totalProducts || 0} luxury items are active across Global & Local storefronts.`)}
-                              className="w-full py-2 bg-amber-600/30 hover:bg-amber-600/40 text-amber-200 border border-amber-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
+                              className="w-full py-2 bg-white hover:bg-amber-50 text-amber-900 border border-amber-200 font-semibold rounded-xl text-xs transition-colors text-left px-3 flex items-center justify-between cursor-pointer shadow-xs"
                             >
                               <span>Sync Master Vault Inventory</span>
-                              <RefreshCw size={14} />
+                              <RefreshCw size={14} className="text-amber-700" />
                             </button>
                             <button
                               onClick={() => setMessageModal({ 
@@ -1083,39 +1113,32 @@ export default function CrmVendorWorkflowPage() {
                                 priority: 'urgent', 
                                 type: 'system_alert' 
                               })}
-                              className="w-full py-2 bg-blue-600/30 hover:bg-blue-600/40 text-blue-300 border border-blue-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
+                              className="w-full py-2 bg-white hover:bg-blue-50 text-blue-900 border border-blue-200 font-semibold rounded-xl text-xs transition-colors text-left px-3 flex items-center justify-between cursor-pointer shadow-xs"
                             >
                               <span>Broadcast Partner Advisory</span>
-                              <Send size={14} />
+                              <Send size={14} className="text-blue-600" />
                             </button>
                             <button
                               onClick={() => toast.success('Corporate Treasury reconciliation completed. Standard Bank merchant gateway in full parity (0 discrepancies).')}
-                              className="w-full py-2 bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
+                              className="w-full py-2 bg-white hover:bg-emerald-50 text-emerald-900 border border-emerald-200 font-semibold rounded-xl text-xs transition-colors text-left px-3 flex items-center justify-between cursor-pointer shadow-xs"
                             >
                               <span>Reconcile Corporate Treasury</span>
-                              <CheckCircle2 size={14} />
+                              <CheckCircle2 size={14} className="text-emerald-600" />
                             </button>
                           </div>
 
-                          <p className="text-[10px] text-amber-400/80 italic">Root administrative authority active (Super Admin).</p>
+                          <p className="text-[10px] text-amber-700 italic">Root administrative authority active (Super Admin).</p>
                         </div>
                       ) : (
-                        <div className="bg-slate-900/70 rounded-2xl p-5 border border-blue-500/20 space-y-3 flex flex-col justify-between">
+                        <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 shadow-xs space-y-3 flex flex-col justify-between">
                           <div>
-                            <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                              <Zap size={15} className="text-blue-400" /> Executive Actions
+                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                              <Zap size={15} className="text-blue-600" /> Executive Actions
                             </h4>
-                            <p className="text-xs text-slate-400 mt-1">Direct intervention with vendor winery.</p>
+                            <p className="text-xs text-slate-500 mt-1">Direct intervention with vendor winery.</p>
                           </div>
 
                           <div className="space-y-2">
-                            <button
-                              onClick={() => handleOpenActionModal(activeVendor360.vendorInfo, 'live_active', 'Advance Vendor to Live Active')}
-                              className="w-full py-2 bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
-                            >
-                              <span>Confirm All Clear (Live Active)</span>
-                              <Check size={14} />
-                            </button>
                             <button
                               onClick={() => setMessageModal({ 
                                 isOpen: true, 
@@ -1125,17 +1148,17 @@ export default function CrmVendorWorkflowPage() {
                                 priority: 'urgent', 
                                 type: 'operational_advisory' 
                               })}
-                              className="w-full py-2 bg-blue-600/30 hover:bg-blue-600/40 text-blue-300 border border-blue-500/40 font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer"
+                              className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition-colors text-left px-3 flex items-center justify-between cursor-pointer shadow-xs"
                             >
                               <span>Dispatch Urgent Advisory</span>
                               <Send size={14} />
                             </button>
                             <button
                               onClick={() => handleOpenFreezeModal(activeVendor360.vendorInfo, !activeVendor360.vendorInfo?.isFrozen)}
-                              className={`w-full py-2 border font-bold rounded-xl text-xs transition-all text-left px-3 flex items-center justify-between cursor-pointer ${
+                              className={`w-full py-2 border font-semibold rounded-xl text-xs transition-colors text-left px-3 flex items-center justify-between cursor-pointer shadow-xs ${
                                 activeVendor360.vendorInfo?.isFrozen
-                                  ? 'bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 border-emerald-500/40'
-                                  : 'bg-cyan-600/30 hover:bg-cyan-600/40 text-cyan-300 border-cyan-500/40'
+                                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                                  : 'bg-white hover:bg-amber-50 text-amber-800 border-amber-300'
                               }`}
                             >
                               <span>{activeVendor360.vendorInfo?.isFrozen ? 'Lift Store Freeze & Resume' : 'Temporary Freeze Store'}</span>
@@ -1143,7 +1166,7 @@ export default function CrmVendorWorkflowPage() {
                             </button>
                           </div>
 
-                          <p className="text-[10px] text-slate-500 italic">Audit logged under Executive Staff.</p>
+                          <p className="text-[10px] text-slate-400 italic">Audit logged under Executive Staff.</p>
                         </div>
                       )}
                     </div>
@@ -1153,44 +1176,44 @@ export default function CrmVendorWorkflowPage() {
                 {/* SUBTAB 2: Real-time Activity */}
                 {dossierSubTab === 'activity' && (
                   <div className="space-y-4 animate-fadeIn">
-                    <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                       <div>
-                        <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                          <History size={16} className={isMainAdmin ? "text-amber-400" : "text-blue-400"} />
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                          <History size={16} className={isMainAdmin ? "text-amber-600" : "text-blue-600"} />
                           {isMainAdmin ? 'Flagship Vault & Master Platform Activity Stream' : 'Real-Time Operational Activity Stream'}
                         </h4>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-slate-500 mt-0.5">
                           {isMainAdmin ? 'Live operational telemetry tracking master catalog synchronizations, corporate settlements, and platform governance.' : 'Live operational telemetry showing what the vendor is doing right now.'}
                         </p>
                       </div>
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1.5 ${isMainAdmin ? 'bg-amber-500/20 text-amber-300 border-amber-400/30' : 'bg-blue-500/20 text-blue-300 border-blue-400/30'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full animate-ping ${isMainAdmin ? 'bg-amber-400' : 'bg-blue-400'}`}></span> Live Feed
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1.5 ${isMainAdmin ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full animate-ping ${isMainAdmin ? 'bg-amber-500' : 'bg-blue-500'}`}></span> Live Feed
                       </span>
                     </div>
 
-                    <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-blue-500/20">
+                    <div className="relative pl-6 space-y-4 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
                       {/* Pinned Store Freeze Status Card */}
                       {activeVendor360.vendorInfo?.isFrozen && (
                         <div className="relative group">
-                          <div className="absolute -left-[27px] top-1 w-3.5 h-3.5 rounded-full bg-cyan-400 border-2 border-slate-950 animate-ping" />
-                          <div className="bg-cyan-950/80 p-4 rounded-2xl border border-cyan-500/40 shadow-lg shadow-cyan-950/40">
+                          <div className="absolute -left-[27px] top-1 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-white animate-ping" />
+                          <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 shadow-xs">
                             <div className="flex items-center justify-between flex-wrap gap-2">
-                              <span className="font-extrabold text-cyan-200 text-sm flex items-center gap-1.5">
+                              <span className="font-bold text-amber-900 text-sm flex items-center gap-1.5">
                                 <PauseCircle size={16} /> PINNED ADVISORY: Storefront Listings Temporarily Frozen
                               </span>
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-amber-100 text-amber-800 border-amber-300">
                                 ACTIVE RESTRICTION
                               </span>
                             </div>
-                            <p className="text-xs text-slate-200 mt-2 font-medium">
+                            <p className="text-xs text-slate-700 mt-2 font-medium">
                               <strong>Freeze Reason:</strong> {activeVendor360.vendorInfo.freezeReason || 'Operational Review'}
                             </p>
                             {activeVendor360.vendorInfo.freezeAdvisoryMessage && (
-                              <p className="text-xs text-cyan-100 mt-1.5 italic bg-cyan-900/40 p-2.5 rounded-xl border border-cyan-500/20">
+                              <p className="text-xs text-amber-900 mt-1.5 italic bg-amber-100/60 p-2.5 rounded-lg border border-amber-200">
                                 "{activeVendor360.vendorInfo.freezeAdvisoryMessage}"
                               </p>
                             )}
-                            <div className="mt-2 pt-2 border-t border-cyan-500/20 flex items-center justify-between text-[10px] text-cyan-300/80 font-mono">
+                            <div className="mt-2 pt-2 border-t border-amber-200 flex items-center justify-between text-[10px] text-amber-800 font-mono">
                               <span>Actor: {activeVendor360.vendorInfo.frozenBy || 'Operations Command'}</span>
                               <span>Customer catalog checkout blocked</span>
                             </div>
@@ -1201,22 +1224,22 @@ export default function CrmVendorWorkflowPage() {
                       {/* Active Advisories Broadcast to Vendor */}
                       {activeVendor360.vendorInfo?.activeAdvisories?.filter(a => a.active !== false).map((adv, aIdx) => (
                         <div key={aIdx} className="relative group">
-                          <div className="absolute -left-[27px] top-1 w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-slate-950" />
-                          <div className="bg-blue-950/60 p-4 rounded-2xl border border-blue-500/30">
+                          <div className="absolute -left-[27px] top-1 w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-white" />
+                          <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 shadow-xs">
                             <div className="flex items-center justify-between flex-wrap gap-2">
-                              <span className="font-extrabold text-blue-200 text-sm flex items-center gap-1.5">
+                              <span className="font-bold text-blue-900 text-sm flex items-center gap-1.5">
                                 <BellRing size={15} /> {adv.title || 'Platform Advisory Broadcast'}
                               </span>
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                                adv.priority === 'critical' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
-                                adv.priority === 'urgent' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
-                                'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                                adv.priority === 'critical' ? 'bg-rose-100 text-rose-800 border-rose-300' :
+                                adv.priority === 'urgent' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                                'bg-blue-100 text-blue-800 border-blue-300'
                               }`}>
                                 {(adv.priority || 'NORMAL').toUpperCase()}
                               </span>
                             </div>
-                            <p className="text-xs text-slate-300 mt-1">{adv.message}</p>
-                            <div className="mt-2 text-[10px] text-slate-400 font-mono">
+                            <p className="text-xs text-slate-700 mt-1">{adv.message}</p>
+                            <div className="mt-2 text-[10px] text-slate-500 font-mono">
                               Dispatched: {new Date(adv.createdAt || Date.now()).toLocaleDateString()}
                             </div>
                           </div>
@@ -1224,30 +1247,30 @@ export default function CrmVendorWorkflowPage() {
                       ))}
 
                       {(!activeVendor360.activities || activeVendor360.activities.length === 0) && !activeVendor360.vendorInfo?.isFrozen ? (
-                        <div className="p-8 text-center text-slate-400 bg-slate-900/40 rounded-2xl border border-blue-500/20">
-                          <History size={24} className="mx-auto mb-2 text-slate-500" />
-                          <p className="font-semibold text-slate-300">No operational activities recorded yet.</p>
+                        <div className="p-8 text-center text-slate-500 bg-white rounded-xl border border-slate-200 shadow-xs">
+                          <History size={24} className="mx-auto mb-2 text-slate-400" />
+                          <p className="font-semibold text-slate-800">No operational activities recorded yet.</p>
                           <p className="text-xs text-slate-500 mt-1">Actions taken will stream here automatically.</p>
                         </div>
                       ) : (
                         activeVendor360.activities.map((act) => (
                           <div key={act.id} className="relative group">
-                            <div className="absolute -left-[27px] top-1 w-3.5 h-3.5 rounded-full bg-slate-950 border-2 border-blue-500 group-hover:scale-125 transition-transform" />
+                            <div className="absolute -left-[27px] top-1.5 w-3.5 h-3.5 rounded-full bg-white border-2 border-blue-600 group-hover:scale-125 transition-transform" />
                             
-                            <div className="bg-slate-900/80 p-4 rounded-2xl border border-blue-500/20 group-hover:border-blue-500/50 transition-colors">
+                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 transition-colors">
                               <div className="flex items-center justify-between flex-wrap gap-2">
-                                <span className="font-extrabold text-white text-sm">{act.title}</span>
+                                <span className="font-bold text-slate-900 text-sm">{act.title}</span>
                                 <div className="flex items-center gap-2">
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${isMainAdmin ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-blue-500/20 text-blue-300 border-blue-500/30'}`}>
+                                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${isMainAdmin ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
                                     {act.badge}
                                   </span>
-                                  <span className="text-[11px] text-slate-400 font-mono">
+                                  <span className="text-[11px] text-slate-500 font-mono">
                                     {new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(act.timestamp).toLocaleDateString()}
                                   </span>
                                 </div>
                               </div>
-                              <p className="text-xs text-slate-300 mt-1">{act.description}</p>
-                              <p className="text-[10px] text-slate-500 mt-2 font-medium">Actor: {act.performedBy}</p>
+                              <p className="text-xs text-slate-600 mt-1">{act.description}</p>
+                              <p className="text-[10px] text-slate-400 mt-2 font-medium">Actor: {act.performedBy}</p>
                             </div>
                           </div>
                         ))
@@ -1259,55 +1282,55 @@ export default function CrmVendorWorkflowPage() {
                 {/* SUBTAB 3: Live Products Catalog */}
                 {dossierSubTab === 'catalog' && (
                   <div className="space-y-4 animate-fadeIn">
-                    <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                       <div>
-                        <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                          <Package size={16} className={isMainAdmin ? "text-amber-400" : "text-blue-400"} />
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                          <Package size={16} className={isMainAdmin ? "text-amber-600" : "text-blue-600"} />
                           {isMainAdmin ? `Master Vault Inventory (${activeVendor360.products?.length || 0} SKUs)` : `Products Supplied by ${activeVendor360.vendorInfo.tradingName}`}
                         </h4>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-slate-500 mt-0.5">
                           {isMainAdmin ? 'Central cellar holdings curated and distributed across Grand Store Global and Local storefronts.' : 'Inventory levels, vintage specifics, and listing status.'}
                         </p>
                       </div>
                     </div>
 
-                    <div className="overflow-x-auto rounded-2xl border border-blue-500/20">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-900 text-slate-400 uppercase font-semibold border-b border-blue-500/20">
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs">
+                      <table className="w-full text-left text-xs min-w-[720px]">
+                        <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-[11px] tracking-wider border-b border-slate-200">
                           <tr>
-                            <th className="px-4 py-3">Product Name</th>
-                            <th className="px-4 py-3">Category</th>
-                            <th className="px-4 py-3">Vintage / ABV</th>
-                            <th className="px-4 py-3">Price (ZAR)</th>
-                            <th className="px-4 py-3">Stock Level</th>
-                            <th className="px-4 py-3">Listing Status</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Product Name</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Category</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Vintage / ABV</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Price (ZAR)</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Stock Level</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Listing Status</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800 bg-slate-950/60">
+                        <tbody className="divide-y divide-slate-100 bg-white">
                           {(!activeVendor360.products || activeVendor360.products.length === 0) ? (
                             <tr>
                               <td colSpan={6} className="py-8 text-center text-slate-400">No products uploaded under this account yet.</td>
                             </tr>
                           ) : (
                             activeVendor360.products.map((p) => (
-                              <tr key={p._id} className="hover:bg-blue-500/10 transition-colors">
-                                <td className="px-4 py-3 font-bold text-white flex items-center gap-2">
-                                  <Package size={14} className={isMainAdmin ? "text-amber-400" : "text-blue-400"} />
+                              <tr key={p._id} className="hover:bg-slate-50/70 transition-colors">
+                                <td className="px-4 py-3 font-semibold text-slate-900 flex items-center gap-2 whitespace-nowrap">
+                                  <Package size={14} className={isMainAdmin ? "text-amber-600 shrink-0" : "text-blue-600 shrink-0"} />
                                   <div>
-                                    <p>{p.name}</p>
-                                    <p className="text-[10px] text-slate-500 font-mono">SKU: {p.id}</p>
+                                    <p className="font-bold text-slate-900">{p.name}</p>
+                                    <p className="text-[10px] text-slate-400 font-mono">SKU: {p.id}</p>
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 text-slate-300">{p.category}</td>
-                                <td className="px-4 py-3 text-slate-400">{p.vintage} • {p.abv}</td>
-                                <td className={`px-4 py-3 font-black ${isMainAdmin ? 'text-amber-400' : 'text-blue-400'}`}>R {p.priceZar?.toLocaleString()}</td>
-                                <td className="px-4 py-3">
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.stock > 10 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
+                                <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{p.category}</td>
+                                <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{p.vintage} • {p.abv}</td>
+                                <td className={`px-4 py-3 font-bold whitespace-nowrap ${isMainAdmin ? 'text-amber-800' : 'text-blue-700'}`}>R {p.priceZar?.toLocaleString()}</td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${p.stock > 10 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
                                     {p.stock} bottles in vault
                                   </span>
                                 </td>
-                                <td className="px-4 py-3">
-                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                     ✓ Live & Active
                                   </span>
                                 </td>
@@ -1323,64 +1346,64 @@ export default function CrmVendorWorkflowPage() {
                 {/* SUBTAB 4: Assigned Orders & Dispatch */}
                 {dossierSubTab === 'orders' && (
                   <div className="space-y-4 animate-fadeIn">
-                    <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                       <div>
-                        <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                          <Clock size={16} className="text-blue-400" />
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                          <Clock size={16} className={isMainAdmin ? "text-amber-600" : "text-blue-600"} />
                           {isMainAdmin ? `Direct Retail Orders Fulfilled from Central Vault (${activeVendor360.orders?.length || 0})` : `Customer Orders for ${activeVendor360.vendorInfo.tradingName}`}
                         </h4>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-slate-500 mt-0.5">
                           {isMainAdmin ? 'Direct customer purchases routed through platform headquarters.' : 'Tracking fulfillment SLA and parcel dispatches.'}
                         </p>
                       </div>
                     </div>
 
-                    <div className="overflow-x-auto rounded-2xl border border-blue-500/20">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-900 text-slate-400 uppercase font-semibold border-b border-blue-500/20">
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs">
+                      <table className="w-full text-left text-xs min-w-[760px]">
+                        <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-[11px] tracking-wider border-b border-slate-200">
                           <tr>
-                            <th className="px-4 py-3">Order Ref</th>
-                            <th className="px-4 py-3">Customer & City</th>
-                            <th className="px-4 py-3">Value (ZAR)</th>
-                            <th className="px-4 py-3">Waybill Tracking</th>
-                            <th className="px-4 py-3">Fulfillment Status</th>
-                            <th className="px-4 py-3 text-right">Intervention</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Order Ref</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Customer & City</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Value (ZAR)</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Waybill Tracking</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Fulfillment Status</th>
+                            <th className="px-4 py-3 whitespace-nowrap text-right">Intervention</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800 bg-slate-950/60">
+                        <tbody className="divide-y divide-slate-100 bg-white">
                           {(!activeVendor360.orders || activeVendor360.orders.length === 0) ? (
                             <tr>
                               <td colSpan={6} className="py-8 text-center text-slate-400">No orders recorded under this account yet.</td>
                             </tr>
                           ) : (
                             activeVendor360.orders.map((o) => (
-                              <tr key={o._id} className="hover:bg-blue-500/10 transition-colors">
-                                <td className="px-4 py-3 font-bold text-white">#{o.orderId}</td>
-                                <td className="px-4 py-3">
-                                  <p className="text-slate-200 font-semibold">{o.customerName}</p>
-                                  <p className="text-[10px] text-slate-400">{o.customerCity}</p>
+                              <tr key={o._id} className="hover:bg-slate-50/70 transition-colors">
+                                <td className="px-4 py-3 font-bold font-mono text-slate-900 whitespace-nowrap">#{o.orderId}</td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <p className="text-slate-800 font-semibold">{o.customerName}</p>
+                                  <p className="text-[10px] text-slate-500">{o.customerCity}</p>
                                 </td>
-                                <td className={`px-4 py-3 font-black ${isMainAdmin ? 'text-amber-400' : 'text-blue-400'}`}>R {o.orderTotal?.toLocaleString()}</td>
-                                <td className="px-4 py-3 font-mono text-slate-300">{o.waybillNumber}</td>
-                                <td className="px-4 py-3">
+                                <td className={`px-4 py-3 font-bold whitespace-nowrap ${isMainAdmin ? 'text-amber-800' : 'text-blue-700'}`}>R {o.orderTotal?.toLocaleString()}</td>
+                                <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{o.waybillNumber}</td>
+                                <td className="px-4 py-3 whitespace-nowrap">
                                   {o.isDispatched ? (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                       ✓ Dispatched / Delivered
                                     </span>
                                   ) : o.orderAgeHours > 24 ? (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                                       ⚠️ {o.orderAgeHours}h Overdue
                                     </span>
                                   ) : (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                                       ⏳ Due in {o.dispatchDueInHours}h
                                     </span>
                                   )}
                                 </td>
-                                <td className="px-4 py-3 text-right">
+                                <td className="px-4 py-3 text-right whitespace-nowrap">
                                   <button
                                     onClick={() => toast.success(`Courier dispatch ping transmitted for order #${o.orderId}`)}
-                                    className="px-2.5 py-1 bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/40 rounded-lg font-bold text-[11px] transition-colors cursor-pointer"
+                                    className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg font-semibold text-[11px] shadow-xs transition-colors cursor-pointer"
                                   >
                                     Ping Courier Guy
                                   </button>
@@ -1398,31 +1421,31 @@ export default function CrmVendorWorkflowPage() {
                 {dossierSubTab === 'settlement' && (
                   <div className="space-y-6 animate-fadeIn">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className={`bg-slate-900/90 rounded-2xl p-5 border ${isMainAdmin ? 'border-amber-500/20' : 'border-blue-500/20'} space-y-3`}>
-                        <h4 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 ${isMainAdmin ? 'text-amber-400' : 'text-blue-400'}`}>
-                          <DollarSign size={16} />
+                      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs space-y-3">
+                        <h4 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isMainAdmin ? 'text-amber-800' : 'text-slate-900'}`}>
+                          <DollarSign size={16} className={isMainAdmin ? 'text-amber-600' : 'text-blue-600'} />
                           {isMainAdmin ? 'Corporate Treasury & Merchant Facility' : 'Banking & Escrow Settlement Account'}
                         </h4>
                         <div className="space-y-2 text-xs">
-                          <div className="flex justify-between py-1.5 border-b border-slate-800">
-                            <span className="text-slate-400">Bank Name:</span>
-                            <span className="text-white font-bold">{activeVendor360.vendorInfo.bankingInfo?.bankName || 'Standard Bank Corporate Treasury'}</span>
+                          <div className="flex justify-between py-1.5 border-b border-slate-100">
+                            <span className="text-slate-500">Bank Name:</span>
+                            <span className="text-slate-900 font-bold">{activeVendor360.vendorInfo.bankingInfo?.bankName || 'Standard Bank Corporate Treasury'}</span>
                           </div>
-                          <div className="flex justify-between py-1.5 border-b border-slate-800">
-                            <span className="text-slate-400">Account Name:</span>
-                            <span className="text-white font-bold">{activeVendor360.vendorInfo.bankingInfo?.accountName || 'The Grand Store (Pty) Ltd'}</span>
+                          <div className="flex justify-between py-1.5 border-b border-slate-100">
+                            <span className="text-slate-500">Account Name:</span>
+                            <span className="text-slate-900 font-bold">{activeVendor360.vendorInfo.bankingInfo?.accountName || 'The Grand Store (Pty) Ltd'}</span>
                           </div>
-                          <div className="flex justify-between py-1.5 border-b border-slate-800">
-                            <span className="text-slate-400">Account Number:</span>
-                            <span className="text-white font-mono font-bold">{activeVendor360.vendorInfo.bankingInfo?.accountNumber || '•••• 5261'}</span>
+                          <div className="flex justify-between py-1.5 border-b border-slate-100">
+                            <span className="text-slate-500">Account Number:</span>
+                            <span className="text-slate-900 font-mono font-bold">{activeVendor360.vendorInfo.bankingInfo?.accountNumber || '•••• 5261'}</span>
                           </div>
-                          <div className="flex justify-between py-1.5 border-b border-slate-800">
-                            <span className="text-slate-400">Branch Code:</span>
-                            <span className="text-white font-mono font-bold">{activeVendor360.vendorInfo.bankingInfo?.branchCode || '051001'}</span>
+                          <div className="flex justify-between py-1.5 border-b border-slate-100">
+                            <span className="text-slate-500">Branch Code:</span>
+                            <span className="text-slate-900 font-mono font-bold">{activeVendor360.vendorInfo.bankingInfo?.branchCode || '051001'}</span>
                           </div>
                           <div className="flex justify-between py-1.5">
-                            <span className="text-slate-400">Settlement Scheme:</span>
-                            <span className={`font-extrabold ${isMainAdmin ? 'text-amber-400' : 'text-blue-400'}`}>
+                            <span className="text-slate-500">Settlement Scheme:</span>
+                            <span className={`font-bold ${isMainAdmin ? 'text-amber-700' : 'text-blue-700'}`}>
                               {isMainAdmin ? 'Direct Merchant Settlement (Instant EFT, Credit/Debit, Ozow)' : (activeVendor360.vendorInfo.bankingInfo?.payoutPreference || 'Monthly')}
                             </span>
                           </div>
@@ -1430,45 +1453,45 @@ export default function CrmVendorWorkflowPage() {
                       </div>
 
                       {isMainAdmin ? (
-                        <div className="bg-slate-900/90 rounded-2xl p-5 border border-emerald-500/30 space-y-4 flex flex-col justify-between">
+                        <div className="bg-white rounded-xl p-5 border border-emerald-200 shadow-xs space-y-4 flex flex-col justify-between">
                           <div>
-                            <h4 className="text-sm font-black text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-                              <CheckCircle2 size={16} className="text-emerald-400" /> Direct Merchant Acquiring Capture
+                            <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-2">
+                              <CheckCircle2 size={16} className="text-emerald-600" /> Direct Merchant Acquiring Capture
                             </h4>
-                            <p className="text-xs text-slate-400 mt-1">
-                              Flagship Direct Settlement: <span className="text-emerald-400 font-extrabold">R {(activeVendor360.dashboardMirror?.financials?.grossMerchandiseValue || 0).toLocaleString()}</span>
+                            <p className="text-xs text-slate-500 mt-1">
+                              Flagship Direct Settlement: <span className="text-emerald-700 font-extrabold">R {(activeVendor360.dashboardMirror?.financials?.grossMerchandiseValue || 0).toLocaleString()}</span>
                             </p>
                           </div>
 
-                          <div className="p-3 bg-slate-950/80 rounded-xl border border-emerald-500/20 text-xs text-slate-300">
+                          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 leading-relaxed">
                             As Platform Owner & Central Operator, 100% of Flagship sales are settled directly into corporate treasury. No 12% marketplace commission or 14-day escrow withholding applies.
                           </div>
 
                           <button
                             onClick={() => toast.success(`Corporate Treasury reconciliation sweep verified. R ${(activeVendor360.dashboardMirror?.financials?.grossMerchandiseValue || 0).toLocaleString()} gross retained revenue confirmed.`)}
-                            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs transition-all shadow-md shadow-emerald-600/30 cursor-pointer flex items-center justify-center gap-2"
+                            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-2"
                           >
                             <Zap size={14} /> Reconcile Merchant Settlement Gateway
                           </button>
                         </div>
                       ) : (
-                        <div className="bg-slate-900/90 rounded-2xl p-5 border border-blue-500/20 space-y-4 flex flex-col justify-between">
+                        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs space-y-4 flex flex-col justify-between">
                           <div>
-                            <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                              <CheckCircle2 size={16} className="text-emerald-400" /> Immediate Payout Trigger
+                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                              <CheckCircle2 size={16} className="text-emerald-600" /> Immediate Payout Trigger
                             </h4>
-                            <p className="text-xs text-slate-400 mt-1">
-                              Available Unsettled Escrow: <span className="text-blue-400 font-extrabold">R {(activeVendor360.dashboardMirror?.financials?.pendingSettlement || 0).toLocaleString()}</span>
+                            <p className="text-xs text-slate-500 mt-1">
+                              Available Unsettled Escrow: <span className="text-blue-700 font-bold">R {(activeVendor360.dashboardMirror?.financials?.pendingSettlement || 0).toLocaleString()}</span>
                             </p>
                           </div>
 
-                          <div className="p-3 bg-slate-950/80 rounded-xl border border-blue-500/20 text-xs text-slate-300">
+                          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 leading-relaxed">
                             Funds will be automatically released to {activeVendor360.vendorInfo.bankingInfo?.bankName || 'registered bank account'} on {activeVendor360.dashboardMirror?.financials?.nextPayoutDate || 'next scheduled date'} as per standard settlement window.
                           </div>
 
                           <button
                             onClick={() => toast.success(`Early settlement payout of R ${(activeVendor360.dashboardMirror?.financials?.pendingSettlement || 0).toLocaleString()} initiated via Host-to-Host banking API.`)}
-                            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition-all shadow-md shadow-blue-600/30 cursor-pointer flex items-center justify-center gap-2"
+                            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-2"
                           >
                             <Zap size={14} /> Execute Early Settlement Payout
                           </button>
@@ -1478,24 +1501,24 @@ export default function CrmVendorWorkflowPage() {
 
                     {/* Settlement Payout History */}
                     <div className="space-y-3">
-                      <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                        <DollarSign size={16} className={isMainAdmin ? "text-amber-400" : "text-blue-400"} />
+                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <DollarSign size={16} className={isMainAdmin ? "text-amber-600" : "text-blue-600"} />
                         {isMainAdmin ? 'Direct Settlement Disbursements & Treasury Records' : `Settled Disbursements & Payout Records (${activeVendor360.settlements?.length || 0})`}
                       </h4>
-                      <div className="overflow-x-auto rounded-2xl border border-blue-500/20">
-                        <table className="w-full text-left text-xs">
-                          <thead className="bg-slate-900 text-slate-400 uppercase font-semibold border-b border-blue-500/20">
+                      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs">
+                        <table className="w-full text-left text-xs min-w-[780px]">
+                          <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-[11px] tracking-wider border-b border-slate-200">
                             <tr>
-                              <th className="px-4 py-3">Settlement Ref</th>
-                              <th className="px-4 py-3">Order Number</th>
-                              <th className="px-4 py-3">Order Value</th>
-                              <th className="px-4 py-3">Platform Fee</th>
-                              <th className="px-4 py-3">Payout Amount</th>
-                              <th className="px-4 py-3">Status</th>
-                              <th className="px-4 py-3">Settled Date</th>
+                              <th className="px-4 py-3 whitespace-nowrap">Settlement Ref</th>
+                              <th className="px-4 py-3 whitespace-nowrap">Order Number</th>
+                              <th className="px-4 py-3 whitespace-nowrap">Order Value</th>
+                              <th className="px-4 py-3 whitespace-nowrap">Platform Fee</th>
+                              <th className="px-4 py-3 whitespace-nowrap">Payout Amount</th>
+                              <th className="px-4 py-3 whitespace-nowrap">Status</th>
+                              <th className="px-4 py-3 whitespace-nowrap">Settled Date</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-800 bg-slate-950/60">
+                          <tbody className="divide-y divide-slate-100 bg-white">
                             {(!activeVendor360.settlements || activeVendor360.settlements.length === 0) ? (
                               <tr>
                                 <td colSpan={7} className="py-8 text-center text-slate-400">
@@ -1504,20 +1527,20 @@ export default function CrmVendorWorkflowPage() {
                               </tr>
                             ) : (
                               activeVendor360.settlements.map((s) => (
-                                <tr key={s._id} className="hover:bg-blue-500/10 transition-colors">
-                                  <td className="px-4 py-3 font-mono font-bold text-white">{s.settlementReference}</td>
-                                  <td className="px-4 py-3 text-slate-300">#{s.orderNumber}</td>
-                                  <td className="px-4 py-3 text-slate-300">R {(s.orderTotal || 0).toLocaleString()}</td>
-                                  <td className={`px-4 py-3 font-semibold ${isMainAdmin ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                <tr key={s._id} className="hover:bg-slate-50/70 transition-colors">
+                                  <td className="px-4 py-3 font-mono font-bold text-slate-900 whitespace-nowrap">{s.settlementReference}</td>
+                                  <td className="px-4 py-3 text-slate-700 whitespace-nowrap">#{s.orderNumber}</td>
+                                  <td className="px-4 py-3 text-slate-700 whitespace-nowrap">R {(s.orderTotal || 0).toLocaleString()}</td>
+                                  <td className={`px-4 py-3 font-medium whitespace-nowrap ${isMainAdmin ? 'text-emerald-700' : 'text-rose-600'}`}>
                                     {isMainAdmin ? 'R 0 (0%)' : `- R ${(s.commissionAmount || 0).toLocaleString()}`}
                                   </td>
-                                  <td className="px-4 py-3 font-bold text-emerald-400">R {(s.payoutAmount || 0).toLocaleString()}</td>
-                                  <td className="px-4 py-3">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${s.status === 'settled' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
+                                  <td className="px-4 py-3 font-bold text-emerald-700 whitespace-nowrap">R {(s.payoutAmount || 0).toLocaleString()}</td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${s.status === 'settled' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
                                       {s.status === 'settled' ? '✓ Settled' : 'Pending'}
                                     </span>
                                   </td>
-                                  <td className="px-4 py-3 text-slate-400 font-mono">
+                                  <td className="px-4 py-3 text-slate-500 font-mono whitespace-nowrap">
                                     {s.settledAt ? new Date(s.settledAt).toLocaleDateString() : 'Pending'}
                                   </td>
                                 </tr>
@@ -1533,13 +1556,13 @@ export default function CrmVendorWorkflowPage() {
                 {/* SUBTAB 6: Licences & KYC Compliance */}
                 {dossierSubTab === 'compliance' && (
                   <div className="space-y-4 animate-fadeIn">
-                    <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                       <div>
-                        <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                          <ShieldCheck size={16} className="text-emerald-400" />
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                          <ShieldCheck size={16} className="text-emerald-600" />
                           {isMainAdmin ? 'Master Platform Accreditations & Statutory Compliance' : 'Statutory Liquor Licenses & Tax Clearance'}
                         </h4>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-slate-500 mt-0.5">
                           {isMainAdmin ? 'National Liquor Authority Master Licenses, SARS Tax Clearance, and CIPC Corporate Registration.' : 'Legal authorization to vend premium wines and spirits.'}
                         </p>
                       </div>
@@ -1547,36 +1570,36 @@ export default function CrmVendorWorkflowPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {activeVendor360.kycDocuments?.map((doc, idx) => (
-                        <div key={idx} className={`p-4 rounded-2xl border space-y-2 ${isMainAdmin ? 'bg-slate-900/90 border-amber-500/20' : 'bg-slate-900/90 border-blue-500/20'}`}>
+                        <div key={idx} className="bg-white p-4.5 rounded-xl border border-slate-200 shadow-xs space-y-2 hover:border-slate-300 transition-colors">
                           <div className="flex items-center justify-between">
-                            <span className="font-extrabold text-white text-xs">{doc.type}</span>
+                            <span className="font-bold text-slate-900 text-xs">{doc.type}</span>
                             {doc.status === 'verified' ? (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
                                 <CheckCircle2 size={10} /> Verified Master
                               </span>
                             ) : doc.status === 'pending_verification' ? (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                                 ⏳ Awaiting Sign-off
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
                                 Missing / Unsubmitted
                               </span>
                             )}
                           </div>
-                          <p className={`text-xs font-mono ${doc.status === 'not_submitted' ? 'text-slate-500 italic' : (isMainAdmin ? 'text-amber-400 font-bold' : 'text-blue-400 font-bold')}`}>
+                          <p className={`text-xs font-mono font-semibold ${doc.status === 'not_submitted' ? 'text-slate-400 italic' : (isMainAdmin ? 'text-amber-800' : 'text-blue-700')}`}>
                             {doc.number}
                           </p>
-                          <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                             <span>
                               {doc.status === 'not_submitted' ? 'No document on file' : `Expiry: ${doc.expiryDate || 'Continuous Renewal'}`}
                             </span>
                             {doc.url ? (
-                              <a href={doc.url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline flex items-center gap-1 font-semibold">
+                              <a href={doc.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-semibold">
                                 <ExternalLink size={11} /> View Document
                               </a>
                             ) : (
-                              <span className="text-slate-500 text-[11px]">
+                              <span className="text-slate-400 text-[11px]">
                                 {doc.status === 'not_submitted' ? 'Pending Upload' : 'Master Document Active'}
                               </span>
                             )}
@@ -1589,21 +1612,21 @@ export default function CrmVendorWorkflowPage() {
               </div>
 
               {/* Modal Footer */}
-              <div className="p-4 bg-slate-950 border-t border-blue-500/20 flex items-center justify-between text-xs text-slate-400">
+              <div className="p-4 bg-white border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
                 <span className="flex items-center gap-1.5">
                   {isMainAdmin ? (
-                    <span className="flex items-center gap-1.5 text-amber-300 font-semibold">
-                      <Crown size={14} className="text-amber-400" /> Grand Store Master Platform Operating System Active.
+                    <span className="flex items-center gap-1.5 text-amber-800 font-semibold">
+                      <Crown size={14} className="text-amber-600" /> Grand Store Master Platform Operating System Active.
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1.5">
-                      <ShieldCheck size={14} className="text-emerald-400" /> Grand Store Executive Vendor 360 Protocol Active.
+                    <span className="flex items-center gap-1.5 text-slate-600 font-medium">
+                      <ShieldCheck size={14} className="text-emerald-600" /> Grand Store Executive Vendor 360 Protocol Active.
                     </span>
                   )}
                 </span>
                 <button
                   onClick={() => setActiveVendor360(null)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer border border-slate-200 shadow-xs"
                 >
                   Close 360 Dossier
                 </button>
@@ -1662,29 +1685,29 @@ export default function CrmVendorWorkflowPage() {
 
       {/* Freeze / Unfreeze Store Modal */}
       {freezeModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-slate-900 rounded-3xl border border-cyan-500/40 shadow-2xl max-w-lg w-full p-6 space-y-5 text-white">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-5 text-slate-900">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2.5">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${
                   freezeModal.isFreezing 
-                    ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40' 
-                    : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                    ? 'bg-amber-50 text-amber-700 border-amber-200' 
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 }`}>
                   {freezeModal.isFreezing ? <PauseCircle size={20} /> : <PlayCircle size={20} />}
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-white text-base">
+                  <h3 className="font-bold text-slate-900 text-base">
                     {freezeModal.isFreezing ? 'Temporary Freeze Store' : 'Lift Store Freeze & Resume'}
                   </h3>
-                  <p className="text-xs text-slate-400">
-                    Target Estate: <strong className="text-cyan-300">{freezeModal.vendor?.tradingName || freezeModal.vendor?.name}</strong>
+                  <p className="text-xs text-slate-500">
+                    Target Estate: <strong className="text-slate-800">{freezeModal.vendor?.tradingName || freezeModal.vendor?.name}</strong>
                   </p>
                 </div>
               </div>
               <button 
                 onClick={() => setFreezeModal({ isOpen: false, vendor: null, isFreezing: true, reason: '', advisoryMessage: '', broadcastNotice: true })} 
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -1693,20 +1716,20 @@ export default function CrmVendorWorkflowPage() {
             <form onSubmit={handleConfirmFreeze} className="space-y-4">
               {freezeModal.isFreezing ? (
                 <>
-                  <div className="p-3.5 bg-cyan-950/50 border border-cyan-500/30 rounded-2xl text-xs text-cyan-200/90 leading-relaxed space-y-1">
-                    <p className="font-bold flex items-center gap-1.5 text-cyan-300">
+                  <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed space-y-1">
+                    <p className="font-bold flex items-center gap-1.5 text-amber-800">
                       <Info size={14} /> Immediate Operational Interventions:
                     </p>
-                    <ul className="list-disc list-inside space-y-0.5 text-[11px] text-slate-300 pl-1">
+                    <ul className="list-disc list-inside space-y-0.5 text-[11px] text-amber-800/90 pl-1">
                       <li>Instantly hides all catalog products from Grand Store customer search & collections.</li>
                       <li>Halts new customer checkout orders for this vendor estate.</li>
-                      <li>Sets operational status to <span className="text-cyan-300 font-semibold">suspended / frozen</span> in CRM directory.</li>
+                      <li>Sets operational status to <span className="font-bold">suspended / frozen</span> in CRM directory.</li>
                       <li>Dispatches advisory message to vendor portal and alerts customer storefront visitors.</li>
                     </ul>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Internal Freeze Reason (Audit Log)
                     </label>
                     <input
@@ -1715,12 +1738,12 @@ export default function CrmVendorWorkflowPage() {
                       value={freezeModal.reason}
                       onChange={(e) => setFreezeModal(prev => ({ ...prev, reason: e.target.value }))}
                       placeholder="e.g. Annual Inventory Stocktake / Cellar Maintenance"
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Public Storefront & Partner Advisory Message
                     </label>
                     <textarea
@@ -1729,39 +1752,39 @@ export default function CrmVendorWorkflowPage() {
                       value={freezeModal.advisoryMessage}
                       onChange={(e) => setFreezeModal(prev => ({ ...prev, advisoryMessage: e.target.value }))}
                       placeholder="e.g. This winery store is temporarily paused for annual vintage stocktaking. Order fulfillment will resume on schedule."
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500"
                     />
-                    <p className="text-[11px] text-slate-400 mt-1">
+                    <p className="text-[11px] text-slate-500 mt-1">
                       Will display as an official advisory banner across all estate touchpoints.
                     </p>
                   </div>
                 </>
               ) : (
-                <div className="p-4 bg-emerald-950/40 border border-emerald-500/30 rounded-2xl text-xs text-emerald-200/90 space-y-2">
-                  <p className="font-bold text-sm text-emerald-300 flex items-center gap-1.5">
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 space-y-2">
+                  <p className="font-bold text-sm text-emerald-800 flex items-center gap-1.5">
                     <CheckCircle2 size={16} /> Confirm Store Unfreeze & Listing Restoration
                   </p>
-                  <p className="text-slate-300 text-xs leading-relaxed">
-                    Lifting the freeze will immediately reinstate active catalog SKUs across the Grand Store storefront, re-enable customer ordering, and return vendor status to <span className="text-emerald-400 font-bold">Approved (Live Active)</span>.
+                  <p className="text-slate-700 text-xs leading-relaxed">
+                    Lifting the freeze will immediately reinstate active catalog SKUs across the Grand Store storefront, re-enable customer ordering, and return vendor status to <span className="text-emerald-700 font-bold">Approved (Live Active)</span>.
                   </p>
                 </div>
               )}
 
-              <div className="pt-3 border-t border-slate-800 flex justify-end gap-2.5">
+              <div className="pt-3 border-t border-slate-200 flex justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setFreezeModal({ isOpen: false, vendor: null, isFreezing: true, reason: '', advisoryMessage: '', broadcastNotice: true })}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer border border-slate-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className={`px-5 py-2 font-extrabold rounded-xl text-xs shadow-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-5 py-2 font-semibold rounded-xl text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer ${
                     freezeModal.isFreezing 
-                      ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-600/30' 
-                      : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30'
+                      ? 'bg-amber-600 hover:bg-amber-700 text-white' 
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                   }`}
                 >
                   {submitting ? 'Applying...' : freezeModal.isFreezing ? '❄️ Freeze Store Now' : '▶️ Resume Storefront'}
@@ -1774,29 +1797,29 @@ export default function CrmVendorWorkflowPage() {
 
       {/* Message / Broadcast Advisory Modal */}
       {messageModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-slate-900 rounded-3xl border border-blue-500/40 shadow-2xl max-w-lg w-full p-6 space-y-5 text-white">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-5 text-slate-900">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2.5">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${
                   messageModal.vendor?._id === 'all'
-                    ? 'bg-purple-500/20 text-purple-400 border-purple-500/40'
-                    : 'bg-blue-500/20 text-blue-400 border-blue-500/40'
+                    ? 'bg-purple-50 text-purple-700 border-purple-200'
+                    : 'bg-blue-50 text-blue-700 border-blue-200'
                 }`}>
                   {messageModal.vendor?._id === 'all' ? <Radio size={18} /> : <MessageCircle size={18} />}
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-white text-base">
+                  <h3 className="font-bold text-slate-900 text-base">
                     {messageModal.vendor?._id === 'all' ? 'Broadcast Partner Advisory' : 'Dispatch Vendor Advisory'}
                   </h3>
-                  <p className="text-xs text-slate-400">
-                    Recipient: <strong className="text-blue-300">{messageModal.vendor?.tradingName || messageModal.vendor?.name}</strong>
+                  <p className="text-xs text-slate-500">
+                    Recipient: <strong className="text-slate-800">{messageModal.vendor?.tradingName || messageModal.vendor?.name}</strong>
                   </p>
                 </div>
               </div>
               <button 
                 onClick={() => setMessageModal({ isOpen: false, vendor: null, title: '', message: '', priority: 'normal', type: 'operational_advisory' })} 
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -1804,7 +1827,7 @@ export default function CrmVendorWorkflowPage() {
 
             <form onSubmit={handleSendMessage} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Advisory Subject / Title
                 </label>
                 <input
@@ -1813,19 +1836,19 @@ export default function CrmVendorWorkflowPage() {
                   value={messageModal.title}
                   onChange={(e) => setMessageModal(prev => ({ ...prev, title: e.target.value }))}
                   placeholder="e.g. Vintage Stock Count Verification / Courier Holiday Schedule"
-                  className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Priority Level
                   </label>
                   <select
                     value={messageModal.priority}
                     onChange={(e) => setMessageModal(prev => ({ ...prev, priority: e.target.value }))}
-                    className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                   >
                     <option value="normal">Normal (Notice)</option>
                     <option value="urgent">Urgent (Action Required)</option>
@@ -1833,13 +1856,13 @@ export default function CrmVendorWorkflowPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Advisory Classification
                   </label>
                   <select
                     value={messageModal.type}
                     onChange={(e) => setMessageModal(prev => ({ ...prev, type: e.target.value }))}
-                    className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                   >
                     <option value="operational_advisory">Operational Advisory</option>
                     <option value="system_alert">System Alert</option>
@@ -1850,7 +1873,7 @@ export default function CrmVendorWorkflowPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Advisory Content
                 </label>
                 <textarea
@@ -1859,25 +1882,25 @@ export default function CrmVendorWorkflowPage() {
                   value={messageModal.message}
                   onChange={(e) => setMessageModal(prev => ({ ...prev, message: e.target.value }))}
                   placeholder="e.g. Please verify remaining stock for Cap Classique Brut. An express consignment is scheduled for collection tomorrow at 10:00."
-                  className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500"
                 />
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-slate-500 mt-1">
                   Transmits in real-time to {messageModal.vendor?._id === 'all' ? 'all registered partner estate dashboards' : `${messageModal.vendor?.tradingName || messageModal.vendor?.name}'s dashboard`}.
                 </p>
               </div>
 
-              <div className="pt-3 border-t border-slate-800 flex justify-end gap-2.5">
+              <div className="pt-3 border-t border-slate-200 flex justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setMessageModal({ isOpen: false, vendor: null, title: '', message: '', priority: 'normal', type: 'operational_advisory' })}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer border border-slate-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl text-xs shadow-lg shadow-blue-600/30 flex items-center gap-1.5 cursor-pointer"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <Send size={13} />
                   {submitting ? 'Transmitting...' : messageModal.vendor?._id === 'all' ? 'Broadcast Advisory' : 'Dispatch Message'}

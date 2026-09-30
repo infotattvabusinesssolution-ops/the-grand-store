@@ -2,16 +2,18 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Mail, Search, Filter, Send, X, Users, Globe, Clock, CheckCircle, 
   XCircle, CheckSquare, Square, RotateCcw, Check, Sparkles, UserCheck, 
-  ShieldAlert, Flame, Crown, Store, Trophy, Dice5, Gift, Phone, User, Award 
+  ShieldAlert, Flame, Crown, Store, Trophy, Dice5, Gift, Phone, User, Award,
+  ExternalLink 
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../../api';
 
 // Helper to normalize any source string into the 3 canonical store keys
-export const getStoreCategory = (source) => {
+export const getStoreCategory = (source, isGiveawayEntry = false) => {
+  if (isGiveawayEntry) return 'millionaires-collection';
   const s = (source || '').toLowerCase();
   if (s.includes('cigar')) return 'cigar-store';
-  if (s.includes('million')) return 'millionaires-collection';
+  if (s.includes('million') || s.includes('mcollection') || s.includes('m-collection') || s.includes('wine')) return 'millionaires-collection';
   return 'grand-store';
 };
 
@@ -155,7 +157,7 @@ export default function AdminNewsletter() {
     let millionActive = 0;
 
     subscribers.forEach(s => {
-      const cat = getStoreCategory(s.source);
+      const cat = getStoreCategory(s.source, s.isGiveawayEntry);
       const isActive = s.status === 'subscribed';
       if (cat === 'cigar-store') {
         cigarStore++;
@@ -186,7 +188,7 @@ export default function AdminNewsletter() {
   // Filter subscribers first by active store tab
   const storeFilteredSubscribers = useMemo(() => {
     if (filterSource === 'All') return subscribers;
-    return subscribers.filter(s => getStoreCategory(s.source) === filterSource);
+    return subscribers.filter(s => getStoreCategory(s.source, s.isGiveawayEntry) === filterSource);
   }, [subscribers, filterSource]);
 
   // Filter subscribers based on search term
@@ -216,7 +218,7 @@ export default function AdminNewsletter() {
 
   // M Collection Giveaway Candidates & Winners
   const giveawayCandidates = useMemo(() => {
-    return subscribers.filter(s => getStoreCategory(s.source) === 'millionaires-collection');
+    return subscribers.filter(s => getStoreCategory(s.source, s.isGiveawayEntry) === 'millionaires-collection');
   }, [subscribers]);
 
   const giveawayWinners = useMemo(() => {
@@ -244,37 +246,45 @@ export default function AdminNewsletter() {
     setDrawError('');
     setDrawWinner(null);
 
-    try {
-      // 1. Call backend API to select winner safely and record in DB
-      const res = await api.post('/newsletter/mcollection/draw-winner', {
-        prize: 'M Collection Brut Réserve Cuvée'
-      });
-      const winnerData = res.data.winner;
+    const spinCandidates = eligibleCandidates.map(c => c.name || c.email);
+    let counter = 0;
+    const intervalTime = 75;
+    let winnerData = null;
+    let apiDone = false;
+    let apiErrorMsg = null;
 
-      // 2. Animate a lottery spinning effect through candidate names/emails
-      const spinCandidates = eligibleCandidates.map(c => c.name || c.email);
-      let counter = 0;
-      const totalSpins = 24;
-      const intervalTime = 90;
+    // Start slot machine ticker immediately for responsive feel
+    const interval = setInterval(() => {
+      counter++;
+      const randomIdx = Math.floor(Math.random() * spinCandidates.length);
+      setSpinningName(spinCandidates[randomIdx]);
 
-      const interval = setInterval(() => {
-        counter++;
-        const randomIdx = Math.floor(Math.random() * spinCandidates.length);
-        setSpinningName(spinCandidates[randomIdx]);
-
-        if (counter >= totalSpins) {
-          clearInterval(interval);
+      // Complete once backend call has finished and at least 22 frames have spun (~1.65s)
+      if (apiDone && counter >= 22) {
+        clearInterval(interval);
+        if (winnerData) {
           setSpinningName(winnerData.name || winnerData.email);
           setDrawWinner(winnerData);
           setIsDrawing(false);
-          // Refresh list to update table and winner badges
           fetchSubscribers();
+        } else {
+          setDrawError(apiErrorMsg || 'Failed to crown winner. Please try again.');
+          setIsDrawing(false);
         }
-      }, intervalTime);
+      }
+    }, intervalTime);
+
+    try {
+      // 1. Call backend API to select winner safely and record in DB
+      const res = await api.post('/newsletter/mcollection/draw-winner', {
+        prize: 'M Collection The Brut Reserve (750ml)'
+      });
+      winnerData = res.data?.winner;
+      apiDone = true;
     } catch (err) {
       console.error('Error drawing winner:', err);
-      setDrawError(err.response?.data?.message || 'Failed to draw winner. Please try again.');
-      setIsDrawing(false);
+      apiErrorMsg = err.response?.data?.message || 'Failed to draw winner. Please try again.';
+      apiDone = true;
     }
   };
 
@@ -285,6 +295,9 @@ export default function AdminNewsletter() {
     try {
       setDrawActionLoading(true);
       await api.post(`/newsletter/mcollection/reset-winner/${subId}`);
+      if (drawWinner?._id === subId) {
+        setDrawWinner(null);
+      }
       await fetchSubscribers();
     } catch (err) {
       console.error('Error resetting winner:', err);
@@ -342,6 +355,9 @@ export default function AdminNewsletter() {
   const openComposeModal = (mode = null) => {
     if (mode) {
       setRecipientMode(mode);
+      if (mode === 'source' && filterSource !== 'All') {
+        setTargetSource(filterSource);
+      }
     } else if (selectedEmails.length > 0) {
       setRecipientMode('selected');
     } else if (filterSource !== 'All') {
@@ -456,7 +472,7 @@ export default function AdminNewsletter() {
             <span className="text-xs uppercase tracking-widest text-white/60 font-bold">Select Store Newsletter</span>
           </div>
           <span className="text-[11px] text-white/40 font-mono">
-            Active: <span className="text-[#c9a35b] font-bold">{STORE_TABS.find(t => t.key === filterSource)?.label || 'All Stores'}</span>
+            Active: <span className="font-bold" style={{ color: STORE_TABS.find(t => t.key === filterSource)?.color || '#c9a35b' }}>{STORE_TABS.find(t => t.key === filterSource)?.label || 'All Stores'}</span>
           </span>
         </div>
 
@@ -609,48 +625,58 @@ export default function AdminNewsletter() {
 
       {/* M Collection Bottle Giveaway & Random Draw Section */}
       {filterSource === 'millionaires-collection' && (
-        <div className="bg-gradient-to-r from-purple-950/60 via-[#180e29] to-[#0a0a0a] border border-purple-500/40 rounded-2xl p-6 shadow-[0_0_30px_rgba(168,85,247,0.15)] flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6 animate-in fade-in duration-300">
+        <div className="bg-gradient-to-r from-purple-950/70 via-[#180e29] to-[#0a0a0a] border border-purple-500/40 rounded-2xl p-6 shadow-[0_0_30px_rgba(168,85,247,0.18)] flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-6 animate-in fade-in duration-300">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400/20 to-purple-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300 shrink-0 shadow-inner">
-              <Trophy size={28} className="animate-bounce" />
+            <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400/20 via-purple-500/20 to-purple-900/40 border border-amber-400/40 flex items-center justify-center text-amber-300 shrink-0 shadow-[0_0_20px_rgba(212,175,55,0.25)]">
+              <Trophy size={26} className="text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]" />
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-400 animate-pulse border-2 border-black" />
             </div>
             <div>
-              <div className="flex items-center gap-2.5">
-                <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                  Exclusive Campaign
+              <div className="flex flex-wrap items-center gap-2.5 mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 flex items-center gap-1.5 shadow-sm">
+                  <Sparkles size={11} className="text-amber-300" /> Exclusive Campaign
                 </span>
-                <span className="text-white/40 text-xs font-mono">
-                  Source: millionair.yogapranafitness.com/#giveaway
-                </span>
+                <a 
+                  href="https://millionaires.yogapranafitness.com/#giveaway"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-white/50 hover:text-white text-xs font-mono inline-flex items-center gap-1 transition-colors px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+                  title="Open Millionaires Store Giveaway Page"
+                >
+                  <span>millionaires.yogapranafitness.com/#giveaway</span>
+                  <ExternalLink size={10} className="text-white/60" />
+                </a>
               </div>
-              <h3 className="text-xl font-serif text-white tracking-wide mt-1 flex items-center gap-2">
+              <h3 className="text-xl font-serif text-white tracking-wide flex items-center gap-2">
                 Stand a Chance to Win M Collection Bottles
               </h3>
-              <p className="text-white/60 text-xs max-w-xl mt-1 leading-relaxed">
-                Visitors subscribe on the M Collection website to enter the bottle draw. Run the interactive random draw machine below to randomly crown a verified winner from eligible entries.
+              <p className="text-white/60 text-xs max-w-2xl mt-1 leading-relaxed">
+                Visitors subscribe on the Millionaires Store to enter the limited-edition M Collection Champagne bottle draw. Run the interactive random draw machine below to crown verified winners from eligible entries.
               </p>
               <div className="flex flex-wrap items-center gap-4 mt-3 text-xs">
-                <div className="flex items-center gap-1.5 text-purple-300">
-                  <Users size={14} />
+                <div className="flex items-center gap-1.5 text-purple-300 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20">
+                  <Users size={13} />
                   <span>Pool Size: <strong className="font-mono text-white">{giveawayCandidates.length}</strong></span>
                 </div>
-                <div className="flex items-center gap-1.5 text-green-400">
-                  <CheckCircle size={14} />
+                <div className="flex items-center gap-1.5 text-green-400 bg-green-500/10 px-2.5 py-1 rounded-lg border border-green-500/20">
+                  <CheckCircle size={13} />
                   <span>Eligible for Draw: <strong className="font-mono text-white">{eligibleCandidates.length}</strong></span>
                 </div>
-                <div className="flex items-center gap-1.5 text-amber-400">
-                  <Trophy size={14} />
+                <div className="flex items-center gap-1.5 text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
+                  <Trophy size={13} />
                   <span>Crowned Winners: <strong className="font-mono text-white">{giveawayWinners.length}</strong></span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 pt-2 xl:pt-0 border-t xl:border-t-0 border-purple-500/20">
             {giveawayWinners.length > 0 && (
-              <div className="text-right sm:mr-2">
-                <div className="text-[10px] uppercase tracking-wider text-amber-400/80 font-bold">Latest Winner</div>
-                <div className="text-white font-mono text-xs font-semibold">
+              <div className="px-4 py-2.5 rounded-xl bg-black/50 border border-amber-400/25 text-left sm:text-right">
+                <div className="text-[10px] uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1 sm:justify-end">
+                  <Trophy size={11} /> Latest Winner
+                </div>
+                <div className="text-white font-mono text-xs font-semibold truncate max-w-[200px]">
                   {giveawayWinners[0].name || giveawayWinners[0].email}
                 </div>
               </div>
@@ -659,10 +685,10 @@ export default function AdminNewsletter() {
               type="button"
               onClick={handleOpenDrawModal}
               disabled={eligibleCandidates.length === 0}
-              className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-amber-400 via-[#d4af37] to-amber-500 hover:from-white hover:to-amber-200 text-black font-bold uppercase tracking-wider text-xs rounded-xl flex items-center justify-center gap-2.5 transition-all shadow-[0_0_25px_rgba(212,175,55,0.4)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="px-6 py-3.5 bg-gradient-to-r from-amber-400 via-[#d4af37] to-amber-500 hover:from-white hover:to-amber-200 text-black font-bold uppercase tracking-wider text-xs rounded-xl flex items-center justify-center gap-2.5 transition-all shadow-[0_0_25px_rgba(212,175,55,0.4)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <Dice5 size={18} />
-              Start Random Draw ({eligibleCandidates.length})
+              <span>Start Random Draw ({eligibleCandidates.length})</span>
             </button>
           </div>
         </div>
@@ -779,7 +805,7 @@ export default function AdminNewsletter() {
             <span>
               Showing <strong className="text-white font-mono">{filteredSubscribers.length}</strong> subscribers
               {filterSource !== 'All' && (
-                <span className="text-[#c9a35b] font-medium ml-1">
+                <span className="font-medium ml-1" style={{ color: STORE_TABS.find(t => t.key === filterSource)?.color || '#c9a35b' }}>
                   for {STORE_TABS.find(t => t.key === filterSource)?.label}
                 </span>
               )}
@@ -796,7 +822,7 @@ export default function AdminNewsletter() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-white/5 bg-white/[0.01] text-white/50 text-[11px] uppercase tracking-widest font-semibold">
-                <th className="p-4 w-12 text-center">
+                <th className="p-4 w-12 text-center whitespace-nowrap">
                   <button 
                     type="button" 
                     onClick={handleToggleSelectAll}
@@ -814,13 +840,13 @@ export default function AdminNewsletter() {
                     )}
                   </button>
                 </th>
-                <th className="p-4">Email Address</th>
-                <th className="p-4">Store / Channel</th>
-                <th className="p-4">Country</th>
-                <th className="p-4">IP Address</th>
-                <th className="p-4">Status</th>
-                <th className="p-4">Subscribed Date</th>
-                <th className="p-4 text-right">Quick Action</th>
+                <th className="p-4 whitespace-nowrap min-w-[260px]">Email Address</th>
+                <th className="p-4 whitespace-nowrap">Store / Channel</th>
+                <th className="p-4 whitespace-nowrap">Country</th>
+                <th className="p-4 whitespace-nowrap">IP Address</th>
+                <th className="p-4 whitespace-nowrap">Status</th>
+                <th className="p-4 whitespace-nowrap">Subscribed Date</th>
+                <th className="p-4 text-right whitespace-nowrap min-w-[150px]">Quick Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-sm">
@@ -854,7 +880,7 @@ export default function AdminNewsletter() {
               ) : (
                 filteredSubscribers.map((sub) => {
                   const isChecked = selectedEmails.includes(sub.email);
-                  const storeCat = getStoreCategory(sub.source);
+                  const storeCat = getStoreCategory(sub.source, sub.isGiveawayEntry);
 
                   return (
                     <tr 
@@ -881,39 +907,39 @@ export default function AdminNewsletter() {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
                             sub.isWinner 
                               ? 'bg-amber-400/20 text-amber-300 border border-amber-400/50' 
                               : isChecked ? 'bg-[#c9a35b]/20 text-[#c9a35b]' : 'bg-white/5 text-white/50'
                           }`}>
                             {sub.isWinner ? <Trophy size={15} /> : <Mail size={14} />}
                           </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className={`font-mono text-sm ${sub.isWinner ? 'text-amber-300 font-bold' : isChecked ? 'text-[#c9a35b] font-bold' : 'text-white'}`}>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`font-mono text-sm break-all ${sub.isWinner ? 'text-amber-300 font-bold' : isChecked ? 'text-[#c9a35b] font-bold' : 'text-white'}`}>
                                 {sub.email}
                               </span>
                               {sub.isWinner && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40 animate-pulse">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40 animate-pulse whitespace-nowrap">
                                   <Trophy size={10} /> WINNER
                                 </span>
                               )}
                               {sub.isGiveawayEntry && !sub.isWinner && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
                                   🎟️ Giveaway Entry
                                 </span>
                               )}
                             </div>
                             {(sub.name || sub.phone) && (
-                              <div className="flex items-center gap-3 text-xs text-white/50 mt-0.5">
+                              <div className="flex flex-wrap items-center gap-3 text-xs text-white/50 mt-1">
                                 {sub.name && (
                                   <span className="flex items-center gap-1 text-white/70">
-                                    <User size={11} className="text-[#c9a35b]" /> {sub.name}
+                                    <User size={11} className={storeCat === 'millionaires-collection' ? 'text-purple-300' : 'text-[#c9a35b]'} /> {sub.name}
                                   </span>
                                 )}
                                 {sub.phone && (
                                   <span className="flex items-center gap-1 font-mono text-white/60">
-                                    <Phone size={11} className="text-[#c9a35b]" /> {sub.phone}
+                                    <Phone size={11} className={storeCat === 'millionaires-collection' ? 'text-purple-300' : 'text-[#c9a35b]'} /> {sub.phone}
                                   </span>
                                 )}
                               </div>
@@ -933,14 +959,14 @@ export default function AdminNewsletter() {
                       </td>
                       
                       {/* Store / Source Badge */}
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         {storeCat === 'cigar-store' ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30">
                             <Flame size={12} className="text-amber-400" /> Cigar Store
                           </span>
                         ) : storeCat === 'millionaires-collection' ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-300 border border-purple-500/30">
-                            <Crown size={12} className="text-purple-300" /> Millionaires
+                            <Crown size={12} className="text-purple-300" /> Millionaires Store
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#c9a35b]/15 text-[#c9a35b] border border-[#c9a35b]/30">
@@ -949,16 +975,16 @@ export default function AdminNewsletter() {
                         )}
                       </td>
 
-                      <td className="p-4 text-white/70">
+                      <td className="p-4 text-white/70 whitespace-nowrap">
                         <div className="flex items-center gap-2 text-xs">
                           <Globe size={13} className="text-white/40 shrink-0" />
                           <span>{sub.country || 'Unknown'}</span>
                         </div>
                       </td>
-                      <td className="p-4 text-white/50 font-mono text-xs">
+                      <td className="p-4 text-white/50 font-mono text-xs whitespace-nowrap">
                         {sub.ipAddress || '—'}
                       </td>
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
                           sub.status === 'subscribed' 
                             ? 'bg-green-500/10 text-green-400 border-green-500/20' 
@@ -968,14 +994,14 @@ export default function AdminNewsletter() {
                           {sub.status}
                         </span>
                       </td>
-                      <td className="p-4 text-white/40 text-xs font-mono">
+                      <td className="p-4 text-white/40 text-xs font-mono whitespace-nowrap">
                         {new Date(sub.createdAt || Date.now()).toLocaleDateString('en-GB', {
                           day: '2-digit',
                           month: 'short',
                           year: 'numeric'
                         })}
                       </td>
-                      <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="p-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           {sub.isWinner && (
                             <button
@@ -1414,7 +1440,7 @@ export default function AdminNewsletter() {
                   className="w-full sm:flex-1 py-3.5 bg-gradient-to-r from-amber-400 via-[#d4af37] to-amber-500 hover:from-white hover:to-amber-200 text-black font-bold uppercase tracking-wider text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_25px_rgba(212,175,55,0.4)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <Dice5 size={16} />
-                  {isDrawing ? 'Drawing...' : drawWinner ? 'Draw Another Winner' : 'Start Random Draw'}
+                  {isDrawing ? 'Drawing Winner...' : eligibleCandidates.length === 0 ? 'All Eligible Candidates Drawn' : drawWinner ? 'Draw Another Winner' : 'Start Random Draw'}
                 </button>
                 <button
                   type="button"

@@ -126,6 +126,19 @@ export default function CrmDashboardPage() {
   const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const currentDate = new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+  const formatTimeAgo = (date) => {
+    if (!date) return 'Recently';
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    return new Date(date).toLocaleDateString();
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
       {/* 1. Executive Master Operations Banner */}
@@ -211,7 +224,10 @@ export default function CrmDashboardPage() {
             {metrics.ordersToday || 0}
           </div>
           <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-            <span>Fulfilment pipeline</span> <ChevronRight size={11} className="text-slate-300" />
+            <span>
+              {metrics.ordersInProcessing ? `${metrics.ordersInProcessing} in dispatch pipeline` : 'Fulfilment pipeline'}
+            </span> 
+            <ChevronRight size={11} className="text-slate-300" />
           </p>
         </div>
 
@@ -229,7 +245,10 @@ export default function CrmDashboardPage() {
             {metrics.newEnquiries || 0}
           </div>
           <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-            <span>Trade, Wine & VIP</span> <ChevronRight size={11} className="text-slate-300" />
+            <span>
+              {metrics.breakdown ? `${metrics.breakdown.tradeEnquiries || 0} Trade · ${metrics.breakdown.wineEnquiries || 0} Wine · ${metrics.breakdown.cigarEnquiries || 0} Cigar` : 'Trade, Wine & VIP'}
+            </span> 
+            <ChevronRight size={11} className="text-slate-300" />
           </p>
         </div>
 
@@ -247,7 +266,10 @@ export default function CrmDashboardPage() {
             {metrics.vendorTasks || 0}
           </div>
           <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-            <span>KYC & products audit</span> <ChevronRight size={11} className="text-slate-300" />
+            <span>
+              {metrics.vendorTasks > 0 ? `${metrics.vendorTasks} KYC pending review` : 'All vendor docs verified'}
+            </span> 
+            <ChevronRight size={11} className="text-slate-300" />
           </p>
         </div>
 
@@ -262,10 +284,13 @@ export default function CrmDashboardPage() {
             </span>
           </div>
           <div className="text-2xl font-black text-purple-900 tracking-tight">
-            {attention.unpaidLotsCount || 0}
+            {attention.unpaidLotsCount ?? metrics.unpaidLotsCount ?? 0}
           </div>
           <p className="text-[11px] text-purple-700 font-semibold mt-1 flex items-center gap-1">
-            <span>Unpaid hammer lots</span> <ChevronRight size={11} className="text-purple-300" />
+            <span>
+              {attention.unpaidLotsTotal ? `R ${Number(attention.unpaidLotsTotal).toLocaleString()} pending` : 'Unpaid hammer lots'}
+            </span> 
+            <ChevronRight size={11} className="text-purple-300" />
           </p>
         </div>
 
@@ -280,10 +305,13 @@ export default function CrmDashboardPage() {
             </span>
           </div>
           <div className="text-2xl font-black text-emerald-700 tracking-tight">
-            {attention.dueSettlementsCount || 0}
+            {attention.dueSettlementsCount ?? metrics.dueSettlementsCount ?? 0}
           </div>
           <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
-            <span>Due for payout EFT</span> <ChevronRight size={11} className="text-emerald-300" />
+            <span>
+              {attention.dueSettlementsTotal ? `R ${Number(attention.dueSettlementsTotal).toLocaleString()} due for EFT` : 'Due for payout EFT'}
+            </span> 
+            <ChevronRight size={11} className="text-emerald-300" />
           </p>
         </div>
       </div>
@@ -316,7 +344,9 @@ export default function CrmDashboardPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Staff tasks that have crossed their due date without a logged Golden Rule resolution reason.
+                  {metrics.overdueFollowups > 0 
+                    ? `${metrics.overdueFollowups} operational tasks crossed SLA deadline without logged Golden Rule justification.`
+                    : 'All staff follow-up SLAs currently within acceptable compliance window.'}
                 </p>
               </div>
               <button
@@ -327,7 +357,7 @@ export default function CrmDashboardPage() {
               </button>
             </div>
 
-            {/* Card 2: Delayed Shipments & Customs */}
+            {/* Card 2: Delayed Shipments & Holds */}
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-blue-300 transition-all flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between text-xs mb-2">
@@ -337,7 +367,9 @@ export default function CrmDashboardPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Consignments with logistics exception tags, courier delays, or customs inspection hold status.
+                  {attention.delayedShipments?.length > 0 
+                    ? `${attention.delayedShipments.length} consignments tagged with logistics exception, carrier delay, or hub holds.`
+                    : 'Logistics carrier dispatches operating normally with zero active holds.'}
                 </p>
               </div>
               <button
@@ -354,11 +386,13 @@ export default function CrmDashboardPage() {
                 <div className="flex items-center justify-between text-xs mb-2">
                   <span className="font-semibold text-slate-700">Hammer Payment Recovery</span>
                   <span className="px-2 py-0.5 rounded-md font-bold text-[11px] bg-purple-50 text-purple-700 border border-purple-200">
-                    48h SLA Limit
+                    {attention.unpaidLotsCount || 0} Lots ({attention.unpaidLotsTotal ? `R ${Number(attention.unpaidLotsTotal).toLocaleString()}` : 'R 0'})
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Winning auction lots requiring phone follow-up before lots default and bidder deposit is forfeit.
+                  {attention.unpaidLotsCount > 0 
+                    ? `${attention.unpaidLotsCount} winning auction lots totaling R ${Number(attention.unpaidLotsTotal || 0).toLocaleString()} awaiting buyer settlement within 48h SLA.`
+                    : 'All auction hammer lots settled in full by winning bidders.'}
                 </p>
               </div>
               <button
@@ -375,11 +409,13 @@ export default function CrmDashboardPage() {
                 <div className="flex items-center justify-between text-xs mb-2">
                   <span className="font-semibold text-slate-700">30-Day Vendor Payouts</span>
                   <span className="px-2 py-0.5 rounded-md font-bold text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    Matured Today
+                    {attention.dueSettlementsCount || 0} Due ({attention.dueSettlementsTotal ? `R ${Number(attention.dueSettlementsTotal).toLocaleString()}` : 'R 0'})
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Post-delivery 30-day dispute window elapsed. Remittance vouchers ready for accounting authorization.
+                  {attention.dueSettlementsCount > 0 
+                    ? `${attention.dueSettlementsCount} vendor payouts totaling R ${Number(attention.dueSettlementsTotal || 0).toLocaleString()} matured past 30-day window and ready for EFT.`
+                    : 'All vendor remittances up to date; zero payout vouchers matured today.'}
                 </p>
               </div>
               <button
@@ -405,32 +441,46 @@ export default function CrmDashboardPage() {
             <p className="text-xs text-slate-400 mt-0.5">Real-time platform activity stream</p>
 
             <div className="mt-4 space-y-3">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
-                <div className="flex items-center justify-between text-slate-500 text-[10px]">
-                  <span>AUCTION DESK</span>
-                  <span>12m ago</span>
-                </div>
-                <div className="font-semibold text-slate-800 mt-1">High-Value Bidder KYC Passed</div>
-                <div className="text-slate-500 text-[11px]">Johannesburg collector unlocked for R 250,000 limit</div>
-              </div>
+              {data?.livePulse && data.livePulse.length > 0 ? (
+                data.livePulse.map((item) => {
+                  const badgeClasses = {
+                    blue: 'text-blue-700 bg-blue-50 border-blue-200',
+                    amber: 'text-amber-700 bg-amber-50 border-amber-200',
+                    purple: 'text-purple-700 bg-purple-50 border-purple-200',
+                    emerald: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+                    cyan: 'text-cyan-700 bg-cyan-50 border-cyan-200',
+                    red: 'text-red-700 bg-red-50 border-red-200'
+                  }[item.badgeColor || 'blue'] || 'text-slate-600 bg-slate-100 border-slate-200';
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
-                <div className="flex items-center justify-between text-slate-500 text-[10px]">
-                  <span>LOGISTICS</span>
-                  <span>45m ago</span>
+                  return (
+                    <div 
+                      key={item.id} 
+                      onClick={() => item.link && navigate(item.link)}
+                      className="p-3 rounded-xl bg-slate-50 hover:bg-slate-100/70 border border-slate-100 text-xs transition-colors cursor-pointer group"
+                    >
+                      <div className="flex items-center justify-between text-[10px] mb-1">
+                        <span className={`px-2 py-0.5 rounded-md font-bold uppercase tracking-wider border ${badgeClasses}`}>
+                          {item.department}
+                        </span>
+                        <span className="text-slate-400 font-medium">
+                          {formatTimeAgo(item.timestamp)}
+                        </span>
+                      </div>
+                      <div className="font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                        {item.title}
+                      </div>
+                      <div className="text-slate-500 text-[11px] mt-0.5 line-clamp-2">
+                        {item.detail}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="p-6 text-center text-slate-400 text-xs">
+                  <CheckCircle2 size={24} className="mx-auto mb-2 text-emerald-500 opacity-60" />
+                  Telemetry listening for new platform events...
                 </div>
-                <div className="font-semibold text-slate-800 mt-1">Vault Dispatch Out for Delivery</div>
-                <div className="text-slate-500 text-[11px]">RAM Courier tracking active for Cape Town Order #GS-9941</div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
-                <div className="flex items-center justify-between text-slate-500 text-[10px]">
-                  <span>B2B EXPORT</span>
-                  <span>1h ago</span>
-                </div>
-                <div className="font-semibold text-slate-800 mt-1">Export Certificate Issued</div>
-                <div className="text-slate-500 text-[11px]">UK Pallet shipment documentation stamped & verified</div>
-              </div>
+              )}
             </div>
           </div>
 
