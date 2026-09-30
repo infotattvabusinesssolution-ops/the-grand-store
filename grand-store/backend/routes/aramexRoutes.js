@@ -23,6 +23,8 @@ router.post('/vendor/dispatch', vendorDispatchOrder);
 router.post('/create-waybill', vendorDispatchOrder);
 router.get('/waybill-pdf/:waybillNumber', generateWaybillPdf);
 router.get('/label/:waybillNumber', generateWaybillPdf);
+router.get('/order-label/:orderId', generateWaybillPdf);
+router.get('/order-waybill/:orderId', generateWaybillPdf);
 
 // 3. ADMIN ROUTES
 router.post('/admin/book-collection', adminBookCollection);

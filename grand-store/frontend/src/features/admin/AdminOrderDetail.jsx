@@ -20,8 +20,14 @@ import {
   CreditCard,
   FileText,
   AlertCircle,
-  Gift
+  Gift,
+  QrCode,
+  Box,
+  Lock,
+  Printer,
+  Check
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import Price from '../../components/ui/Price';
 import { PHONE_COUNTRIES } from '../../utils/phoneNumbers';
 
@@ -38,12 +44,65 @@ export default function AdminOrderDetail({ onNotify }) {
   const [messageType, setMessageType] = useState('stock_issue');
   const [sendingMessage, setSendingMessage] = useState(false);
 
+  // Logistics & Packaging State
+  const [packModalOpen, setPackModalOpen] = useState(false);
+  const [driverModalOpen, setDriverModalOpen] = useState(false);
+  const [packagingLoading, setPackagingLoading] = useState(false);
+  const [driverLoading, setDriverLoading] = useState(false);
+  const [handoverLoading, setHandoverLoading] = useState(false);
+
+  // Packaging inspection form
+  const [packForm, setPackForm] = useState({
+    boxType: 'Certified Wine Shipper (1 Bottle)',
+    weightKg: 1.55,
+    lengthCm: 10,
+    widthCm: 10,
+    heightCm: 33,
+    isFragile: true,
+    isSealed: true,
+    packedBy: 'Grand Store Dispatch Vault'
+  });
+
+  // Driver assignment form
+  const [driverForm, setDriverForm] = useState({
+    courierCompany: 'Aramex South Africa',
+    serviceType: 'ONP',
+    driverName: 'Aramex Express Dispatch Courier',
+    driverPhone: '+27 11 883 4000',
+    vehicleReg: 'Aramex Fleet (Gauteng Hub)',
+    pickupWindow: '13:30 - 17:00'
+  });
+
   const fetchOrder = async () => {
     try {
       setLoading(true);
       setError('');
       const res = await api.get(`/orders/admin/${id}`);
       setOrder(res.data);
+      if (res.data?.packaging) {
+        setPackForm(prev => ({
+          ...prev,
+          boxType: res.data.packaging.boxType || prev.boxType,
+          weightKg: res.data.packaging.weightKg || prev.weightKg,
+          lengthCm: res.data.packaging.dimensions?.lengthCm || prev.lengthCm,
+          widthCm: res.data.packaging.dimensions?.widthCm || prev.widthCm,
+          heightCm: res.data.packaging.dimensions?.heightCm || prev.heightCm,
+          isFragile: res.data.packaging.isFragile !== false,
+          isSealed: res.data.packaging.isSealed !== false,
+          packedBy: res.data.packaging.packedBy || prev.packedBy
+        }));
+      }
+      if (res.data?.driver) {
+        setDriverForm(prev => ({
+          ...prev,
+          courierCompany: res.data.driver.courierCompany || prev.courierCompany,
+          serviceType: res.data.driver.serviceType || prev.serviceType,
+          driverName: res.data.driver.driverName || prev.driverName,
+          driverPhone: res.data.driver.driverPhone || prev.driverPhone,
+          vehicleReg: res.data.driver.vehicleReg || prev.vehicleReg,
+          pickupWindow: res.data.driver.pickupWindow || prev.pickupWindow
+        }));
+      }
     } catch (err) {
       console.error('Failed to load order details:', err);
       setError(err.response?.data?.message || 'Failed to retrieve order details.');
@@ -55,6 +114,59 @@ export default function AdminOrderDetail({ onNotify }) {
   useEffect(() => {
     fetchOrder();
   }, [id]);
+
+  const handleVerifyPackaging = async (e) => {
+    e?.preventDefault();
+    try {
+      setPackagingLoading(true);
+      const res = await api.post(`/orders/${id}/packaging`, packForm);
+      if (onNotify) onNotify(res.data?.message || 'Packaging inspected and sealed successfully!', 'success');
+      setPackModalOpen(false);
+      fetchOrder();
+    } catch (err) {
+      console.error('Packaging update error:', err);
+      const msg = err.response?.data?.message || 'Failed to verify packaging.';
+      if (onNotify) onNotify(msg, 'error');
+      else alert(msg);
+    } finally {
+      setPackagingLoading(false);
+    }
+  };
+
+  const handleAssignDriver = async (e) => {
+    e?.preventDefault();
+    try {
+      setDriverLoading(true);
+      const res = await api.post(`/orders/${id}/assign-driver`, driverForm);
+      if (onNotify) onNotify(res.data?.message || 'Driver assigned and collection booked successfully!', 'success');
+      setDriverModalOpen(false);
+      fetchOrder();
+    } catch (err) {
+      console.error('Driver assignment error:', err);
+      const msg = err.response?.data?.message || 'Failed to assign driver.';
+      if (onNotify) onNotify(msg, 'error');
+      else alert(msg);
+    } finally {
+      setDriverLoading(false);
+    }
+  };
+
+  const handleConfirmHandover = async () => {
+    if (!window.confirm('Confirm that the courier driver has physically collected this parcel?')) return;
+    try {
+      setHandoverLoading(true);
+      const res = await api.post(`/orders/${id}/confirm-handover`, {});
+      if (onNotify) onNotify(res.data?.message || 'Driver handover confirmed! Order is now In Transit.', 'success');
+      fetchOrder();
+    } catch (err) {
+      console.error('Confirm handover error:', err);
+      const msg = err.response?.data?.message || 'Failed to confirm handover.';
+      if (onNotify) onNotify(msg, 'error');
+      else alert(msg);
+    } finally {
+      setHandoverLoading(false);
+    }
+  };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -173,12 +285,34 @@ export default function AdminOrderDetail({ onNotify }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
-            onClick={() => window.print()}
-            className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/10 text-xs font-semibold flex items-center gap-2 transition-all"
+            type="button"
+            onClick={() => {
+              const apiUrl = import.meta.env.VITE_API_URL?.includes('localhost') && window.location.hostname !== 'localhost'
+                ? 'https://api.grandstoreglobal.com'
+                : (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5015' : 'https://api.grandstoreglobal.com'));
+              window.open(`${apiUrl}/api/orders/${order._id}/receipt-pdf`, '_blank');
+            }}
+            className="px-4 py-2 bg-gradient-to-r from-amber-500/20 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-600/30 text-amber-300 rounded-xl border border-amber-500/40 text-xs font-bold flex items-center gap-2 transition-all shadow-md cursor-pointer"
+            title="Download & Print Official Grand Store Tax Invoice PDF"
           >
-            <FileText size={14} /> Print Invoice
+            <FileText size={15} className="text-amber-400" /> Download Tax Invoice (PDF)
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const apiUrl = import.meta.env.VITE_API_URL?.includes('localhost') && window.location.hostname !== 'localhost'
+                ? 'https://api.grandstoreglobal.com'
+                : (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5015' : 'https://api.grandstoreglobal.com'));
+              const wb = order.driver?.waybillNumber || order.aramexWaybillNumber || (order.shipments && order.shipments[0]?.aramexWaybillNumber) || '31984210642';
+              window.open(`${apiUrl}/api/aramex/waybill-pdf/${wb}`, '_blank');
+            }}
+            className="px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-teal-600/20 hover:from-emerald-500/30 hover:to-teal-600/30 text-emerald-300 rounded-xl border border-emerald-500/40 text-xs font-bold flex items-center gap-2 transition-all shadow-md cursor-pointer"
+            title="Download Aramex 4x6 Thermal Shipping Waybill Label PDF with Driver Handover QR Code"
+          >
+            <Printer size={15} className="text-emerald-400" /> Aramex Waybill Thermal Label (PDF)
           </button>
         </div>
       </div>
@@ -369,6 +503,262 @@ export default function AdminOrderDetail({ onNotify }) {
             )}
           </div>
 
+          {/* VAULT LOGISTICS, PACKAGING INSPECTION & DRIVER ASSIGNMENT (WITH LIVE QR) */}
+          <div className="bg-[#100e0b] border border-[#c99742]/30 rounded-2xl p-6 shadow-2xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-[#c99742]/20 text-[#f5c242] border border-[#c99742]/40">
+                  <Box size={22} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-serif text-white flex items-center gap-2">
+                    Vault Dispatch & Driver Logistics
+                  </h3>
+                  <p className="text-xs text-white/60">
+                    Physical packaging verification, live QR tracking, and courier driver dispatch
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                  order.driver?.status === 'in_transit' || order.status === 'In Transit'
+                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40'
+                    : order.driver?.status === 'assigned' || order.status === 'Awaiting Dispatch'
+                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
+                    : order.packaging?.isPacked
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                }`}>
+                  {order.driver?.status === 'in_transit' || order.status === 'In Transit'
+                    ? '🚚 In Transit with Driver'
+                    : order.driver?.status === 'assigned' || order.status === 'Awaiting Dispatch'
+                    ? '📋 Driver Assigned & Awaiting Pickup'
+                    : order.packaging?.isPacked
+                    ? '✓ Packaging Verified'
+                    : '📦 Packaging Inspection Required'}
+                </span>
+              </div>
+            </div>
+
+            {/* Packaging Card */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 bg-black/40 border border-white/10 rounded-xl p-5">
+              <div className="md:col-span-2 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-widest text-[#f5c242] font-bold flex items-center gap-1.5">
+                    <ShieldCheck size={14} /> Physical Package Specifications
+                  </span>
+                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                    order.packaging?.isPacked
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                  }`}>
+                    {order.packaging?.isPacked ? '✓ Sealed & Inspected' : 'Pending Physical Pack'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 text-xs">
+                  <div className="bg-white/5 p-2.5 rounded-lg border border-white/5">
+                    <span className="text-white/40 block text-[10px] uppercase">Box Type</span>
+                    <strong className="text-white truncate block" title={order.packaging?.boxType || 'Certified Wine Shipper'}>
+                      {order.packaging?.boxType || 'Wine Shipper'}
+                    </strong>
+                  </div>
+                  <div className="bg-white/5 p-2.5 rounded-lg border border-white/5">
+                    <span className="text-white/40 block text-[10px] uppercase">Dimensions</span>
+                    <strong className="text-white">
+                      {order.packaging?.dimensions?.lengthCm || 10} × {order.packaging?.dimensions?.widthCm || 10} × {order.packaging?.dimensions?.heightCm || 33} cm
+                    </strong>
+                  </div>
+                  <div className="bg-white/5 p-2.5 rounded-lg border border-white/5">
+                    <span className="text-white/40 block text-[10px] uppercase">Gross Weight</span>
+                    <strong className="text-amber-400">
+                      {order.packaging?.weightKg || 1.55} kg
+                    </strong>
+                  </div>
+                  <div className="bg-white/5 p-2.5 rounded-lg border border-white/5">
+                    <span className="text-white/40 block text-[10px] uppercase">Fragile Seal</span>
+                    <strong className="text-rose-400">
+                      {order.packaging?.isFragile !== false ? 'YES (Glass / Liquid)' : 'No'}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                  <div className="text-[11px] text-white/50">
+                    Barcode: <span className="font-mono text-white/90 font-bold">{order.packaging?.packageBarcode || `GS-PKG-${orderRef}`}</span>
+                    {order.packaging?.packedBy && (
+                      <span className="ml-2 text-white/40">| Sealed by: {order.packaging.packedBy}</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPackModalOpen(true)}
+                    className="px-4 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1.5 transition-all border border-white/10"
+                  >
+                    <Box size={13} /> {order.packaging?.isPacked ? 'Edit / Re-inspect' : 'Inspect & Seal Packaging'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Package Barcode / Security QR */}
+              <div className="flex flex-col items-center justify-center p-3 bg-white/5 rounded-xl border border-white/10 text-center">
+                <div className="bg-white p-2 rounded-lg shadow-md mb-2">
+                  <QRCodeSVG
+                    value={JSON.stringify({
+                      pkg: order.packaging?.packageBarcode || `GS-PKG-${orderRef}`,
+                      order: orderRef,
+                      cust: order.customerName,
+                      items: retailItems.length,
+                      fragile: true
+                    })}
+                    size={95}
+                  />
+                </div>
+                <span className="text-[10px] uppercase tracking-wider text-[#f5c242] font-bold">
+                  Package Security QR
+                </span>
+                <span className="text-[9px] text-white/40 font-mono mt-0.5">
+                  Scan to verify parcel seal
+                </span>
+              </div>
+            </div>
+
+            {/* Driver Assignment Section (Gated by Packaging) */}
+            <div className="bg-black/40 border border-white/10 rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <div className="flex items-center gap-2">
+                  <Truck size={16} className="text-[#f5c242]" />
+                  <h4 className="text-xs uppercase tracking-widest text-[#f5c242] font-bold">
+                    Courier Driver Dispatch & Handover
+                  </h4>
+                </div>
+                {order.driver?.status && order.driver.status !== 'unassigned' && (
+                  <span className="text-xs text-white/60">
+                    Waybill: <strong className="font-mono text-white">{order.driver.waybillNumber}</strong>
+                  </span>
+                )}
+              </div>
+
+              {/* Gating Alert if not packed */}
+              {!order.packaging?.isPacked ? (
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-xs">
+                  <Lock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <strong className="text-amber-300 block mb-0.5 font-bold">
+                      Driver Assignment Locked
+                    </strong>
+                    <p className="text-white/70 leading-relaxed">
+                      Physical package inspection, cushioning, and security seal must be verified before a courier driver can be assigned for pickup.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setPackModalOpen(true)}
+                      className="mt-2.5 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-xs inline-flex items-center gap-1.5 border border-amber-500/40"
+                    >
+                      <Box size={13} /> Complete Packaging Inspection First
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* If driver already assigned */}
+                  {order.driver?.status && order.driver.status !== 'unassigned' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-center">
+                      <div className="md:col-span-2 space-y-3 text-xs">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <div className="bg-white/5 p-3 rounded-lg border border-white/5">
+                            <span className="text-white/40 block text-[10px] uppercase">Courier Partner</span>
+                            <strong className="text-white block text-sm">{order.driver.courierCompany}</strong>
+                            <span className="text-[10px] text-[#f5c242] font-semibold">{order.driver.serviceType === 'ONP' ? 'Overnight Express' : 'Economy Road'}</span>
+                          </div>
+                          <div className="bg-white/5 p-3 rounded-lg border border-white/5">
+                            <span className="text-white/40 block text-[10px] uppercase">Assigned Driver</span>
+                            <strong className="text-white block text-sm">{order.driver.driverName}</strong>
+                            <span className="text-[10px] text-white/60">{order.driver.driverPhone}</span>
+                          </div>
+                          <div className="bg-white/5 p-3 rounded-lg border border-white/5">
+                            <span className="text-white/40 block text-[10px] uppercase">Pickup Window</span>
+                            <strong className="text-white block text-sm">{order.driver.pickupWindow}</strong>
+                            <span className="text-[10px] text-emerald-400 font-mono font-bold">{order.driver.collectionRef}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setDriverModalOpen(true)}
+                            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium text-xs border border-white/10"
+                          >
+                            Re-assign Driver / Change Courier
+                          </button>
+
+                          {order.driver?.status !== 'in_transit' && order.status !== 'In Transit' && order.status !== 'Delivered' && (
+                            <button
+                              type="button"
+                              onClick={handleConfirmHandover}
+                              disabled={handoverLoading}
+                              className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md"
+                            >
+                              <Check size={14} /> {handoverLoading ? 'Confirming...' : 'Confirm Driver Handover'}
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const apiUrl = import.meta.env.VITE_API_URL?.includes('localhost') && window.location.hostname !== 'localhost'
+                                ? 'https://api.grandstoreglobal.com'
+                                : (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5015' : 'https://api.grandstoreglobal.com'));
+                              window.open(`${apiUrl}/api/aramex/waybill-pdf/${order.driver.waybillNumber}`, '_blank');
+                            }}
+                            className="px-4 py-2 rounded-xl bg-[#c99742]/20 hover:bg-[#c99742]/30 text-[#f5c242] font-bold text-xs flex items-center gap-1.5 border border-[#c99742]/40 cursor-pointer"
+                          >
+                            <Printer size={14} /> Download Aramex Waybill PDF
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Driver Handover QR Card */}
+                      <div className="flex flex-col items-center justify-center p-3 bg-white/5 rounded-xl border border-white/10 text-center">
+                        <div className="bg-white p-2 rounded-lg shadow-md mb-2">
+                          <QRCodeSVG
+                            value={`https://grandstoreglobal.com/api/orders/${orderRef}/confirm-handover?driver=${encodeURIComponent(order.driver.driverName)}&ref=${order.driver.collectionRef}`}
+                            size={105}
+                          />
+                        </div>
+                        <span className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1">
+                          <QrCode size={12} /> Driver Handover QR
+                        </span>
+                        <span className="text-[9px] text-white/50 mt-0.5">
+                          Driver scans at dispatch bay to confirm pickup
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Driver not yet assigned, but packaging is ready */
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                      <div>
+                        <h5 className="text-sm font-bold text-white flex items-center gap-2">
+                          <CheckCircle2 size={16} className="text-emerald-400" /> Package Sealed & Ready for Courier
+                        </h5>
+                        <p className="text-xs text-white/60 mt-0.5">
+                          Assign Aramex Express courier collection or dedicated Grand Store vault driver.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDriverModalOpen(true)}
+                        className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#f5c242] to-[#c99742] text-black font-bold text-xs uppercase tracking-wider shadow-lg hover:opacity-95 transition-all flex items-center gap-2 shrink-0"
+                      >
+                        <Truck size={15} /> Assign Driver & Book Dispatch
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
 
         </div>
 
@@ -544,6 +934,317 @@ export default function AdminOrderDetail({ onNotify }) {
           </div>
         </div>
       </div>
+
+      {/* PACKAGING INSPECTION MODAL */}
+      {packModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#120f0c] border border-[#c99742]/40 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-[#c99742]/20 text-[#f5c242]">
+                  <Box size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Physical Packaging Inspection</h3>
+                  <p className="text-xs text-white/50">Verify bottle cushioning, dimensions, and tamper seal</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPackModalOpen(false)}
+                className="text-white/40 hover:text-white text-lg p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleVerifyPackaging} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-white/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                  Shipper Box Type
+                </label>
+                <input
+                  type="text"
+                  value={packForm.boxType}
+                  onChange={(e) => setPackForm({ ...packForm, boxType: e.target.value })}
+                  placeholder="e.g. Certified Wine Shipper (1 Bottle)"
+                  className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#f5c242] focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-white/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                    Gross Weight (kg)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={packForm.weightKg}
+                    onChange={(e) => setPackForm({ ...packForm, weightKg: parseFloat(e.target.value) || 0 })}
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#f5c242] focus:outline-none"
+                    required
+                  />
+                  <span className="text-[10px] text-white/40 mt-0.5 block">Wine + Bottle + Outer Pack</span>
+                </div>
+                <div>
+                  <label className="block text-white/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                    Inspected & Packed By
+                  </label>
+                  <input
+                    type="text"
+                    value={packForm.packedBy}
+                    onChange={(e) => setPackForm({ ...packForm, packedBy: e.target.value })}
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#f5c242] focus:outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-white/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                  Dimensions: Length × Width × Height (cm)
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={packForm.lengthCm}
+                    onChange={(e) => setPackForm({ ...packForm, lengthCm: parseFloat(e.target.value) || 0 })}
+                    placeholder="L (cm)"
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-white text-xs text-center focus:border-[#f5c242] focus:outline-none"
+                    required
+                  />
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={packForm.widthCm}
+                    onChange={(e) => setPackForm({ ...packForm, widthCm: parseFloat(e.target.value) || 0 })}
+                    placeholder="W (cm)"
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-white text-xs text-center focus:border-[#f5c242] focus:outline-none"
+                    required
+                  />
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={packForm.heightCm}
+                    onChange={(e) => setPackForm({ ...packForm, heightCm: parseFloat(e.target.value) || 0 })}
+                    placeholder="H (cm)"
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-white text-xs text-center focus:border-[#f5c242] focus:outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-1 border-t border-white/5">
+                <label className="flex items-center gap-2 text-white/90 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={packForm.isFragile}
+                    onChange={(e) => setPackForm({ ...packForm, isFragile: e.target.checked })}
+                    className="rounded border-white/20 text-[#f5c242] focus:ring-[#f5c242] bg-black/40"
+                  />
+                  <span>Fragile Goods: Liquid bottle with internal air-cushion column</span>
+                </label>
+                <label className="flex items-center gap-2 text-white/90 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={packForm.isSealed}
+                    onChange={(e) => setPackForm({ ...packForm, isSealed: e.target.checked })}
+                    className="rounded border-white/20 text-[#f5c242] focus:ring-[#f5c242] bg-black/40"
+                  />
+                  <span>Tamper-evident holographic security tape applied to carton</span>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setPackModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={packagingLoading}
+                  className="px-6 py-2 rounded-xl bg-gradient-to-r from-[#f5c242] to-[#c99742] text-black font-bold uppercase tracking-wider shadow-md hover:opacity-95 disabled:opacity-50"
+                >
+                  {packagingLoading ? 'Saving Inspection...' : 'Confirm & Seal Package'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DRIVER ASSIGNMENT MODAL */}
+      {driverModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#120f0c] border border-[#c99742]/40 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                  <Truck size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Assign Driver & Book Dispatch</h3>
+                  <p className="text-xs text-white/50">Schedule courier pickup or dispatch dedicated vault driver</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDriverModalOpen(false)}
+                className="text-white/40 hover:text-white text-lg p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAssignDriver} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-white/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                  Courier / Logistics Partner
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDriverForm({
+                      ...driverForm,
+                      courierCompany: 'Aramex South Africa',
+                      serviceType: 'ONP',
+                      driverName: 'Aramex Express Dispatch Courier',
+                      driverPhone: '+27 11 883 4000',
+                      vehicleReg: 'Aramex Fleet (Gauteng Hub)'
+                    })}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      driverForm.courierCompany.includes('Aramex')
+                        ? 'bg-amber-500/15 border-amber-400 text-white font-bold'
+                        : 'bg-black/40 border-white/10 text-white/60 hover:border-white/30'
+                    }`}
+                  >
+                    <span className="block text-sm text-white font-bold">Aramex South Africa</span>
+                    <span className="text-[10px] text-amber-300">Overnight Express / Road</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDriverForm({
+                      ...driverForm,
+                      courierCompany: 'Grand Store Vault Courier',
+                      serviceType: 'SPECIAL',
+                      driverName: 'Sipho Khumalo',
+                      driverPhone: '+27 82 555 0192',
+                      vehicleReg: 'Toyota Hilux (GP 92 KL)'
+                    })}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      driverForm.courierCompany.includes('Vault')
+                        ? 'bg-amber-500/15 border-amber-400 text-white font-bold'
+                        : 'bg-black/40 border-white/10 text-white/60 hover:border-white/30'
+                    }`}
+                  >
+                    <span className="block text-sm text-white font-bold">Dedicated Vault Driver</span>
+                    <span className="text-[10px] text-emerald-400">Internal Handover Vehicle</span>
+                  </button>
+                </div>
+              </div>
+
+              {driverForm.courierCompany.includes('Aramex') && (
+                <div>
+                  <label className="block text-white/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                    Aramex Service Tier
+                  </label>
+                  <select
+                    value={driverForm.serviceType}
+                    onChange={(e) => setDriverForm({ ...driverForm, serviceType: e.target.value })}
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#f5c242] focus:outline-none"
+                  >
+                    <option value="ONP">Aramex Overnight Express (Priority by 11:00 AM)</option>
+                    <option value="PEC">Aramex Economy Road (2-3 Business Days)</option>
+                  </select>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-white/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                    Assigned Driver Name
+                  </label>
+                  <input
+                    type="text"
+                    value={driverForm.driverName}
+                    onChange={(e) => setDriverForm({ ...driverForm, driverName: e.target.value })}
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#f5c242] focus:outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                    Driver Contact Phone
+                  </label>
+                  <input
+                    type="text"
+                    value={driverForm.driverPhone}
+                    onChange={(e) => setDriverForm({ ...driverForm, driverPhone: e.target.value })}
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#f5c242] focus:outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-white/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                    Vehicle Registration / Van
+                  </label>
+                  <input
+                    type="text"
+                    value={driverForm.vehicleReg}
+                    onChange={(e) => setDriverForm({ ...driverForm, vehicleReg: e.target.value })}
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#f5c242] focus:outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                    Collection Pickup Window
+                  </label>
+                  <input
+                    type="text"
+                    value={driverForm.pickupWindow}
+                    onChange={(e) => setDriverForm({ ...driverForm, pickupWindow: e.target.value })}
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-white text-xs focus:border-[#f5c242] focus:outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-[11px] text-white/60 space-y-1">
+                <div>Collection Address: <strong className="text-white">88 Grayston Drive, Sandton Central, Gauteng</strong></div>
+                <div>Parcel Barcode: <strong className="font-mono text-amber-300">{order.packaging?.packageBarcode || `GS-PKG-${orderRef}`}</strong></div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setDriverModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={driverLoading}
+                  className="px-6 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold uppercase tracking-wider shadow-md hover:opacity-95 disabled:opacity-50"
+                >
+                  {driverLoading ? 'Booking Pickup...' : 'Assign Driver & Book Dispatch'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@
  */
 const mongoose = require('mongoose');
 const { jsPDF } = require('jspdf');
+const QRCode = require('qrcode');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Shipment = require('../models/Shipment');
@@ -309,108 +310,213 @@ const vendorDispatchOrder = async (req, res) => {
 // -------------------------------------------------------------
 const generateWaybillPdf = async (req, res) => {
   try {
-    const { waybillNumber = '31298456123' } = req.params;
-    const shipment = await Shipment.findOne({ aramexWaybillNumber: waybillNumber }).catch(() => null);
+    const param = req.params.waybillNumber || req.params.orderId || '31984210642';
+    
+    // Look up by shipment or order safely
+    let shipment = null;
+    let order = null;
+
+    if (mongoose.connection?.readyState === 1) {
+      try {
+        if (mongoose.Types.ObjectId.isValid(param)) {
+          order = await Order.findById(param).populate('user', 'name email phone').maxTimeMS(3000).catch(() => null);
+          shipment = await Shipment.findOne({ $or: [{ orderId: param }, { _id: param }] }).maxTimeMS(3000).catch(() => null);
+        }
+        if (!order) {
+          order = await Order.findOne({
+            $or: [
+              { 'driver.waybillNumber': param },
+              { aramexWaybillNumber: param },
+              { orderId: param },
+              { invoiceNumber: param }
+            ]
+          }).populate('user', 'name email phone').maxTimeMS(3000).catch(() => null);
+        }
+        if (!shipment && order) {
+          shipment = await Shipment.findOne({ orderId: order._id }).maxTimeMS(3000).catch(() => null);
+        }
+        if (!shipment && !order) {
+          shipment = await Shipment.findOne({
+            $or: [
+              { aramexWaybillNumber: param },
+              { shipmentId: param },
+              { orderRef: param }
+            ]
+          }).maxTimeMS(3000).catch(() => null);
+          if (shipment?.orderId) {
+            order = await Order.findById(shipment.orderId).populate('user', 'name email phone').maxTimeMS(3000).catch(() => null);
+          }
+        }
+      } catch (dbErr) {
+        console.warn('DB lookup error in generateWaybillPdf:', dbErr.message);
+      }
+    }
+
+    const waybillNumber = String(
+      order?.driver?.waybillNumber ||
+      order?.aramexWaybillNumber ||
+      shipment?.aramexWaybillNumber ||
+      param ||
+      '31984210642'
+    );
 
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: [101.6, 152.4]
+      format: [101.6, 152.4] // 4" x 6"
     });
 
-    // 1. Black Header
+    const sType = order?.driver?.serviceType || shipment?.aramexServiceType || 'ONP';
+
+    // 1. Black Luxury Brand Header
     doc.setFillColor(15, 15, 15);
     doc.rect(0, 0, 101.6, 18, 'F');
+
+    doc.setFillColor(212, 175, 55);
+    doc.rect(0, 18, 101.6, 1.2, 'F');
+
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(13);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('ARAMEX SOUTH AFRICA', 6, 12);
+    doc.text('ARAMEX SOUTH AFRICA', 5, 11);
+    doc.setFontSize(6.5);
+    doc.setTextColor(212, 175, 55);
+    doc.text('OFFICIAL AIR & ROAD LOGISTICS DOCKET', 5, 15);
 
     // Service Code Badge
-    const sType = shipment?.aramexServiceType || 'ONP';
     doc.setFillColor(212, 175, 55);
-    doc.rect(74, 4, 22, 10, 'F');
+    doc.rect(74, 4, 22.6, 10, 'F');
     doc.setTextColor(10, 10, 10);
     doc.setFontSize(10);
-    doc.text(sType, 81, 11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(sType, 85.3, 11, { align: 'center' });
 
-    // 2. Hub Routing
+    // 2. Routing Bar
     doc.setTextColor(0, 0, 0);
-    doc.setFontSize(15);
-    const destCity = shipment?.deliveryAddress?.city || 'CPT (Cape Town)';
-    doc.text(`JNB -> ${destCity.substring(0, 14)}`, 6, 26);
-
-    doc.setLineWidth(0.5);
-    doc.line(6, 29, 95.6, 29);
-
-    // 3. Barcode Graphic
-    doc.setFillColor(0, 0, 0);
-    const startX = 12;
-    const startY = 32;
-    const barHeight = 22;
-    const barPattern = [3, 1, 2, 2, 1, 3, 2, 1, 3, 2, 1, 1, 2, 3, 1, 2, 1, 3, 2, 2, 1, 3, 1, 2, 3, 1, 2, 2, 1, 3];
-    let curX = startX;
-    barPattern.forEach((w, idx) => {
-      if (idx % 2 === 0) doc.rect(curX, startY, w, barHeight, 'F');
-      curX += w + 0.8;
-    });
-
     doc.setFontSize(11);
-    doc.setFont('courier', 'bold');
-    doc.text(`*${waybillNumber}*`, 28, 59);
+    doc.setFont('helvetica', 'bold');
+    const destCity = order?.shippingAddress?.city || shipment?.deliveryAddress?.city || 'CPT (Cape Town)';
+    const destCountry = order?.shippingAddress?.country || shipment?.deliveryAddress?.country || 'South Africa';
+    doc.text(`JNB (Sandton Vault) -> ${destCity.toUpperCase()} (${destCountry})`, 5, 24);
 
-    doc.line(6, 62, 95.6, 62);
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.4);
+    doc.line(5, 26, 96.6, 26);
+
+    // 3. High-Resolution Scannable QR Code & Barcode Section
+    const trackingUrl = `https://grandstoreglobal.com/customer/orders?ref=aramex_driver&wb=${waybillNumber}&order=${order?.orderId || ''}`;
+    let qrDataUrl = null;
+    try {
+      qrDataUrl = await QRCode.toDataURL(trackingUrl, {
+        errorCorrectionLevel: 'H',
+        margin: 1,
+        width: 180
+      });
+    } catch (e) {}
+
+    if (qrDataUrl) {
+      doc.addImage(qrDataUrl, 'PNG', 5, 28, 26, 26);
+    }
+
+    // Barcode Simulation + QR scan instructions
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(15, 15, 15);
+    doc.text('DRIVER HANDOVER QR CODE', 34, 33);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(80, 80, 80);
+    doc.text('Aramex / Courier: Scan with handheld PDA or camera', 34, 37);
+    doc.text('to confirm parcel custody & live handover.', 34, 40.5);
+
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`*${waybillNumber}*`, 34, 47);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(212, 175, 55);
+    doc.text(`REF: #${order?.orderId || order?.invoiceNumber || 'GS-ORD'}`, 34, 52);
+
+    doc.setDrawColor(200, 200, 200);
+    doc.line(5, 56, 96.6, 56);
 
     // 4. Consignee Delivery Address
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text('DELIVER TO (CONSIGNEE):', 6, 67);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.text('Jan Van Der Merwe (+27 82 123 4567)', 6, 72);
-    const addr = shipment?.deliveryAddress?.address || '14 Victoria Road, Camps Bay';
-    const city = shipment?.deliveryAddress?.city || 'Cape Town';
-    const postal = shipment?.deliveryAddress?.postalCode || '8005';
-    doc.text(addr.substring(0, 45), 6, 76.5);
-    doc.text(`${city}, ${postal}, South Africa`, 6, 81);
+    doc.setFontSize(7.5);
+    doc.setTextColor(212, 175, 55);
+    doc.text('DELIVER TO (CONSIGNEE):', 5, 60.5);
 
-    doc.line(6, 85, 95.6, 85);
+    const consigneeName = order?.shippingAddress?.name || order?.user?.name || shipment?.deliveryAddress?.name || 'Valued Customer';
+    const consigneePhone = order?.shippingAddress?.phone || order?.shippingAddress?.phoneNumber || order?.user?.phone || '';
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`${consigneeName} (${consigneePhone})`.substring(0, 48), 5, 65.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(50, 50, 50);
+    const addr = order?.shippingAddress?.address || shipment?.deliveryAddress?.address || 'Delivery Address';
+    const splitAddr = doc.splitTextToSize(addr, 91.6);
+    doc.text(splitAddr.slice(0, 2), 5, 70);
+    const addrOffset = 70 + (Math.min(splitAddr.length, 2) * 3.8);
+    const postal = order?.shippingAddress?.postalCode || shipment?.deliveryAddress?.postalCode || '';
+    doc.text(`${destCity}${destCity ? ', ' : ''}${postal} • ${destCountry}`, 5, addrOffset);
+
+    const line2Y = Math.max(81, addrOffset + 4);
+    doc.line(5, line2Y, 96.6, line2Y);
 
     // 5. Shipper Address
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text('SHIP FROM (SENDER):', 6, 89.5);
+    doc.setFontSize(7.5);
+    doc.setTextColor(212, 175, 55);
+    doc.text('SHIP FROM (SENDER):', 5, line2Y + 4.5);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text('GrandStore Global Fulfillment Hub', 6, 94);
-    doc.text('88 Grayston Drive, Sandton Central, JHB, 2196', 6, 98);
+    doc.setFontSize(7.5);
+    doc.setTextColor(50, 50, 50);
+    doc.text('GrandStore Global Fulfillment Vault (Sandton Central Gateway)', 5, line2Y + 8.5);
+    doc.text('88 Grayston Drive, Sandton Central, JHB, 2196, South Africa • +27 11 883 4000', 5, line2Y + 12.5);
 
-    doc.line(6, 102, 95.6, 102);
+    const line3Y = line2Y + 15.5;
+    doc.line(5, line3Y, 96.6, line3Y);
 
-    // 6. Package Specs
+    // 6. Package Specs & Dimensions
+    const packaging = order?.packaging || shipment?.packageDetails || {};
+    const weight = Number(packaging.weightKg || packaging.weight || 1.85).toFixed(2);
+    const dims = packaging.dimensions?.lengthCm 
+      ? `${packaging.dimensions.lengthCm}x${packaging.dimensions.widthCm}x${packaging.dimensions.heightCm}`
+      : '12x12x34';
+    const parcelVal = Number(order?.totalPrice || order?.subTotal || 1608.85).toFixed(2);
+
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    const weight = shipment?.packageDetails?.weight || 1.85;
-    doc.text('PIECES: 1 of 1', 6, 108);
-    doc.text(`ACTUAL WT: ${weight} KG`, 38, 108);
-    doc.text('VOL WT: 1.00 KG', 72, 108);
+    doc.setFontSize(7.5);
+    doc.setTextColor(0, 0, 0);
+    doc.text('PIECES: 1 of 1', 5, line3Y + 5);
+    doc.text(`ACTUAL WT: ${weight} KG`, 32, line3Y + 5);
+    doc.text('VOL WT: 1.00 KG', 68, line3Y + 5);
 
-    doc.text('DIMENSIONS: 12 x 12 x 34 CM', 6, 114);
-    doc.text('VALUE: R1,450.00', 60, 114);
+    doc.text(`DIMS: ${dims} CM`, 5, line3Y + 10);
+    doc.text(`DECLARED: R ${parcelVal}`, 50, line3Y + 10);
 
     // 7. Fragile Caution Badge
     doc.setFillColor(255, 235, 235);
-    doc.rect(6, 119, 89.6, 10, 'F');
+    doc.roundedRect(5, line3Y + 13, 91.6, 9, 1, 1, 'F');
+    doc.setDrawColor(220, 53, 69);
+    doc.roundedRect(5, line3Y + 13, 91.6, 9, 1, 1, 'S');
+
     doc.setTextColor(200, 30, 30);
-    doc.setFontSize(8.5);
-    doc.text('CAUTION: FRAGILE LUXURY GLASS BOTTLE', 12, 125.5);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CAUTION: FRAGILE LUXURY GLASS BOTTLE • KEEP UPRIGHT', 50.8, line3Y + 18.5, { align: 'center' });
 
     // Footer
     doc.setTextColor(110, 110, 110);
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
-    doc.text('Official Aramex Web Service Format • GrandStore Global', 6, 139);
-    doc.text(`Generated: ${new Date().toISOString()}`, 6, 143);
+    doc.text('Official Aramex Web Service Format • GrandStore Global Vault Ops', 5, 145);
+    doc.text(`Generated: ${new Date().toISOString()} | Ref: ${waybillNumber}`, 5, 148.5);
 
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
     res.setHeader('Content-Type', 'application/pdf');

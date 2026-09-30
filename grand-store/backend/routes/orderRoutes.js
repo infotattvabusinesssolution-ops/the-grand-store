@@ -13,7 +13,10 @@ const {
   sendVendorOrderMessage,
   getVendorOrderById,
   cancelOrderPaymentHandler,
-  downloadOrderReceiptPdf
+  downloadOrderReceiptPdf,
+  updateOrderPackaging,
+  assignOrderDriver,
+  confirmOrderDriverHandover
 } = require('../controllers/orderController');
 const { protect, optionalAuth, requireRoles, financeStaff } = require('../middleware/authMiddleware');
 
@@ -35,6 +38,22 @@ router.route('/:id/admin-message').post(
   protect,
   requireRoles('admin', 'super_admin', 'product_manager'),
   sendAdminOrderMessage
+);
+
+// Admin Packaging Inspection & Driver Assignment Flow (with Handover QR)
+router.route('/:id/packaging').post(
+  protect,
+  requireRoles('admin', 'super_admin', 'product_manager'),
+  updateOrderPackaging
+);
+router.route('/:id/assign-driver').post(
+  protect,
+  requireRoles('admin', 'super_admin', 'product_manager'),
+  assignOrderDriver
+);
+router.route('/:id/confirm-handover').post(
+  optionalAuth,
+  confirmOrderDriverHandover
 );
 
 router.route('/:id/cancel-payment').post(optionalAuth, cancelOrderPaymentHandler);

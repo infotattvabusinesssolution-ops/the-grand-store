@@ -790,8 +790,21 @@ const addOrderItems = async (req, res) => {
  * This function will be called by the PayFast ITN Webhook Controller
  */
 const processOrderPayment = async (orderId) => {
-  const order = await Order.findById(orderId);
-  if (!order) throw new Error('Order not found');
+  let order = null;
+  if (mongoose.Types.ObjectId.isValid(orderId)) {
+    order = await Order.findById(orderId);
+  }
+  if (!order) {
+    order = await Order.findOne({
+      $or: [
+        { orderId: orderId },
+        { invoiceNumber: orderId },
+        { depositReference: orderId },
+        { transactionId: orderId }
+      ]
+    });
+  }
+  if (!order) throw new Error(`Order not found for identifier: ${orderId}`);
   if (order.isPaid) return true; // Already paid, idempotent
   if (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed') {
     throw new Error(`Cannot process payment for ${order.paymentStatus.toLowerCase()} order`);
@@ -1089,7 +1102,7 @@ const processOrderPayment = async (orderId) => {
   try {
     const AuctionLot = require('../models/AuctionLot');
     for (const item of order.orderItems) {
-      if (item.product) {
+      if (item.product && mongoose.Types.ObjectId.isValid(item.product)) {
         const lot = await AuctionLot.findById(item.product);
         if (lot) {
           lot.paymentStatus = 'Paid';
@@ -1106,7 +1119,7 @@ const processOrderPayment = async (orderId) => {
   try {
     const AuctionLedger = require('../models/AuctionLedger');
     for (const item of order.orderItems) {
-      if (item.product) {
+      if (item.product && mongoose.Types.ObjectId.isValid(item.product)) {
         const ledger = await AuctionLedger.findOne({ lot: item.product });
         if (ledger) {
           ledger.settlementStatus = 'HELD_IN_ESCROW';
@@ -2142,9 +2155,14 @@ const sendAdminOrderMessage = async (req, res) => {
 const downloadOrderReceiptPdf = async (req, res) => {
   try {
     const { id } = req.params;
-    let order = await Order.findById(id).populate('user', 'name email').catch(() => null);
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      order = await Order.findById(id).populate('user', 'name email phone').catch(() => null);
+    }
     if (!order && id) {
-      order = await Order.findOne({ orderId: id }).populate('user', 'name email').catch(() => null);
+      order = await Order.findOne({
+        $or: [{ orderId: id }, { invoiceNumber: id }, { transactionId: id }]
+      }).populate('user', 'name email phone').catch(() => null);
     }
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
@@ -2168,6 +2186,233 @@ const downloadOrderReceiptPdf = async (req, res) => {
   }
 };
 
+// @desc    Update & Verify Physical Packaging Inspection for Order
+// @route   POST /api/orders/:id/packaging
+// @access  Private (Admin / Ops)
+const updateOrderPackaging = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      boxType = 'Certified Wine Shipper (1 Bottle)',
+      weightKg = 1.55,
+      dimensions = { lengthCm: 10, widthCm: 10, heightCm: 33 },
+      isFragile = true,
+      isSealed = true,
+      packedBy = 'Grand Store Dispatch Vault'
+    } = req.body;
+
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      order = await Order.findById(id);
+    }
+    if (!order) {
+      order = await Order.findOne({
+        $or: [{ orderId: id }, { invoiceNumber: id }, { depositReference: id }]
+      });
+    }
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const orderSuffix = order.orderId ? order.orderId.split('-').pop() : order._id.toString().slice(-6).toUpperCase();
+    const barcode = order.packaging?.packageBarcode || `GS-PKG-${orderSuffix}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    order.packaging = {
+      isPacked: true,
+      boxType,
+      weightKg: Number(weightKg) || 1.55,
+      dimensions: {
+        lengthCm: Number(dimensions.lengthCm || dimensions.length_cm) || 10,
+        widthCm: Number(dimensions.widthCm || dimensions.width_cm) || 10,
+        heightCm: Number(dimensions.heightCm || dimensions.height_cm) || 33
+      },
+      isFragile: Boolean(isFragile),
+      isSealed: Boolean(isSealed),
+      packageBarcode: barcode,
+      packedAt: new Date(),
+      packedBy: packedBy || req.user?.name || 'Grand Store Vault Ops'
+    };
+
+    if (order.status === 'Processing') {
+      order.status = 'Awaiting Dispatch';
+    }
+
+    await order.save();
+
+    res.json({
+      success: true,
+      message: 'Packaging verified and sealed successfully',
+      packaging: order.packaging,
+      orderStatus: order.status
+    });
+  } catch (err) {
+    console.error('Packaging verification error:', err);
+    res.status(500).json({ message: 'Failed to verify packaging', error: err.message });
+  }
+};
+
+// @desc    Assign Courier / Vault Driver to Order (Gated by Packaging!)
+// @route   POST /api/orders/:id/assign-driver
+// @access  Private (Admin / Ops)
+const assignOrderDriver = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      courierCompany = 'Aramex South Africa',
+      serviceType = 'ONP',
+      driverName,
+      driverPhone,
+      vehicleReg,
+      pickupWindow = '13:30 - 17:00'
+    } = req.body;
+
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      order = await Order.findById(id);
+    }
+    if (!order) {
+      order = await Order.findOne({
+        $or: [{ orderId: id }, { invoiceNumber: id }, { depositReference: id }]
+      });
+    }
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // GATING REQUIREMENT: Packaging must be verified before driver can be assigned
+    if (!order.packaging?.isPacked) {
+      return res.status(400).json({
+        message: 'Packaging inspection and verification is required before assigning a driver.'
+      });
+    }
+
+    const isAramex = courierCompany.toLowerCase().includes('aramex');
+    const waybill = isAramex
+      ? `31${Date.now().toString().slice(-9)}`
+      : `GS-DRV-${Date.now().toString().slice(-6)}`;
+    const collectionRef = isAramex
+      ? `COL-${Math.floor(100000 + Math.random() * 900000)}`
+      : `VAULT-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    order.driver = {
+      courierCompany,
+      serviceType,
+      driverName: driverName || (isAramex ? 'Aramex Express Dispatch Courier' : 'Dedicated Vault Courier'),
+      driverPhone: driverPhone || (isAramex ? '+27 11 883 4000' : '+27 82 555 0192'),
+      vehicleReg: vehicleReg || (isAramex ? 'Aramex Fleet (Gauteng Hub)' : 'Toyota Hilux Vault Van'),
+      waybillNumber: waybill,
+      collectionRef,
+      pickupWindow,
+      assignedAt: new Date(),
+      status: 'assigned',
+      handoverConfirmedAt: null
+    };
+
+    order.status = 'Awaiting Dispatch';
+    await order.save();
+
+    // Link/update Shipment record
+    try {
+      const Shipment = require('../models/Shipment');
+      let shipment = null;
+      if (Array.isArray(order.shipments) && order.shipments.length > 0) {
+        shipment = await Shipment.findById(order.shipments[0]);
+      }
+      if (!shipment) {
+        shipment = await Shipment.findOne({ orderId: order._id });
+      }
+      if (shipment) {
+        shipment.aramexWaybillNumber = waybill;
+        shipment.aramexServiceType = serviceType;
+        shipment.aramexCollectionRef = collectionRef;
+        shipment.deliveryMethod = isAramex ? 'aramex_delivery' : 'home_delivery';
+        shipment.status = 'Preparing';
+        await shipment.save();
+      } else {
+        const newShipment = await Shipment.create({
+          shipmentId: `GS-SHP-${Date.now().toString().slice(-6)}`,
+          orderId: order._id,
+          orderRef: order.orderId || order.invoiceNumber || String(order._id),
+          deliveryMethod: isAramex ? 'aramex_delivery' : 'home_delivery',
+          courierName: courierCompany,
+          aramexWaybillNumber: waybill,
+          aramexServiceType: serviceType,
+          aramexCollectionRef: collectionRef,
+          customerShippingCharge: order.shippingCost || 0,
+          status: 'Preparing',
+          packageDetails: {
+            weight: order.packaging.weightKg,
+            length: order.packaging.dimensions.lengthCm,
+            width: order.packaging.dimensions.widthCm,
+            height: order.packaging.dimensions.heightCm
+          },
+          deliveryAddress: {
+            address: order.shippingAddress?.address || '',
+            city: order.shippingAddress?.city || '',
+            postalCode: order.shippingAddress?.postalCode || '',
+            country: order.shippingAddress?.country || 'South Africa'
+          }
+        });
+        order.shipments = [newShipment._id];
+        await order.save();
+      }
+    } catch (shipErr) {
+      console.warn('Shipment sync warning in assignOrderDriver:', shipErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: `Driver assigned successfully. Collection booked under ${collectionRef}.`,
+      driver: order.driver,
+      orderStatus: order.status
+    });
+  } catch (err) {
+    console.error('Driver assignment error:', err);
+    res.status(500).json({ message: 'Failed to assign driver', error: err.message });
+  }
+};
+
+// @desc    Confirm Driver Parcel Handover via QR Code Scan
+// @route   POST /api/orders/:id/confirm-handover
+// @access  Public / Optional Auth (Scanned by Driver or Vault Staff)
+const confirmOrderDriverHandover = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      order = await Order.findById(id);
+    }
+    if (!order) {
+      order = await Order.findOne({
+        $or: [{ orderId: id }, { invoiceNumber: id }, { depositReference: id }]
+      });
+    }
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    if (!order.driver) {
+      order.driver = {};
+    }
+    order.driver.status = 'in_transit';
+    order.driver.handoverConfirmedAt = new Date();
+    order.status = 'In Transit';
+    await order.save();
+
+    try {
+      const Shipment = require('../models/Shipment');
+      await Shipment.updateMany(
+        { orderId: order._id },
+        { $set: { status: 'In Transit' } }
+      );
+    } catch (e) {}
+
+    res.json({
+      success: true,
+      message: 'Driver parcel handover confirmed successfully. Order is now In Transit.',
+      status: order.status,
+      driver: order.driver
+    });
+  } catch (err) {
+    console.error('Confirm handover error:', err);
+    res.status(500).json({ message: 'Failed to confirm handover', error: err.message });
+  }
+};
+
 module.exports = {
   addOrderItems,
   getOrderById,
@@ -2183,5 +2428,8 @@ module.exports = {
   sendAdminOrderMessage,
   sendVendorOrderMessage,
   getVendorOrderById,
-  downloadOrderReceiptPdf
+  downloadOrderReceiptPdf,
+  updateOrderPackaging,
+  assignOrderDriver,
+  confirmOrderDriverHandover
 };

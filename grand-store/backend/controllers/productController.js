@@ -112,7 +112,12 @@ const getProducts = async (req, res) => {
 // @access  Public
 const getProductById = async (req, res) => {
   try {
-    let product = await Product.findOne({ id: req.params.id }).lean();
+    let product = await Product.findOne({
+      $or: [
+        { id: req.params.id },
+        { slug: req.params.id }
+      ]
+    }).lean();
     if (!product && req.params.id && /^[0-9a-fA-F]{24}$/.test(req.params.id.toString())) {
       product = await Product.findById(req.params.id).lean();
     }
@@ -320,7 +325,12 @@ const getVendorProducts = async (req, res) => {
 // @access  Private (Vendor/Admin)
 const updateProduct = async (req, res) => {
   try {
-    let product = await Product.findOne({ id: req.params.id });
+    let product = await Product.findOne({
+      $or: [
+        { id: req.params.id },
+        { slug: req.params.id }
+      ]
+    });
     if (!product && req.params.id && /^[0-9a-fA-F]{24}$/.test(req.params.id.toString())) {
       product = await Product.findById(req.params.id);
     }
@@ -452,7 +462,12 @@ const updateProduct = async (req, res) => {
 // @access  Private (Vendor/Admin)
 const deleteProduct = async (req, res) => {
   try {
-    let product = await Product.findOne({ id: req.params.id });
+    let product = await Product.findOne({
+      $or: [
+        { id: req.params.id },
+        { slug: req.params.id }
+      ]
+    });
     if (!product && req.params.id && /^[0-9a-fA-F]{24}$/.test(req.params.id.toString())) {
       product = await Product.findById(req.params.id);
     }

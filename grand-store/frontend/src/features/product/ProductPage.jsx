@@ -213,6 +213,13 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
     .slice(0, 4);
   const detailEntries = product.details ? Object.entries(product.details) : [];
   const identity = getProductIdentity(product);
+  const shippingInfo = product.shipping || {};
+  const pkgWeight = shippingInfo.weight_kg || product.weight_kg;
+  const pkgLength = shippingInfo.length_cm || product.length_cm;
+  const pkgWidth = shippingInfo.width_cm || product.width_cm;
+  const pkgHeight = shippingInfo.height_cm || product.height_cm;
+  const pkgBox = shippingInfo.box_type || product.box_type;
+
   const identityItems = [
     { label: "Type", value: identity.type },
     { label: "Style", value: identity.style },
@@ -221,6 +228,9 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
     { label: "Age", value: identity.age },
     { label: "Bottle Size", value: identity.bottleSize },
     { label: "ABV", value: identity.abv },
+    ...(pkgWeight ? [{ label: "Gross Weight", value: `${pkgWeight} kg` }] : []),
+    ...(pkgLength && pkgWidth && pkgHeight ? [{ label: "Package Dims", value: `${pkgLength} × ${pkgWidth} × ${pkgHeight} cm` }] : []),
+    ...(pkgBox ? [{ label: "Packaging", value: pkgBox }] : []),
   ];
   const categoryLabel = product.category || product.type || "Collection";
   const hasDistinctStyle = identity.style &&
@@ -748,6 +758,36 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                 <span className="font-medium text-[#dfbd72] flex items-center gap-1">
                   <Clock size={12} /> 24–48 Business Hours
                 </span>
+              </div>
+            </div>
+
+            {/* Packaging & Courier Logistics Specs */}
+            <div className="mb-4 bg-[#14120e] p-3.5 border border-[#dfbd72]/20 rounded text-xs space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#dfbd72]">
+                <span className="flex items-center gap-1.5">
+                  <Package size={14} className="text-[#dfbd72]" /> Verified Packaging & Freight Dimensions
+                </span>
+                <span className="text-[10px] text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/20">
+                  Live Courier Rate Ready
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
+                <div className="bg-black/40 p-2 border border-white/5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#918a7f] block">Box Type</span>
+                  <span className="text-white font-medium truncate block">{pkgBox || 'Standard Luxury Box'}</span>
+                </div>
+                <div className="bg-black/40 p-2 border border-white/5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#918a7f] block">Dimensions</span>
+                  <span className="text-white font-medium">{pkgLength && pkgWidth && pkgHeight ? `${pkgLength} × ${pkgWidth} × ${pkgHeight} cm` : '12 × 12 × 34 cm'}</span>
+                </div>
+                <div className="bg-black/40 p-2 border border-white/5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#918a7f] block">Gross Weight</span>
+                  <span className="text-[#dfbd72] font-semibold">{pkgWeight ? `${pkgWeight} kg` : '1.85 kg'}</span>
+                </div>
+                <div className="bg-black/40 p-2 border border-white/5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#918a7f] block">Protection</span>
+                  <span className="text-rose-400 font-medium">Fragile Glass (Insured)</span>
+                </div>
               </div>
             </div>
 

@@ -101,7 +101,7 @@ exports.approvePayment = async (req, res) => {
     }
 
     // We process the payment exactly as if PayFast had called the webhook
-    await processOrderPayment(orderId); // This appends the PaymentVerified event inside
+    await processOrderPayment(order._id); // This appends the PaymentVerified event inside
 
     res.json({ message: 'Payment approved and order processed successfully' });
   } catch (error) {

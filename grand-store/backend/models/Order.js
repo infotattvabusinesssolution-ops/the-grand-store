@@ -172,6 +172,44 @@ const orderSchema = new mongoose.Schema({
     default: null
   },
   deliveryStatusText: { type: String, default: '' },
+  aramexWaybillNumber: { type: String, default: '' },
+  aramexLabelUrl: { type: String, default: '' },
+
+  // Physical Packaging Inspection & Tracking
+  packaging: {
+    isPacked: { type: Boolean, default: false },
+    boxType: { type: String, default: 'Certified Wine Shipper (1 Bottle)' },
+    weightKg: { type: Number, default: 1.55 },
+    dimensions: {
+      lengthCm: { type: Number, default: 10.0 },
+      widthCm: { type: Number, default: 10.0 },
+      heightCm: { type: Number, default: 33.0 }
+    },
+    isFragile: { type: Boolean, default: true },
+    isSealed: { type: Boolean, default: false },
+    packageBarcode: { type: String, default: '' },
+    packedAt: { type: Date },
+    packedBy: { type: String, default: 'Grand Store Fulfillment Hub' }
+  },
+
+  // Logistics & Driver Assignment
+  driver: {
+    courierCompany: { type: String, default: 'Aramex South Africa' },
+    serviceType: { type: String, default: 'ONP' },
+    driverName: { type: String, default: '' },
+    driverPhone: { type: String, default: '' },
+    vehicleReg: { type: String, default: '' },
+    waybillNumber: { type: String, default: '' },
+    collectionRef: { type: String, default: '' },
+    pickupWindow: { type: String, default: '13:30 - 17:00' },
+    assignedAt: { type: Date },
+    status: {
+      type: String,
+      enum: ['unassigned', 'assigned', 'collected', 'in_transit', 'delivered'],
+      default: 'unassigned'
+    },
+    handoverConfirmedAt: { type: Date }
+  },
 
   // Immutable Order Financial Snapshot (Costing GS Understanding Section 14 & 251)
   financialSnapshot: {

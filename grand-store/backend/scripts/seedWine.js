@@ -81,6 +81,17 @@ const buildProduct = (row, index) => {
     bottleSize: size,
     abv
   };
+  normalized.shipping = {
+    box_type: 'Certified Wine Shipper (1 Bottle)',
+    weight_kg: 1.55,
+    length_cm: 10.0,
+    width_cm: 10.0,
+    height_cm: 33.0,
+    is_fragile: true,
+    parcel_value: parseFloat(price) || 1199,
+    hs_code: '2204.21',
+    aramexServiceType: 'ONP'
+  };
   return {
     ...normalized,
     id: `wine_${String(index + 1).padStart(2, '0')}_${keyOf(name).replace(/\s+/g, '_')}`,

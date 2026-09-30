@@ -16,6 +16,8 @@ import {
   Phone,
   Mail,
   Loader2,
+  FileText,
+  Printer
 } from "lucide-react";
 import Price from "../../components/ui/Price";
 
@@ -224,12 +226,46 @@ export default function VendorOrderDetail({ onNotify }) {
           </p>
         </div>
 
-        <div className="text-left md:text-right">
-          <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">
-            Products Total
+        <div className="flex flex-col md:items-end gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const apiUrl = import.meta.env.VITE_API_URL?.includes('localhost') && window.location.hostname !== 'localhost'
+                  ? 'https://api.grandstoreglobal.com'
+                  : (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5015' : 'https://api.grandstoreglobal.com'));
+                const ordId = shipment.orderId?._id || shipment.orderId || shipment._id;
+                window.open(`${apiUrl}/api/orders/${ordId}/receipt-pdf`, '_blank');
+              }}
+              className="px-3.5 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 rounded-xl border border-amber-500/35 text-xs font-bold flex items-center gap-2 transition-all shadow-md cursor-pointer"
+              title="Download & Print Official Grand Store Tax Invoice PDF"
+            >
+              <FileText size={14} className="text-amber-400" /> Tax Invoice (PDF)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const apiUrl = import.meta.env.VITE_API_URL?.includes('localhost') && window.location.hostname !== 'localhost'
+                  ? 'https://api.grandstoreglobal.com'
+                  : (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5015' : 'https://api.grandstoreglobal.com'));
+                const wb = shipment.aramexWaybillNumber || shipment.trackingNumber || '31984210642';
+                window.open(`${apiUrl}/api/aramex/waybill-pdf/${wb}`, '_blank');
+              }}
+              className="px-3.5 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 rounded-xl border border-emerald-500/35 text-xs font-bold flex items-center gap-2 transition-all shadow-md cursor-pointer"
+              title="Download Aramex 4x6 Thermal Shipping Waybill Label PDF"
+            >
+              <Printer size={14} className="text-emerald-400" /> Waybill Label (PDF)
+            </button>
           </div>
-          <div className="text-2xl font-serif text-[#e1bd70] font-bold">
-            <Price amount={shipment.vendorTotal} />
+
+          <div className="text-left md:text-right">
+            <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">
+              Products Total
+            </div>
+            <div className="text-2xl font-serif text-[#e1bd70] font-bold">
+              <Price amount={shipment.vendorTotal} />
+            </div>
           </div>
         </div>
       </div>
