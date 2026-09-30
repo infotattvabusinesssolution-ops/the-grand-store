@@ -16,24 +16,32 @@ const generateEmailTemplate = (title, content) => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <style>
+    * {
+      box-sizing: border-box;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
     body {
       margin: 0;
       padding: 0;
+      width: 100% !important;
       background-color: ${BRAND_COLOR_DARK};
       color: ${BRAND_COLOR_LIGHT};
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
     .email-container {
+      width: 100% !important;
       max-width: 600px;
       margin: 0 auto;
       background-color: #0a0a0a;
       border: 1px solid #222;
+      overflow: hidden;
     }
     .content {
-      padding: 35px 25px;
+      padding: 30px 22px;
       line-height: 1.6;
-      font-size: 15px;
+      font-size: 14px;
       color: #e0e0e0;
     }
     h1, h2, h3 {
@@ -77,9 +85,11 @@ const generateEmailTemplate = (title, content) => {
     .details-box {
       background-color: #111;
       border: 1px solid #333;
-      padding: 20px;
-      margin: 20px 0;
+      padding: 18px 16px;
+      margin: 18px 0;
       border-radius: 6px;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
     .details-box p {
       margin: 5px 0;
@@ -87,6 +97,20 @@ const generateEmailTemplate = (title, content) => {
     a {
       color: ${BRAND_COLOR_GOLD};
       text-decoration: none;
+    }
+    @media only screen and (max-width: 600px) {
+      .email-container {
+        width: 100% !important;
+        border-left: none !important;
+        border-right: none !important;
+      }
+      .content {
+        padding: 20px 12px !important;
+      }
+      .details-box {
+        padding: 14px 10px !important;
+        margin: 14px 0 !important;
+      }
     }
   </style>
 </head>
@@ -210,7 +234,7 @@ const orderConfirmationTemplate = (order) => {
   const isPostNet = order.deliveryPreference === 'postnet' || Boolean(order.selectedPostnetStore?.name);
   const courierName = isPostNet
     ? `PostNet Store Collection (${order.selectedPostnetStore?.name || 'Local Branch'})`
-    : (order.shipments?.[0]?.selectedCourier?.serviceLevel || order.shipments?.[0]?.selectedCourier?.courierName || 'Door Delivery (Courier Guy / PostNet)');
+    : (order.driver?.courierCompany ? `${order.driver.courierCompany} (${order.driver.serviceType || 'Priority Express'})` : (order.shipments?.[0]?.selectedCourier?.serviceLevel || order.shipments?.[0]?.selectedCourier?.courierName || 'Door Delivery (Aramex / PostNet)'));
 
   const subTotal = Number(order.subTotal || order.subtotal || 0);
   const shippingCost = Number(order.shippingCost || order.shippingFee || 0);
@@ -228,26 +252,31 @@ const orderConfirmationTemplate = (order) => {
     const unitPrice = Number(item.price || 0);
     const lineTotal = unitPrice * qty;
     const itemImg = item.image 
-      ? `<img src="${item.image}" alt="${item.name}" width="48" height="48" style="width: 48px; height: 48px; object-fit: cover; border-radius: 4px; border: 1px solid #333; margin-right: 12px; vertical-align: middle;" />`
+      ? `<img src="${item.image}" alt="${item.name}" width="46" height="46" style="width: 46px; height: 46px; object-fit: cover; border-radius: 4px; border: 1px solid #333; display: block;" />`
       : '';
 
     return `
-      <tr style="border-bottom: 1px solid #222;">
-        <td style="padding: 12px 8px 12px 0; vertical-align: middle;">
-          <table border="0" cellpadding="0" cellspacing="0">
+      <tr style="border-bottom: 1px solid #1f1f1f;">
+        <td style="padding: 12px 6px 12px 0; vertical-align: top;">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="width: 100%;">
             <tr>
-              ${itemImg ? `<td style="vertical-align: middle; padding-right: 10px;">${itemImg}</td>` : ''}
-              <td style="vertical-align: middle;">
-                <div style="font-weight: bold; color: #fff; font-size: 14px;">${item.name}</div>
-                ${item.option ? `<div style="font-size: 12px; color: #999; margin-top: 2px;">Option: ${item.option}</div>` : ''}
-                ${item.category ? `<div style="font-size: 11px; color: ${BRAND_COLOR_GOLD}; margin-top: 2px;">${item.category}</div>` : ''}
+              ${itemImg ? `<td style="vertical-align: top; width: 54px; padding-right: 10px;">${itemImg}</td>` : ''}
+              <td style="vertical-align: top;">
+                <div style="font-weight: 600; color: #ffffff; font-size: 13px; line-height: 1.4; margin-bottom: 3px;">${item.name}</div>
+                <div style="margin-top: 2px; line-height: 1.3;">
+                  ${item.option ? `<span style="display: inline-block; font-size: 11px; color: #a1a1aa; background: #18181b; padding: 1px 6px; border-radius: 3px; border: 1px solid #27272a; margin-right: 6px;">${item.option}</span>` : ''}
+                  ${item.category ? `<span style="font-size: 11px; color: ${BRAND_COLOR_GOLD}; font-weight: 500;">${item.category}</span>` : ''}
+                </div>
+                <div style="font-size: 12px; color: #888888; margin-top: 5px;">
+                  Qty: <span style="color: #ffffff; font-weight: bold;">${qty}</span> &times; ${formatRand(unitPrice)}
+                </div>
               </td>
             </tr>
           </table>
         </td>
-        <td style="padding: 12px 8px; text-align: center; color: #ccc; vertical-align: middle; font-size: 13px;">${qty}</td>
-        <td style="padding: 12px 8px; text-align: right; color: #ccc; vertical-align: middle; font-size: 13px;">${formatRand(unitPrice)}</td>
-        <td style="padding: 12px 0 12px 8px; text-align: right; font-weight: bold; color: #fff; vertical-align: middle; font-size: 14px;">${formatRand(lineTotal)}</td>
+        <td style="padding: 12px 0 12px 6px; text-align: right; vertical-align: top; white-space: nowrap; width: 28%;">
+          <div style="font-weight: bold; color: #ffffff; font-size: 14px;">${formatRand(lineTotal)}</div>
+        </td>
       </tr>
     `;
   }).join('');
@@ -265,35 +294,35 @@ const orderConfirmationTemplate = (order) => {
     <p>Thank you for choosing The Grand Store. We are pleased to confirm that your payment for order <strong>#${orderReference}</strong> has been successfully processed. Your order receipt is itemized below, and an official PDF Tax Invoice is attached to this email.</p>
 
     <!-- INVOICE METADATA TABLE -->
-    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #0e0e0e; border: 1px solid #222; border-radius: 6px; font-size: 13px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; margin: 18px 0; background: #0e0e0e; border: 1px solid #222; border-radius: 6px; font-size: 13px;">
       <tr>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #888; width: 40%;">Invoice Reference:</td>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: ${BRAND_COLOR_GOLD}; font-weight: bold; font-family: monospace; font-size: 14px;">${orderReference}</td>
+        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #888; width: 40%;">Invoice Reference:</td>
+        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: ${BRAND_COLOR_GOLD}; font-weight: bold; font-family: monospace; font-size: 13px; word-break: break-all;">${orderReference}</td>
       </tr>
       <tr>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #888;">Order Date:</td>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #eee;">${new Date(order.createdAt || Date.now()).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #888;">Order Date:</td>
+        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #eee;">${new Date(order.createdAt || Date.now()).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
       </tr>
       <tr>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #888;">Payment Method:</td>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #eee;">${order.paymentMethod || 'Instant EFT / Card (PayFast)'}</td>
+        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #888;">Payment Method:</td>
+        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #eee;">${order.paymentMethod || 'Instant EFT / Card (PayFast)'}</td>
       </tr>
       <tr>
-        <td style="padding: 10px 14px; color: #888;">Delivery Method:</td>
-        <td style="padding: 10px 14px; color: #eee; font-weight: 500;">${courierName}</td>
+        <td style="padding: 9px 12px; color: #888;">Delivery Method:</td>
+        <td style="padding: 9px 12px; color: #eee; font-weight: 500;">${courierName}</td>
       </tr>
     </table>
 
     <!-- PRODUCT RECEIPT TABLE -->
     <div class="details-box">
-      <h3 style="margin-top: 0; font-size: 16px; border-bottom: 1px solid #222; padding-bottom: 10px;">Itemized Products</h3>
-      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+      <h3 style="margin-top: 0; font-size: 15px; border-bottom: 1px solid #222; padding-bottom: 10px; color: ${BRAND_COLOR_GOLD};">
+        Itemized Products
+      </h3>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px;">
         <thead>
           <tr style="border-bottom: 2px solid #333; color: ${BRAND_COLOR_GOLD}; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
-            <th style="padding: 8px 8px 8px 0; text-align: left;">Product</th>
-            <th style="padding: 8px; text-align: center;">Qty</th>
-            <th style="padding: 8px; text-align: right;">Price</th>
-            <th style="padding: 8px 0 8px 8px; text-align: right;">Total</th>
+            <th style="padding: 8px 6px 8px 0; text-align: left;">Product Item</th>
+            <th style="padding: 8px 0 8px 6px; text-align: right; white-space: nowrap; width: 28%;">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -302,47 +331,47 @@ const orderConfirmationTemplate = (order) => {
       </table>
 
       <!-- FINANCIAL SUMMARY & TAX BREAKDOWN -->
-      <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 15px; border-top: 1px solid #333;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 14px; border-top: 1px solid #2a2a2a;">
         <tr>
-          <td style="padding: 10px 0 4px; color: #aaa;">Products Subtotal (Excl. VAT):</td>
-          <td style="padding: 10px 0 4px; text-align: right; color: #ddd;">${formatRand(subTotalExclVat)}</td>
+          <td style="padding: 9px 0 4px; color: #a1a1aa;">Products Subtotal (Excl. VAT):</td>
+          <td style="padding: 9px 0 4px; text-align: right; color: #e4e4e7; white-space: nowrap;">${formatRand(subTotalExclVat)}</td>
         </tr>
         <tr>
-          <td style="padding: 4px 0; color: #aaa;">South African VAT (15% Included):</td>
-          <td style="padding: 4px 0; text-align: right; color: ${BRAND_COLOR_GOLD};">${formatRand(vatAmount)}</td>
+          <td style="padding: 4px 0; color: #a1a1aa;">South African VAT (15% Included):</td>
+          <td style="padding: 4px 0; text-align: right; color: ${BRAND_COLOR_GOLD}; white-space: nowrap;">${formatRand(vatAmount)}</td>
         </tr>
         <tr>
-          <td style="padding: 4px 0; color: #aaa; font-weight: 500;">Products Subtotal (Incl. VAT):</td>
-          <td style="padding: 4px 0; text-align: right; color: #fff; font-weight: 500;">${formatRand(subTotal)}</td>
+          <td style="padding: 4px 0; color: #a1a1aa; font-weight: 500;">Products Subtotal (Incl. VAT):</td>
+          <td style="padding: 4px 0; text-align: right; color: #ffffff; font-weight: 500; white-space: nowrap;">${formatRand(subTotal)}</td>
         </tr>
         <tr>
-          <td style="padding: 4px 0; color: #aaa;">Shipping & Logistics (${order.deliveryPreference === 'postnet' ? 'PostNet Branch' : 'Courier Door'}):</td>
-          <td style="padding: 4px 0; text-align: right; color: #ddd;">${shippingCost > 0 ? formatRand(shippingCost) : '<span style="color: #34d399; font-weight: bold;">FREE</span>'}</td>
+          <td style="padding: 4px 0; color: #a1a1aa;">Shipping & Logistics (${order.deliveryPreference === 'postnet' ? 'PostNet Branch' : (order.driver?.courierCompany || 'Aramex Priority Door-to-Door') }):</td>
+          <td style="padding: 4px 0; text-align: right; color: #e4e4e7; white-space: nowrap;">${shippingCost > 0 ? formatRand(shippingCost) : '<span style="color: #34d399; font-weight: bold;">FREE</span>'}</td>
         </tr>
         ${order.appliedWelcomeDiscount > 0 ? `
         <tr>
           <td style="padding: 4px 0; color: #34d399;">Welcome Promotion Discount:</td>
-          <td style="padding: 4px 0; text-align: right; color: #34d399;">- ${formatRand(order.appliedWelcomeDiscount)}</td>
+          <td style="padding: 4px 0; text-align: right; color: #34d399; white-space: nowrap;">- ${formatRand(order.appliedWelcomeDiscount)}</td>
         </tr>
         ` : ''}
         ${order.superCoinsDiscount > 0 ? `
         <tr>
           <td style="padding: 4px 0; color: #fbbf24;">Super Coins Redeemed (${order.superCoinsUsed || 0} Coins):</td>
-          <td style="padding: 4px 0; text-align: right; color: #fbbf24;">- ${formatRand(order.superCoinsDiscount)}</td>
+          <td style="padding: 4px 0; text-align: right; color: #fbbf24; white-space: nowrap;">- ${formatRand(order.superCoinsDiscount)}</td>
         </tr>
         ` : ''}
         ${order.importDuties > 0 ? `
         <tr>
-          <td style="padding: 4px 0; color: #aaa;">Estimated Import Duties & Customs:</td>
-          <td style="padding: 4px 0; text-align: right; color: #ddd;">${formatRand(order.importDuties + (order.customsFees || 0))}</td>
+          <td style="padding: 4px 0; color: #a1a1aa;">Estimated Import Duties & Customs:</td>
+          <td style="padding: 4px 0; text-align: right; color: #e4e4e7; white-space: nowrap;">${formatRand(order.importDuties + (order.customsFees || 0))}</td>
         </tr>
         ` : ''}
         <tr style="border-top: 2px solid ${BRAND_COLOR_GOLD};">
-          <td style="padding: 14px 0 4px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 16px;">
+          <td style="padding: 12px 0 4px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 14px;">
             Grand Total Paid:
-            <div style="font-size: 11px; color: #888; font-weight: normal; margin-top: 2px;">Inclusive of all 15% VAT, duties & taxes</div>
+            <div style="font-size: 11px; color: #71717a; font-weight: normal; margin-top: 2px;">Inclusive of all 15% VAT, duties & taxes</div>
           </td>
-          <td style="padding: 14px 0 4px; text-align: right; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 20px;">
+          <td style="padding: 12px 0 4px; text-align: right; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 17px; white-space: nowrap;">
             ${formatRand(totalPrice)}
           </td>
         </tr>

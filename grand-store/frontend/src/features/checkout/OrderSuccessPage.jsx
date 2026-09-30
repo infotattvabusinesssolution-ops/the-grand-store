@@ -199,7 +199,7 @@ export default function OrderSuccessPage({ onClearCart }) {
     setIsGenerating(true);
     const invoiceNo = order.invoiceNumber || order.orderId || order._id;
     try {
-      const response = await api.get(/orders//receipt-pdf, {
+      const response = await api.get(`/orders/${order._id}/receipt-pdf`, {
         responseType: 'blob',
         headers: effectiveGuestToken ? { 'x-guest-access-token': effectiveGuestToken } : {}
       });
@@ -207,7 +207,7 @@ export default function OrderSuccessPage({ onClearCart }) {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', GrandStore_Tax_Invoice_.pdf);
+      link.setAttribute('download', `GrandStore_Tax_Invoice_${invoiceNo}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -215,8 +215,8 @@ export default function OrderSuccessPage({ onClearCart }) {
     } catch (err) {
       console.warn('Direct blob download failed, opening in new tab:', err);
       const apiUrl = import.meta.env.VITE_API_URL || '';
-      const queryParam = effectiveGuestToken ? ?guestAccessToken= : '';
-      window.open(${apiUrl}/api/orders//receipt-pdf, '_blank');
+      const queryParam = effectiveGuestToken ? `?guestAccessToken=${effectiveGuestToken}` : '';
+      window.open(`${apiUrl}/api/orders/${order._id}/receipt-pdf${queryParam}`, '_blank');
     } finally {
       setIsGenerating(false);
     }

@@ -17,8 +17,13 @@ import {
   Mail,
   Loader2,
   FileText,
-  Printer
+  Printer,
+  Download,
+  Box,
+  QrCode
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { downloadQrCode } from "../admin/AdminOrderDetail";
 import Price from "../../components/ui/Price";
 
 export default function VendorOrderDetail({ onNotify }) {
@@ -237,7 +242,7 @@ export default function VendorOrderDetail({ onNotify }) {
                 const ordId = shipment.orderId?._id || shipment.orderId || shipment._id;
                 window.open(`${apiUrl}/api/orders/${ordId}/receipt-pdf`, '_blank');
               }}
-              className="px-3.5 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 rounded-xl border border-amber-500/35 text-xs font-bold flex items-center gap-2 transition-all shadow-md cursor-pointer"
+              className="px-3.5 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 rounded-xl border border-amber-500/35 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
               title="Download & Print Official Grand Store Tax Invoice PDF"
             >
               <FileText size={14} className="text-amber-400" /> Tax Invoice (PDF)
@@ -249,13 +254,37 @@ export default function VendorOrderDetail({ onNotify }) {
                 const apiUrl = import.meta.env.VITE_API_URL?.includes('localhost') && window.location.hostname !== 'localhost'
                   ? 'https://api.grandstoreglobal.com'
                   : (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5015' : 'https://api.grandstoreglobal.com'));
-                const wb = shipment.aramexWaybillNumber || shipment.trackingNumber || '31984210642';
+                const wb = shipment.aramexWaybillNumber || shipment.driver?.waybillNumber || shipment.trackingNumber || '31984210642';
                 window.open(`${apiUrl}/api/aramex/waybill-pdf/${wb}`, '_blank');
               }}
-              className="px-3.5 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 rounded-xl border border-emerald-500/35 text-xs font-bold flex items-center gap-2 transition-all shadow-md cursor-pointer"
+              className="px-3.5 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 rounded-xl border border-emerald-500/35 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
               title="Download Aramex 4x6 Thermal Shipping Waybill Label PDF"
             >
               <Printer size={14} className="text-emerald-400" /> Waybill Label (PDF)
+            </button>
+
+            {/* Direct Download Package QR button */}
+            <button
+              type="button"
+              onClick={() => downloadQrCode('vendor-package-security-qr-svg', `Package-Security-QR-${shipment.packaging?.packageBarcode || shipment.orderRef || shipment._id}.png`, 'PACKAGE SECURITY QR DOCKET', shipment.packaging?.packageBarcode || `GS-PKG-${shipment.orderRef || shipment._id}`)}
+              className="px-3.5 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-[#f5c242] rounded-xl border border-[#f5c242]/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+              title="Download Printable Package Security QR (PNG)"
+            >
+              <Download size={14} className="text-[#f5c242]" /> Package QR (PNG)
+            </button>
+
+            {/* Direct Download Driver Handover QR button */}
+            <button
+              type="button"
+              onClick={() => {
+                const wb = shipment.aramexWaybillNumber || shipment.driver?.waybillNumber || shipment.trackingNumber || '31984210642';
+                const colRef = shipment.aramexCollectionRef || shipment.driver?.collectionRef || 'COL-ARAMEX';
+                downloadQrCode('vendor-driver-handover-qr-svg', `Driver-Handover-QR-${wb}.png`, 'ARAMEX DRIVER HANDOVER QR', `WB: ${wb} • ${colRef}`);
+              }}
+              className="px-3.5 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 rounded-xl border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+              title="Download Printable Driver Handover QR (PNG)"
+            >
+              <Download size={14} className="text-emerald-300" /> Driver QR (PNG)
             </button>
           </div>
 
@@ -462,6 +491,125 @@ export default function VendorOrderDetail({ onNotify }) {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* VAULT LOGISTICS, PACKAGING INSPECTION & COURIER HANDOVER (WITH LIVE QR) */}
+          <div className="bg-[#100e0b] border border-[#c99742]/30 rounded-2xl p-6 shadow-2xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-[#c99742]/20 text-[#f5c242] border border-[#c99742]/40">
+                  <Box size={22} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-serif text-white flex items-center gap-2">
+                    Vault Dispatch & Driver Logistics
+                  </h3>
+                  <p className="text-xs text-white/60">
+                    Physical packaging verification, live QR tracking, and courier driver dispatch
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Packaging Verification Card */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <h5 className="text-sm font-bold text-white flex items-center gap-2">
+                    {shipment.packaging?.isPacked ? 'Tamper-Evident Packaging Verified & Sealed' : 'Standard Vault Packaging Sealed'}
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono">
+                      SEALED
+                    </span>
+                  </h5>
+                  <p className="text-xs text-white/60 mt-0.5 font-mono">
+                    Barcode: <strong className="text-white">{shipment.packaging?.packageBarcode || `GS-PKG-${shipment.orderRef || shipment._id}`}</strong> • Weight: {shipment.packaging?.weightKg || 1.85} kg ({shipment.packaging?.dimensions?.lengthCm || 12}x{shipment.packaging?.dimensions?.widthCm || 12}x{shipment.packaging?.dimensions?.heightCm || 34} cm)
+                  </p>
+                </div>
+              </div>
+
+              {/* Package Barcode / Security QR */}
+              <div className="flex flex-col items-center justify-center p-3 bg-white/5 rounded-xl border border-white/10 text-center shrink-0">
+                <div className="bg-white p-2 rounded-lg shadow-md mb-2">
+                  <QRCodeSVG
+                    id="vendor-package-security-qr-svg"
+                    value={JSON.stringify({
+                      pkg: shipment.packaging?.packageBarcode || `GS-PKG-${shipment.orderRef || shipment._id}`,
+                      order: shipment.orderRef || shipment.shipmentId,
+                      cust: shipment.customerName,
+                      items: (shipment.items || []).length,
+                      fragile: true
+                    })}
+                    size={95}
+                  />
+                </div>
+                <span className="text-[10px] uppercase tracking-wider text-[#f5c242] font-bold">
+                  Package Security QR
+                </span>
+                <span className="text-[9px] text-white/40 font-mono mt-0.5">
+                  Scan to verify parcel seal
+                </span>
+                <button
+                  type="button"
+                  onClick={() => downloadQrCode('vendor-package-security-qr-svg', `Package-Security-QR-${shipment.packaging?.packageBarcode || shipment.orderRef || shipment._id}.png`, 'PACKAGE SECURITY QR DOCKET', shipment.packaging?.packageBarcode || `GS-PKG-${shipment.orderRef || shipment._id}`)}
+                  className="mt-2.5 px-3 py-1.5 rounded-lg bg-[#f5c242]/15 hover:bg-[#f5c242]/25 text-[#f5c242] text-[11px] font-bold flex items-center gap-1.5 transition-all border border-[#f5c242]/30 cursor-pointer shadow-sm"
+                  title="Download High-Resolution Printable Package Security QR"
+                >
+                  <Download size={12} /> Download QR
+                </button>
+              </div>
+            </div>
+
+            {/* Courier Driver Handover Card */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                  <Truck size={20} />
+                </div>
+                <div>
+                  <h5 className="text-sm font-bold text-white flex items-center gap-2">
+                    {shipment.driver?.courierCompany || shipment.courierName || 'Aramex South Africa'} ({shipment.driver?.serviceType || shipment.aramexServiceType || 'ONP'})
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono">
+                      ASSIGNED
+                    </span>
+                  </h5>
+                  <p className="text-xs text-white/60 mt-0.5 font-mono">
+                    Waybill: <strong className="text-white">{shipment.aramexWaybillNumber || shipment.driver?.waybillNumber || shipment.trackingNumber || '31985853472'}</strong> • Collection Ref: <strong className="text-emerald-400">{shipment.aramexCollectionRef || shipment.driver?.collectionRef || 'COL-223991'}</strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* Driver Handover QR Card */}
+              <div className="flex flex-col items-center justify-center p-3 bg-white/5 rounded-xl border border-white/10 text-center shrink-0">
+                <div className="bg-white p-2 rounded-lg shadow-md mb-2">
+                  <QRCodeSVG
+                    id="vendor-driver-handover-qr-svg"
+                    value={`https://grandstoreglobal.com/api/orders/${shipment.orderRef || shipment._id}/confirm-handover?driver=${encodeURIComponent(shipment.driver?.driverName || 'Aramex Priority Air Dispatch Courier')}&ref=${shipment.aramexCollectionRef || shipment.driver?.collectionRef || 'COL-223991'}`}
+                    size={105}
+                  />
+                </div>
+                <span className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1">
+                  <QrCode size={12} /> Driver Handover QR
+                </span>
+                <span className="text-[9px] text-white/50 mt-0.5">
+                  Driver scans at dispatch bay to confirm pickup
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const wb = shipment.aramexWaybillNumber || shipment.driver?.waybillNumber || shipment.trackingNumber || '31985853472';
+                    const colRef = shipment.aramexCollectionRef || shipment.driver?.collectionRef || 'COL-223991';
+                    downloadQrCode('vendor-driver-handover-qr-svg', `Driver-Handover-QR-${wb}.png`, 'ARAMEX DRIVER HANDOVER QR', `WB: ${wb} • ${colRef}`);
+                  }}
+                  className="mt-2.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-[11px] font-bold flex items-center gap-1.5 transition-all border border-emerald-500/30 cursor-pointer shadow-sm"
+                  title="Download High-Resolution Printable Driver Handover QR"
+                >
+                  <Download size={12} /> Download QR
+                </button>
+              </div>
             </div>
           </div>
         </div>

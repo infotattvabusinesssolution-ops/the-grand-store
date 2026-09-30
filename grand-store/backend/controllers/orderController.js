@@ -1644,6 +1644,12 @@ const getVendorOrderById = async (req, res) => {
       customerPhone: masterOrder.shippingAddress?.phone || masterOrder.shippingAddress?.phoneNumber || masterOrder.guestInfo?.phone || '',
       adminMessages: masterOrder.adminMessages || [],
       latestAdminMessage: masterOrder.latestAdminMessage || null,
+      packaging: masterOrder.packaging || null,
+      driver: masterOrder.driver || null,
+      aramexWaybillNumber: masterOrder.aramexWaybillNumber || shipment.aramexWaybillNumber || (masterOrder.driver && masterOrder.driver.waybillNumber) || null,
+      aramexCollectionRef: masterOrder.driver?.collectionRef || shipment.aramexCollectionRef || null,
+      isPaid: masterOrder.isPaid,
+      paymentMethod: masterOrder.paymentMethod,
       items: items,
       vendorTotal: items.reduce((acc, item) => acc + (item.price * item.quantity), 0)
     };

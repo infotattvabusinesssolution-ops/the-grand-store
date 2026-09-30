@@ -25,11 +25,91 @@ import {
   Box,
   Lock,
   Printer,
-  Check
+  Check,
+  Download
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Price from '../../components/ui/Price';
 import { PHONE_COUNTRIES } from '../../utils/phoneNumbers';
+
+export const downloadQrCode = (svgId, fileName = 'qr-code.png', title = 'GRAND STORE VERIFICATION QR', subtitle = '') => {
+  const svg = document.getElementById(svgId);
+  if (!svg) {
+    console.error(`SVG element #${svgId} not found`);
+    return;
+  }
+
+  const svgData = new XMLSerializer().serializeToString(svg);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+
+  img.onload = () => {
+    const scale = 2;
+    const baseW = 320;
+    const baseH = 390;
+    canvas.width = baseW * scale;
+    canvas.height = baseH * scale;
+    ctx.scale(scale, scale);
+
+    // Luxury crisp white background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, baseW, baseH);
+
+    // Gold decorative border
+    ctx.strokeStyle = '#c99742';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(8, 8, baseW - 16, baseH - 16);
+
+    // Header branding
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(8, 8, baseW - 16, 42);
+    ctx.fillStyle = '#c99742';
+    ctx.font = 'bold 12px "Times New Roman", Times, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('THE GRAND STORE', baseW / 2, 26);
+    ctx.fillStyle = '#d4af37';
+    ctx.font = 'bold 9px -apple-system, sans-serif';
+    ctx.fillText(title.toUpperCase(), baseW / 2, 40);
+
+    // Draw QR Code
+    const qrSize = 210;
+    const qrX = (baseW - qrSize) / 2;
+    const qrY = 62;
+    ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
+
+    // Footer information
+    ctx.fillStyle = '#111111';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(subtitle || '', baseW / 2, 298);
+
+    ctx.fillStyle = '#777777';
+    ctx.font = '9px -apple-system, sans-serif';
+    ctx.fillText('OFFICIAL DISPATCH & VERIFICATION DOCKET', baseW / 2, 316);
+    ctx.fillText('Scan to verify consignment integrity & live custody', baseW / 2, 330);
+
+    // Gold bottom line
+    ctx.strokeStyle = '#c99742';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(30, 345);
+    ctx.lineTo(baseW - 30, 345);
+    ctx.stroke();
+
+    ctx.fillStyle = '#999999';
+    ctx.font = '8px -apple-system, sans-serif';
+    ctx.fillText('South African Logistics Gateway • Grand Store Ops', baseW / 2, 362);
+
+    const a = document.createElement('a');
+    a.download = fileName;
+    a.href = canvas.toDataURL('image/png');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+};
 
 export default function AdminOrderDetail({ onNotify }) {
   const { id } = useParams();
@@ -294,10 +374,10 @@ export default function AdminOrderDetail({ onNotify }) {
                 : (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5015' : 'https://api.grandstoreglobal.com'));
               window.open(`${apiUrl}/api/orders/${order._id}/receipt-pdf`, '_blank');
             }}
-            className="px-4 py-2 bg-gradient-to-r from-amber-500/20 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-600/30 text-amber-300 rounded-xl border border-amber-500/40 text-xs font-bold flex items-center gap-2 transition-all shadow-md cursor-pointer"
+            className="px-3.5 py-2 bg-gradient-to-r from-amber-500/20 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-600/30 text-amber-300 rounded-xl border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
             title="Download & Print Official Grand Store Tax Invoice PDF"
           >
-            <FileText size={15} className="text-amber-400" /> Download Tax Invoice (PDF)
+            <FileText size={14} className="text-amber-400" /> Tax Invoice (PDF)
           </button>
 
           <button
@@ -309,10 +389,30 @@ export default function AdminOrderDetail({ onNotify }) {
               const wb = order.driver?.waybillNumber || order.aramexWaybillNumber || (order.shipments && order.shipments[0]?.aramexWaybillNumber) || '31984210642';
               window.open(`${apiUrl}/api/aramex/waybill-pdf/${wb}`, '_blank');
             }}
-            className="px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-teal-600/20 hover:from-emerald-500/30 hover:to-teal-600/30 text-emerald-300 rounded-xl border border-emerald-500/40 text-xs font-bold flex items-center gap-2 transition-all shadow-md cursor-pointer"
+            className="px-3.5 py-2 bg-gradient-to-r from-emerald-500/20 to-teal-600/20 hover:from-emerald-500/30 hover:to-teal-600/30 text-emerald-300 rounded-xl border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
             title="Download Aramex 4x6 Thermal Shipping Waybill Label PDF with Driver Handover QR Code"
           >
-            <Printer size={15} className="text-emerald-400" /> Aramex Waybill Thermal Label (PDF)
+            <Printer size={14} className="text-emerald-400" /> Waybill Label (PDF)
+          </button>
+
+          {/* Direct Download Package QR button */}
+          <button
+            type="button"
+            onClick={() => downloadQrCode('admin-package-security-qr-svg', `Package-Security-QR-${order.packaging?.packageBarcode || orderRef}.png`, 'PACKAGE SECURITY QR DOCKET', order.packaging?.packageBarcode || `GS-PKG-${orderRef}`)}
+            className="px-3.5 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-[#f5c242] rounded-xl border border-[#f5c242]/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+            title="Download Printable Package Security QR (PNG)"
+          >
+            <Download size={14} className="text-[#f5c242]" /> Package QR (PNG)
+          </button>
+
+          {/* Direct Download Driver Handover QR button */}
+          <button
+            type="button"
+            onClick={() => downloadQrCode('admin-driver-handover-qr-svg', `Driver-Handover-QR-${order.driver?.waybillNumber || orderRef}.png`, 'ARAMEX DRIVER HANDOVER QR', `WB: ${order.driver?.waybillNumber || '31984210642'} • ${order.driver?.collectionRef || ''}`)}
+            className="px-3.5 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 rounded-xl border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+            title="Download Printable Driver Handover QR (PNG)"
+          >
+            <Download size={14} className="text-emerald-300" /> Driver QR (PNG)
           </button>
         </div>
       </div>
@@ -604,6 +704,7 @@ export default function AdminOrderDetail({ onNotify }) {
               <div className="flex flex-col items-center justify-center p-3 bg-white/5 rounded-xl border border-white/10 text-center">
                 <div className="bg-white p-2 rounded-lg shadow-md mb-2">
                   <QRCodeSVG
+                    id="admin-package-security-qr-svg"
                     value={JSON.stringify({
                       pkg: order.packaging?.packageBarcode || `GS-PKG-${orderRef}`,
                       order: orderRef,
@@ -620,6 +721,14 @@ export default function AdminOrderDetail({ onNotify }) {
                 <span className="text-[9px] text-white/40 font-mono mt-0.5">
                   Scan to verify parcel seal
                 </span>
+                <button
+                  type="button"
+                  onClick={() => downloadQrCode('admin-package-security-qr-svg', `Package-Security-QR-${order.packaging?.packageBarcode || orderRef}.png`, 'PACKAGE SECURITY QR DOCKET', order.packaging?.packageBarcode || `GS-PKG-${orderRef}`)}
+                  className="mt-2.5 px-3 py-1.5 rounded-lg bg-[#f5c242]/15 hover:bg-[#f5c242]/25 text-[#f5c242] text-[11px] font-bold flex items-center gap-1.5 transition-all border border-[#f5c242]/30 cursor-pointer shadow-sm"
+                  title="Download High-Resolution Printable Package Security QR"
+                >
+                  <Download size={12} /> Download QR
+                </button>
               </div>
             </div>
 
@@ -722,6 +831,7 @@ export default function AdminOrderDetail({ onNotify }) {
                       <div className="flex flex-col items-center justify-center p-3 bg-white/5 rounded-xl border border-white/10 text-center">
                         <div className="bg-white p-2 rounded-lg shadow-md mb-2">
                           <QRCodeSVG
+                            id="admin-driver-handover-qr-svg"
                             value={`https://grandstoreglobal.com/api/orders/${orderRef}/confirm-handover?driver=${encodeURIComponent(order.driver.driverName)}&ref=${order.driver.collectionRef}`}
                             size={105}
                           />
@@ -732,6 +842,14 @@ export default function AdminOrderDetail({ onNotify }) {
                         <span className="text-[9px] text-white/50 mt-0.5">
                           Driver scans at dispatch bay to confirm pickup
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => downloadQrCode('admin-driver-handover-qr-svg', `Driver-Handover-QR-${order.driver.waybillNumber || orderRef}.png`, 'ARAMEX DRIVER HANDOVER QR', `WB: ${order.driver.waybillNumber || '31984210642'} • ${order.driver.collectionRef || ''}`)}
+                          className="mt-2.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-[11px] font-bold flex items-center gap-1.5 transition-all border border-emerald-500/30 cursor-pointer shadow-sm"
+                          title="Download High-Resolution Printable Driver Handover QR"
+                        >
+                          <Download size={12} /> Download QR
+                        </button>
                       </div>
                     </div>
                   ) : (
