@@ -330,8 +330,7 @@ export default function Header({
       <div className="announcement-bar py-1.5 bg-[#c9a35b] text-black">
         <div className="shell announcement-inner">
           <p className="font-bold tracking-widest uppercase text-[10px]">
-            <PackageCheck size={14} className="mr-2" /> Complimentary delivery
-            over <Price amount={1500} />
+            <PackageCheck size={14} className="mr-2" /> Complimentary delivery over selected products
           </p>
           <p className="announcement-message font-bold tracking-widest uppercase text-[10px]">
             Private cellar sourcing available worldwide

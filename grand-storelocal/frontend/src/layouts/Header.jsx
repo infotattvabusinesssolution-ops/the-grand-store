@@ -67,7 +67,7 @@ export default function Header({ cartCount, compareCount, wishlistCount, onBagCl
       {/* Tailwind Converted Announcement Bar */}
       <div className="bg-panel-light text-ivory text-xs border-b border-white-line py-2">
         <div className="max-w-7xl mx-auto px-4 flex justify-between items-center flex-wrap gap-2">
-          <p className="flex items-center gap-2"><PackageCheck size={14} className="text-gold" /> Complimentary delivery over <Price amount={1500} /></p>
+          <p className="flex items-center gap-2"><PackageCheck size={14} className="text-gold" /> Complimentary delivery over selected products</p>
           <p className="hidden md:block text-ivory-muted tracking-wide uppercase text-[10px]">Private cellar sourcing available worldwide</p>
           <div className="flex items-center gap-4">
             <button className="flex items-center gap-1 hover:text-gold transition-colors" type="button">South Africa <ChevronDown size={13} /></button>

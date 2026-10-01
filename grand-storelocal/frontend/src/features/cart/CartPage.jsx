@@ -319,7 +319,7 @@ export default function CartPage({ cartItems, onUpdateQuantity, onRemove, onClea
                   </p>
                   <p className="flex items-start gap-2.5 m-0">
                     <Truck size={16} className="text-[#caa458] shrink-0 mt-0.5" />
-                    <span><strong className="text-[#ddd] block font-semibold">Temperature-Controlled Courier</strong>Complimentary cellar delivery over R 1,800.</span>
+                    <span><strong className="text-[#ddd] block font-semibold">Temperature-Controlled Courier</strong>Complimentary cellar delivery over selected products.</span>
                   </p>
                   <p className="flex items-start gap-2.5 m-0">
                     <PackageCheck size={16} className="text-[#caa458] shrink-0 mt-0.5" />

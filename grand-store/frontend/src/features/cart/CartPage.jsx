@@ -148,7 +148,7 @@ export default function CartPage({ cartItems, onUpdateQuantity, onRemove, onClea
               <Link className="cart-continue-link" to="/shop"><ChevronLeft size={15} /> Continue Shopping</Link>
               <div className="cart-assurance-list">
                 <p><ShieldCheck size={17} /><span><strong>Secure checkout</strong>Your details stay protected.</span></p>
-                <p><Truck size={17} /><span><strong>Considered delivery</strong>Complimentary over R1,500.</span></p>
+                <p><Truck size={17} /><span><strong>Considered delivery</strong>Complimentary over selected products.</span></p>
                 <p><PackageCheck size={17} /><span><strong>Cellar-safe packaging</strong>Prepared for a safe arrival.</span></p>
               </div>
             </aside>

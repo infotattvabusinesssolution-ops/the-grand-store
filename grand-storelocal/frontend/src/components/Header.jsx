@@ -460,7 +460,7 @@ export default function Header({
         <div className="shell announcement-inner flex items-center justify-between">
           <p className="font-bold tracking-[0.16em] uppercase text-[10px] sm:text-[11px] text-[#caa458] flex items-center">
             <ProteaEmblem className="w-3.5 h-3.5 text-[#caa458] mr-2 shrink-0" />
-            <span>COMPLIMENTARY DELIVERY OVER <Price amount={1800} /></span>
+            <span>COMPLIMENTARY DELIVERY OVER SELECTED PRODUCTS</span>
           </p>
           <p className="announcement-message font-bold tracking-[0.18em] uppercase text-[10px] sm:text-[11px] text-[#caa458] text-center hidden md:block">
             PRIVATE CELLAR SOURCING AVAILABLE WORLDWIDE
