@@ -263,34 +263,90 @@ function App() {
   const { wishlistCount, toggleWishlist } = useWishlist();
   const { products } = useProducts();
 
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem("grand-store-cart");
+      if (!stored) return [];
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((item) => ({
+          ...item,
+          quantity: Math.max(1, Number(item.quantity) || 1),
+          option: item.option || "Single bottle",
+        }));
+      }
+    } catch (e) {
+      console.error("Error reading cart from localStorage on init", e);
+    }
+    return [];
+  });
   const [compareItems, setCompareItems] = useState([]);
-  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Safely persist entire cart item payload to localStorage
+  const saveCartToStorage = (items) => {
+    try {
+      window.localStorage.setItem(
+        "grand-store-cart",
+        JSON.stringify(
+          items.map((item) => ({
+            id: item.id || item._id,
+            _id: item._id,
+            name: item.name || item.fullName,
+            fullName: item.fullName || item.name,
+            slug: item.slug,
+            price: item.price,
+            image: item.image,
+            brand: item.brand,
+            category: item.category,
+            storeId: item.storeId || item.vendorId || "admin",
+            storeName: item.storeName || "The Grand Store",
+            sku: item.sku,
+            origin: item.origin,
+            quantity: item.quantity,
+            option: item.option || "Single bottle",
+          })),
+        ),
+      );
+    } catch (e) {
+      console.error("Error saving cart to localStorage", e);
+    }
+  };
+
+  // When live catalog loads, enrich cart items without ever dropping or wiping out existing items
   useEffect(() => {
-    if (products.length > 0 && !isInitialized) {
-      try {
-        const storedItems = JSON.parse(
-          window.localStorage.getItem("grand-store-cart") || "[]",
-        );
-        setCartItems(
-          storedItems
-            .map((storedItem) => {
-              const product = products.find(
-                (item) =>
-                  item.id === storedItem.id || item._id === storedItem.id,
-              );
-              if (!product) return null;
-              return {
-                ...product,
-                quantity: Math.max(1, Number(storedItem.quantity) || 1),
-                option:
-                  storedItem.option || product.options?.[0] || "Pack of 1",
-              };
-            })
-            .filter(Boolean),
-        );
+    if (products.length > 0) {
+      setCartItems((prevItems) => {
+        if (!prevItems || prevItems.length === 0) return prevItems;
+        const enriched = prevItems.map((cartItem) => {
+          const prodId = cartItem.id || cartItem._id;
+          const matched = products.find(
+            (p) =>
+              (p.id && p.id === prodId) ||
+              (p._id && (p._id === prodId || String(p._id) === String(prodId))),
+          );
+          if (!matched) {
+            return cartItem; // Never drop un-matched items!
+          }
+          return {
+            ...matched,
+            ...cartItem,
+            name: matched.name || cartItem.name,
+            fullName: matched.name || cartItem.fullName || cartItem.name,
+            price: cartItem.price || matched.price,
+            image: matched.image || cartItem.image,
+            storeId: matched.storeId || matched.vendorId || cartItem.storeId || "admin",
+            storeName: matched.storeName || cartItem.storeName || "The Grand Store",
+            brand: matched.brand || cartItem.brand,
+            category: matched.category || cartItem.category,
+            quantity: cartItem.quantity,
+            option: cartItem.option || matched.options?.[0] || "Single bottle",
+          };
+        });
+        saveCartToStorage(enriched);
+        return enriched;
+      });
 
+      try {
         const storedIds = JSON.parse(
           window.localStorage.getItem("grand-store-compare") || "[]",
         );
@@ -305,36 +361,25 @@ function App() {
             .slice(0, 4),
         );
       } catch (e) {
-        console.error("Error loading cart/compare from storage", e);
+        console.error("Error loading compare from storage", e);
       }
-      setIsInitialized(true);
     }
-  }, [products, isInitialized]);
+  }, [products]);
+
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
   useEffect(() => {
-    if (!isInitialized) return;
-    window.localStorage.setItem(
-      "grand-store-cart",
-      JSON.stringify(
-        cartItems.map((item) => ({
-          id: item.id || item._id,
-          quantity: item.quantity,
-          option: item.option,
-        })),
-      ),
-    );
-  }, [cartItems, isInitialized]);
-  useEffect(() => {
-    if (!isInitialized) return;
-    window.localStorage.setItem(
-      "grand-store-compare",
-      JSON.stringify(compareItems.map((product) => product.id || product._id)),
-    );
-  }, [compareItems, isInitialized]);
+    try {
+      window.localStorage.setItem(
+        "grand-store-compare",
+        JSON.stringify(compareItems.map((product) => product.id || product._id)),
+      );
+    } catch (e) {}
+  }, [compareItems]);
 
   const showToast = (message) => {
     setToast(message);
@@ -345,25 +390,29 @@ function App() {
   const addToCart = (
     product,
     quantity = 1,
-    option = product.options?.[0] || "Pack of 1",
-    redirect = true
+    option = product.option || product.options?.[0] || "Single bottle",
+    redirect = true,
   ) => {
+    const prodId = product.id || product._id;
     setCartItems((items) => {
-      const prodId = product.id || product._id;
       const existingItem = items.find(
         (item) => (item.id || item._id) === prodId && item.option === option,
       );
+      let updated;
       if (existingItem) {
-        return items.map((item) =>
+        updated = items.map((item) =>
           (item.id || item._id) === prodId && item.option === option
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, ...product, quantity: item.quantity + quantity }
             : item,
         );
+      } else {
+        updated = [...items, { ...product, quantity, option }];
       }
-      return [...items, { ...product, quantity, option }];
+      saveCartToStorage(updated);
+      return updated;
     });
     showToast(
-      `${quantity > 1 ? `${quantity} × ` : ""}${product.name} added to your bag`,
+      `${quantity > 1 ? `${quantity} × ` : ""}${product.name || product.fullName || "Product"} added to your bag`,
     );
     if (redirect) {
       navigate("/customer/cart");
@@ -371,44 +420,52 @@ function App() {
   };
 
   const updateCartQuantity = (productId, option, quantity) => {
-    if (quantity < 1) {
-      setCartItems((items) =>
-        items.filter(
+    setCartItems((items) => {
+      let updated;
+      if (quantity < 1) {
+        updated = items.filter(
           (item) =>
             !((item.id || item._id) === productId && item.option === option),
-        ),
-      );
-      return;
-    }
-    setCartItems((items) =>
-      items.map((item) =>
-        (item.id || item._id) === productId && item.option === option
-          ? { ...item, quantity }
-          : item,
-      ),
-    );
+        );
+      } else {
+        updated = items.map((item) =>
+          (item.id || item._id) === productId && item.option === option
+            ? { ...item, quantity }
+            : item,
+        );
+      }
+      saveCartToStorage(updated);
+      return updated;
+    });
   };
 
   const removeFromCart = (product) => {
     const prodId = product.id || product._id;
-    setCartItems((items) =>
-      items.filter(
+    setCartItems((items) => {
+      const updated = items.filter(
         (item) =>
           !((item.id || item._id) === prodId && item.option === product.option),
-      ),
-    );
-    showToast(`${product.name} removed from your bag`);
+      );
+      saveCartToStorage(updated);
+      return updated;
+    });
+    showToast(`${product.name || product.fullName || "Product"} removed from your bag`);
   };
 
   const clearCart = () => {
     setCartItems([]);
+    saveCartToStorage([]);
     showToast("Your cart has been cleared");
   };
 
   const clearVendorCart = (vendorId) => {
-    setCartItems((items) =>
-      items.filter((item) => (item.storeId || item.vendorId) !== vendorId),
-    );
+    setCartItems((items) => {
+      const updated = items.filter(
+        (item) => (item.storeId || item.vendorId) !== vendorId,
+      );
+      saveCartToStorage(updated);
+      return updated;
+    });
   };
 
   const handleWishlist = (product) => {
