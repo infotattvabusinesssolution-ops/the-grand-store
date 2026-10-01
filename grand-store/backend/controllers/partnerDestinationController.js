@@ -38,6 +38,15 @@ const ensureDefaultPartners = async () => {
       { isVisible: { $exists: false }, isActive: true },
       { $set: { isVisible: true } }
     );
+    // Auto-migrate any legacy partner URLs
+    await PartnerDestination.updateMany(
+      { href: { $regex: 'cigar.*yogaprana', $options: 'i' } },
+      { $set: { href: 'https://cigarconnoisseurclub.com/' } }
+    );
+    await PartnerDestination.updateMany(
+      { href: { $regex: 'millionai.*yogaprana', $options: 'i' } },
+      { $set: { href: 'https://millionairescollection.com/' } }
+    );
   }
 };
 

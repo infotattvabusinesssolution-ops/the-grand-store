@@ -25,6 +25,18 @@ const DEFAULT_DESTINATIONS = [
   },
 ]
 
+const normalizePartnerHref = (href = '', title = '') => {
+  const h = String(href).toLowerCase()
+  const t = String(title).toLowerCase()
+  if (h.includes('cigar.yogapranafitness.com') || t.includes('cigar')) {
+    return 'https://cigarconnoisseurclub.com/'
+  }
+  if (h.includes('millionair') || t.includes('millionaire')) {
+    return 'https://millionairescollection.com/'
+  }
+  return href
+}
+
 export default function PartnerDestinations() {
   const sectionRef = useRef(null)
   const [destinations, setDestinations] = useState(DEFAULT_DESTINATIONS)
@@ -34,9 +46,14 @@ export default function PartnerDestinations() {
     api.get('/partners')
       .then(res => {
         if (isMounted && Array.isArray(res.data) && res.data.length > 0) {
-          const valid = res.data.filter(
-            d => d.isVisible !== false && d.title && d.image && !d.title.toLowerCase().includes('chillar')
-          )
+          const valid = res.data
+            .filter(
+              d => d.isVisible !== false && d.title && d.image && !d.title.toLowerCase().includes('chillar')
+            )
+            .map(d => ({
+              ...d,
+              href: normalizePartnerHref(d.href, d.title)
+            }))
           if (valid.length > 0) {
             setDestinations(valid)
           }
