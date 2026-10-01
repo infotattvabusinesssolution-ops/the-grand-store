@@ -21,6 +21,7 @@ import {
   Camera,
   UploadCloud,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL;
@@ -475,6 +476,117 @@ export default function EstateBuilder() {
     }
   };
 
+  const populateSampleEstate = () => {
+    setProfile((prev) => ({
+      ...prev,
+      estateName: prev?.estateName || "Mont Rochelle Reserve Estates",
+      tagline: prev?.tagline || "Bespoke handcrafted terroir and rare library vintages in the Franschhoek valley.",
+      region: prev?.region || "Franschhoek, Western Cape",
+      country: prev?.country || "South Africa",
+      seoTitle: prev?.seoTitle || "Mont Rochelle Reserve Estates | Franschhoek Wine Estate & Private Cellars",
+      metaDescription: prev?.metaDescription || "Discover Mont Rochelle Reserve Estates. Award-winning cool-climate Syrah, private barrel tastings, luxury vineyard suites, and fine dining.",
+      heroImageUrl: prev?.heroImageUrl || "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1920&q=80",
+      galleryUrls: prev?.galleryUrls?.length ? prev.galleryUrls : [
+        "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1528823872057-9c018a7a7553?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1560493676-04071c5f467b?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1474722883778-792e7990302f?auto=format&fit=crop&w=1200&q=80"
+      ],
+      story: {
+        foundedYear: prev?.story?.foundedYear || 1984,
+        founders: prev?.story?.founders || "François Du Plessis & Family",
+        history: prev?.story?.history || "Perched upon the sun-kissed slopes of the Franschhoek Mountain Range, Mont Rochelle has cultivated premier South African viticulture for over four decades. Beginning with four hectares of heritage vines, our estate has blossomed into an internationally celebrated sanctuary of rare terroir wines, sustainable farming, and private cellar allocations.",
+        winemaker: prev?.story?.winemaker || "Etienne Le Roux",
+        winemakerBio: prev?.story?.winemakerBio || "Master of Wine Etienne Le Roux brings 22 years of vintage craftsmanship from Bordeaux and the Western Cape, championing low-intervention native fermentations and French oak maturation.",
+        philosophy: prev?.story?.philosophy || "We believe great wine is born in ancient weathered soils and guided by minimal cellar interference. Every bottle captures the unvarnished essence of Franschhoek terroir.",
+        images: prev?.story?.images?.length ? prev.story.images : [
+          "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1560493676-04071c5f467b?auto=format&fit=crop&w=800&q=80"
+        ]
+      },
+      vineyard: {
+        altitude: prev?.vineyard?.altitude || "380m – 520m above sea level",
+        soil: prev?.vineyard?.soil || "Decomposed granite, table mountain sandstone, and deep loam",
+        climate: prev?.vineyard?.climate || "Mediterranean microclimate with cool Atlantic breezes",
+        grapeVarieties: prev?.vineyard?.grapeVarieties?.length ? prev.vineyard.grapeVarieties : ["Cabernet Sauvignon", "Syrah", "Chardonnay", "Pinot Noir", "Cap Classique Brut"],
+        viticulture: prev?.vineyard?.viticulture || "Certified Regenerative & 100% Organic Practices",
+        sustainability: prev?.vineyard?.sustainability || "Solar-powered cellar gravity flow and biodynamic cover crops",
+        imageUrl: prev?.vineyard?.imageUrl || "https://images.unsplash.com/photo-1474722883778-792e7990302f?auto=format&fit=crop&w=1200&q=80"
+      },
+      hospitality: {
+        title: prev?.hospitality?.title || "Cellar Hospitality & Sanctuary",
+        subtitle: prev?.hospitality?.subtitle || "Immersive wine, dining, and luxury living amidst the Franschhoek vineyards.",
+        hasTastings: true,
+        tastingsImageUrl: prev?.hospitality?.tastingsImageUrl || "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1200&q=80",
+        tastings: prev?.hospitality?.tastings?.length ? prev.hospitality.tastings : [
+          {
+            name: "Winemaker's Reserve Flight",
+            description: "Private tasting of five limited-allocation library vintages paired with artisanal local cheeses in the underground barrel vault.",
+            price: 450,
+            duration: "75 minutes",
+            capacity: 8,
+            imageUrl: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80",
+            isAvailable: true
+          },
+          {
+            name: "Terroir & Barrel Cellar Experience",
+            description: "Guided vineyard stroll followed by direct-from-barrel cask samples with our head sommelier.",
+            price: 650,
+            duration: "90 minutes",
+            capacity: 6,
+            imageUrl: "https://images.unsplash.com/photo-1528823872057-9c018a7a7553?auto=format&fit=crop&w=800&q=80",
+            isAvailable: true
+          }
+        ],
+        hasRestaurant: true,
+        restaurant: {
+          name: prev?.hospitality?.restaurant?.name || "The Cellar Hearth & Conservatory",
+          description: prev?.hospitality?.restaurant?.description || "Farm-to-table fine dining celebrating indigenous Cape botanical herbs, dry-aged Karoo lamb, and seasonal estate garden produce.",
+          openingHours: prev?.hospitality?.restaurant?.openingHours || "Wednesday – Sunday | Lunch 12:00–15:30 | Dinner 18:30–22:00",
+          menuUrl: prev?.hospitality?.restaurant?.menuUrl || "https://montrochelle.co.za/menu.pdf",
+          phoneNumber: prev?.hospitality?.restaurant?.phoneNumber || "+27 21 876 2770",
+          imageUrl: prev?.hospitality?.restaurant?.imageUrl || "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=1200&q=80"
+        },
+        hasAccommodation: true,
+        accommodation: {
+          description: prev?.hospitality?.accommodation?.description || "Six private luxury vineyard suites nestled between heritage oak trees, each featuring a private plunge pool, wood-burning fireplace, and panoramic mountain vistas.",
+          roomTypes: prev?.hospitality?.accommodation?.roomTypes?.length ? prev.hospitality.accommodation.roomTypes : ["Pinotage Valley Suite", "Grand Heritage Manor Cottage", "The Vignerons Sanctuary"],
+          priceFrom: prev?.hospitality?.accommodation?.priceFrom || 4800,
+          bookingEmail: prev?.hospitality?.accommodation?.bookingEmail || "reservations@montrochelle.co.za",
+          bookingPhone: prev?.hospitality?.accommodation?.bookingPhone || "+27 21 876 2771",
+          imageUrl: prev?.hospitality?.accommodation?.imageUrl || "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80"
+        },
+        experiences: prev?.hospitality?.experiences?.length ? prev.hospitality.experiences : [
+          {
+            name: "Sunrise Hot Air Balloon Flight & Champagne Breakfast",
+            description: "Float gently across the Franschhoek valley at dawn followed by a chilled glass of Cap Classique and chef breakfast in the vines.",
+            price: 3200,
+            duration: "3.5 hours",
+            capacity: 4,
+            imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+            isAvailable: true
+          }
+        ]
+      },
+      contact: {
+        email: prev?.contact?.email || "concierge@montrochelle.co.za",
+        phone: prev?.contact?.phone || "+27 21 876 2770",
+        website: prev?.contact?.website || "https://montrochelle.co.za",
+        address: prev?.contact?.address || "Dassenberg Road, Franschhoek, 7690, Western Cape, South Africa",
+        mapLink: prev?.contact?.mapLink || "https://maps.google.com/?q=Franschhoek+Western+Cape",
+        instagram: prev?.contact?.instagram || "https://instagram.com/montrochelle_estate",
+        facebook: prev?.contact?.facebook || "https://facebook.com/montrochellewines"
+      },
+      awards: prev?.awards?.length ? prev.awards : [
+        "Decanter World Wine Awards — 97 Pts Best in Show (Syrah Reserve)",
+        "Platter's South African Wine Guide — 5 Stars Pinnacle Selection",
+        "Tim Atkin South Africa Special Report — First Growth Estate Classification"
+      ]
+    }));
+    setSaveStatus("saved");
+    setTimeout(() => setSaveStatus(null), 2500);
+  };
+
   const scrollTo = (id) => { setActiveSection(id); document.getElementById("estate-content")?.scrollTo({ top: 0, behavior: "smooth" }); }
 
   if (loading)
@@ -577,6 +689,15 @@ export default function EstateBuilder() {
 
         {/* Action buttons */}
         <div className="px-4 pb-6 space-y-2">
+          <button
+            type="button"
+            onClick={populateSampleEstate}
+            className="w-full py-2.5 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 text-amber-300 text-xs font-semibold uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer"
+            title="Auto-fill with rich demo wine estate data and photos"
+          >
+            <Sparkles size={13} className="text-amber-300" />
+            Auto-Fill Demo Estate
+          </button>
           <button
             onClick={togglePublish}
             disabled={publishStatus === "loading"}
