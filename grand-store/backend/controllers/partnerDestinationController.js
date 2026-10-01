@@ -2,7 +2,7 @@ const PartnerDestination = require('../models/PartnerDestination');
 
 const DEFAULT_PARTNERS = [
   {
-    href: 'https://cigar.yogapranafitness.com/',
+    href: 'https://cigarconnoisseurclub.com/',
     image: '/assets/partners/cigar-connoisseur.webp',
     eyebrow: 'The Smoking Room',
     title: 'Cigar Connoisseur Club',
@@ -12,7 +12,7 @@ const DEFAULT_PARTNERS = [
     isVisible: true
   },
   {
-    href: 'https://millionair.yogapranafitness.com/',
+    href: 'https://millionairescollection.com/',
     image: '/assets/partners/millionaires-collection.webp',
     eyebrow: 'A Private World',
     title: 'Millionaires Collection',

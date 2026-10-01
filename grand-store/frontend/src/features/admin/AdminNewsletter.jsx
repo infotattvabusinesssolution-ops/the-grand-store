@@ -637,13 +637,13 @@ export default function AdminNewsletter() {
                   <Sparkles size={11} className="text-amber-300" /> Exclusive Campaign
                 </span>
                 <a 
-                  href="https://millionaires.yogapranafitness.com/#giveaway"
+                  href="https://millionairescollection.com/#giveaway"
                   target="_blank"
                   rel="noreferrer"
                   className="text-white/50 hover:text-white text-xs font-mono inline-flex items-center gap-1 transition-colors px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10"
                   title="Open Millionaires Store Giveaway Page"
                 >
-                  <span>millionaires.yogapranafitness.com/#giveaway</span>
+                  <span>millionairescollection.com/#giveaway</span>
                   <ExternalLink size={10} className="text-white/60" />
                 </a>
               </div>

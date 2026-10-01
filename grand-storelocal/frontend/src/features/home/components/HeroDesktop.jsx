@@ -67,7 +67,7 @@ const heroFilms = [
     titleLine2Class: 'text-transparent bg-clip-text bg-gradient-to-r from-[#fae19c] via-[#c9a35b] to-[#8a6825]',
     subtitle: 'Hand-rolled heritage cigars from master blenders, paired with aged spirits.',
     ctaText: 'Explore Cigars',
-    ctaLink: 'https://cigar.yogapranafitness.com',
+    ctaLink: 'https://cigarconnoisseurclub.com',
   },
 ]
 

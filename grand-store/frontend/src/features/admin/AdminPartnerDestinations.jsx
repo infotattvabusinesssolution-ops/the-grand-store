@@ -336,7 +336,7 @@ export default function AdminPartnerDestinations({ onNotify }) {
                     name="href"
                     value={formData.href}
                     onChange={handleInputChange}
-                    placeholder="https://cigar.yogapranafitness.com/"
+                    placeholder="https://cigarconnoisseurclub.com/"
                     className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-[var(--color-gold)]"
                   />
                 </div>

@@ -215,8 +215,8 @@ export default function OrderSuccessPage({ onClearCart }) {
     } catch (err) {
       console.warn('Direct blob download failed, opening in new tab:', err);
       const apiUrl = import.meta.env.VITE_API_URL || '';
-      const queryParam = effectiveGuestToken ? ?guestAccessToken= : '';
-      window.open(${apiUrl}/api/orders//receipt-pdf, '_blank');
+      const queryParam = effectiveGuestToken ? `?guestAccessToken=${effectiveGuestToken}` : '';
+      window.open(`${apiUrl}/api/orders/${order._id}/receipt-pdf${queryParam}`, '_blank');
     } finally {
       setIsGenerating(false);
     }

@@ -190,7 +190,7 @@ const millionaireNewsletterWelcomeTemplate = () => {
       <p style="color: #fffaf0; font-size: 15px; line-height: 1.7; margin: 0 0 18px 0;">
         As a distinguished subscriber, you will receive priority announcements regarding limited edition sparkling wine vintages, private cellar allocations, and bespoke invitations.
       </p>
-      <a href="https://millionair.yogapranafitness.com/" style="display: inline-block; padding: 12px 28px; background: #7a263c; color: #fffaf0; border: 1px solid #d9b768; font-size: 13px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; border-radius: 4px;">
+      <a href="https://millionairescollection.com/" style="display: inline-block; padding: 12px 28px; background: #7a263c; color: #fffaf0; border: 1px solid #d9b768; font-size: 13px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; border-radius: 4px;">
         Discover The Collection
       </a>
     </div>
@@ -215,7 +215,7 @@ const cigarNewsletterWelcomeTemplate = () => {
       <p style="color: #fffaf0; font-size: 15px; line-height: 1.7; margin: 0 0 18px 0;">
         You will receive priority access to rare Cuban and New World cigar shipments, limited edition humidor drops, tasting notes, and private lounge invitations.
       </p>
-      <a href="https://cigar.yogapranafitness.com/" style="display: inline-block; padding: 12px 28px; background: #8a4b1d; color: #fffaf0; border: 1px solid #d99a4e; font-size: 13px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; border-radius: 4px;">
+      <a href="https://cigarconnoisseurclub.com/" style="display: inline-block; padding: 12px 28px; background: #8a4b1d; color: #fffaf0; border: 1px solid #d99a4e; font-size: 13px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; border-radius: 4px;">
         Explore The Cigar Vault
       </a>
     </div>

@@ -77,6 +77,11 @@ router.get("/public", async (req, res) => {
         image: product.image || showcase.bottleImage,
         category: product.category,
         brand: product.brand,
+        storeId: product.storeId || product.vendorId || "admin",
+        storeName: product.storeName || "The Grand Store",
+        options: Array.isArray(product.options) && product.options.length > 0 ? product.options : ["Single bottle"],
+        origin: product.origin || "Western Cape, South Africa",
+        sku: product.sku || product.id || "mcollection-brut-reserve",
       };
     }
 

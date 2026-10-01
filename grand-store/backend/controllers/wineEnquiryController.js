@@ -9,7 +9,7 @@ const {
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const VALID_STATUSES = ['new', 'open', 'replied', 'closed'];
 const VALID_CONTACT_METHODS = ['email', 'phone', 'whatsapp'];
-const WINE_SITE_URL = (process.env.MILLIONAIRES_SITE_URL || 'https://millionaires.yogapranafitness.com').replace(/\/$/, '');
+const WINE_SITE_URL = (process.env.MILLIONAIRES_SITE_URL || 'https://millionairescollection.com').replace(/\/$/, '');
 
 const clean = (value, maxLength = 500) => String(value ?? '').trim().slice(0, maxLength);
 

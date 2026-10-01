@@ -9,7 +9,7 @@ const {
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const VALID_STATUSES = ['new', 'open', 'replied', 'closed'];
 const VALID_CONTACT_METHODS = ['email', 'phone', 'whatsapp'];
-const CIGAR_SITE_URL = (process.env.CIGAR_SITE_URL || 'https://cigar.yogapranafitness.com').replace(/\/$/, '');
+const CIGAR_SITE_URL = (process.env.CIGAR_SITE_URL || 'https://cigarconnoisseurclub.com').replace(/\/$/, '');
 
 const clean = (value, maxLength = 500) => String(value ?? '').trim().slice(0, maxLength);
 

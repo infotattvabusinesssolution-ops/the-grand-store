@@ -57,18 +57,26 @@ export default function LuxuryPosterSection({ onAdd }) {
     if (typeof onAdd === 'function') {
       const productPayload = {
         id: data.liveProduct?.id || data.productRefId || 'mcollection-brut-reserve',
-        _id: data.liveProduct?._id || 'mcollection-brut-reserve',
+        _id: data.liveProduct?._id || '6ab372b2862ec514b883029b',
         name: data.liveProduct?.name || `${data.heading} ${data.edition} 750ml`,
-        price: data.offerPrice || data.price,
-        final_price: data.offerPrice || data.price,
-        original_price: data.price,
-        image: data.bottleImage,
+        fullName: data.liveProduct?.name || `${data.heading} ${data.edition} 750ml`,
+        slug: data.liveProduct?.slug || data.slug || 'm-collection-the-brut-reserve-cap-classique',
+        price: data.offerPrice || data.price || 795,
+        final_price: data.offerPrice || data.price || 795,
+        original_price: data.price || 850,
+        image: data.bottleImage || '/assets/mcollection/mcollection-brut.png',
         category: 'Champagne',
         type: 'Champagne',
-        brand: data.heading,
+        brand: data.heading || 'M Collection',
+        options: ['Single bottle'],
+        option: 'Single bottle',
+        storeId: data.liveProduct?.storeId || 'admin',
+        storeName: data.liveProduct?.storeName || 'The Grand Store',
+        sku: 'mcollection-brut-reserve',
+        origin: 'Western Cape, South Africa',
         stock: data.liveProduct?.stock || 50,
       };
-      onAdd(productPayload);
+      onAdd(productPayload, 1, 'Single bottle');
       setAdded(true);
       setTimeout(() => setAdded(false), 2400);
     }
@@ -171,7 +179,7 @@ export default function LuxuryPosterSection({ onAdd }) {
                   </p>
                 </div>
                 <a
-                  href="https://millionair.yogapranafitness.com/#giveaway"
+                  href="https://millionairescollection.com/#giveaway"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="poster-giveaway-btn african-giveaway-btn"
@@ -213,7 +221,7 @@ export default function LuxuryPosterSection({ onAdd }) {
                   </button>
 
                   <a
-                    href="https://millionair.yogapranafitness.com/#giveaway"
+                    href="https://millionairescollection.com/#giveaway"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="poster-win-link-btn african-win-btn"

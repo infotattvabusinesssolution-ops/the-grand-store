@@ -1,4 +1,4 @@
-const WINE_SITE_URL = (process.env.MILLIONAIRES_SITE_URL || 'https://millionaires.yogapranafitness.com').replace(/\/$/, '');
+const WINE_SITE_URL = (process.env.MILLIONAIRES_SITE_URL || 'https://millionairescollection.com').replace(/\/$/, '');
 const WINE_LOGO_URL = process.env.MILLIONAIRES_LOGO_URL || `${WINE_SITE_URL}/assets/footer-bottle.png`;
 
 const escapeHtml = (value) => String(value ?? '')

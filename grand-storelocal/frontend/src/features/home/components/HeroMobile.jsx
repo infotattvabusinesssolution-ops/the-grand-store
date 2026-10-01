@@ -51,7 +51,7 @@ const mobileSlides = [
     title: "Cigars & Lounge",
     sub: "Fine Dominican & Cuban Selection",
     cta: "Explore Cigars",
-    link: "https://cigar.yogapranafitness.com"
+    link: "https://cigarconnoisseurclub.com"
   }
 ];
 

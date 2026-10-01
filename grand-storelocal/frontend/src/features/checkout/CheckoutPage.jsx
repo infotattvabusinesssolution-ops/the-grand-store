@@ -109,6 +109,7 @@ export default function CheckoutPage({
   const [dutiesAccepted, setDutiesAccepted] = useState(false);
   const [deliveryPreference, setDeliveryPreference] = useState('home'); // 'home' or 'postnet'
   const [destinationMode, setDestinationMode] = useState('domestic_sa'); // 'domestic_sa' or 'international_aramex'
+  const isDomestic = destinationMode === 'domestic_sa';
   const [applyRewards, setApplyRewards] = useState(false);
   const [useSuperCoins, setUseSuperCoins] = useState(true);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
@@ -462,6 +463,9 @@ export default function CheckoutPage({
       });
     } else if (name === 'phone') {
       setFormData((current) => ({ ...current, phone: value.replace(/[^0-9]/g, '') }));
+    } else if (name === 'country' && isDomestic) {
+      // Locked to South Africa in domestic Courier Guy mode
+      return;
     } else {
       setFormData((current) => ({ ...current, [name]: value }));
     }
@@ -1616,7 +1620,14 @@ export default function CheckoutPage({
                 {/* If Home Delivery: Street Address Inputs */}
                 {deliveryPreference === 'home' && (
                   <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
-                    <h3 className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-medium">Delivery Address Details</h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-medium">Delivery Address Details</h3>
+                      {isDomestic && (
+                        <span className="text-[10px] text-[var(--color-gold)] font-mono flex items-center gap-1 bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 px-2 py-0.5 rounded-full">
+                          🇿🇦 The Courier Guy Domestic Delivery
+                        </span>
+                      )}
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* 1. Street Address (Above) */}
                       <div className="sm:col-span-2">
@@ -1631,15 +1642,16 @@ export default function CheckoutPage({
                               address: address || current.address,
                               city: city || current.city,
                               postalCode: postalCode || current.postalCode,
-                              country: country || current.country,
+                              country: isDomestic ? 'South Africa' : (country || current.country),
                               lat: lat ?? current.lat,
                               lng: lng ?? current.lng
                             }));
                             setQuote(null);
                           }}
+                          restrictToSouthAfrica={isDomestic}
                           required
                           className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
-                          placeholder="Street number and name..."
+                          placeholder={isDomestic ? "Start typing South African street address (e.g. 15 Alice Lane, Sandton)..." : "Street number and name..."}
                         />
                       </div>
 
@@ -1659,15 +1671,16 @@ export default function CheckoutPage({
                               ...current,
                               city,
                               postalCode: targetPostalCode || current.postalCode,
-                              country: country || current.country,
+                              country: isDomestic ? 'South Africa' : (country || current.country),
                               lat,
                               lng
                             }));
                             setQuote(null);
                           }}
+                          restrictToSouthAfrica={isDomestic}
                           required
                           className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
-                          placeholder="e.g. Sandton or London"
+                          placeholder={isDomestic ? "e.g. Sandton, Cape Town, Pretoria..." : "e.g. Sandton or London"}
                         />
                       </div>
 
@@ -1686,24 +1699,52 @@ export default function CheckoutPage({
                             setFormData((current) => ({ ...current, postalCode }));
                             setQuote(null);
                           }}
+                          restrictToSouthAfrica={isDomestic}
                           required
                           className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
-                          placeholder="e.g. 2196 or SW1A 2AA"
+                          placeholder={isDomestic ? "e.g. 2196 or 8001" : "e.g. 2196 or SW1A 2AA"}
                         />
                       </div>
 
                       {/* 4. Country */}
                       <div className="sm:col-span-2">
-                        <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Country *</label>
-                        <input
-                          type="text"
-                          name="country"
-                          value={formData.country}
-                          onChange={handleChange}
-                          required
-                          placeholder="e.g. South Africa, United Kingdom, United States..."
-                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors text-white placeholder:text-white/30"
-                        />
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-[11px] uppercase tracking-wider text-white/70">Country *</label>
+                          {isDomestic && (
+                            <span className="text-[10px] text-[var(--color-gold)] font-mono flex items-center gap-1.5 font-medium">
+                              <Lock size={11} className="text-[var(--color-gold)]" /> Locked to South Africa (Courier Guy Delivery)
+                            </span>
+                          )}
+                        </div>
+                        {isDomestic ? (
+                          <div className="relative">
+                            <input
+                              type="text"
+                              name="country"
+                              value="South Africa"
+                              readOnly
+                              tabIndex={-1}
+                              aria-readonly="true"
+                              className="w-full bg-white/[0.04] border border-white/15 rounded-xl pl-4 pr-32 py-2.5 text-sm text-white font-medium cursor-not-allowed select-none focus:outline-none"
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+                              <span className="text-sm" role="img" aria-label="South Africa Flag">🇿🇦</span>
+                              <span className="text-[10px] uppercase font-mono tracking-wider font-semibold bg-[var(--color-gold)]/15 text-[var(--color-gold)] border border-[var(--color-gold)]/30 px-2 py-0.5 rounded-md">
+                                South Africa
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <input
+                            type="text"
+                            name="country"
+                            value={formData.country}
+                            onChange={handleChange}
+                            required
+                            placeholder="e.g. United Kingdom, United States, Germany..."
+                            className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors text-white placeholder:text-white/30"
+                          />
+                        )}
                       </div>
                     </div>
                   </div>

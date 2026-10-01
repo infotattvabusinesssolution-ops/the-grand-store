@@ -49,6 +49,6 @@ const pfParamString = Object.keys(payload)
   .map(key => `${key}=${encodeURIComponent(payload[key])}`)
   .join('&');
 
-axios.post('https://store-api.yogapranafitness.com/api/payfast/itn', pfParamString, {
+axios.post('https://api.grandstoreglobal.com/api/payfast/itn', pfParamString, {
   headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
 }).then(res => console.log('SUCCESS:', res.data)).catch(err => console.log('ERROR:', err.response ? err.response.data : err.message));
