@@ -68,7 +68,8 @@ const createEnquiry = async (req, res) => {
         subject: `We received your Mcigar enquiry — ${enquiry.reference}`,
         html: cigarEnquiryAcknowledgementTemplate(enquiry),
         fromName: 'Mcigar Concierge',
-        replyTo: process.env.CIGAR_REPLY_TO || process.env.SMTP_USER,
+        replyTo: process.env.CIGAR_REPLY_TO || process.env.INFO_EMAIL || process.env.SMTP_USER,
+        type: 'info',
       });
       enquiry.acknowledgement = { sent: true, sentAt: new Date(), error: '' };
     } catch (emailError) {
@@ -150,7 +151,8 @@ const replyToEnquiry = async (req, res) => {
         subject,
         html: cigarEnquiryReplyTemplate(enquiry, { subject, message }),
         fromName: 'Mcigar Concierge',
-        replyTo: process.env.CIGAR_REPLY_TO || process.env.SMTP_USER,
+        replyTo: process.env.CIGAR_REPLY_TO || process.env.INFO_EMAIL || process.env.SMTP_USER,
+        type: 'info',
       });
     } catch (emailError) {
       enquiry.replies.push({

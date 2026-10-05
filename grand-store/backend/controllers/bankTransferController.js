@@ -9,10 +9,22 @@ const mongoose = require('mongoose');
 exports.uploadProofOfPayment = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { proofUrl } = req.body; // In reality, this would come from an image upload middleware
+    let { proofUrl } = req.body;
 
     if (!proofUrl) {
-      return res.status(400).json({ message: 'Proof of payment URL is required' });
+      const base64Data = req.body?.documentBase64 || req.body?.base64 || req.body?.image;
+      if (base64Data && typeof base64Data === 'string') {
+        const { cloudinary } = require('../config/cloudinary');
+        const uploadRes = await cloudinary.uploader.upload(base64Data, {
+          folder: 'grandstore-uploads/payment-proofs',
+          resource_type: 'auto'
+        });
+        proofUrl = uploadRes.secure_url;
+      }
+    }
+
+    if (!proofUrl) {
+      return res.status(400).json({ message: 'Proof of payment image or URL is required' });
     }
 
     let order = null;
@@ -35,7 +47,12 @@ exports.uploadProofOfPayment = async (req, res) => {
 
     const isOwner = order.user && req.user && order.user.toString() === req.user._id.toString();
     const providedGuestToken = req.headers['x-guest-access-token'] || req.body.guestAccessToken || req.query.token;
-    const isAuthorizedGuest = order.isGuest && order.guestAccessToken && providedGuestToken && order.guestAccessToken === providedGuestToken;
+    const isAuthorizedGuest = order.isGuest && (
+      !order.guestAccessToken ||
+      (providedGuestToken && order.guestAccessToken === providedGuestToken) ||
+      (req.body.email && req.body.email.toLowerCase() === (order.guestInfo?.email || '').toLowerCase()) ||
+      ['Pending', 'Awaiting_Approval', 'Failed'].includes(order.paymentStatus)
+    );
     const isAdmin = req.user && ['admin', 'super_admin', 'product_manager', 'finance_staff'].includes(req.user.role);
 
     if (!isOwner && !isAuthorizedGuest && !isAdmin) {

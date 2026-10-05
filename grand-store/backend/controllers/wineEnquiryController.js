@@ -63,7 +63,8 @@ const createEnquiry = async (req, res) => {
         subject: `We received your Millionaires Collection enquiry — ${enquiry.reference}`,
         html: wineEnquiryAcknowledgementTemplate(enquiry),
         fromName: 'Millionaires Collection Concierge',
-        replyTo: process.env.WINE_REPLY_TO || process.env.SMTP_USER,
+        replyTo: process.env.WINE_REPLY_TO || process.env.INFO_EMAIL || process.env.SMTP_USER,
+        type: 'info',
       });
       enquiry.acknowledgement = { sent: true, sentAt: new Date(), error: '' };
     } catch (emailError) {
@@ -152,7 +153,8 @@ const replyToEnquiry = async (req, res) => {
         subject,
         html: wineEnquiryReplyTemplate(enquiry, { subject, message }),
         fromName: 'Millionaires Collection Concierge',
-        replyTo: process.env.WINE_REPLY_TO || process.env.SMTP_USER,
+        replyTo: process.env.WINE_REPLY_TO || process.env.INFO_EMAIL || process.env.SMTP_USER,
+        type: 'info',
       });
     } catch (emailError) {
       enquiry.replies.push({
