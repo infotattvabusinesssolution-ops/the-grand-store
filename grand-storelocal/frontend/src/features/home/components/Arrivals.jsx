@@ -63,15 +63,15 @@ const resolveImageUrl = (src) => {
 const REAL_SA_SHOWCASE = [
   {
     id: "wine_04_king_moremoholo_mopeli_750ml",
-    slug: "wine_04_king_moremoholo_mopeli_750ml",
-    name: "King Moremoholo Mopeli 750ml",
+    slug: "lucmo-wines-his-royal-majesty-king-moremoholo-mopeli-estate-cabernet-sauvignon-750ml",
+    name: "Lucmo Wines His Royal Majesty King Moremoholo Mopeli Estate Cabernet Sauvignon 750ml",
     category: "Wine",
     price: 1560,
     badge: "ESTATE RELEASE",
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1788160629/grand-store/products/wine-grandstore/king-moremoholo-mopeli.png",
-    brand: "Luc Mo Wines",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1791269158/grand-store/products/wine-grandstore/moremoholo.png",
+    brand: "Lucmo Wines",
     origin: "Stellenbosch, South Africa",
-    description: "Heritage royal South African red wine celebrating royal Basotho lineage, crafted from premium selected estate vineyards."
+    description: "Lucmo Wines His Royal Majesty King Moremoholo Mopeli Estate Cabernet Sauvignon pays tribute to royal Basotho heritage with dense cassis, cedarwood, and regal structured tannins."
   },
   {
     id: "wine_09_queen_mother_mathokoana_mopeli_chardonnay_750ml",
@@ -86,16 +86,16 @@ const REAL_SA_SHOWCASE = [
     description: "Refined South African Chardonnay with notes of toasted brioche, citrus blossom, and elegant mineral acidity."
   },
   {
-    id: "wine_25_graham_beck_brut_cap_classique_750ml",
-    slug: "wine_25_graham_beck_brut_cap_classique_750ml",
-    name: "Graham Beck Brut Cap Classique 750ml",
-    category: "Cap Classique",
-    price: 329,
-    badge: "CAP CLASSIQUE",
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1788160626/grand-store/products/wine-grandstore/de-pizan-non-alcoholic-sparkling-white-750-ml.png",
-    brand: "Graham Beck",
-    origin: "Robertson, South Africa",
-    description: "Iconic South African Méthode Cap Classique crafted with Chardonnay and Pinot Noir, delivering fine persistent mousse and brioche notes."
+    id: "wine_25_de_pizan_sparkling_white_750ml",
+    slug: "de-pizan-sparkling-white-750ml",
+    name: "De Pizan Sparkling White 750ml",
+    category: "Sparkling Wine",
+    price: 220,
+    badge: "NON-ALCOHOLIC SPARKLING",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1791269160/grand-store/products/wine-grandstore/depizan-sparkling-white.png",
+    brand: "De Pizan",
+    origin: "Western Cape, South Africa",
+    description: "De Pizan Sparkling White is an elegant non-alcoholic sparkling cuvée offering crisp green apple, floral notes, and persistent fine effervescence for celebratory occasions."
   },
   {
     id: "prod_1787654844395_592",

@@ -74,10 +74,20 @@ const stripBottleSize = (value) => keyOf(value)
 
 const exactSourceByName = new Map([
   ['tshireletso white', GRAND_STORE_IMAGES.tshireletsoWhite],
+  ['lucmo wines tshireletso white sauvignon blanc', GRAND_STORE_IMAGES.tshireletsoWhite],
   ['tshireletso red', GRAND_STORE_IMAGES.tshireletsoRed],
+  ['lucmo wines tshireletso red shiraz grenache', GRAND_STORE_IMAGES.tshireletsoRed],
   ['queen mother mathokoana mopeli chardonnay', GRAND_STORE_IMAGES.queenMother],
   ['her royal highness sekhothali chenin blanc', GRAND_STORE_IMAGES.royalHighness],
-  ['king moremoholo mopeli', GRAND_STORE_IMAGES.moremoholo]
+  ['lucmo wines her royal highness sekhothali estate sauvignon blanc', GRAND_STORE_IMAGES.royalHighness],
+  ['king moremoholo mopeli', GRAND_STORE_IMAGES.moremoholo],
+  ['lucmo wines his royal majesty king moremoholo mopeli estate cabernet sauvignon', GRAND_STORE_IMAGES.moremoholo],
+  ['lucmo wines his royal majesty king makhosonke ii estate merlot', GRAND_STORE_IMAGES.makhosonke],
+  ['de pizan sparkling white', GRAND_STORE_IMAGES.dePizanSparklingWhite],
+  ['de pizan sparkling red', GRAND_STORE_IMAGES.dePizanSparklingRed],
+  ['de pizan rouge', GRAND_STORE_IMAGES.dePizanRouge],
+  ['de pizan fraisch', GRAND_STORE_IMAGES.dePizanFraisch],
+  ['de pizan cerise', GRAND_STORE_IMAGES.dePizanCerise]
 ]);
 
 const pickGrandStoreSource = (product) => {

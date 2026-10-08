@@ -159,4 +159,6 @@ SKILL.md
 *.mp4
 *.tar.gz
 *.zip
+scratch/
+**/scratch/
 

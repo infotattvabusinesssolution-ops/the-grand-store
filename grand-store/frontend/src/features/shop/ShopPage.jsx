@@ -149,11 +149,11 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
   const maxP = maxPriceInput ? Number(maxPriceInput) : maxPrice;
 
   const WINE_STYLES = {
-    Red: ['Cabernet Sauvignon', 'Merlot', 'Pinot Noir', 'Shiraz / Syrah', 'Malbec', 'Tempranillo', 'Zinfandel', 'Rhone Blend', 'Grenache'],
-    White: ['Chardonnay', 'Chenin Blanc', 'Sauvignon Blanc', 'Riesling', 'White Blend'],
-    Sparkling: ['Cava', 'Prosecco', 'General Sparkling Wine', 'Non-Alcoholic Sparkling White Wine Alternative', 'Non-Alcoholic Sparkling Red Wine', 'Champagne'],
-    Rose: ['Rosé', 'Non-Alcoholic Rosé Wine'],
-    Fortified: ['Port', 'Sherry', 'Madeira', 'Vermouth', 'Late Harvest Wine', 'Ice Wine', 'Sauternes', 'Moscato']
+    Red: ['Cabernet Sauvignon', 'Merlot', 'Pinot Noir', 'Shiraz / Syrah', 'Shiraz Grenache', 'Malbec', 'Tempranillo', 'Zinfandel', 'Rhone Blend', 'Grenache', 'Non-Alcoholic Red Wine Alternative', 'Red Wine', 'Primitivo', 'Nero di Troia', 'Negroamaro', 'Susumaniello'],
+    White: ['Chardonnay', 'Chenin Blanc', 'Sauvignon Blanc', 'Riesling', 'White Blend', 'Non-Alcoholic White Wine Alternative', 'White Wine', 'Fiano', 'Malvasia'],
+    Sparkling: ['Cava', 'Prosecco', 'General Sparkling Wine', 'Non-Alcoholic Sparkling White Wine Alternative', 'Non-Alcoholic Sparkling Red Wine', 'Champagne', 'Sparkling Wine', 'Spumante'],
+    Rose: ['Rosé', 'Non-Alcoholic Rosé Wine', 'Rosato'],
+    Fortified: ['Port', 'Sherry', 'Madeira', 'Vermouth', 'Late Harvest Wine', 'Ice Wine', 'Sauternes', 'Moscato', 'Dessert Wine', 'Passito', 'Dolce Naturale']
   };
 
   const normalizeForFilter = (str) =>
