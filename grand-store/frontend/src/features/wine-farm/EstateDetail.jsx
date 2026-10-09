@@ -9,6 +9,7 @@ import {
   ArrowLeft, ShoppingCart, ChevronRight, CheckCircle,
   ExternalLink, ArrowDown, Play, Download
 } from 'lucide-react';
+import { resolveImageUrl } from '../../utils/imageUtils';
 
 const API = import.meta.env.VITE_API_URL;
 const APP = import.meta.env.VITE_APP_URL || '';
@@ -294,7 +295,7 @@ export default function EstateDetail() {
                     {p.image || p.images?.[0] ? (
                       (() => {
                         const imgSrc = p.image || p.images[0];
-                        const finalSrc = imgSrc.startsWith('http') ? imgSrc : `${API}${imgSrc}`;
+                        const finalSrc = resolveImageUrl(imgSrc);
                         return (
                           <img 
                             src={finalSrc} 

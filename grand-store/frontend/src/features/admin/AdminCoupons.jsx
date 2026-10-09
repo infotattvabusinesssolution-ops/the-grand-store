@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Tag, Calendar, Users, X, ShoppingBag, Check, Search, ShieldCheck } from "lucide-react";
 import Modal from "../../components/ui/Modal";
 import api from "../../api";
+import { resolveImageUrl } from "../../utils/imageUtils";
 
 export default function AdminCoupons() {
   const [activeTab, setActiveTab] = useState("customer"); // 'customer' | 'vendor'
@@ -269,7 +270,7 @@ export default function AdminCoupons() {
                               key={idx}
                               className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 border border-white/10 text-xs text-white/80"
                             >
-                              {p.image && <img src={p.image} alt={p.name} className="w-3.5 h-4 object-contain" />}
+                              {p.image && <img src={resolveImageUrl(p.image)} alt={p.name} className="w-3.5 h-4 object-contain" />}
                               <span className="max-w-[120px] truncate">{p.name}</span>
                             </span>
                           ))}

@@ -5,6 +5,7 @@ import SEO from '../../components/SEO';
 import { useProducts } from '../../context/ProductContext';
 import ProductCard from '../../components/ProductCard';
 import { brandData } from '../../data/brandData';
+import { resolveImageUrl } from '../../utils/imageUtils';
 
 export default function BrandLandingPage({ onAdd, onWish, onCompare, compareItems = [] }) {
   const { slug } = useParams();
@@ -117,7 +118,7 @@ export default function BrandLandingPage({ onAdd, onWish, onCompare, compareItem
               '@type': 'Product',
               name: p.fullName || p.name,
               url: `https://grandstoreglobal.com/product/${p.slug || p._id}`,
-              image: p.image,
+              image: resolveImageUrl(p.image),
               offers: {
                 '@type': 'Offer',
                 price: p.price,
