@@ -1,12 +1,19 @@
 const Category = require('../models/Category');
 
 const Product = require('../models/Product');
+const { getCache, setCache } = require('../utils/cache');
 
 // @desc    Get all active categories with their taxonomy
 // @route   GET /api/categories
 // @access  Public
 const getCategories = async (req, res) => {
   try {
+    const cacheKey = 'categories_all';
+    const cachedData = getCache(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
     // 1. Fetch configured categories from DB
     const configuredCategories = await Category.find({ isActive: true }).sort({ name: 1 });
     
@@ -78,6 +85,8 @@ const getCategories = async (req, res) => {
             subcategories: [...subcategories].sort()
           }))
       }));
+
+    setCache(cacheKey, { status: 1, data }, 300); // cache for 5 minutes
 
     res.status(200).json({ status: 1, data });
   } catch (error) {

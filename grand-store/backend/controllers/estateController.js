@@ -2,6 +2,8 @@ const EstateProfile = require('../models/EstateProfile');
 const Product = require('../models/Product');
 const mongoose = require('mongoose');
 
+const { getCache, setCache } = require('../utils/cache');
+
 // ─── Helper: build slug from estate name ─────────────────────────────────────
 const slugify = (text) =>
   text.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -10,9 +12,17 @@ const slugify = (text) =>
 // GET /api/estates
 exports.listEstates = async (req, res) => {
   try {
+    const cacheKey = 'estates_published';
+    const cachedData = getCache(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
     const estates = await EstateProfile.find({ isPublished: true })
       .select('slug estateName region country tagline heroImageUrl followers awards')
       .lean();
+    
+    setCache(cacheKey, estates, 300); // cache for 5 minutes
     res.json(estates);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
