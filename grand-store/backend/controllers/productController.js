@@ -108,7 +108,6 @@ const getProducts = async (req, res) => {
       return acc;
     }, []);
 
-    const cacheKey = `products_${JSON.stringify(req.query)}`;
     setCache(cacheKey, productsWithStore, 300); // cache for 5 minutes
 
     res.json(productsWithStore);
