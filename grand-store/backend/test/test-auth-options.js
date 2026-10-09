@@ -175,6 +175,20 @@ async function runTests() {
     failed++;
   }
 
+  // Automated Cleanup of Test Accounts from Database
+  try {
+    const User = require('../models/User');
+    await User.deleteMany({
+      $or: [
+        { email: /^magic_test_/i },
+        { email: /@privaterelay\.appleid\.com$/i },
+      ]
+    });
+    console.log('🧹 Cleaned up temporary test accounts from database.');
+  } catch (cleanErr) {
+    console.warn('Test cleanup warning:', cleanErr.message);
+  }
+
   console.log(`\n=== TEST RESULTS: ${passed} PASSED, ${failed} FAILED ===`);
   if (mongoose.connection.readyState !== 0) {
     await mongoose.connection.close();

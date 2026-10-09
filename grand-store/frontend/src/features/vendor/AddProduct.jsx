@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +18,14 @@ export default function AddProduct({ onNotify }) {
   const isInternalProductManager = ['admin', 'super_admin', 'product_manager'].includes(user?.role);
   
   const [costingData, setCostingData] = useState(null);
+
+  const handleCostingChange = useCallback((costing) => {
+    setCostingData(costing);
+  }, []);
+
+  const handlePriceChange = useCallback((newPrice) => {
+    setFormData(prev => ({ ...prev, price: newPrice }));
+  }, []);
   const [formData, setFormData] = useState({
     name: '',
     type: '', // Empty initially for floating label to work well
@@ -38,7 +46,14 @@ export default function AddProduct({ onNotify }) {
     options: 'Pack of 1',
     tradePrice: '',
     minOrderQuantity: '',
-    exportReady: false
+    exportReady: false,
+    weight_kg: '1.85',
+    length_cm: '12',
+    width_cm: '12',
+    height_cm: '34',
+    box_type: 'Standard Luxury Bottle Box',
+    is_fragile: true,
+    aramexServiceType: 'ONP'
   });
   
   const [imageEntries, setImageEntries] = useState([]);
@@ -166,6 +181,21 @@ export default function AddProduct({ onNotify }) {
       if (formData.minOrderQuantity) payload.append('minOrderQuantity', formData.minOrderQuantity);
       payload.append('exportReady', formData.exportReady);
 
+      payload.append('shipping', JSON.stringify({
+        weight_kg: Number(formData.weight_kg) || 1.85,
+        length_cm: Number(formData.length_cm) || 12,
+        width_cm: Number(formData.width_cm) || 12,
+        height_cm: Number(formData.height_cm) || 34,
+        box_type: formData.box_type || 'Standard Luxury Bottle Box',
+        is_fragile: formData.is_fragile,
+        aramexServiceType: formData.aramexServiceType || 'ONP'
+      }));
+      payload.append('weight_kg', formData.weight_kg);
+      payload.append('length_cm', formData.length_cm);
+      payload.append('width_cm', formData.width_cm);
+      payload.append('height_cm', formData.height_cm);
+      payload.append('box_type', formData.box_type);
+
       let uploadIndex = 0;
       const imageOrder = imageEntries.map((entry) => {
         const orderEntry = { kind: 'upload', index: uploadIndex };
@@ -185,7 +215,7 @@ export default function AddProduct({ onNotify }) {
       });
 
       if (onNotify) onNotify('Product added successfully!');
-      if (user.role === 'admin') {
+      if (['admin', 'super_admin', 'product_manager'].includes(user.role)) {
         setTimeout(() => navigate('/admin/products'), 2000);
       } else {
         setTimeout(() => navigate('/vendor/products'), 2000);
@@ -308,8 +338,8 @@ export default function AddProduct({ onNotify }) {
                 <ProductCostingCard
                   initialCosting={null}
                   currentPrice={formData.price}
-                  onPriceChange={(newPrice) => setFormData(prev => ({ ...prev, price: newPrice }))}
-                  onCostingChange={(costing) => setCostingData(costing)}
+                  onPriceChange={handlePriceChange}
+                  onCostingChange={handleCostingChange}
                   isInternalProductManager={isInternalProductManager}
                 />
 
@@ -323,7 +353,7 @@ export default function AddProduct({ onNotify }) {
                       onChange={handleChange} 
                       min="0"
                       step="any"
-                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
+                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer font-mono" 
                       placeholder=" " 
                       required 
                     />
@@ -331,8 +361,21 @@ export default function AddProduct({ onNotify }) {
                       htmlFor="price" 
                       className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
                     >
-                      Price (ZAR) *
+                      Retail Selling Price (ZAR - 15% VAT Inclusive) *
                     </label>
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[10px] text-white/40">
+                        ⚖️ South African law requires VAT-inclusive customer retail pricing.
+                      </p>
+                      {parseFloat(formData.price) > 0 && (
+                        <div className="text-[11px] font-mono flex items-center justify-between text-white/80 bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/25 px-2.5 py-1 rounded-md">
+                          <span className="text-[var(--color-gold)] font-medium">Net Vendor Payout (70%):</span>
+                          <span className="text-emerald-400 font-bold font-mono">
+                            R{(parseFloat(formData.price) * 0.70).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="relative z-0 w-full group">
@@ -493,6 +536,144 @@ export default function AddProduct({ onNotify }) {
                     <input type="checkbox" name="exportReady" checked={formData.exportReady} onChange={handleChange} className="sr-only peer" />
                     <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#c9a35b]"></div>
                   </label>
+                </div>
+              </div>
+
+              {/* Packaging & Courier Logistics Specs */}
+              <div className="space-y-8 pt-6">
+                <h2 className="text-[var(--color-ivory)] font-serif text-3xl flex items-center gap-4 border-b border-white/[0.05] pb-4">
+                  <Package size={24} className="text-[#e1bd70]" />
+                  Logistics & Packaging (Live Courier Rates)
+                </h2>
+                <p className="text-xs uppercase tracking-widest text-[#e1bd70]/80">
+                  Accurate dimensions allow Aramex and live freight engines to calculate exact courier rates dynamically.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="relative z-0 w-full group">
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      name="weight_kg" 
+                      id="weight_kg"
+                      value={formData.weight_kg} 
+                      onChange={handleChange} 
+                      required
+                      min="0.1"
+                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
+                      placeholder=" " 
+                    />
+                    <label 
+                      htmlFor="weight_kg" 
+                      className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
+                    >
+                      Weight (KG) *
+                    </label>
+                  </div>
+
+                  <div className="relative z-0 w-full group">
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      name="length_cm" 
+                      id="length_cm"
+                      value={formData.length_cm} 
+                      onChange={handleChange} 
+                      required
+                      min="1"
+                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
+                      placeholder=" " 
+                    />
+                    <label 
+                      htmlFor="length_cm" 
+                      className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
+                    >
+                      Length (CM) *
+                    </label>
+                  </div>
+
+                  <div className="relative z-0 w-full group">
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      name="width_cm" 
+                      id="width_cm"
+                      value={formData.width_cm} 
+                      onChange={handleChange} 
+                      required
+                      min="1"
+                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
+                      placeholder=" " 
+                    />
+                    <label 
+                      htmlFor="width_cm" 
+                      className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
+                    >
+                      Width (CM) *
+                    </label>
+                  </div>
+
+                  <div className="relative z-0 w-full group">
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      name="height_cm" 
+                      id="height_cm"
+                      value={formData.height_cm} 
+                      onChange={handleChange} 
+                      required
+                      min="1"
+                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
+                      placeholder=" " 
+                    />
+                    <label 
+                      htmlFor="height_cm" 
+                      className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
+                    >
+                      Height (CM) *
+                    </label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">Box / Packaging Type</label>
+                    <input 
+                      type="text" 
+                      name="box_type" 
+                      value={formData.box_type} 
+                      onChange={handleChange} 
+                      placeholder="e.g. Standard Luxury Bottle Box"
+                      className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)] text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">Default Courier Service</label>
+                    <select
+                      name="aramexServiceType"
+                      value={formData.aramexServiceType}
+                      onChange={handleChange}
+                      className="w-full bg-[#111] border border-white/10 px-4 py-3 rounded text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)] text-sm"
+                    >
+                      <option value="ONP">ONP - Overnight Express (Next Day)</option>
+                      <option value="PEC">PEC - Economy Road (2-3 Days)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-6">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        name="is_fragile" 
+                        checked={formData.is_fragile} 
+                        onChange={handleChange} 
+                        className="sr-only peer" 
+                      />
+                      <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#c9a35b]"></div>
+                    </label>
+                    <span className="text-sm text-[var(--color-ivory)]">Fragile Glass / Liquid Parcel</span>
+                  </div>
                 </div>
               </div>
               

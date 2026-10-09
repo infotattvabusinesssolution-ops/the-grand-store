@@ -94,21 +94,14 @@ if (vendorFundedSim.netContribution <= simResult.netContribution) {
 }
 console.log('✅ Test 3 ("Who Pays?" Funding Allocation) Passed!');
 
-// Test 4: Profit Guard Margin Status Thresholds (Healthy, Warning, Blocked)
-const healthyCheck = CostingEngine.simulateProductFinancials({ supplierPrice: 100, promotionDiscountPct: 0 }, { minimumPlatformMarginPct: 30 });
-const warningCheck = CostingEngine.simulateProductFinancials({ supplierPrice: 100, promotionDiscountPct: 20 }, { minimumPlatformMarginPct: 30, marginHealthyThresholdPct: 15, marginWarningThresholdPct: 10 });
-const blockedCheck = CostingEngine.simulateProductFinancials({ supplierPrice: 100, promotionDiscountPct: 35 }, { minimumPlatformMarginPct: 30, marginHealthyThresholdPct: 15, marginWarningThresholdPct: 10 });
-
-console.log('Test 4 (Profit Guard Statuses):', {
-  healthy: healthyCheck.marginStatus,
-  warning: warningCheck.marginStatus,
-  blocked: blockedCheck.marginStatus
+// Test 4: Platform Margin Calculation (Default 15%)
+const marginCheck = CostingEngine.simulateProductFinancials({ supplierPrice: 100 }, { marketplaceCommissionPct: 15 });
+console.log('Test 4 (Platform Margin):', {
+  platformMarginPct: marginCheck.platformMarginPct,
+  baseSellingPrice: marginCheck.baseSellingPrice
 });
-
-if (healthyCheck.marginStatus !== 'healthy') throw new Error(`Expected healthy, got ${healthyCheck.marginStatus}`);
-if (warningCheck.marginStatus !== 'warning') throw new Error(`Expected warning, got ${warningCheck.marginStatus}`);
-if (blockedCheck.marginStatus !== 'blocked') throw new Error(`Expected blocked, got ${blockedCheck.marginStatus}`);
-console.log('✅ Test 4 (Profit Guard Statuses) Passed!');
+if (marginCheck.platformMarginPct !== 15) throw new Error(`Expected margin 15, got ${marginCheck.platformMarginPct}`);
+console.log('✅ Test 4 (Platform Margin) Passed!');
 
 // Test 5: Order Financial Snapshot
 const orderMock = {

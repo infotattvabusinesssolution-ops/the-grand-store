@@ -1,0 +1,304 @@
+.gallery-video-section {
+  padding: clamp(64px, 6vw, 96px) 0 clamp(40px, 4vw, 60px);
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+
+.video-section-header {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 40px;
+  max-width: 820px;
+}
+
+.video-section-header .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  color: var(--wine);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.video-section-header .section-title {
+  margin-bottom: 18px;
+}
+
+.video-section-header .section-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 19px;
+  line-height: 1.6;
+}
+
+.video-showcase-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.video-player-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 680px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #0d1214;
+  box-shadow: 0 20px 48px rgba(16, 45, 68, 0.12);
+  border: 1px solid rgba(184, 140, 67, 0.25);
+  cursor: pointer;
+}
+
+.showcase-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Lazy Placeholder */
+.video-lazy-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: linear-gradient(135deg, #101c24 0%, #0c141a 100%);
+  color: var(--gold-bright);
+}
+
+.lazy-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(217, 183, 104, 0.05) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.lazy-label {
+  position: relative;
+  z-index: 1;
+  font-size: 14px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(217, 183, 104, 0.7);
+}
+
+/* Badge Pill */
+.video-badge-pill {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 45, 68, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(217, 183, 104, 0.35);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  pointer-events: none;
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2ecc71;
+  box-shadow: 0 0 8px #2ecc71;
+  animation: pulse-dot 2s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* Floating Actions Top Right */
+.video-floating-actions {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+
+.video-floating-actions.visible,
+.video-player-container:hover .video-floating-actions {
+  opacity: 1;
+}
+
+.video-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(16, 45, 68, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--cream);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+.video-action-btn:hover {
+  background: rgba(122, 38, 60, 0.85);
+  border-color: var(--gold-bright);
+  color: var(--gold-bright);
+}
+
+.btn-hint {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Center Play Button */
+.video-center-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(122, 38, 60, 0.85);
+  backdrop-filter: blur(8px);
+  border: 2px solid var(--gold-bright);
+  color: var(--gold-bright);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 4px;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  transition: transform 220ms ease, background 220ms ease;
+}
+
+.video-center-play:hover {
+  transform: translate(-50%, -50%) scale(1.08);
+  background: var(--wine-deep);
+}
+
+/* Bottom Controls */
+.video-controls-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(0deg, rgba(12, 20, 26, 0.9) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+
+.video-controls-bottom.visible,
+.video-player-container:hover .video-controls-bottom {
+  opacity: 1;
+}
+
+.video-control-play-btn {
+  background: transparent;
+  border: none;
+  color: var(--gold-bright);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  cursor: pointer;
+  transition: transform 150ms ease;
+}
+
+.video-control-play-btn:hover {
+  transform: scale(1.15);
+}
+
+.video-timeline-bar {
+  flex: 1;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.video-timeline-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+  transition: height 150ms ease;
+}
+
+.video-timeline-bar:hover .video-timeline-track {
+  height: 6px;
+}
+
+.video-timeline-fill {
+  height: 100%;
+  background: var(--gold-bright);
+  border-radius: 2px;
+  transition: width 100ms linear;
+}
+
+@media (max-width: 768px) {
+  .video-player-container {
+    aspect-ratio: 16 / 10;
+  }
+
+  .video-badge-pill {
+    top: 12px;
+    left: 12px;
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  .video-floating-actions {
+    top: 12px;
+    right: 12px;
+  }
+
+  .btn-hint {
+    display: none;
+  }
+
+  .video-center-play {
+    width: 58px;
+    height: 58px;
+  }
+}

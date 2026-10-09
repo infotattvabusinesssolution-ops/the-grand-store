@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
   ShoppingBag,
@@ -8,6 +9,15 @@ import {
   Truck,
   Navigation,
   ExternalLink,
+  Send,
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  ArrowRight,
 } from "lucide-react";
 import { formatCartPrice } from "../../data";
 import Price from '../../components/ui/Price';
@@ -237,6 +247,19 @@ export default function VendorOrders() {
                         {shp.status}
                       </div>
                     </div>
+                    {shp.latestAdminMessage && (
+                      <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-0.5 max-w-xs">
+                        <div className="flex items-center gap-1.5 text-[9px] font-bold text-amber-400 uppercase tracking-wider">
+                          <Send size={10} /> Sent Advisory Notice
+                        </div>
+                        <p className="text-xs text-white/90 truncate leading-tight">
+                          "{shp.latestAdminMessage.message}"
+                        </p>
+                        <span className="text-[9px] text-white/40 block font-mono">
+                          {new Date(shp.latestAdminMessage.sentAt).toLocaleDateString('en-ZA')}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="text-left md:text-right">
                     <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">
@@ -358,6 +381,26 @@ export default function VendorOrders() {
                       ))}
                     </div>
                   </div>
+                </div>
+
+                {/* Card Actions Footer */}
+                <div className="bg-black/30 px-6 py-4 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div className="text-xs text-white/50">
+                    {shp.adminMessages?.length > 0 ? (
+                      <span className="text-amber-400 font-medium flex items-center gap-1.5">
+                        <Send size={12} /> {shp.adminMessages.length} {shp.adminMessages.length === 1 ? 'Advisory Notice Sent' : 'Advisory Notices Sent'}
+                      </span>
+                    ) : (
+                      <span>No customer advisories sent yet</span>
+                    )}
+                  </div>
+                  <Link
+                    to={`/vendor/orders/${shp.shipmentId || shp._id}`}
+                    className="w-full sm:w-auto py-2.5 px-6 rounded-xl bg-gradient-to-r from-[#f5c242] to-[#c99742] hover:opacity-95 text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
+                  >
+                    <span>View Details & Send Notice</span>
+                    <ArrowRight size={14} />
+                  </Link>
                 </div>
               </div>
             ))}

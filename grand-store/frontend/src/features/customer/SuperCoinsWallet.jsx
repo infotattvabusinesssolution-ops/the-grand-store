@@ -44,10 +44,10 @@ export default function SuperCoinsWallet() {
   }, []);
 
   const filteredTransactions = (wallet?.transactions || []).filter((tx) => {
+    if (tx.status === "pending" || tx.status === "cancelled") return false;
     if (filter === "all") return true;
-    if (filter === "earned") return tx.type === "earned" && tx.status !== "pending";
+    if (filter === "earned") return tx.type === "earned" || tx.type === "refund" || tx.type === "admin_adjustment";
     if (filter === "redeemed") return tx.type === "redeemed";
-    if (filter === "pending") return tx.status === "pending";
     return true;
   });
 
@@ -117,28 +117,28 @@ export default function SuperCoinsWallet() {
               </div>
             </div>
 
-            {/* 2. Pending Clearance Coins */}
+            {/* 2. Lifetime Earned Coins */}
             <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 relative overflow-hidden">
               <div className="flex items-center justify-between text-xs text-[var(--color-ivory-muted)] uppercase tracking-widest mb-3">
-                <span>Pending Clearance</span>
-                <span className="p-1 rounded bg-amber-500/10 text-amber-400">
-                  <Clock size={14} />
+                <span>Lifetime Earned</span>
+                <span className="p-1 rounded bg-[var(--color-gold)]/10 text-[var(--color-gold)]">
+                  <Coins size={14} />
                 </span>
               </div>
               <div className="text-4xl font-serif text-white font-bold mb-1 flex items-baseline gap-2">
-                <span>{(wallet?.pendingCoins || 0).toLocaleString()}</span>
+                <span>{(wallet?.lifetimeEarned || wallet?.availableCoins || 0).toLocaleString()}</span>
                 <span className="text-xs font-sans uppercase tracking-widest text-white/40 font-normal">
                   Coins
                 </span>
               </div>
               <div className="text-xs text-white/50 font-mono mt-2 flex items-center gap-1.5">
-                <span>Pending Value:</span>
+                <span>Total Accumulated:</span>
                 <strong className="text-white/80 text-sm">
-                  <Price amount={wallet?.pendingRandValue || 0} />
+                  <Price amount={(wallet?.lifetimeEarned || wallet?.availableCoins || 0) * (wallet?.coinValue || 0.10)} />
                 </strong>
               </div>
               <p className="mt-4 pt-3 border-t border-white/5 text-[11px] text-white/40">
-                Activated upon delivery & 7-day return window completion.
+                Total reward currency accumulated on your account.
               </p>
             </div>
 
@@ -230,7 +230,6 @@ export default function SuperCoinsWallet() {
                   { id: "all", label: "All" },
                   { id: "earned", label: "Earned" },
                   { id: "redeemed", label: "Redeemed" },
-                  { id: "pending", label: "Pending" },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -277,16 +276,12 @@ export default function SuperCoinsWallet() {
                       <div className="flex items-center gap-3.5 min-w-0">
                         <div
                           className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                            tx.status === "pending"
-                              ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                              : isCredit
+                            isCredit
                               ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                               : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
                           }`}
                         >
-                          {tx.status === "pending" ? (
-                            <Clock size={18} />
-                          ) : isCredit ? (
+                          {isCredit ? (
                             <ArrowDownLeft size={18} />
                           ) : (
                             <ArrowUpRight size={18} />
@@ -320,9 +315,7 @@ export default function SuperCoinsWallet() {
                       <div className="text-right shrink-0">
                         <div
                           className={`text-sm sm:text-base font-mono font-bold ${
-                            tx.status === "pending"
-                              ? "text-amber-400"
-                              : isCredit
+                            isCredit
                               ? "text-emerald-400"
                               : "text-rose-400"
                           }`}
@@ -330,11 +323,7 @@ export default function SuperCoinsWallet() {
                           {isCredit ? `+${tx.amount}` : `-${tx.amount}`} Coins
                         </div>
                         <div className="text-[11px] font-mono text-white/50">
-                          {tx.status === "pending" ? (
-                            <span className="text-amber-400">Pending</span>
-                          ) : (
-                            `R${(tx.amount * (wallet?.coinValue || 0.10)).toFixed(2)} value`
-                          )}
+                          R{(tx.amount * (wallet?.coinValue || 0.10)).toFixed(2)} value
                         </div>
                       </div>
                     </div>

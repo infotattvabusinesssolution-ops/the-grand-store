@@ -7,7 +7,7 @@ export const resolveProductImageUrl = (source) => {
   if (/^(?:https?:|data:|blob:)/i.test(value)) return value;
   if (value.startsWith('/assets/') || value.startsWith('/logo')) return value;
   if (value.includes('uploads/')) {
-    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5015').replace(/\/$/, '');
     return `${apiUrl}/${value.slice(value.indexOf('uploads/'))}`;
   }
   return value.startsWith('/') ? value : `/${value}`;

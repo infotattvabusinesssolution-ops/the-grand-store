@@ -1,6 +1,16 @@
 import React, { useEffect, useRef } from 'react';
 
-export default function LocationInput({ name, value, onChange, placeholder, className, required, type = "text", onPlaceDetails }) {
+export default function LocationInput({
+  name,
+  value,
+  onChange,
+  placeholder,
+  className,
+  required,
+  type = "text",
+  onPlaceDetails,
+  restrictToSouthAfrica = false
+}) {
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
 
@@ -16,13 +26,19 @@ export default function LocationInput({ name, value, onChange, placeholder, clas
     let checkInterval;
     
     const initAutocomplete = () => {
-      if (!window.google || !window.google.maps || !window.google.maps.places) {
+      if (!window.google?.maps?.places || !inputRef.current) {
         return false;
       }
       
+      // Clean up previous listeners if any
+      if (autocompleteRef.current && window.google?.maps?.event) {
+        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      }
+
       autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
         types: ['address'],
-        fields: ['address_components', 'formatted_address', 'geometry', 'name']
+        fields: ['address_components', 'formatted_address', 'geometry', 'name'],
+        ...(restrictToSouthAfrica ? { componentRestrictions: { country: 'za' } } : {})
       });
 
       autocompleteRef.current.addListener('place_changed', () => {
@@ -31,14 +47,14 @@ export default function LocationInput({ name, value, onChange, placeholder, clas
           
           let city = '';
           let postalCode = '';
-          let country = '';
+          let country = restrictToSouthAfrica ? 'South Africa' : '';
           let lat = typeof place.geometry?.location?.lat === 'function' ? place.geometry.location.lat() : null;
           let lng = typeof place.geometry?.location?.lng === 'function' ? place.geometry.location.lng() : null;
           const addressToUse = place.formatted_address || place.name;
 
           if (place.address_components) {
             for (const component of place.address_components) {
-              const types = component.types;
+              const types = component.types || [];
               
               if (types.includes('locality') || types.includes('postal_town') || types.includes('sublocality') || types.includes('administrative_area_level_3')) {
                 if (!city) city = component.long_name;
@@ -46,7 +62,7 @@ export default function LocationInput({ name, value, onChange, placeholder, clas
               if (types.includes('postal_code')) {
                 postalCode = component.long_name;
               }
-              if (types.includes('country')) {
+              if (!restrictToSouthAfrica && types.includes('country')) {
                 country = component.long_name;
               }
             }
@@ -64,7 +80,14 @@ export default function LocationInput({ name, value, onChange, placeholder, clas
           }
 
           if (onPlaceDetailsRef.current) {
-            onPlaceDetailsRef.current({ address: addressToUse, city, postalCode, country, lat, lng });
+            onPlaceDetailsRef.current({
+              address: addressToUse,
+              city,
+              postalCode,
+              country: restrictToSouthAfrica ? 'South Africa' : (country || 'South Africa'),
+              lat,
+              lng
+            });
           }
         }
       });
@@ -83,11 +106,19 @@ export default function LocationInput({ name, value, onChange, placeholder, clas
 
     return () => {
       if (checkInterval) clearInterval(checkInterval);
-      if (window.google && window.google.maps && window.google.maps.event && autocompleteRef.current) {
+      if (window.google?.maps?.event && autocompleteRef.current) {
         window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
       }
     };
-  }, [name]);
+  }, [name, restrictToSouthAfrica]);
+
+  useEffect(() => {
+    if (autocompleteRef.current && typeof autocompleteRef.current.setComponentRestrictions === 'function') {
+      autocompleteRef.current.setComponentRestrictions(
+        restrictToSouthAfrica ? { country: 'za' } : null
+      );
+    }
+  }, [restrictToSouthAfrica]);
 
   return (
     <input

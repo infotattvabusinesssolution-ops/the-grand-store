@@ -32,6 +32,7 @@ import {
   X,
 } from "lucide-react";
 import api from "../../api";
+import VendorPayoutModal from "./VendorPayoutModal";
 
 const STATUS_STYLES = {
   approved: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
@@ -155,6 +156,9 @@ export default function AdminVendorDetail() {
   const [scheduleAmount, setScheduleAmount] = useState("500");
   const [scheduleWorking, setScheduleWorking] = useState(false);
 
+  const [selectedPayout, setSelectedPayout] = useState(null);
+  const [payoutModalOpen, setPayoutModalOpen] = useState(false);
+
   const fetchVendor = useCallback(async () => {
     try {
       setError("");
@@ -221,6 +225,49 @@ export default function AdminVendorDetail() {
       setError(err.response?.data?.message || "Could not update maintenance fee schedule.");
     } finally {
       setScheduleWorking(false);
+    }
+  };
+
+  const [editingBanking, setEditingBanking] = useState(false);
+  const [bankingForm, setBankingForm] = useState({
+    bankName: "",
+    accountName: "",
+    accountNumber: "",
+    branchCode: "",
+    accountType: "Cheque / Current",
+    swiftCode: "",
+    isVerified: false,
+  });
+  const [bankingWorking, setBankingWorking] = useState(false);
+
+  useEffect(() => {
+    if (vendor?.bankingInfo) {
+      setBankingForm({
+        bankName: vendor.bankingInfo.bankName || "",
+        accountName: vendor.bankingInfo.accountName || "",
+        accountNumber: vendor.bankingInfo.accountNumber || "",
+        branchCode: vendor.bankingInfo.branchCode || "",
+        accountType: vendor.bankingInfo.accountType || "Cheque / Current",
+        swiftCode: vendor.bankingInfo.swiftCode || "",
+        isVerified: Boolean(vendor.bankingInfo.isVerified),
+      });
+    }
+  }, [vendor]);
+
+  const saveVendorBanking = async (e) => {
+    e?.preventDefault();
+    try {
+      setBankingWorking(true);
+      setError("");
+      setMessage("");
+      await api.put(`/admin/vendors/${id}/banking`, bankingForm);
+      setMessage("Vendor banking details and KYC status updated successfully.");
+      setEditingBanking(false);
+      await fetchVendor();
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not update vendor banking details.");
+    } finally {
+      setBankingWorking(false);
     }
   };
 
@@ -486,12 +533,308 @@ export default function AdminVendorDetail() {
               ]} />
             </Section>
 
-            <Section icon={Landmark} title="Banking information" description="Payout account supplied by the applicant">
-              <Fields items={[
-                { label: "Bank", value: vendor.bankingInfo?.bankName }, { label: "Account name", value: vendor.bankingInfo?.accountName },
-                { label: "Account number", value: vendor.bankingInfo?.accountNumber }, { label: "Branch code", value: vendor.bankingInfo?.branchCode },
-                { label: "SWIFT code", value: vendor.bankingInfo?.swiftCode }, { label: "Payout preference", value: vendor.bankingInfo?.payoutPreference },
-              ]} />
+            <Section icon={Landmark} title="Banking information" description="Registered settlement and payout account">
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.08]">
+                  <div className="flex items-center gap-2">
+                    {vendor.bankingInfo?.isVerified ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-300">
+                        <ShieldCheck size={13} /> KYC Verified
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300">
+                        <Clock3 size={13} /> Unverified / Pending KYC
+                      </span>
+                    )}
+                    {vendor.bankingInfo?.verifiedAt && (
+                      <span className="text-[10px] text-white/40 font-mono">
+                        Verified {formatDate(vendor.bankingInfo.verifiedAt)}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingBanking(prev => !prev)}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-[#c9a35b]/40 bg-[#c9a35b]/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#e6c985] hover:bg-[#c9a35b]/20 transition"
+                  >
+                    <Edit3 size={12} /> {editingBanking ? "Cancel edit" : "Edit / Verify Bank Details"}
+                  </button>
+                </div>
+
+                {editingBanking ? (
+                  <form onSubmit={saveVendorBanking} className="rounded-xl border border-[#c9a35b]/30 bg-[#14120e] p-5 space-y-4 shadow-xl">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Landmark size={16} className="text-[#c9a35b]" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[#e8c982]">
+                          Edit Vendor Banking &amp; KYC Verification
+                        </h4>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditingBanking(false)}
+                        className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Bank Name</label>
+                        <input
+                          type="text"
+                          required
+                          value={bankingForm.bankName}
+                          onChange={e => setBankingForm({ ...bankingForm, bankName: e.target.value })}
+                          className="mt-1 w-full rounded-md border border-white/15 bg-black/60 px-3 py-2 text-sm text-white focus:border-[#c9a35b] focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Account Holder Name</label>
+                        <input
+                          type="text"
+                          required
+                          value={bankingForm.accountName}
+                          onChange={e => setBankingForm({ ...bankingForm, accountName: e.target.value })}
+                          className="mt-1 w-full rounded-md border border-white/15 bg-black/60 px-3 py-2 text-sm text-white focus:border-[#c9a35b] focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Account Number</label>
+                        <input
+                          type="text"
+                          required
+                          value={bankingForm.accountNumber}
+                          onChange={e => setBankingForm({ ...bankingForm, accountNumber: e.target.value })}
+                          className="mt-1 w-full rounded-md border border-white/15 bg-black/60 px-3 py-2 text-sm text-white font-mono focus:border-[#c9a35b] focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Branch Code</label>
+                        <input
+                          type="text"
+                          required
+                          value={bankingForm.branchCode}
+                          onChange={e => setBankingForm({ ...bankingForm, branchCode: e.target.value })}
+                          className="mt-1 w-full rounded-md border border-white/15 bg-black/60 px-3 py-2 text-sm text-white font-mono focus:border-[#c9a35b] focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Account Type</label>
+                        <select
+                          value={bankingForm.accountType}
+                          onChange={e => setBankingForm({ ...bankingForm, accountType: e.target.value })}
+                          className="mt-1 w-full rounded-md border border-white/15 bg-black/60 px-3 py-2 text-sm text-white focus:border-[#c9a35b] focus:outline-none"
+                        >
+                          <option value="Cheque / Current">Cheque / Current</option>
+                          <option value="Savings">Savings</option>
+                          <option value="Transmission">Transmission</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-white/50">SWIFT / BIC (Optional)</label>
+                        <input
+                          type="text"
+                          value={bankingForm.swiftCode}
+                          onChange={e => setBankingForm({ ...bankingForm, swiftCode: e.target.value })}
+                          className="mt-1 w-full rounded-md border border-white/15 bg-black/60 px-3 py-2 text-sm text-white font-mono focus:border-[#c9a35b] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Verification Toggle */}
+                    <div className="rounded-lg border border-white/10 bg-black/40 p-3.5 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-semibold text-white block">KYC Bank Verification</span>
+                        <span className="text-[10px] text-white/40 block">Mark account as formally checked and approved for marketplace payouts.</span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={bankingForm.isVerified}
+                          onChange={e => setBankingForm({ ...bankingForm, isVerified: e.target.checked })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingBanking(false)}
+                        className="px-4 py-2 text-xs font-medium text-white/50 hover:text-white transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={bankingWorking}
+                        className="inline-flex items-center gap-1.5 rounded-md bg-[#c9a35b] px-4 py-2 text-xs font-bold uppercase tracking-wider text-black hover:bg-[#d6b66f] transition disabled:opacity-50"
+                      >
+                        <Save size={13} /> {bankingWorking ? "Saving..." : "Save Banking Details"}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <Fields items={[
+                      { label: "Bank", value: vendor.bankingInfo?.bankName },
+                      { label: "Account type", value: vendor.bankingInfo?.accountType || 'Cheque / Current' },
+                      { label: "Account name", value: vendor.bankingInfo?.accountName },
+                      { label: "Account number", value: vendor.bankingInfo?.accountNumber },
+                      { label: "Branch code", value: vendor.bankingInfo?.branchCode },
+                      { label: "SWIFT code", value: vendor.bankingInfo?.swiftCode },
+                    ]} />
+
+                    {vendor.bankingInfo?.bankConfirmationUrl && (
+                      <div className="mt-4 pt-3 border-t border-white/[0.08]">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35 mb-2">
+                          Bank Confirmation Letter / Proof of Account
+                        </p>
+                        <DocumentLink
+                          label="Bank Confirmation Letter"
+                          url={vendor.bankingInfo.bankConfirmationUrl}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </Section>
+
+            {/* REDEEMED MONEY & PAYOUT HISTORY SECTION */}
+            <Section icon={CircleDollarSign} title="Redeemed Money & Payout History" description="Historical payout disbursements and current wallet balances">
+              <div className="space-y-4">
+                {/* Wallet Balance Cards */}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-xl border border-white/10 bg-black/40 p-3.5">
+                    <span className="text-[10px] uppercase tracking-wider text-white/40">Available Balance</span>
+                    <div className="mt-1 font-serif text-lg font-semibold text-emerald-400">
+                      R {Number(vendor.wallet?.availableBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                    <span className="text-[10px] text-white/30">Ready to withdraw</span>
+                  </div>
+
+                  <div className="rounded-xl border border-white/10 bg-black/40 p-3.5">
+                    <span className="text-[10px] uppercase tracking-wider text-white/40">Pending Payouts</span>
+                    <div className="mt-1 font-serif text-lg font-semibold text-amber-300">
+                      R {Number(vendor.wallet?.pendingWithdrawalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                    <span className="text-[10px] text-white/30">Awaiting admin EFT</span>
+                  </div>
+
+                  <div className="rounded-xl border border-white/10 bg-black/40 p-3.5">
+                    <span className="text-[10px] uppercase tracking-wider text-white/40">Total Redeemed / Paid</span>
+                    <div className="mt-1 font-serif text-lg font-semibold text-white">
+                      R {Number(vendor.wallet?.totalWithdrawn || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                    <span className="text-[10px] text-white/30">Historical total settled</span>
+                  </div>
+                </div>
+
+                {/* Payouts Table */}
+                {(!vendor.payouts || vendor.payouts.length === 0) ? (
+                  <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-8 text-center text-white/40">
+                    <CircleDollarSign size={36} className="mx-auto mb-2 text-[#c9a35b]/30" />
+                    <p className="text-sm">No redemption or payout requests recorded for this vendor yet.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-white/[0.08]">
+                    <table className="w-full text-left border-collapse whitespace-nowrap text-xs">
+                      <thead>
+                        <tr className="bg-black/60 text-white/40 text-[10px] uppercase tracking-wider border-b border-white/[0.08]">
+                          <th className="p-3 font-medium">Ref &amp; Date</th>
+                          <th className="p-3 font-medium">Destination Account</th>
+                          <th className="p-3 font-medium text-right font-bold text-white">Amount</th>
+                          <th className="p-3 font-medium">Status</th>
+                          <th className="p-3 font-medium">EFT Ref / Notes</th>
+                          <th className="p-3 font-medium text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.05] text-white/80">
+                        {vendor.payouts.map(p => {
+                          const bank = p.payoutDetails || {};
+                          return (
+                            <tr key={p._id} className="hover:bg-white/[0.02]">
+                              <td className="p-3">
+                                <span className="font-mono text-[#c9a35b] block">{p.gsReference}</span>
+                                <span className="text-[10px] text-white/40 block mt-0.5">{formatDate(p.createdAt)}</span>
+                              </td>
+                              <td className="p-3">
+                                <span className="text-white block">{bank.bankName || 'Bank'}</span>
+                                <span className="text-[10px] text-white/40 font-mono block">
+                                  •••• {String(bank.accountNumber || '').slice(-4)} • {bank.accountType || 'Cheque'}
+                                </span>
+                              </td>
+                              <td className="p-3 text-right">
+                                <span className="font-serif font-bold text-white text-sm">
+                                  R {Number(p.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                {p.status === 'pending' && (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                                    <Clock3 size={10} /> Pending
+                                  </span>
+                                )}
+                                {(p.status === 'cleared' || p.status === 'paid') && (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                                    <CheckCircle2 size={10} /> Disbursed
+                                  </span>
+                                )}
+                                {p.status === 'delayed' && (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-[10px] font-bold text-orange-300">
+                                    <AlertCircle size={10} /> Delayed
+                                  </span>
+                                )}
+                                {p.status === 'failed' && (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-300">
+                                    <X size={10} /> Declined
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3 max-w-xs">
+                                {bank.adminReference && (
+                                  <span className="text-emerald-400 font-mono block truncate">EFT: {bank.adminReference}</span>
+                                )}
+                                {bank.customMessage && (
+                                  <span className="text-amber-300/90 block truncate mt-0.5 text-[10px]" title={bank.customMessage}>
+                                    💬 {bank.customMessage}
+                                  </span>
+                                )}
+                                {bank.rejectionReason && (
+                                  <span className="text-red-400 block truncate" title={bank.rejectionReason}>
+                                    Reason: {bank.rejectionReason}
+                                  </span>
+                                )}
+                                {!bank.adminReference && !bank.customMessage && !bank.rejectionReason && <span className="text-white/30">—</span>}
+                              </td>
+                              <td className="p-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedPayout({
+                                      ...p,
+                                      vendor: { name: vendor.userId?.name || vendor.businessInfo?.legalName },
+                                      businessInfo: vendor.businessInfo
+                                    });
+                                    setPayoutModalOpen(true);
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded border border-[#c9a35b]/30 bg-[#c9a35b]/10 hover:bg-[#c9a35b]/20 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#d5b46c] transition-colors cursor-pointer"
+                                >
+                                  <Edit3 size={11} /> Update Status
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </Section>
 
             <Section icon={CreditCard} title="Recurring Maintenance & Payment History" description="Monthly platform maintenance fee schedule and completed payments">
@@ -957,6 +1300,23 @@ export default function AdminVendorDetail() {
           </aside>
         </div>
       </div>
+
+      {/* REUSABLE PAYOUT STATUS MODAL */}
+      <VendorPayoutModal
+        isOpen={payoutModalOpen}
+        onClose={() => setPayoutModalOpen(false)}
+        payout={selectedPayout}
+        onSuccess={(updatedTxn) => {
+          setVendor(prev => {
+            if (!prev) return prev;
+            const updatedPayouts = (prev.payouts || []).map(item =>
+              item._id === updatedTxn._id ? { ...item, ...updatedTxn } : item
+            );
+            return { ...prev, payouts: updatedPayouts };
+          });
+          fetchVendor();
+        }}
+      />
     </div>
   );
 }

@@ -24,12 +24,12 @@ const generateQuote = async (req, res) => {
     }
     const destinationCountry = shippingAddress.country.trim().toLowerCase();
     const isSouthAfricanDestination = ['south africa', 'za', 'rsa'].includes(destinationCountry);
-    if (deliveryPreference === 'postnet' && !isSouthAfricanDestination) {
-      return res.status(400).json({ message: 'PostNet pickup is only available within South Africa.' });
+    if ((deliveryPreference === 'postnet' || deliveryPreference === 'pudo' || deliveryPreference === 'locker') && !isSouthAfricanDestination) {
+      return res.status(400).json({ message: `${deliveryPreference === 'postnet' ? 'PostNet' : 'PUDO Smart Locker'} collection is only available within South Africa.` });
     }
 
     let postnetLookup = null;
-    if (isSouthAfricanDestination && deliveryPreference !== 'home') {
+    if (isSouthAfricanDestination && deliveryPreference === 'postnet') {
       const postnetSearchAddress = [
         shippingAddress.address,
         shippingAddress.city,
@@ -86,6 +86,16 @@ const generateQuote = async (req, res) => {
       const itemSubtotal = itemPrice * item.quantity;
       
       const resolvedImage = product.image || (Array.isArray(product.gallery) && product.gallery[0]) || product.imageSourceUrl || item.image || item.product_image || '';
+      const isSuperCoinEligible = !(product.isSuperCoinEligible === false || product.isSuperCoinEligible === 'false' || product.isSuperCoinEligible === 0 || product.isSuperCoinEligible === '0');
+      const maxSuperCoinDiscountPct = Number(product.maxSuperCoinDiscountPct !== undefined ? product.maxSuperCoinDiscountPct : 10);
+      const isReferralEligible = !(product.isReferralEligible === false || product.isReferralEligible === 'false' || product.isReferralEligible === 0 || product.isReferralEligible === '0');
+      const referralDiscountPct = Number(product.referralDiscountPct !== undefined ? product.referralDiscountPct : 5);
+
+      const prodWeight = Number(product.shipping?.weight_kg || product.weight_kg || 1.85);
+      const prodLength = Number(product.shipping?.length_cm || product.length_cm || 12);
+      const prodWidth = Number(product.shipping?.width_cm || product.width_cm || 12);
+      const prodHeight = Number(product.shipping?.height_cm || product.height_cm || 34);
+
       vendorGroups[vId].items.push({
         ...item,
         price: itemPrice, // overriding with server price
@@ -94,12 +104,23 @@ const generateQuote = async (req, res) => {
         product: product.id || product._id || item.product,
         vendorId: product.vendorId,
         category: product.category || 'Uncategorised',
-        subcategory: product.subcategory || ''
+        subcategory: product.subcategory || '',
+        isSuperCoinEligible,
+        maxSuperCoinDiscountPct,
+        isReferralEligible,
+        referralDiscountPct,
+        shipping: {
+          weight_kg: prodWeight,
+          length_cm: prodLength,
+          width_cm: prodWidth,
+          height_cm: prodHeight,
+          box_type: product.shipping?.box_type || 'Standard Box',
+          is_fragile: product.shipping?.is_fragile !== undefined ? product.shipping.is_fragile : true,
+          aramexServiceType: product.shipping?.aramexServiceType || 'ONP'
+        }
       });
       vendorGroups[vId].subtotal += itemSubtotal;
-      
-      // Default weight assumption if missing: 1.5kg per bottle
-      vendorGroups[vId].totalWeightKg += (1.5 * item.quantity); 
+      vendorGroups[vId].totalWeightKg += (prodWeight * item.quantity); 
       globalSubtotal += itemSubtotal;
     }
 
@@ -126,7 +147,7 @@ const generateQuote = async (req, res) => {
         shippingAddress, 
         group.subtotal, 
         group.totalWeightKg,
-        { postnetLookup }
+        { postnetLookup, settings, items: group.items }
       );
 
       if (shippingData.isInternational) hasInternational = true;
@@ -146,10 +167,20 @@ const generateQuote = async (req, res) => {
       }
 
       const availableQuotes = shippingData.quotes.filter((shippingQuote) => {
-        if (deliveryPreference === 'postnet') {
-          return shippingQuote.deliveryType === 'pickup' || shippingQuote.serviceLevel.includes('Collection');
+        if (shippingQuote.serviceLevel === 'PostNet Standard Delivery') {
+          return false;
         }
-        if (deliveryPreference === 'home') {
+        const isFree = shippingQuote.isFreeDelivery || (shippingQuote.serviceLevel && shippingQuote.serviceLevel.includes('Economy Road')) || shippingQuote.courierName === 'PostNet';
+        if (Number(shippingQuote.cost) < 0 || (Number(shippingQuote.cost) === 0 && !isFree)) {
+          return false;
+        }
+        if (deliveryPreference === 'postnet') {
+          return shippingQuote.courierName === 'PostNet' && (shippingQuote.deliveryType === 'pickup' || shippingQuote.serviceLevel.includes('Collection'));
+        }
+        if (deliveryPreference === 'pudo' || deliveryPreference === 'locker') {
+          return shippingQuote.serviceCode === 'D2L' || shippingQuote.courierName?.includes('PUDO') || shippingQuote.serviceLevel?.includes('PUDO');
+        }
+        if (deliveryPreference === 'home' || deliveryPreference === 'courier') {
           return shippingQuote.deliveryType === 'home';
         }
         return true;
@@ -159,9 +190,19 @@ const generateQuote = async (req, res) => {
         return res.status(400).json({
           message: deliveryPreference === 'postnet'
             ? 'PostNet pickup is only available for deliveries within South Africa.'
-            : 'No delivery option is available for this destination.'
+            : (deliveryPreference === 'pudo' || deliveryPreference === 'locker')
+              ? 'PUDO Smart Locker collection is only available within South Africa.'
+              : 'No delivery option is available for this destination.'
         });
       }
+
+      const selectedLockerObj = (deliveryPreference === 'pudo' || deliveryPreference === 'locker' || availableQuotes[0]?.serviceCode === 'D2L')
+        ? (req.body.selectedLocker || req.body.preferredLocker || req.body.selectedPickupPoint || null)
+        : null;
+
+      const selectedPickupStoreObj = (deliveryPreference === 'postnet' || (availableQuotes[0]?.courierName === 'PostNet' && availableQuotes[0]?.deliveryType === 'pickup'))
+        ? (req.body.preferredPostnetStore || req.body.selectedPostnetStore || null)
+        : null;
 
       shipments.push({
         vendorId: group.vendorId,
@@ -176,12 +217,17 @@ const generateQuote = async (req, res) => {
         landedCostEstimates: shippingData.landedCostEstimates,
         // Default selected courier is the first one
         selectedCourier: availableQuotes[0] || null,
-        selectedPickupStore: req.body.preferredPostnetStore || null
+        selectedPickupStore: selectedPickupStoreObj,
+        selectedLocker: selectedLockerObj
       });
     }
 
-    // Calculate aggregated totals based on default selections
-    let defaultShippingTotal = shipments.reduce((sum, shp) => sum + (shp.selectedCourier ? shp.selectedCourier.cost : 0), 0);
+    // Calculate aggregated totals based on default selections (promo costs <= 0.01 are treated as 0 / Free)
+    let defaultShippingTotal = shipments.reduce((sum, shp) => {
+      const c = shp.selectedCourier ? Number(shp.selectedCourier.cost) : 0;
+      return sum + (c <= 0.01 ? 0 : c);
+    }, 0);
+    defaultShippingTotal = parseFloat(defaultShippingTotal.toFixed(2));
     let defaultVatTotal = shipments.reduce((sum, shp) => sum + shp.taxData.vatAmount, 0);
     
     // Note: Duties/Taxes are usually DAP (Customer pays at customs). If we wanted DDP, we'd add it to total.
@@ -193,21 +239,42 @@ const generateQuote = async (req, res) => {
     const SuperCoinEngine = require('../engines/superCoinEngine');
     const User = require('../models/User');
     let userCoins = 0;
+    let userRewardBalance = 0;
     if (req.user && req.user._id) {
-      const dbUser = await User.findById(req.user._id).select('superCoinsBalance');
-      if (dbUser) userCoins = dbUser.superCoinsBalance || 0;
+      const dbUser = await User.findById(req.user._id).select('superCoinsBalance rewardBalance');
+      if (dbUser) {
+        userCoins = dbUser.superCoinsBalance || 0;
+        userRewardBalance = Math.max(0, Number(dbUser.rewardBalance) || 0);
+      }
     }
+
+    // Calculate product-level eligible subtotals for SuperCoins and Referral discounts
+    let superCoinEligibleSubtotal = 0;
+    let referralEligibleSubtotal = 0;
+    for (const vId in vendorGroups) {
+      for (const it of vendorGroups[vId].items) {
+        const itemLineTotal = Number(it.price || 0) * Number(it.quantity || 1);
+        if (it.isSuperCoinEligible === true) {
+          superCoinEligibleSubtotal += itemLineTotal;
+        }
+        if (it.isReferralEligible === true) {
+          referralEligibleSubtotal += itemLineTotal;
+        }
+      }
+    }
+    superCoinEligibleSubtotal = parseFloat(superCoinEligibleSubtotal.toFixed(2));
+    referralEligibleSubtotal = parseFloat(referralEligibleSubtotal.toFixed(2));
 
     const superCoinsEstimate = SuperCoinEngine.calculateAllowedRedemption({
       userCoins,
-      eligibleSubtotal: globalSubtotal,
+      eligibleSubtotal: superCoinEligibleSubtotal,
       shippingCost: defaultShippingTotal,
       commissionPct: settings.marketplaceCommissionPct || 15,
       gatewayFeePct: settings.gatewayFeePct || 2.5,
       settings
     });
 
-    const potentialCoinsToEarn = SuperCoinEngine.calculateEarnedCoins(globalSubtotal, settings);
+    const potentialCoinsToEarn = SuperCoinEngine.calculateEarnedCoins(superCoinEligibleSubtotal, settings);
 
     const quoteId = `QUOTE-${Date.now()}`;
     const expiresAt = new Date(Date.now() + 10 * 60000); // 10 minutes
@@ -228,8 +295,11 @@ const generateQuote = async (req, res) => {
       },
       superCoins: {
         ...superCoinsEstimate,
+        eligibleSubtotal: superCoinEligibleSubtotal,
         potentialCoinsToEarn
       },
+      rewardBalance: userRewardBalance,
+      referralEligibleSubtotal,
       bankDetails: settings.bankDetails,
       shipments
     });

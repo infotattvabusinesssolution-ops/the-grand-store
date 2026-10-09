@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../api';
-import { Store, MapPin, CheckCircle, Search } from 'lucide-react';
+import { Store, MapPin, CheckCircle, Search, ShieldCheck, X } from 'lucide-react';
 import ProductCard from '../../components/ProductCard';
 
 export default function StoreFront() {
@@ -9,6 +9,8 @@ export default function StoreFront() {
   const [storeData, setStoreData] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
 
   useEffect(() => {
     const fetchStore = async () => {
@@ -16,7 +18,7 @@ export default function StoreFront() {
         setLoading(true);
         const res = await api.get(`/shop/stores/${storeId}`);
         setStoreData(res.data.storeData);
-        setProducts(res.data.products);
+        setProducts(res.data.products || []);
       } catch (err) {
         console.error('Failed to fetch store details:', err);
         setStoreData(null);
@@ -27,6 +29,30 @@ export default function StoreFront() {
 
     fetchStore();
   }, [storeId]);
+
+  // Derive unique categories present in the products collection
+  const categories = useMemo(() => {
+    const set = new Set();
+    products.forEach(p => {
+      if (p.category) set.add(p.category);
+    });
+    return ['All', ...Array.from(set).sort()];
+  }, [products]);
+
+  // Filter products by category and search term
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const matchesCat = selectedCategory === 'All' || product.category === selectedCategory;
+      const term = searchTerm.trim().toLowerCase();
+      const matchesSearch = !term || (
+        (product.name && product.name.toLowerCase().includes(term)) ||
+        (product.brand && product.brand.toLowerCase().includes(term)) ||
+        (product.category && product.category.toLowerCase().includes(term)) ||
+        (product.subcategory && product.subcategory.toLowerCase().includes(term))
+      );
+      return matchesCat && matchesSearch;
+    });
+  }, [products, selectedCategory, searchTerm]);
 
   if (loading) {
     return (
@@ -44,49 +70,74 @@ export default function StoreFront() {
     );
   }
 
+  const isFlagship = storeData.type === 'flagship' || storeData.type === 'Flagship House' || storeData._id === 'admin';
+  const storeTypeLabel = isFlagship
+    ? 'Flagship House'
+    : storeData.type === 'local'
+      ? 'Local Vendor'
+      : 'International Vendor';
+
   return (
     <div className="min-h-screen bg-[#050505] text-[var(--color-ivory)] font-sans">
       
       {/* --- BANNER --- */}
-      <div className="w-full h-40 md:h-56 lg:h-[250px] relative bg-[#111]">
+      <div className="w-full h-44 sm:h-56 md:h-64 lg:h-[300px] relative bg-[#111] overflow-hidden">
         <img 
-          src={storeData.bannerUrl} 
+          src={storeData.bannerUrl || '/assets/grand-store-whisky-banner.jpg'} 
           alt="Store Banner" 
-          className="w-full h-full object-cover"
+          onError={(e) => {
+            e.currentTarget.src = '/assets/grand-store-whisky-banner.jpg';
+          }}
+          className="w-full h-full object-cover brightness-[0.85]"
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-90" />
       </div>
 
       {/* --- STORE DETAILS PROFILE --- */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        <div className="flex flex-col md:flex-row items-start gap-6 -mt-20 md:-mt-28 relative z-10 mb-10">
+        <div className="flex flex-col md:flex-row items-start gap-6 -mt-20 md:-mt-24 relative z-10 mb-10">
           
           {/* Overlapping Logo */}
-          <div className="w-40 h-40 md:w-56 md:h-56 rounded-full border-[8px] border-[#050505] bg-black overflow-hidden shrink-0 shadow-lg">
+          <div className="w-36 h-36 md:w-48 md:h-48 rounded-2xl md:rounded-full border-[4px] md:border-[6px] border-[#050505] bg-[#0c0c0c] overflow-hidden shrink-0 shadow-2xl flex items-center justify-center p-2">
             <img 
-              src={storeData.logoUrl} 
+              src={storeData.logoUrl || '/grand-store-logo.png'} 
               alt="Store Logo" 
-              className="w-full h-full object-cover" 
+              onError={(e) => {
+                e.currentTarget.src = '/grand-store-logo.png';
+              }}
+              className="w-full h-full object-contain" 
             />
           </div>
           
           {/* Details */}
-          <div className="pt-2 md:pt-28 flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif text-white">{storeData.businessName}</h1>
+          <div className="pt-2 md:pt-24 flex-1">
+            <div className="flex flex-wrap items-center gap-3 mb-2">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif text-white tracking-wide">
+                {storeData.businessName}
+              </h1>
               {storeData.isVerified && (
-                <CheckCircle size={22} className="text-[#c9a35b]" />
+                <span className="inline-flex items-center gap-1 bg-[#c9a35b]/10 border border-[#c9a35b]/40 text-[#c9a35b] text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                  <CheckCircle size={14} /> Verified Store
+                </span>
+              )}
+              {isFlagship && (
+                <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-600/20 to-yellow-500/20 border border-yellow-500/30 text-amber-300 text-xs font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  <ShieldCheck size={14} /> Official Flagship
+                </span>
               )}
             </div>
             
-            <div className="flex items-center gap-4 text-sm text-[var(--color-ivory-muted)] mb-6">
-              <span className="flex items-center gap-1.5"><MapPin size={16} /> {storeData.country}</span>
-              <span className="flex items-center gap-1.5"><Store size={16} /> {storeData.type === 'local' ? 'Local Vendor' : 'International Vendor'}</span>
+            <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-white/60 mb-5">
+              <span className="flex items-center gap-1.5"><MapPin size={15} className="text-[#c9a35b]" /> {storeData.country}</span>
+              <span className="flex items-center gap-1.5"><Store size={15} className="text-[#c9a35b]" /> {storeTypeLabel}</span>
+              <span className="text-white/40">•</span>
+              <span className="text-white/70">{products.length} Products in Vault</span>
             </div>
             
             {storeData.story && (
               <div className="max-w-4xl">
-                <p className="text-white/70 leading-relaxed font-light text-sm md:text-base">
+                <p className="text-white/75 leading-relaxed font-light text-sm md:text-base border-l-2 border-[#c9a35b]/40 pl-4 py-1">
                   {storeData.story}
                 </p>
               </div>
@@ -100,36 +151,77 @@ export default function StoreFront() {
         {/* --- PRODUCTS SECTION --- */}
         <div className="pb-24">
           
-          {/* Tab / Toolbar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
-            <div className="flex items-center gap-8 text-lg font-serif">
-              <button className="text-white border-b-2 border-[#c9a35b] pb-1">Collection</button>
-              {/* Future tabs could go here, like "About" or "Reviews" */}
+          {/* Header & Search Bar */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-serif text-white tracking-wide">Curated Collection</h2>
+              <p className="text-xs sm:text-sm text-white/50 mt-0.5">
+                Showing {filteredProducts.length} of {products.length} allocated bottles & spirits
+              </p>
             </div>
             
-            <div className="flex items-center gap-2 bg-[#111] border border-white/10 rounded-full px-4 py-2 w-full sm:w-64 focus-within:border-[#c9a35b]/50 transition-colors">
-              <Search size={16} className="text-white/40" />
+            <div className="flex items-center gap-2 bg-[#111] border border-white/10 rounded-full px-4 py-2 w-full md:w-80 focus-within:border-[#c9a35b]/60 transition-colors">
+              <Search size={16} className="text-white/40 shrink-0" />
               <input 
                 type="text" 
-                placeholder="Search store..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by name, brand, category..." 
                 className="bg-transparent border-none outline-none text-sm text-white placeholder-white/30 w-full focus:ring-0" 
               />
+              {searchTerm && (
+                <button onClick={() => setSearchTerm('')} className="text-white/40 hover:text-white p-0.5">
+                  <X size={14} />
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Category Filter Pills */}
+          {categories.length > 2 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 scrollbar-thin scrollbar-thumb-white/10">
+              {categories.map((cat) => {
+                const isActive = selectedCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-medium tracking-wider whitespace-nowrap transition-all duration-200 ${
+                      isActive
+                        ? 'bg-[#c9a35b] text-black font-semibold shadow-md shadow-[#c9a35b]/20'
+                        : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white border border-white/10'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           
-          {/* Grid */}
+          {/* Products Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products.map(product => (
+            {filteredProducts.map(product => (
               <ProductCard key={product._id} product={product} />
             ))}
           </div>
           
           {/* Empty State */}
-          {products.length === 0 && (
+          {filteredProducts.length === 0 && (
              <div className="py-24 text-center border border-white/5 rounded-2xl bg-white/[0.02]">
                <Store size={40} className="mx-auto text-white/20 mb-4" />
-               <h3 className="text-white/60 mb-2 font-serif text-xl">No products available</h3>
-               <p className="text-white/40 text-sm">This store hasn't added any products to their collection yet.</p>
+               <h3 className="text-white/60 mb-2 font-serif text-xl">No matching products found</h3>
+               <p className="text-white/40 text-sm mb-4">
+                 {searchTerm ? `No results matching "${searchTerm}"` : 'No products available in this category.'}
+               </p>
+               {(searchTerm || selectedCategory !== 'All') && (
+                 <button 
+                   onClick={() => { setSearchTerm(''); setSelectedCategory('All'); }}
+                   className="text-xs uppercase tracking-widest text-[#c9a35b] hover:underline"
+                 >
+                   Clear filters
+                 </button>
+               )}
              </div>
           )}
         </div>

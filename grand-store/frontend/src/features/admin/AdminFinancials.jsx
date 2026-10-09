@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../api';
-import { DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp, History, Download, FileSpreadsheet, Layers3, Scale, ShieldCheck } from 'lucide-react';
+import { 
+  DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp, History, Download, 
+  FileSpreadsheet, Layers3, Scale, ShieldCheck 
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { downloadAccountingWorkbook, downloadCategoryAccountingWorkbook, downloadAuctionsWorkbook, downloadEventsWorkbook, downloadVendorWorkbook, downloadLedgerWorkbook } from '../../utils/accountingWorkbook';
 
@@ -12,7 +15,7 @@ export default function AdminFinancials({ hideHeader = false }) {
   const [auctionOrders, setAuctionOrders] = useState([]);
   const [eventBookings, setEventBookings] = useState([]);
   const [vendorPayments, setVendorPayments] = useState([]);
-  const [activeTab, setActiveTab] = useState('shop');
+  const [activeTab, setActiveTab] = useState('admin_shop');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [exportError, setExportError] = useState('');
@@ -29,12 +32,15 @@ export default function AdminFinancials({ hideHeader = false }) {
         const res = await api.get(`${API_URL}/api/admin/finance?limit=2000`, {
           headers: { Authorization: `Bearer ${user?.token}` }
         });
-        setMetrics(res.data.metrics);
-        setTransactions(res.data.transactions);
-        setShopOrders(res.data.shopOrders || []);
-        setAuctionOrders(res.data.auctionOrders || []);
-        setEventBookings(res.data.eventBookings || []);
-        setVendorPayments(res.data.vendorPayments || []);
+
+        if (res.data) {
+          setMetrics(res.data.metrics);
+          setTransactions(res.data.transactions || []);
+          setShopOrders((res.data.shopOrders || []).filter(o => o.paymentStatus !== 'Cancelled' && o.paymentStatus !== 'Failed'));
+          setAuctionOrders((res.data.auctionOrders || []).filter(o => o.paymentStatus !== 'Cancelled' && o.paymentStatus !== 'Failed'));
+          setEventBookings((res.data.eventBookings || []).filter(b => b.paymentStatus !== 'Cancelled' && b.paymentStatus !== 'Failed'));
+          setVendorPayments(res.data.vendorPayments || []);
+        }
       } catch (err) {
         setError('Failed to load finance data');
         console.error(err);
@@ -45,6 +51,59 @@ export default function AdminFinancials({ hideHeader = false }) {
 
     fetchFinanceData();
   }, [user?.token]);
+
+  // Helper to extract clean financial breakdown distinguishing Admin vs Vendor products
+  const getOrderFinancialDetails = (order) => {
+    const items = order.orderItems || [];
+    const adminItems = items.filter(it => !it.vendorId);
+    const vendorItems = items.filter(it => Boolean(it.vendorId));
+
+    const validVendorPayables = (order.vendorPayables || []).filter(p => Boolean(p.vendorId));
+    const hasVendor = vendorItems.length > 0 || validVendorPayables.length > 0;
+    const hasAdmin = adminItems.length > 0 || (!hasVendor && items.length > 0) || items.length === 0;
+
+    const adminSubtotal = adminItems.length > 0 
+      ? adminItems.reduce((sum, it) => sum + (Number(it.price || 0) * Number(it.quantity || 1)), 0)
+      : (!hasVendor ? Number(order.subTotal || 0) : 0);
+
+    const vendorSubtotal = vendorItems.length > 0
+      ? vendorItems.reduce((sum, it) => sum + (Number(it.price || 0) * Number(it.quantity || 1)), 0)
+      : (hasVendor ? Number(order.subTotal || 0) : 0);
+
+    // Vendor Payout is strictly for actual third-party vendors
+    const totalVendorPayout = validVendorPayables.reduce((sum, p) => sum + (Number(p.netPayable) || 0), 0);
+
+    // Platform commission only applies to vendor sales
+    const actualCommission = hasVendor ? Number(order.commissionAmount || 0) : 0;
+
+    // Customer shipping & margin
+    const customerShipping = Number(order.shippingCost || 0);
+    let actualShipping = 0;
+    if (order.shipments && order.shipments.length > 0) {
+      actualShipping = order.shipments.reduce((sum, shp) => sum + (Number(shp.actualShippingCost) || 0), 0);
+    }
+    const shippingMargin = customerShipping - actualShipping;
+
+    return {
+      hasAdmin,
+      hasVendor,
+      isMixed: hasAdmin && hasVendor,
+      adminSubtotal,
+      vendorSubtotal,
+      totalVendorPayout,
+      actualCommission,
+      customerShipping,
+      shippingMargin
+    };
+  };
+
+  const adminShopOrders = React.useMemo(() => {
+    return (shopOrders || []).filter(order => getOrderFinancialDetails(order).hasAdmin);
+  }, [shopOrders]);
+
+  const vendorShopOrders = React.useMemo(() => {
+    return (shopOrders || []).filter(order => getOrderFinancialDetails(order).hasVendor);
+  }, [shopOrders]);
 
   const managementSummary = React.useMemo(() => {
     let totalSales = 0;
@@ -58,22 +117,29 @@ export default function AdminFinancials({ hideHeader = false }) {
     let netContribution = 0;
 
     (shopOrders || []).forEach(order => {
+      const details = getOrderFinancialDetails(order);
+
       if (order.financialSnapshot) {
         const snap = order.financialSnapshot;
         totalSales += Number(snap.subTotal || snap.totalPrice || 0);
-        totalVendorPayouts += Number(snap.totalVendorPayouts || 0);
-        grossCommission += Number(snap.grossPlatformCommission || 0);
+        totalVendorPayouts += details.hasVendor ? Number(snap.totalVendorPayouts || details.totalVendorPayout) : 0;
+        grossCommission += details.hasVendor ? Number(snap.grossPlatformCommission || 0) : 0;
         promosAbsorbed += Number(snap.promoDiscountAbsorbedByGS || 0);
         referralAbsorbed += Number(snap.referralAbsorbedByGS || 0);
         coinsAbsorbed += Number(snap.superCoinsAbsorbedByGS || 0);
         gatewayAbsorbed += Number(snap.gatewayFeeAbsorbedByGS || 0);
         courierAbsorbed += Number(snap.courierCostAbsorbedByGS || 0);
-        netContribution += Number(snap.netPlatformContribution || 0);
+        if (!details.hasVendor) {
+          const directRevenue = Number(snap.subTotal || snap.totalPrice || 0);
+          netContribution += (directRevenue - Number(snap.promoDiscountAbsorbedByGS || 0) - Number(snap.referralAbsorbedByGS || 0) - Number(snap.superCoinsAbsorbedByGS || 0) - Number(snap.gatewayFeeAbsorbedByGS || 0));
+        } else {
+          netContribution += Number(snap.netPlatformContribution || 0);
+        }
       } else {
         // Fallback calculation for orders prior to immutable snapshot engine
         const subtotal = Number(order.totalPrice || 0);
-        const comm = subtotal * 0.15;
-        const vendor = subtotal - comm;
+        const comm = details.hasVendor ? subtotal * 0.15 : 0;
+        const vendor = details.hasVendor ? subtotal - comm : 0;
         const gw = subtotal * 0.025;
         const coins = Number(order.superCoinsDiscount || 0);
         const ref = Number(order.appliedWelcomeDiscount || 0);
@@ -83,17 +149,15 @@ export default function AdminFinancials({ hideHeader = false }) {
         coinsAbsorbed += coins;
         referralAbsorbed += ref;
         gatewayAbsorbed += gw;
-        netContribution += (comm - (coins + ref + gw));
+        if (!details.hasVendor) {
+          netContribution += (subtotal - (coins + ref + gw));
+        } else {
+          netContribution += (comm - (coins + ref + gw));
+        }
       }
     });
 
     const netMarginPct = totalSales > 0 ? parseFloat(((netContribution / totalSales) * 100).toFixed(2)) : 0;
-    let statusBadge = { icon: '🟢', label: 'Healthy Margin', color: 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30' };
-    if (netMarginPct < 10) {
-      statusBadge = { icon: '🔴', label: 'Blocked / Low Margin', color: 'text-rose-400 bg-rose-950/40 border-rose-500/30' };
-    } else if (netMarginPct < 15) {
-      statusBadge = { icon: '🟠', label: 'Warning Range', color: 'text-amber-400 bg-amber-950/40 border-amber-500/30' };
-    }
 
     return {
       totalSales: parseFloat(totalSales.toFixed(2)),
@@ -105,8 +169,7 @@ export default function AdminFinancials({ hideHeader = false }) {
       gatewayAbsorbed: parseFloat(gatewayAbsorbed.toFixed(2)),
       courierAbsorbed: parseFloat(courierAbsorbed.toFixed(2)),
       netContribution: parseFloat(netContribution.toFixed(2)),
-      netMarginPct,
-      statusBadge
+      netMarginPct
     };
   }, [shopOrders]);
 
@@ -114,8 +177,13 @@ export default function AdminFinancials({ hideHeader = false }) {
     try {
       setExportError('');
       setExportingReport(reportType);
-      if (reportType === 'shop') {
-        await downloadCategoryAccountingWorkbook({ shopOrders, auctionOrders, eventBookings });
+      if (reportType === 'shop' || reportType === 'admin_shop' || reportType === 'vendor_shop') {
+        const filteredShopOrders = reportType === 'admin_shop'
+          ? adminShopOrders
+          : reportType === 'vendor_shop'
+            ? vendorShopOrders
+            : shopOrders;
+        await downloadCategoryAccountingWorkbook({ shopOrders: filteredShopOrders, auctionOrders, eventBookings });
       } else if (reportType === 'auctions') {
         await downloadAuctionsWorkbook({ auctionOrders });
       } else if (reportType === 'events') {
@@ -205,9 +273,9 @@ export default function AdminFinancials({ hideHeader = false }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className={`px-3 py-1 text-xs font-mono rounded-full border ${managementSummary.statusBadge.color} flex items-center gap-1.5 shadow-sm`}>
-              <span>{managementSummary.statusBadge.icon}</span>
-              <span>{managementSummary.statusBadge.label}</span>
+            <span className="px-3 py-1 text-xs font-mono rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 text-[var(--color-gold)] flex items-center gap-1.5 shadow-sm">
+              <ShieldCheck size={14} />
+              <span>Standard 15% Platform Commission</span>
             </span>
           </div>
         </div>
@@ -264,7 +332,7 @@ export default function AdminFinancials({ hideHeader = false }) {
               <span className="text-[10px] uppercase tracking-widest text-[var(--color-gold)] font-mono font-semibold">True Net Margin</span>
               <div className="text-2xl font-mono font-bold text-white">{managementSummary.netMarginPct}%</div>
             </div>
-            <div className={`p-2.5 rounded-full border ${managementSummary.statusBadge.color}`}>
+            <div className="p-2.5 rounded-full border border-[var(--color-gold)]/30 text-[var(--color-gold)] bg-[var(--color-gold)]/10">
               <ShieldCheck size={24} />
             </div>
           </div>
@@ -293,14 +361,18 @@ export default function AdminFinancials({ hideHeader = false }) {
               {exportingReport === activeTab ? <FileSpreadsheet size={18} className="text-[#c9a35b] animate-pulse shrink-0" /> : <Layers3 size={18} className="text-[#c9a35b] shrink-0" />}
               <span>
                 <strong className="block text-white text-xs font-bold uppercase tracking-wider">
-                  {activeTab === 'shop' && 'Category-wise Excel'}
+                  {activeTab === 'admin_shop' && 'Admin Products Excel'}
+                  {activeTab === 'vendor_shop' && 'Vendor Products Excel'}
+                  {activeTab === 'shop' && 'All Products Excel'}
                   {activeTab === 'events' && 'Event Tickets Excel'}
                   {activeTab === 'auctions' && 'Auctions Excel'}
                   {activeTab === 'vendor' && 'Vendor Reg. Excel'}
                   {activeTab === 'transactions' && 'Ledger Excel'}
                 </strong>
                 <small className="block text-[#777] text-[10px] mt-0.5">
-                  {activeTab === 'shop' && 'Category summary + item detail'}
+                  {activeTab === 'admin_shop' && 'Store-owned inventory sales & retained revenue'}
+                  {activeTab === 'vendor_shop' && 'Vendor sales, 15% commissions & vendor payables'}
+                  {activeTab === 'shop' && 'Category summary + all product sales'}
                   {activeTab === 'events' && 'All event bookings & payouts'}
                   {activeTab === 'auctions' && 'All auction orders & payouts'}
                   {activeTab === 'vendor' && 'Vendor registration payments'}
@@ -332,12 +404,37 @@ export default function AdminFinancials({ hideHeader = false }) {
           <h3 className="text-white font-serif text-xl">Revenue Breakdown</h3>
           <div className="flex flex-wrap gap-2">
             <button
+              onClick={() => setActiveTab('admin_shop')}
+              className={`px-4 py-2 text-xs font-bold tracking-wider uppercase rounded-sm transition-colors flex items-center gap-2 ${
+                activeTab === 'admin_shop' ? 'bg-[#b58b38] text-black' : 'bg-white/5 text-[#888] hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <span>Admin Products</span>
+              <span className={`px-1.5 py-0.5 text-[10px] rounded-full leading-none ${activeTab === 'admin_shop' ? 'bg-black/20 text-black font-mono font-bold' : 'bg-white/10 text-gray-300'}`}>
+                {adminShopOrders.length}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab('vendor_shop')}
+              className={`px-4 py-2 text-xs font-bold tracking-wider uppercase rounded-sm transition-colors flex items-center gap-2 ${
+                activeTab === 'vendor_shop' ? 'bg-[#b58b38] text-black' : 'bg-white/5 text-[#888] hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <span>Vendor Products</span>
+              <span className={`px-1.5 py-0.5 text-[10px] rounded-full leading-none ${activeTab === 'vendor_shop' ? 'bg-black/20 text-black font-mono font-bold' : 'bg-white/10 text-gray-300'}`}>
+                {vendorShopOrders.length}
+              </span>
+            </button>
+            <button
               onClick={() => setActiveTab('shop')}
-              className={`px-4 py-2 text-xs font-bold tracking-wider uppercase rounded-sm transition-colors ${
+              className={`px-4 py-2 text-xs font-bold tracking-wider uppercase rounded-sm transition-colors flex items-center gap-2 ${
                 activeTab === 'shop' ? 'bg-[#b58b38] text-black' : 'bg-white/5 text-[#888] hover:bg-white/10 hover:text-white'
               }`}
             >
-              Product Purchases
+              <span>All Purchases</span>
+              <span className={`px-1.5 py-0.5 text-[10px] rounded-full leading-none ${activeTab === 'shop' ? 'bg-black/20 text-black font-mono font-bold' : 'bg-white/10 text-gray-300'}`}>
+                {shopOrders.length}
+              </span>
             </button>
             <button
               onClick={() => setActiveTab('events')}
@@ -374,6 +471,140 @@ export default function AdminFinancials({ hideHeader = false }) {
           </div>
         </div>
         
+        {/* TAB 1: ADMIN PRODUCTS */}
+        {activeTab === 'admin_shop' && (
+          adminShopOrders.length === 0 ? (
+            <div className="p-12 text-center text-[#666]">
+              <History size={48} className="mx-auto mb-4 opacity-20" />
+              <p>No admin product purchases recorded yet.</p>
+            </div>
+          ) : (
+            <div>
+              <div className="px-6 py-3 bg-emerald-950/20 border-b border-emerald-500/20 text-xs text-emerald-300/90 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span>Direct store inventory listed by The Grand Store. <strong>100% of product revenue is retained</strong> with R 0,00 vendor payout deductions.</span>
+                <span className="font-mono text-emerald-400 font-bold shrink-0">{adminShopOrders.length} {adminShopOrders.length === 1 ? 'Order' : 'Orders'}</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-black/60 text-[#888] text-[10px] uppercase tracking-wider">
+                      <th className="p-4 font-medium">Order Ref</th>
+                      <th className="p-4 font-medium">Date</th>
+                      <th className="p-4 font-medium">Cart Type</th>
+                      <th className="p-4 font-medium text-right">Admin Products</th>
+                      <th className="p-4 font-medium text-right">Shipping</th>
+                      <th className="p-4 font-medium text-right text-blue-400">Ship Margin</th>
+                      <th className="p-4 font-medium text-right text-yellow-500">VAT</th>
+                      <th className="p-4 font-medium text-right font-bold text-white">Total Paid</th>
+                      <th className="p-4 font-medium text-right text-emerald-400 font-bold">Store Retained</th>
+                      <th className="p-4 font-medium text-right text-gray-500">Vendor Payout</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm text-gray-300">
+                    {adminShopOrders.map(order => {
+                      const details = getOrderFinancialDetails(order);
+                      const retainedAmount = details.adminSubtotal + details.shippingMargin;
+                      return (
+                        <tr key={order._id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                          <td className="p-4 font-mono text-xs text-[#b58b38]">{order.orderId || order.transactionId}</td>
+                          <td className="p-4 text-xs">{new Date(order.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                          <td className="p-4 text-xs">
+                            {details.isMixed ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium">
+                                Mixed Cart
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-medium">
+                                Store Direct
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-4 text-right text-xs text-white font-medium">{formatMoney(details.adminSubtotal)}</td>
+                          <td className="p-4 text-right text-xs">{formatMoney(details.customerShipping)}</td>
+                          <td className="p-4 text-right text-xs text-blue-400/80">{formatMoney(details.shippingMargin)}</td>
+                          <td className="p-4 text-right text-xs text-yellow-500/80">{formatMoney(order.vatAmount)}</td>
+                          <td className="p-4 text-right font-bold text-white">{formatMoney(order.totalPrice)}</td>
+                          <td className="p-4 text-right text-xs font-bold text-emerald-400">
+                            {formatMoney(retainedAmount)}
+                          </td>
+                          <td className="p-4 text-right text-xs text-gray-500 font-mono">
+                            R 0,00
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* TAB 2: VENDOR PRODUCTS */}
+        {activeTab === 'vendor_shop' && (
+          vendorShopOrders.length === 0 ? (
+            <div className="p-12 text-center text-[#666]">
+              <History size={48} className="mx-auto mb-4 opacity-20" />
+              <p>No vendor product purchases recorded yet.</p>
+            </div>
+          ) : (
+            <div>
+              <div className="px-6 py-3 bg-purple-950/20 border-b border-purple-500/20 text-xs text-purple-300/90 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span>Third-party vendor inventory sales. <strong>15% marketplace commission</strong> is deducted and the remainder is scheduled for vendor payout.</span>
+                <span className="font-mono text-purple-400 font-bold shrink-0">{vendorShopOrders.length} {vendorShopOrders.length === 1 ? 'Order' : 'Orders'}</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-black/60 text-[#888] text-[10px] uppercase tracking-wider">
+                      <th className="p-4 font-medium">Order Ref</th>
+                      <th className="p-4 font-medium">Date</th>
+                      <th className="p-4 font-medium">Cart Type</th>
+                      <th className="p-4 font-medium text-right">Vendor Products</th>
+                      <th className="p-4 font-medium text-right">Shipping</th>
+                      <th className="p-4 font-medium text-right text-blue-400">Ship Margin</th>
+                      <th className="p-4 font-medium text-right text-yellow-500">VAT</th>
+                      <th className="p-4 font-medium text-right font-bold text-white">Total Paid</th>
+                      <th className="p-4 font-medium text-right text-green-500 font-bold">Commission (15%)</th>
+                      <th className="p-4 font-medium text-right text-red-400 font-bold">Vendor Payout</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm text-gray-300">
+                    {vendorShopOrders.map(order => {
+                      const details = getOrderFinancialDetails(order);
+                      return (
+                        <tr key={order._id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                          <td className="p-4 font-mono text-xs text-[#b58b38]">{order.orderId || order.transactionId}</td>
+                          <td className="p-4 text-xs">{new Date(order.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                          <td className="p-4 text-xs">
+                            {details.isMixed ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium">
+                                Mixed Cart
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-[10px] bg-purple-500/10 text-purple-300 border border-purple-500/20 font-medium">
+                                Vendor Only
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-4 text-right text-xs text-white font-medium">{formatMoney(details.vendorSubtotal)}</td>
+                          <td className="p-4 text-right text-xs">{formatMoney(details.customerShipping)}</td>
+                          <td className="p-4 text-right text-xs text-blue-400/80">{formatMoney(details.shippingMargin)}</td>
+                          <td className="p-4 text-right text-xs text-yellow-500/80">{formatMoney(order.vatAmount)}</td>
+                          <td className="p-4 text-right font-bold text-white">{formatMoney(order.totalPrice)}</td>
+                          <td className="p-4 text-right text-green-500/80 font-bold">{formatMoney(details.actualCommission)}</td>
+                          <td className="p-4 text-right text-red-400/80 font-bold">{formatMoney(details.totalVendorPayout)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* TAB 3: ALL PURCHASES */}
         {activeTab === 'shop' && (
           shopOrders.length === 0 ? (
             <div className="p-12 text-center text-[#666]">
@@ -381,49 +612,71 @@ export default function AdminFinancials({ hideHeader = false }) {
               <p>No shop orders yet.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse whitespace-nowrap">
-                <thead>
-                  <tr className="bg-black/60 text-[#888] text-[10px] uppercase tracking-wider">
-                    <th className="p-4 font-medium">Order Ref</th>
-                    <th className="p-4 font-medium">Date</th>
-                    <th className="p-4 font-medium text-right">Products</th>
-                    <th className="p-4 font-medium text-right">Shipping</th>
-                    <th className="p-4 font-medium text-right text-blue-400">Ship Margin</th>
-                    <th className="p-4 font-medium text-right text-yellow-500">VAT</th>
-                    <th className="p-4 font-medium text-right font-bold text-white">Total Paid</th>
-                    <th className="p-4 font-medium text-right text-green-500">Commission</th>
-                    <th className="p-4 font-medium text-right text-red-400">Vendor Payout</th>
-                  </tr>
-                </thead>
-                <tbody className="text-sm text-gray-300">
-                  {shopOrders.map(order => {
-                    const totalVendorPayout = order.vendorPayables?.reduce((sum, p) => sum + (p.netPayable || 0), 0) || 0;
-                    
-                    // Calculate Shipping Margin
-                    let customerShipping = order.shippingCost || 0;
-                    let actualShipping = 0;
-                    if (order.shipments && order.shipments.length > 0) {
-                      actualShipping = order.shipments.reduce((sum, shp) => sum + (shp.actualShippingCost || 0), 0);
-                    }
-                    const shippingMargin = customerShipping - actualShipping;
+            <div>
+              <div className="px-6 py-3 bg-white/[0.02] border-b border-white/10 text-xs text-[#888] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span>Unified overview of all customer store purchases across direct store inventory and vendor listings.</span>
+                <span className="font-mono text-[#b58b38] font-bold shrink-0">{shopOrders.length} {shopOrders.length === 1 ? 'Order' : 'Orders'}</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-black/60 text-[#888] text-[10px] uppercase tracking-wider">
+                      <th className="p-4 font-medium">Order Ref</th>
+                      <th className="p-4 font-medium">Date</th>
+                      <th className="p-4 font-medium">Origin</th>
+                      <th className="p-4 font-medium text-right">Products</th>
+                      <th className="p-4 font-medium text-right">Shipping</th>
+                      <th className="p-4 font-medium text-right text-blue-400">Ship Margin</th>
+                      <th className="p-4 font-medium text-right text-yellow-500">VAT</th>
+                      <th className="p-4 font-medium text-right font-bold text-white">Total Paid</th>
+                      <th className="p-4 font-medium text-right text-green-500">Commission</th>
+                      <th className="p-4 font-medium text-right">Vendor Payout</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm text-gray-300">
+                    {shopOrders.map(order => {
+                      const details = getOrderFinancialDetails(order);
 
-                    return (
-                      <tr key={order._id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td className="p-4 font-mono text-xs text-[#b58b38]">{order.orderId || order.transactionId}</td>
-                        <td className="p-4 text-xs">{new Date(order.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                        <td className="p-4 text-right text-xs">{formatMoney(order.subTotal)}</td>
-                        <td className="p-4 text-right text-xs">{formatMoney(customerShipping)}</td>
-                        <td className="p-4 text-right text-xs text-blue-400/80">{formatMoney(shippingMargin)}</td>
-                        <td className="p-4 text-right text-xs text-yellow-500/80">{formatMoney(order.vatAmount)}</td>
-                        <td className="p-4 text-right font-bold text-white">{formatMoney(order.totalPrice)}</td>
-                        <td className="p-4 text-right text-green-500/80">{formatMoney(order.commissionAmount)}</td>
-                        <td className="p-4 text-right text-red-400/80">{formatMoney(totalVendorPayout)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      return (
+                        <tr key={order._id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                          <td className="p-4 font-mono text-xs text-[#b58b38]">{order.orderId || order.transactionId}</td>
+                          <td className="p-4 text-xs">{new Date(order.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                          <td className="p-4 text-xs">
+                            {details.isMixed ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium">
+                                Mixed Cart
+                              </span>
+                            ) : details.hasVendor ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] bg-purple-500/10 text-purple-300 border border-purple-500/20 font-medium">
+                                Vendor
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-medium">
+                                Store Direct
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-4 text-right text-xs">{formatMoney(order.subTotal)}</td>
+                          <td className="p-4 text-right text-xs">{formatMoney(details.customerShipping)}</td>
+                          <td className="p-4 text-right text-xs text-blue-400/80">{formatMoney(details.shippingMargin)}</td>
+                          <td className="p-4 text-right text-xs text-yellow-500/80">{formatMoney(order.vatAmount)}</td>
+                          <td className="p-4 text-right font-bold text-white">{formatMoney(order.totalPrice)}</td>
+                          <td className="p-4 text-right text-green-500/80">
+                            {details.hasVendor ? formatMoney(details.actualCommission) : <span className="text-gray-500 font-mono text-[11px]">—</span>}
+                          </td>
+                          <td className="p-4 text-right text-xs font-mono">
+                            {details.hasVendor ? (
+                              <span className="text-red-400/90">{formatMoney(details.totalVendorPayout)}</span>
+                            ) : (
+                              <span className="text-emerald-400/80">R 0,00 (Store)</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )
         )}

@@ -9,17 +9,36 @@ const mongoose = require('mongoose');
 exports.uploadProofOfPayment = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { proofUrl } = req.body; // In reality, this would come from an image upload middleware
+    let { proofUrl } = req.body;
 
     if (!proofUrl) {
-      return res.status(400).json({ message: 'Proof of payment URL is required' });
+      const base64Data = req.body?.documentBase64 || req.body?.base64 || req.body?.image;
+      if (base64Data && typeof base64Data === 'string') {
+        const { cloudinary } = require('../config/cloudinary');
+        const uploadRes = await cloudinary.uploader.upload(base64Data, {
+          folder: 'grandstore-uploads/payment-proofs',
+          resource_type: 'auto'
+        });
+        proofUrl = uploadRes.secure_url;
+      }
     }
 
-    let order;
+    if (!proofUrl) {
+      return res.status(400).json({ message: 'Proof of payment image or URL is required' });
+    }
+
+    let order = null;
     if (mongoose.Types.ObjectId.isValid(orderId)) {
       order = await Order.findById(orderId);
-    } else {
-      order = await Order.findOne({ orderId: orderId });
+    }
+    if (!order) {
+      order = await Order.findOne({
+        $or: [
+          { orderId: orderId },
+          { depositReference: orderId },
+          { invoiceNumber: orderId }
+        ]
+      });
     }
 
     if (!order) {
@@ -27,10 +46,16 @@ exports.uploadProofOfPayment = async (req, res) => {
     }
 
     const isOwner = order.user && req.user && order.user.toString() === req.user._id.toString();
-    const isGuestOwner = order.isGuest;
+    const providedGuestToken = req.headers['x-guest-access-token'] || req.body.guestAccessToken || req.query.token;
+    const isAuthorizedGuest = order.isGuest && (
+      !order.guestAccessToken ||
+      (providedGuestToken && order.guestAccessToken === providedGuestToken) ||
+      (req.body.email && req.body.email.toLowerCase() === (order.guestInfo?.email || '').toLowerCase()) ||
+      ['Pending', 'Awaiting_Approval', 'Failed'].includes(order.paymentStatus)
+    );
     const isAdmin = req.user && ['admin', 'super_admin', 'product_manager', 'finance_staff'].includes(req.user.role);
 
-    if (!isOwner && !isGuestOwner && !isAdmin) {
+    if (!isOwner && !isAuthorizedGuest && !isAdmin) {
       return res.status(403).json({ message: 'Not authorized to modify this order' });
     }
 
@@ -71,7 +96,19 @@ exports.approvePayment = async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    const order = await Order.findById(orderId);
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(orderId)) {
+      order = await Order.findById(orderId);
+    }
+    if (!order) {
+      order = await Order.findOne({
+        $or: [
+          { orderId: orderId },
+          { depositReference: orderId },
+          { invoiceNumber: orderId }
+        ]
+      });
+    }
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
@@ -81,7 +118,7 @@ exports.approvePayment = async (req, res) => {
     }
 
     // We process the payment exactly as if PayFast had called the webhook
-    await processOrderPayment(orderId); // This appends the PaymentVerified event inside
+    await processOrderPayment(order._id); // This appends the PaymentVerified event inside
 
     res.json({ message: 'Payment approved and order processed successfully' });
   } catch (error) {
@@ -98,7 +135,19 @@ exports.rejectPayment = async (req, res) => {
     const { orderId } = req.params;
     const { reason } = req.body;
 
-    const order = await Order.findById(orderId);
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(orderId)) {
+      order = await Order.findById(orderId);
+    }
+    if (!order) {
+      order = await Order.findOne({
+        $or: [
+          { orderId: orderId },
+          { depositReference: orderId },
+          { invoiceNumber: orderId }
+        ]
+      });
+    }
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
@@ -127,15 +176,19 @@ exports.rejectPayment = async (req, res) => {
     try {
       const { sendEmail } = require('../utils/emailService');
       const { genericNotificationTemplate } = require('../utils/emailTemplates');
+      const { getOrderDepositReference } = require('../utils/referenceHelper');
       const User = require('../models/User');
       const user = await User.findById(order.user);
-      if (user) {
+      const recipientEmail = user ? user.email : (order.guestInfo?.email || order.shippingAddress?.email);
+      const depositRef = getOrderDepositReference(order);
+
+      if (recipientEmail) {
         await sendEmail({
-          to: user.email,
-          subject: `Payment Rejected - Order #${order._id}`,
+          to: recipientEmail,
+          subject: `Payment Update - Order ${depositRef} Declined`,
           html: genericNotificationTemplate(
-            'Payment Rejected',
-            `Your bank transfer payment for Order #${order._id} was rejected. Reason: ${reason}. Please contact support or try a different payment method.`
+            'Payment Notice',
+            `We were unable to verify your bank transfer for Order <strong>${depositRef}</strong>.<br><br><strong>Reason:</strong> ${reason || 'Proof of payment could not be validated'}.<br><br>Please check your banking details and upload a valid PDF or receipt image, or contact our concierge team at support@grandstoreglobal.com.`
           )
         });
       }

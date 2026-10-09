@@ -42,7 +42,7 @@ const heroFilms = [
     titleLine2: 'Cigars.',
     titleLine2Class: 'hero-title-line font-serif not-italic text-[#c9a35b]',
     ctaText: 'Explore',
-    ctaLink: 'https://cigar.yogapranafitness.com',
+    ctaLink: 'https://cigarconnoisseurclub.com',
   },
 ]
 

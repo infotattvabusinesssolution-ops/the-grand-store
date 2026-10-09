@@ -4,7 +4,7 @@ const Event = require('../models/Event');
 const AuctionLot = require('../models/AuctionLot');
 const EstateProfile = require('../models/EstateProfile');
 
-const SITE_ORIGIN = process.env.PUBLIC_SITE_URL || 'https://grandstore.yogapranafitness.com';
+const SITE_ORIGIN = process.env.PUBLIC_SITE_URL || 'https://grandstoreglobal.com';
 const SUPPORT_WHATSAPP = process.env.SUPPORT_WHATSAPP || '+27765809522';
 const STOP_WORDS = new Set([
   'a', 'about', 'above', 'all', 'an', 'and', 'any', 'are', 'below', 'can', 'could',

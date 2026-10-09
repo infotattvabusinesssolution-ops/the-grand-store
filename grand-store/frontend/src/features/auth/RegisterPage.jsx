@@ -9,6 +9,7 @@ import { auth, googleProvider, appleProvider, signInWithPopup } from '../../fire
 import CountryCodeSelect from '../../components/CountryCodeSelect';
 
 export default function RegisterPage() {
+  const [searchParams] = useSearchParams();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -20,8 +21,14 @@ export default function RegisterPage() {
   
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchParams] = useSearchParams();
-  const [referralCode, setReferralCode] = useState((searchParams.get('ref') || '').trim().toUpperCase());
+  const [referralCode, setReferralCode] = useState(() => {
+    const urlRef = searchParams?.get?.('ref') || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('ref') : null);
+    if (urlRef) {
+      try { localStorage.setItem('grandstore_referral_code', urlRef.trim().toUpperCase()); } catch (_) {}
+      return urlRef.trim().toUpperCase();
+    }
+    try { return (localStorage.getItem('grandstore_referral_code') || '').trim().toUpperCase(); } catch (_) { return ''; }
+  });
   const { register, googleLogin, appleLogin } = useAuth();
   const navigate = useNavigate();
 
@@ -57,7 +64,7 @@ export default function RegisterPage() {
       const userCredential = await signInWithPopup(auth, googleProvider);
       const userData = await googleLogin(userCredential, 'customer', referralCode);
       let defaultRoute = '/customer/profile';
-      if (userData.role === 'admin') defaultRoute = '/admin/auctions';
+      if (['admin', 'super_admin'].includes(userData.role)) defaultRoute = '/admin/auctions';
       if (userData.role === 'vendor_active') defaultRoute = '/vendor/dashboard';
       navigate(defaultRoute);
     } catch (err) {

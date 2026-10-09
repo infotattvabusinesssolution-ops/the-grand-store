@@ -1,0 +1,43 @@
+const isLocalhost = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const fallbackOrigin = isLocalhost ? 'http://localhost:5015' : 'https://api.grandstoreglobal.com';
+const apiOrigin = (import.meta.env.VITE_API_URL || fallbackOrigin).replace(/\/$/, '');
+
+export const submitWineEnquiry = async (payload) => {
+  const response = await fetch(`${apiOrigin}/api/wine-enquiries/public`, {
+    method: 'POST',
+    credentials: 'omit',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || 'Your enquiry could not be submitted.');
+  }
+  return data;
+};
+
+export const subscribeNewsletter = async (dataOrEmail, name = '', phone = '') => {
+  const payload = typeof dataOrEmail === 'object'
+    ? { source: 'millionaires-collection', isGiveawayEntry: true, ...dataOrEmail }
+    : { email: dataOrEmail, name, phone, source: 'millionaires-collection', isGiveawayEntry: true };
+
+  const response = await fetch(`${apiOrigin}/api/newsletter/subscribe`, {
+    method: 'POST',
+    credentials: 'omit',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || 'Subscription failed. Please try again.');
+  }
+  return data;
+};

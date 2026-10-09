@@ -16,8 +16,11 @@ const getWallet = async (req, res) => {
     if (!settings) settings = await PlatformSettings.create({});
     const coinValue = Number(settings.superCoinValue !== undefined ? settings.superCoinValue : 0.10);
 
-    // Fetch transactions from ledger
-    const transactions = await SuperCoinLedger.find({ userId: req.user._id })
+    // Fetch active transactions from ledger (exclude cancelled)
+    const transactions = await SuperCoinLedger.find({ 
+      userId: req.user._id,
+      status: { $nin: ['cancelled', 'failed'] }
+    })
       .sort({ createdAt: -1 })
       .limit(50);
 
@@ -32,13 +35,18 @@ const getWallet = async (req, res) => {
     const expiringSoonCoins = expiringSoonLedgers.reduce((sum, item) => sum + (item.amount || 0), 0);
 
     const availableBalance = Math.max(0, Number(user.superCoinsBalance) || 0);
-    const pendingBalance = Math.max(0, Number(user.pendingSuperCoins) || 0);
+
+    // Calculate lifetime earned coins
+    const lifetimeEarnedAgg = await SuperCoinLedger.aggregate([
+      { $match: { userId: req.user._id, type: 'earned', status: { $nin: ['cancelled', 'failed'] } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const lifetimeEarned = lifetimeEarnedAgg[0]?.total || availableBalance;
 
     res.json({
       availableCoins: availableBalance,
       availableRandValue: parseFloat((availableBalance * coinValue).toFixed(2)),
-      pendingCoins: pendingBalance,
-      pendingRandValue: parseFloat((pendingBalance * coinValue).toFixed(2)),
+      lifetimeEarned,
       expiringSoonCoins,
       coinValue,
       transactions

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const AuctionLot = require('../models/AuctionLot');
 const Bid = require('../models/Bid');
 const User = require('../models/User');
@@ -14,6 +15,8 @@ const { auctionWinTemplate } = require('../utils/emailTemplates');
 const { generateAuctionCertificateBuffer } = require('../utils/pdfService');
 const { evaluateBidIntegrity, logAuctionEvent } = require('../services/auctionFraudService');
 const { createInAppNotification } = require('./notificationController');
+
+const isUserAdmin = (user) => Boolean(user && ['admin', 'super_admin'].includes(user.role));
 
 const calculateDynamicIncrement = (currentBid) => {
   if (currentBid < 5000) return 250;
@@ -55,7 +58,7 @@ exports.getAuctionLots = async (req, res) => {
     lots = lots.filter(lot => {
       if (!lot.vendor) return false;
       const role = lot.vendor.role;
-      return role === 'admin' || role === 'vendor_active' || role === 'auction_host';
+      return role === 'admin' || role === 'super_admin' || role === 'vendor_active' || role === 'auction_host';
     });
 
     res.json(lots);
@@ -108,7 +111,7 @@ exports.getLotDetails = async (req, res) => {
     const sanitizedBids = bids.map(b => {
       let canSeeDetails = false;
       if (currentUser) {
-         if (currentUser.role === 'admin') canSeeDetails = true;
+         if (isUserAdmin(currentUser)) canSeeDetails = true;
          if (lot.vendor && lot.vendor._id.toString() === currentUser._id.toString()) canSeeDetails = true;
       }
 
@@ -164,7 +167,7 @@ exports.getLotDetails = async (req, res) => {
 
         if (order.shippingAddress) {
           const isWinner = currentUser && lotObj.winner && lotObj.winner.toString() === currentUser._id.toString();
-          const isAdmin = currentUser && currentUser.role === 'admin';
+          const isAdmin = isUserAdmin(currentUser);
           const isVendor = currentUser && lotObj.vendor && lotObj.vendor._id.toString() === currentUser._id.toString();
 
           if (isWinner || isAdmin || isVendor) {
@@ -189,6 +192,7 @@ exports.placeBid = async (req, res) => {
 
     const lot = await AuctionLot.findById(lotId);
     if (!lot) return res.status(404).json({ message: 'Lot not found' });
+    const originalBid = lot.currentBid;
     
     // Bidder Permission, KYC & Admin Approval checks
     if (req.user.isBiddingSuspended) {
@@ -418,7 +422,30 @@ exports.placeBid = async (req, res) => {
       });
     }
 
-    await lot.save();
+    // Optimistic concurrency control: ensure lot currentBid hasn't changed underneath us
+    const updatedLotDoc = await AuctionLot.findOneAndUpdate(
+      { _id: lot._id, currentBid: originalBid },
+      {
+        $set: {
+          currentBid: lot.currentBid,
+          highBidder: lot.highBidder,
+          bidCount: lot.bidCount,
+          lastBidTime: lot.lastBidTime,
+          reserveMet: lot.reserveMet,
+          endDate: lot.endDate,
+          status: lot.status,
+          isExtended: lot.isExtended,
+          extensionCount: lot.extensionCount
+        }
+      },
+      { new: true }
+    );
+
+    if (!updatedLotDoc) {
+      return res.status(409).json({
+        message: 'Another bid was placed at the same moment. Please refresh to view the latest bid and try again.'
+      });
+    }
 
     // In-App Notifications: Outbid alert & Leading bid confirmation
     try {
@@ -473,7 +500,7 @@ exports.submitLot = async (req, res) => {
       estimatedValueMin, estimatedValueMax, reserveType
     } = req.body;
     
-    if (req.user.role !== 'vendor_active' && req.user.role !== 'auction_host' && req.user.role !== 'admin') {
+    if (req.user.role !== 'vendor_active' && req.user.role !== 'auction_host' && !isUserAdmin(req.user)) {
        return res.status(403).json({ message: 'Only active vendors, auction hosts, and admins can submit lots.' });
     }
 
@@ -597,7 +624,7 @@ exports.resubmitLot = async (req, res) => {
 // ADMIN: Approve lot
 exports.approveLot = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
        return res.status(403).json({ message: 'Admin only' });
     }
 
@@ -752,7 +779,7 @@ exports.getVendorLots = async (req, res) => {
 // ADMIN: Get all pending lots
 exports.getAdminPendingLots = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
     const lots = await AuctionLot.find({ status: 'pending_approval' })
@@ -1006,7 +1033,7 @@ exports.closeAuctionInternal = closeAuctionInternal;
 // ADMIN: Close auction manually
 exports.closeAuction = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -1030,6 +1057,10 @@ exports.getAuctionLotCertificate = async (req, res) => {
 
     if (lot.status !== 'sold' || !lot.winner) {
       return res.status(400).json({ message: 'Certificate of Acquisition is only available for awarded sold lots.' });
+    }
+
+    if (lot.paymentStatus !== 'Paid') {
+      return res.status(403).json({ message: 'Certificate of Acquisition is only unlocked after settlement payment has cleared.' });
     }
 
     const order = await Order.findOne({ 'orderItems.product': lot._id.toString() }).lean();
@@ -1153,6 +1184,8 @@ exports.payAuction = async (req, res) => {
       if (isAwaitingApproval) {
         order.paymentStatus = 'Awaiting_Approval';
         order.proofUrl = proofUrl;
+      } else if (order.paymentStatus === 'Cancelled' || !order.paymentStatus) {
+        order.paymentStatus = 'Pending';
       }
     }
 
@@ -1183,15 +1216,21 @@ exports.payAuction = async (req, res) => {
 };
 
 /**
- * Process the ledger transactions and wallet updates after a successful auction payment
+ * Process auction payment upon successful PayFast callback.
  * This function will be called by the PayFast ITN Webhook Controller
  */
 exports.processAuctionPayment = async (lotId) => {
   const lot = await AuctionLot.findById(lotId);
   if (!lot) throw new Error('Lot not found');
   if (lot.paymentStatus === 'Paid') return true;
+  if (lot.paymentStatus === 'Cancelled' || lot.paymentStatus === 'Failed') {
+    throw new Error(`Cannot process payment for ${lot.paymentStatus.toLowerCase()} auction lot`);
+  }
 
   const order = await Order.findOne({ 'orderItems.product': lot._id });
+  if (order && (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed')) {
+    throw new Error('Cannot process payment for cancelled or failed auction order');
+  }
   const transaction = order ? await Transaction.findOne({ order: order._id }) : null;
 
   lot.paymentStatus = 'Paid';
@@ -1214,7 +1253,7 @@ exports.processAuctionPayment = async (lotId) => {
   if (lot.vendor) {
     let wallet = await Wallet.findOne({ vendorId: lot.vendor });
     if (!wallet) {
-       wallet = new Wallet({ vendorId: lot.vendor });
+      wallet = new Wallet({ vendorId: lot.vendor });
     }
     wallet.pendingBalance += lot.vendorPayable;
     wallet.totalEarned += lot.vendorPayable;
@@ -1231,6 +1270,9 @@ exports.processBidderDepositPayment = async (depositId, gatewayTransactionId) =>
   const deposit = await BidderDeposit.findById(depositId);
   if (!deposit) throw new Error('Deposit record not found');
   if (deposit.paymentStatus === 'paid') return true;
+  if (deposit.paymentStatus === 'cancelled' || deposit.paymentStatus === 'failed') {
+    throw new Error(`Cannot process payment for ${deposit.paymentStatus.toLowerCase()} deposit`);
+  }
 
   deposit.paymentStatus = 'paid';
   if (gatewayTransactionId) {
@@ -1250,10 +1292,11 @@ exports.processBidderDepositPayment = async (depositId, gatewayTransactionId) =>
     await user.save();
 
     try {
-      await createInAppNotification({
+      const Notification = require('../models/Notification');
+      await Notification.create({
         recipient: user._id,
         recipientType: 'customer',
-        title: '👑 VIP Bidding Privileges Activated!',
+        title: 'VIP Bidding Security Deposit Confirmed',
         message: `Your refundable deposit of R${deposit.amount.toLocaleString()} is confirmed. Your VIP bidding limit of R${vipLimit.toLocaleString()} is now active.`,
         type: 'auction',
         link: '/customer/auctions',
@@ -1266,10 +1309,107 @@ exports.processBidderDepositPayment = async (depositId, gatewayTransactionId) =>
   return true;
 };
 
+/**
+ * Cancel an auction won lot payment.
+ * Cancels associated pending Order so that it does NOT appear in Admin Orders,
+ * leaves lot.paymentStatus as 'Pending' so winner can retry settlement.
+ */
+exports.cancelAuctionPayment = async (lotId, reason = 'Payment cancelled') => {
+  const lot = await AuctionLot.findById(lotId);
+  if (!lot) return false;
+  if (lot.paymentStatus === 'Paid') return true;
+
+  const order = await Order.findOne({ 'orderItems.product': lot._id });
+  if (order && !order.isPaid) {
+    const { cancelOrderPayment } = require('./orderController');
+    try {
+      await cancelOrderPayment(order._id, reason);
+    } catch (e) {
+      console.warn('cancelAuctionPayment: error cancelling order:', e.message);
+    }
+  }
+
+  // Cancel associated pending transaction if exists
+  if (order) {
+    const transaction = await Transaction.findOne({ order: order._id });
+    if (transaction && transaction.status === 'pending') {
+      transaction.status = 'cancelled';
+      await transaction.save();
+    }
+  }
+
+  // Update associated AuctionLedger entry if exists and still awaiting payment
+  try {
+    const ledger = await AuctionLedger.findOne({ lot: lot._id });
+    if (ledger && ledger.settlementStatus === 'AWAITING_PAYMENT') {
+      ledger.settlementStatus = 'REFUNDED';
+      await ledger.save();
+    }
+  } catch (ledgerErr) {
+    console.warn('cancelAuctionPayment: error syncing AuctionLedger:', ledgerErr.message);
+  }
+
+  lot.paymentStatus = 'Pending';
+  await lot.save();
+  console.log(`[AUCTION PAYMENT] Cancelled payment for lot ${lot._id} (${lot.lotNumber || ''}): ${reason}`);
+  return true;
+};
+
+/**
+ * Cancel a VIP Bidder Deposit payment.
+ */
+exports.cancelBidderDepositPayment = async (depositId, reason = 'Payment cancelled') => {
+  const BidderDeposit = require('../models/BidderDeposit');
+  let deposit = null;
+  if (mongoose.Types.ObjectId.isValid(depositId)) {
+    deposit = await BidderDeposit.findById(depositId);
+  }
+  if (!deposit) {
+    deposit = await BidderDeposit.findOne({ paymentReference: depositId });
+  }
+  if (!deposit) return false;
+  if (deposit.paymentStatus === 'paid') return true;
+
+  deposit.paymentStatus = 'cancelled';
+  await deposit.save();
+  console.log(`[VIP DEPOSIT] Cancelled deposit ${deposit._id}: ${reason}`);
+
+  if (!deposit.failureEmailDispatched && deposit.bidder) {
+    try {
+      const { sendEmail } = require('../utils/emailService');
+      const { paymentFailedEmailTemplate } = require('../utils/emailTemplates');
+      const User = require('../models/User');
+      const user = await User.findById(deposit.bidder);
+      if (user && user.email) {
+        const storeUrl = process.env.FRONTEND_URL || 'https://grandstoreglobal.com';
+        const retryUrl = `${storeUrl}/auction/vip-checkout?payment=cancel&ref=${deposit.paymentReference}`;
+        await sendEmail({
+          to: user.email,
+          subject: 'Payment Notice • VIP Guarantee Deposit Unsuccessful',
+          html: paymentFailedEmailTemplate({
+            customerName: user.name || 'Valued Patron',
+            reference: deposit.paymentReference || String(deposit._id),
+            itemName: 'VIP Bidding Refundable Guarantee Deposit',
+            amount: deposit.amount,
+            retryUrl,
+            reason: reason || 'Your VIP deposit checkout on PayFast was cancelled. No funds were debited.'
+          })
+        });
+        deposit.failureEmailDispatched = true;
+        await deposit.save();
+      }
+    } catch (emailErr) {
+      console.warn('cancelBidderDepositPayment: failed to send failure email:', emailErr.message);
+    }
+  }
+
+  return true;
+};
+
 // ADMIN: Get all lots (for admin financial view)
 exports.getAllLots = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
     const lots = await AuctionLot.find().sort({ createdAt: -1 }).populate('vendor', 'name email storeName').populate('winner', 'name email').lean();
@@ -1437,7 +1577,7 @@ exports.registerBidder = async (req, res) => {
       });
 
       // Notify all administrators
-      const admins = await User.find({ role: 'admin' }).select('_id');
+      const admins = await User.find({ role: { $in: ['admin', 'super_admin'] } }).select('_id');
       for (const adm of admins) {
         await createInAppNotification({
           recipient: adm._id,
@@ -1541,7 +1681,7 @@ exports.getBidderStatus = async (req, res) => {
 // ADMIN: Get all bidder applicants
 exports.getAdminBidders = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -1563,7 +1703,7 @@ exports.getAdminBidders = async (req, res) => {
 // ADMIN: Approve a bidder application
 exports.approveBidder = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -1629,7 +1769,7 @@ exports.approveBidder = async (req, res) => {
 // ADMIN: Reject a bidder application
 exports.rejectBidder = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -1677,7 +1817,7 @@ exports.rejectBidder = async (req, res) => {
 // ADMIN: Update bidder limit or toggle suspension
 exports.updateBidderLimit = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -1798,7 +1938,7 @@ exports.createBidderDeposit = async (req, res) => {
 
       // If EFT, notify admins that an audit is waiting
       if (deposit.paymentMethod === 'eft') {
-        const admins = await User.find({ role: 'admin' }).select('_id');
+        const admins = await User.find({ role: { $in: ['admin', 'super_admin'] } }).select('_id');
         for (const adm of admins) {
           await createInAppNotification({
             recipient: adm._id,
@@ -1830,11 +1970,13 @@ exports.createBidderDeposit = async (req, res) => {
 // ADMIN: Get all bidder deposits
 exports.getAdminDeposits = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
-    const deposits = await BidderDeposit.find()
+    const deposits = await BidderDeposit.find({
+      paymentStatus: { $nin: ['cancelled', 'failed'] }
+    })
       .populate('bidder', 'name email phone bidderNumber')
       .populate('lot', 'title lotNumber')
       .sort({ createdAt: -1 });
@@ -1848,7 +1990,7 @@ exports.getAdminDeposits = async (req, res) => {
 // ADMIN: Verify / Refund a bidder deposit
 exports.verifyAdminDeposit = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -1940,7 +2082,7 @@ exports.verifyAdminDeposit = async (req, res) => {
 // ADMIN: Update lot authentication & custody status
 exports.updateLotAuthentication = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -1983,7 +2125,7 @@ exports.updateLotAuthentication = async (req, res) => {
 // ADMIN: Get active fraud alerts
 exports.getAuctionFraudAlerts = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -2003,7 +2145,7 @@ exports.getAuctionFraudAlerts = async (req, res) => {
 // ADMIN: Resolve fraud alert
 exports.resolveFraudAlert = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -2038,11 +2180,11 @@ exports.resolveFraudAlert = async (req, res) => {
 // ADMIN: Get auction double-entry ledger entries
 exports.getAuctionLedger = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
-    const ledger = await AuctionLedger.find()
+    const ledger = await AuctionLedger.find({ settlementStatus: { $in: ['HELD_IN_ESCROW', 'SETTLEMENT_RELEASED'] } })
       .populate('lot', 'title lotNumber')
       .populate('buyer', 'name email')
       .populate('vendor', 'name email storeName')

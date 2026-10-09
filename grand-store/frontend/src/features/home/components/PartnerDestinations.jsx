@@ -1,13 +1,14 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowUpRight } from 'lucide-react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import api from '../../../api'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const destinations = [
+const DEFAULT_DESTINATIONS = [
   {
-    href: 'https://cigar.yogapranafitness.com/',
+    href: 'https://cigarconnoisseurclub.com/',
     image: '/assets/partners/cigar-connoisseur.webp',
     eyebrow: 'The Smoking Room',
     title: 'Cigar Connoisseur Club',
@@ -15,7 +16,7 @@ const destinations = [
     label: 'Explore the club',
   },
   {
-    href: 'https://millionair.yogapranafitness.com/',
+    href: 'https://millionairescollection.com/',
     image: '/assets/partners/millionaires-collection.webp',
     eyebrow: 'A Private World',
     title: 'Millionaires Collection',
@@ -24,8 +25,48 @@ const destinations = [
   },
 ]
 
+const normalizePartnerHref = (href = '', title = '') => {
+  const h = String(href).toLowerCase()
+  const t = String(title).toLowerCase()
+  if (h.includes('cigar.yogapranafitness.com') || t.includes('cigar')) {
+    return 'https://cigarconnoisseurclub.com/'
+  }
+  if (h.includes('millionair') || t.includes('millionaire')) {
+    return 'https://millionairescollection.com/'
+  }
+  return href
+}
+
 export default function PartnerDestinations() {
   const sectionRef = useRef(null)
+  const [destinations, setDestinations] = useState(DEFAULT_DESTINATIONS)
+
+  useEffect(() => {
+    let isMounted = true
+    api.get('/partners')
+      .then(res => {
+        if (isMounted && Array.isArray(res.data) && res.data.length > 0) {
+          const valid = res.data
+            .filter(
+              d => d.isVisible !== false && d.title && d.image && !d.title.toLowerCase().includes('chillar')
+            )
+            .map(d => ({
+              ...d,
+              href: normalizePartnerHref(d.href, d.title)
+            }))
+          if (valid.length > 0) {
+            setDestinations(valid)
+          }
+        }
+      })
+      .catch(err => {
+        console.warn('Using default partner destinations:', err.message)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -87,9 +128,9 @@ export default function PartnerDestinations() {
               key={destination.title}
               aria-label={`${destination.label} (opens in a new tab)`}
             >
-              <div className="relative w-full overflow-hidden border-b border-[#d8b56c]/20 bg-[#0c0a08]">
+              <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden border-b border-[#d8b56c]/20 bg-[#0c0a08]">
                 <img
-                  className="block w-full h-auto transition-transform duration-700 ease-out group-hover:scale-[1.015]"
+                  className="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
                   src={destination.image}
                   alt={destination.title}
                   loading="lazy"

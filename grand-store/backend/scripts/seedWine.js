@@ -10,36 +10,37 @@ const DEFAULT_IMAGE = '/assets/hero/wine-bottle.png';
 
 const wines = [
   ['Tshireletso Red 750ml', 'Luc Mo Wines', 'South Africa', 'Cabernet Sauvignon', 'Stellenbosch', '990.00', '750ml', '13.5%', 'Blackcurrant|Plum|Cedar|Cocoa|Fine Tannins', 'Rich & Full-Bodied|Fruity & Spicy', 'Beef & Steak|Cheese', 'Estate Bottled'],
-  ['Luc Mo Merlot Reserve 750ml', 'Luc Mo Wines', 'South Africa', 'Merlot', 'Stellenbosch', '895.00', '750ml', '13.5%', 'Black Cherry|Plum|Vanilla|Soft Oak|Velvet Tannins', 'Rich & Full-Bodied|Soft', 'Beef & Steak|Poultry|Cheese', 'Oak Matured'],
+  ['Lucmo Wines His Royal Majesty King Makhosonke II Estate Merlot 750ml', 'Lucmo Wines', 'South Africa', 'Merlot', 'Stellenbosch', '895.00', '750ml', '13.5%', 'Black Cherry|Plum|Vanilla|Soft Oak|Velvet Tannins', 'Rich & Full-Bodied|Soft', 'Beef & Steak|Poultry|Cheese', 'Oak Matured'],
   ['Tesselaarsdal Pinot Noir 750ml', 'Tesselaarsdal Wines', 'South Africa', 'Pinot Noir', 'Hemel-en-Aarde', '625.00', '750ml', '13%', 'Red Cherry|Cranberry|Rose Petal|Earth|Silky Finish', 'Light & Floral|Fruity & Spicy', 'Poultry|Seafood|Cheese', 'Cool-Climate Fermentation'],
-  ['King Moremoholo Mopeli 750ml', 'Luc Mo Wines', 'South Africa', 'Shiraz / Syrah', 'Stellenbosch', '1560.00', '750ml', '14%', 'Blackberry|Black Pepper|Violet|Smoked Spice|Long Finish', 'Rich & Full-Bodied|Fruity & Spicy', 'Beef & Steak|Game|Cheese', 'Oak Matured'],
-  ['Catena Malbec 750ml', 'Catena Zapata', 'Argentina', 'Malbec', 'Mendoza', '469.00', '750ml', '13.5%', 'Black Plum|Blueberry|Violet|Cocoa|Polished Tannins', 'Rich & Full-Bodied|Fruity & Spicy', 'Beef & Steak|Game|Cheese', 'High-Altitude Viticulture'],
+  ['Lucmo Wines His Royal Majesty King Moremoholo Mopeli Estate Cabernet Sauvignon 750ml', 'Lucmo Wines', 'South Africa', 'Cabernet Sauvignon', 'Stellenbosch', '1560.00', '750ml', '14%', 'Blackberry|Black Pepper|Violet|Smoked Spice|Long Finish', 'Rich & Full-Bodied|Fruity & Spicy', 'Beef & Steak|Game|Cheese', 'Oak Matured'],
+  ['Lucmo Wines Tshireletso Red – Shiraz Grenache 2022', 'Lucmo Wines', 'South Africa', 'Shiraz Grenache', 'Stellenbosch', '990.00', '750ml', '13.5%', 'Black Cherry|Plum|Smoked Spice|Pepper|Fine Velvet Tannins', 'Rich & Full-Bodied|Fruity & Spicy', 'Beef & Steak|Game|Cheese', 'Estate Bottled'],
   ['Marqués de Riscal Reserva 750ml', 'Marqués de Riscal', 'Spain', 'Tempranillo', 'Rioja', '589.00', '750ml', '14%', 'Red Cherry|Dried Fig|Vanilla|Tobacco|Savory Oak', 'Rich & Full-Bodied|Savory', 'Beef & Steak|Poultry|Cheese', 'Barrel Aged'],
   ['Ridge Lytton Springs Zinfandel 750ml', 'Ridge Vineyards', 'USA', 'Zinfandel', 'Sonoma County', '1199.00', '750ml', '14.5%', 'Blackberry|Raspberry|Licorice|Pepper|Toasted Oak', 'Rich & Full-Bodied|Fruity & Spicy', 'Beef & Steak|Barbecue|Cheese', 'Old-Vine Field Blend'],
   ['E. Guigal Côtes du Rhône Blanc 750ml', 'E. Guigal', 'France', 'Rhone Blend', 'Rhône', '429.00', '750ml', '13%', 'White Peach|Apricot|Honeysuckle|Citrus|Mineral Finish', 'Light & Floral|Fruity & Spicy', 'Seafood|Poultry|Cheese', 'Regional Blend'],
   ['Queen Mother Mathokoana Mopeli Chardonnay 750ml', 'Luc Mo Wines', 'South Africa', 'Chardonnay', 'Stellenbosch', '1530.00', '750ml', '13.5%', 'Citrus|White Pear|Caramel|Roasted Almond|Minerality', 'Rich & Creamy|Fresh', 'Poultry|Pork|Seafood', 'Partial Oak Maturation'],
-  ['Her Royal Highness Sekhothali Chenin Blanc 750ml', 'Luc Mo Wines', 'South Africa', 'Chenin Blanc', 'Stellenbosch', '1530.00', '750ml', '13%', 'Lime|Quince|White Peach|Honey|Bright Acidity', 'Light & Floral|Fruity & Spicy', 'Seafood|Poultry|Salads', 'Cool Fermentation'],
+  ['Lucmo Wines Her Royal Highness Sekhothali Estate Sauvignon Blanc 750ml', 'Lucmo Wines', 'South Africa', 'Sauvignon Blanc', 'Stellenbosch', '1530.00', '750ml', '13%', 'Lime|Quince|White Peach|Honey|Bright Acidity', 'Light & Floral|Fruity & Spicy', 'Seafood|Poultry|Salads', 'Cool Fermentation'],
   ['La Vieille Ferme Grenache Blanc 750ml', 'La Vieille Ferme', 'France', 'Grenache', 'Rhône', '249.00', '750ml', '12.5%', 'Pear|White Flowers|Citrus Peel|Herbs|Dry Finish', 'Light & Floral|Fresh', 'Seafood|Salads|Cheese', 'Stainless Steel Fermentation'],
   ['Tshireletso White 750ml', 'Luc Mo Wines', 'South Africa', 'White Blend', 'Western Cape', '990.00', '750ml', '13%', 'Pear|Guava|Lime|White Flowers|Clean Finish', 'Light & Floral|Fruity & Spicy', 'Seafood|Poultry|Salads', 'Cape White Blend'],
   ['Cloudy Bay Sauvignon Blanc 750ml', 'Cloudy Bay', 'New Zealand', 'Sauvignon Blanc', 'Marlborough', '699.00', '750ml', '13.5%', 'Passion Fruit|Lime|Gooseberry|Fresh Herbs|Mineral Finish', 'Crisp & Fresh|Fruity & Spicy', 'Seafood|Goat Cheese|Salads', 'Cool Fermentation'],
   ['Dr. Loosen Blue Slate Riesling 750ml', 'Dr. Loosen', 'Germany', 'Riesling', 'Mosel', '429.00', '750ml', '8.5%', 'Green Apple|White Peach|Lime|Slate|Off-Dry Finish', 'Light & Floral|Crisp & Fresh', 'Seafood|Spicy Food|Poultry', 'Slate-Grown Riesling'],
   ['Luc Mo African Royals Rosé 750ml', 'Luc Mo Wines', 'South Africa', 'Rosé', 'Western Cape', '475.00', '750ml', '12.5%', 'Strawberry|Watermelon|Rose Petal|Citrus|Dry Finish', 'Light & Floral|Fruity & Spicy', 'Seafood|Salads|Poultry', 'Direct Press'],
-  ['Lautus De-Alcoholised Rosé 750ml', 'Lautus', 'South Africa', 'Non-Alcoholic Rosé Wine', 'Western Cape', '179.00', '750ml', '0.5%', 'Strawberry|Red Apple|Rose Petal|Citrus|Fresh Finish', 'Light & Floral|Soft', 'Salads|Seafood|Dessert', 'De-Alcoholised'],
+  ['De Pizan Fraisch 750ml', 'De Pizan', 'South Africa', 'Non-Alcoholic White Wine Alternative', 'Western Cape', '200.00', '750ml', '0.0%', 'Green Apple|Zesty Citrus|Subtle Blossom|Crisp Invigorating Finish', 'Crisp & Fresh|Light & Floral', 'Salads|Seafood|Dessert', 'De-Alcoholised'],
   ['Lautus Savvy White 750ml', 'Lautus', 'South Africa', 'Non-Alcoholic White Wine Alternative', 'Western Cape', '179.00', '750ml', '0.5%', 'Gooseberry|Lime|Green Apple|Herbs|Crisp Finish', 'Crisp & Fresh|Light & Floral', 'Seafood|Salads|Poultry', 'De-Alcoholised'],
-  ['Leitz Eins-Zwei-Zero Red 750ml', 'Leitz', 'Germany', 'Non-Alcoholic Red Wine Alternative', 'Rheingau', '229.00', '750ml', '0.0%', 'Blackberry|Plum|Red Cherry|Soft Spice|Dry Finish', 'Fruity & Spicy|Soft', 'Pasta|Poultry|Cheese', 'De-Alcoholised'],
+  ['De Pizan Rouge 750ml', 'De Pizan', 'South Africa', 'Non-Alcoholic Red Wine Alternative', 'Western Cape', '200.00', '750ml', '0.0%', 'Dark Currants|Ripe Blackberry|Soft Spice|Dry Structured Finish', 'Fruity & Spicy|Soft', 'Pasta|Poultry|Cheese', 'De-Alcoholised'],
   ["Graham's 10 Year Old Tawny Port 750ml", "Graham's", 'Portugal', 'Port', 'Douro', '699.00', '750ml', '20%', 'Dried Fig|Walnut|Caramel|Orange Peel|Long Nutty Finish', 'Rich & Full-Bodied|Sweet', 'Cheese|Dessert|Nuts', 'Fortified and Cask Aged'],
   ['Lustau Los Arcos Amontillado Sherry 750ml', 'Lustau', 'Spain', 'Sherry', 'Jerez', '459.00', '750ml', '18.5%', 'Hazelnut|Dried Citrus|Savoury Spice|Saline Notes|Dry Finish', 'Savory|Rich & Full-Bodied', 'Cheese|Tapas|Nuts', 'Solera Aged'],
   ["Blandy's 10 Year Old Bual Madeira 500ml", "Blandy's", 'Portugal', 'Madeira', 'Madeira', '749.00', '500ml', '19%', 'Toffee|Dried Apricot|Walnut|Orange Peel|Bright Acidity', 'Rich & Full-Bodied|Sweet', 'Dessert|Cheese|Nuts', 'Canteiro Aged'],
   ['Cocchi Storico Vermouth di Torino 750ml', 'Cocchi', 'Italy', 'Vermouth', 'Piedmont', '599.00', '750ml', '16.5%', 'Cocoa|Bitter Orange|Rhubarb|Herbs|Warm Spice', 'Herbal|Fruity & Spicy', 'Cheese|Charcuterie|Dessert', 'Botanical Fortification'],
   ['Bottega Prosecco Rosé Brut DOC 200ml', 'Bottega', 'Italy', 'Prosecco', 'Veneto', '4554.00', '200ml', '11.5%', 'Apple|White Peach|Citrus|Wild Strawberry|Fine Bubbles', 'Light & Floral|Fruity & Spicy|Soft', 'Seafood|Cheese|Poultry', 'Tank Method'],
   ['Freixenet Cordon Negro Brut Cava 750ml', 'Freixenet', 'Spain', 'Cava', 'Catalonia', '299.00', '750ml', '11.5%', 'Green Apple|Pear|Citrus|Almond|Fine Bubbles', 'Crisp & Fresh|Light & Floral', 'Seafood|Tapas|Cheese', 'Traditional Method'],
-  ['Graham Beck Brut Cap Classique 750ml', 'Graham Beck', 'South Africa', 'General Sparkling Wine', 'Western Cape', '329.00', '750ml', '12%', 'Lime|Green Apple|Brioche|White Flowers|Fine Bubbles', 'Crisp & Fresh|Light & Floral', 'Seafood|Poultry|Cheese', 'Méthode Cap Classique'],
+  ['De Pizan Sparkling White 750ml', 'De Pizan', 'South Africa', 'Non-Alcoholic Sparkling White Wine Alternative', 'Western Cape', '220.00', '750ml', '0.0%', 'Crisp Apple|White Floral|Citrus Blossom|Lively Bubbles|Clean Refreshing Finish', 'Crisp & Fresh|Light & Floral', 'Seafood|Poultry|Cheese', 'De-Alcoholised Sparkling'],
   ['Lautus Sparkling White 750ml', 'Lautus', 'South Africa', 'Non-Alcoholic Sparkling White Wine Alternative', 'Western Cape', '189.00', '750ml', '0.5%', 'Green Apple|Pear|Citrus|White Flowers|Lively Bubbles', 'Crisp & Fresh|Light & Floral', 'Seafood|Salads|Cheese', 'De-Alcoholised'],
-  ['Lautus Sparkling Red 750ml', 'Lautus', 'South Africa', 'Non-Alcoholic Sparkling Red Wine', 'Western Cape', '189.00', '750ml', '0.5%', 'Red Cherry|Blackberry|Plum|Soft Spice|Lively Bubbles', 'Fruity & Spicy|Soft', 'Poultry|Cheese|Dessert', 'De-Alcoholised'],
+  ['De Pizan Sparkling Red 750ml', 'De Pizan', 'South Africa', 'Non-Alcoholic Sparkling Red Wine', 'Western Cape', '220.00', '750ml', '0.0%', 'Red Forest Berries|Black Cherry|Spiced Plum|Vibrant Fizz|Balanced Soft Finish', 'Fruity & Spicy|Soft', 'Poultry|Cheese|Dessert', 'De-Alcoholised'],
   ['Tshireletso Late Harvest 375ml', 'Luc Mo Wines', 'South Africa', 'Late Harvest Wine', 'Stellenbosch', '545.00', '375ml', '11%', 'Apricot|Honey|Orange Blossom|Peach|Balanced Sweetness', 'Sweet|Fruity & Spicy', 'Dessert|Cheese|Fruit', 'Late Harvest'],
   ['Inniskillin Vidal Icewine 375ml', 'Inniskillin', 'Canada', 'Ice Wine', 'Niagara Peninsula', '1399.00', '375ml', '9.5%', 'Peach|Mango|Honey|Candied Citrus|Bright Acidity', 'Sweet|Fruity & Spicy', 'Dessert|Cheese|Foie Gras', 'Frozen-Grape Pressing'],
-  ['Château Suduiraut Sauternes 375ml', 'Château Suduiraut', 'France', 'Sauternes', 'Bordeaux', '1099.00', '375ml', '13.5%', 'Apricot|Honey|Saffron|Orange Marmalade|Long Finish', 'Sweet|Rich & Full-Bodied', 'Dessert|Blue Cheese|Foie Gras', 'Botrytis-Affected'],
-  ["Saracco Moscato d'Asti 750ml", 'Saracco', 'Italy', 'Moscato', 'Piedmont', '399.00', '750ml', '5.5%', 'Orange Blossom|Peach|Grape|Pear|Gentle Fizz', 'Light & Floral|Sweet', 'Dessert|Fruit|Cheese', 'Lightly Sparkling']
+  ['Lucmo Wines Tshireletso White - Sauvignon Blanc 2025', 'Lucmo Wines', 'South Africa', 'Sauvignon Blanc', 'Western Cape', '990.00', '750ml', '13%', 'Tropical Fruit|Crisp Citrus|Green Apple|Fresh Herbs|Mineral Finish', 'Crisp & Fresh|Light & Floral', 'Seafood|Salads|Cheese', 'Estate Bottled'],
+  ["Saracco Moscato d'Asti 750ml", 'Saracco', 'Italy', 'Moscato', 'Piedmont', '399.00', '750ml', '5.5%', 'Orange Blossom|Peach|Grape|Pear|Gentle Fizz', 'Light & Floral|Sweet', 'Dessert|Fruit|Cheese', 'Lightly Sparkling'],
+  ['De Pizan Cerise 750ml', 'De Pizan', 'South Africa', 'Non-Alcoholic Rosé Wine', 'Western Cape', '200.00', '750ml', '0.0%', 'Pale Pink Onion Skin|Fruity Nose|Cherries|Raspberries|Prolonged Aftertaste', 'Light & Floral|Fruity & Spicy', 'Salads|Seafood|Dessert', 'De-Alcoholised']
 ];
 
 const split = (value) => value.split('|').map((item) => item.trim()).filter(Boolean);
@@ -80,6 +81,17 @@ const buildProduct = (row, index) => {
     origin: `${region}, ${country}`,
     bottleSize: size,
     abv
+  };
+  normalized.shipping = {
+    box_type: 'Certified Wine Shipper (1 Bottle)',
+    weight_kg: 1.55,
+    length_cm: 10.0,
+    width_cm: 10.0,
+    height_cm: 33.0,
+    is_fragile: true,
+    parcel_value: parseFloat(price) || 1199,
+    hs_code: '2204.21',
+    aramexServiceType: 'ONP'
   };
   return {
     ...normalized,

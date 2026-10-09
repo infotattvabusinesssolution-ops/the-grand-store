@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../api';
-import { ChevronLeft, Gavel, PackageCheck, Heart, AlertCircle } from 'lucide-react';
+import { 
+  ChevronLeft, Gavel, PackageCheck, Heart, AlertCircle, 
+  Trophy, CheckCircle2, Clock, Sparkles, CreditCard, 
+  ExternalLink, ShieldCheck, ChevronRight 
+} from 'lucide-react';
 import Price from '../../components/ui/Price';
 import BidderKycCard from '../../components/auction/BidderKycCard';
 
@@ -77,71 +81,245 @@ export default function UserAuctionDashboard() {
           </div>
 
           {/* Won Auctions */}
-          <div className="bg-[#11100d] border border-white/5 rounded-xl p-6">
-            <h2 className="text-[#eee8dd] text-lg font-medium mb-6 flex items-center gap-2 border-b border-white/10 pb-4">
-              <PackageCheck size={18} className="text-green-500" /> Won Lots
-            </h2>
+          <div className="bg-white/[0.02] border border-white/[0.07] hover:border-white/10 rounded-2xl p-6 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.25)] flex flex-col">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-[var(--color-gold)]/10 text-gold-gradient rounded-xl border border-[var(--color-gold)]/20 shadow-[0_0_15px_rgba(212,175,55,0.15)]">
+                  <Trophy size={18} />
+                </div>
+                <div>
+                  <h2 className="text-white font-serif text-xl tracking-wide flex items-center gap-2">
+                    Won Lots
+                  </h2>
+                  <p className="text-[var(--color-ivory-muted)] text-xs font-light">
+                    Auction acquisitions & settlement records
+                  </p>
+                </div>
+              </div>
+              {wonLots.length > 0 && (
+                <span className="px-3 py-1 rounded-full text-[10px] font-mono font-semibold tracking-wider uppercase bg-[var(--color-gold)]/10 text-[var(--color-gold)] border border-[var(--color-gold)]/25">
+                  {wonLots.length} {wonLots.length === 1 ? 'Lot' : 'Lots'}
+                </span>
+              )}
+            </div>
+
             {wonLots.length > 0 ? (
               <div className="space-y-4">
-                {wonLots.map(lot => (
-                  <div key={lot._id} className="bg-green-500/10 p-4 rounded-lg border border-green-500/20">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-green-500/20 pb-4 mb-4">
-                      <div>
-                        <Link to={`/auction/${lot._id}`} className="text-white hover:text-green-400 transition-colors font-serif block text-lg mb-1">{lot.title}</Link>
-                        <span className="text-[10px] text-green-300/70 uppercase tracking-widest block">
-                          Lot {lot.lotNumber || lot._id.slice(-6).toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`px-2 py-1 rounded text-[10px] uppercase tracking-widest font-bold ${
-                          lot.paymentStatus === 'Paid' || lot.isPaid 
-                            ? 'bg-green-500/20 text-green-400' 
-                            : (lot.paymentStatus === 'Awaiting_Approval' || lot.proofUrl)
-                              ? 'bg-amber-500/20 text-amber-300'
-                              : 'bg-yellow-500/20 text-yellow-400'
-                        }`}>
-                          {lot.paymentStatus === 'Paid' || lot.isPaid 
-                            ? 'Payment Completed' 
-                            : (lot.paymentStatus === 'Awaiting_Approval' || lot.proofUrl)
-                              ? 'Awaiting Verification' 
-                              : 'Awaiting Payment'}
-                        </span>
-                        {(lot.paymentStatus === 'Pending' && !lot.proofUrl && !lot.isPaid) && (
-                          <Link to={`/auction/checkout/${lot._id}`} className="px-4 py-2 bg-green-500 hover:bg-green-600 text-black rounded text-[10px] font-bold uppercase tracking-widest transition-colors shadow-[0_0_15px_rgba(34,197,94,0.4)]">
-                            Pay Now
-                          </Link>
-                        )}
-                        {(lot.paymentStatus === 'Awaiting_Approval' || (lot.proofUrl && !lot.isPaid && lot.paymentStatus !== 'Paid')) && (
-                          <Link to={`/auction/checkout/${lot._id}`} className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded text-[10px] font-bold uppercase tracking-widest transition-colors">
-                            View Status
-                          </Link>
-                        )}
-                        <Link to={`/auction/${lot._id}`} className="px-4 py-2 border border-green-500/50 hover:bg-green-500/10 text-green-400 rounded text-[10px] font-bold uppercase tracking-widest transition-colors">
-                          View Lot
-                        </Link>
-                      </div>
-                    </div>
+                {wonLots.map((lot) => {
+                  const lotImage = lot.images && lot.images[0] ? lot.images[0] : null;
+                  const lotNumberFormatted = lot.lotNumber || (lot._id ? lot._id.slice(-6).toUpperCase() : '');
+                  const isPaid = lot.paymentStatus === 'Paid' || lot.isPaid;
+                  const isVerifying = !isPaid && (lot.paymentStatus === 'Awaiting_Approval' || lot.proofUrl);
+                  const isPendingPayment = !isPaid && !isVerifying;
 
-                    <div className="text-sm font-mono text-green-100/70 space-y-1">
-                      <div className="flex justify-between"><span>Winning Bid:</span> <span><Price amount={lot.winningBid?.toLocaleString('en-ZA')} /></span></div>
-                      {lot.paymentStatus === 'Paid' && (
-                        <>
-                          <div className="flex justify-between"><span>Buyer Premium:</span> <span><Price amount={lot.buyerPremiumAmount?.toLocaleString('en-ZA')} /></span></div>
-                          <div className="flex justify-between"><span>BAR Charge:</span> <span><Price amount={lot.barChargeAmount?.toLocaleString('en-ZA')} /></span></div>
-                          <div className="flex justify-between"><span>VAT:</span> <span><Price amount={lot.vatAmount?.toLocaleString('en-ZA')} /></span></div>
-                          <div className="flex justify-between"><span>Shipping:</span> <span><Price amount={lot.shippingCost?.toLocaleString('en-ZA')} /></span></div>
-                          <div className="flex justify-between border-t border-green-500/20 pt-2 mt-2 text-green-300 font-bold text-base">
-                            <span>Total Paid:</span> <span><Price amount={lot.totalPaidByBuyer?.toLocaleString('en-ZA')} /></span>
+                  return (
+                    <div
+                      key={lot._id}
+                      className="bg-black/40 hover:bg-black/60 border border-white/[0.08] hover:border-[var(--color-gold)]/30 rounded-xl p-4 sm:p-5 transition-all duration-300 relative overflow-hidden group shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
+                    >
+                      {/* Subtle luxury ambient glow */}
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-gold)]/[0.03] rounded-full blur-2xl pointer-events-none group-hover:bg-[var(--color-gold)]/[0.06] transition-colors"></div>
+
+                      {/* Header row: Image + Lot info */}
+                      <div className="flex gap-3 sm:gap-4 items-start">
+                        {/* Lot Thumbnail */}
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-[#141414] border border-white/10 p-1 shrink-0 overflow-hidden flex items-center justify-center relative group-hover:border-[var(--color-gold)]/30 transition-colors">
+                          {lotImage ? (
+                            <img
+                              src={lotImage}
+                              alt={lot.title}
+                              className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center text-white/30 gap-1">
+                              <Gavel size={20} className="text-[var(--color-gold)]/50" />
+                              <span className="text-[8px] font-mono uppercase tracking-widest text-white/40">LOT</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span className="text-[10px] font-mono tracking-widest uppercase text-[var(--color-gold)] font-bold bg-[var(--color-gold)]/10 px-2 py-0.5 rounded border border-[var(--color-gold)]/20">
+                              LOT {lotNumberFormatted}
+                            </span>
+                            {lot.category && (
+                              <span className="text-[10px] uppercase tracking-wider text-white/40 font-light truncate max-w-[150px]">
+                                {lot.category}
+                              </span>
+                            )}
                           </div>
-                        </>
-                      )}
+
+                          <Link
+                            to={`/auction/${lot._id}`}
+                            className="text-white hover:text-[var(--color-gold)] transition-colors font-serif block text-base sm:text-lg font-normal leading-snug line-clamp-2"
+                          >
+                            {lot.title}
+                          </Link>
+
+                          {lot.vendor?.storeName && (
+                            <p className="text-[11px] text-white/40 font-light mt-0.5">
+                              Consignor: <span className="text-white/60">{lot.vendor.storeName}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Status & Actions Bar */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 mt-3 border-t border-white/[0.06]">
+                        {/* Status Badge */}
+                        <div>
+                          {isPaid ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                              <CheckCircle2 size={12} className="text-emerald-400" />
+                              Payment Completed
+                            </span>
+                          ) : isVerifying ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-300 border border-amber-500/25">
+                              <Clock size={12} className="text-amber-300" />
+                              Awaiting Verification
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-[var(--color-gold)]/10 text-[var(--color-gold)] border border-[var(--color-gold)]/30">
+                              <Sparkles size={11} className="text-[var(--color-gold)] animate-pulse" />
+                              Awaiting Settlement
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-2">
+                          {isPendingPayment && (
+                            <Link
+                              to={`/auction/checkout/${lot._id}`}
+                              className="px-4 py-1.5 rounded-full bg-gold-gradient text-black text-[11px] font-bold uppercase tracking-wider hover:opacity-95 shadow-[0_0_15px_rgba(212,175,55,0.25)] transition-all flex items-center gap-1.5"
+                            >
+                              <CreditCard size={13} />
+                              Pay Now
+                            </Link>
+                          )}
+
+                          {isVerifying && (
+                            <Link
+                              to={`/auction/checkout/${lot._id}`}
+                              className="px-3.5 py-1.5 rounded-full bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20 text-[var(--color-gold)] border border-[var(--color-gold)]/30 text-[11px] font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5"
+                            >
+                              <Clock size={12} />
+                              View Status
+                            </Link>
+                          )}
+
+                          <Link
+                            to={`/auction/${lot._id}`}
+                            className="px-3 py-1.5 rounded-full border border-white/10 hover:border-[var(--color-gold)]/30 text-white/70 hover:text-white bg-white/[0.02] text-[11px] font-medium uppercase tracking-wider transition-all flex items-center gap-1"
+                          >
+                            <ExternalLink size={12} className="text-white/40" />
+                            View Lot
+                          </Link>
+                        </div>
+                      </div>
+
+                      {/* Financial Settlement Breakdown */}
+                      <div className="mt-3.5 pt-3.5 border-t border-white/[0.06]">
+                        {!isPaid ? (
+                          /* Unpaid summary strip */
+                          <div className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-lg px-4 py-3">
+                            <div>
+                              <span className="text-[10px] uppercase tracking-wider text-white/40 font-mono block">
+                                Winning Hammer Bid
+                              </span>
+                              <div className="text-lg sm:text-xl font-serif text-white font-medium">
+                                <Price amount={lot.winningBid?.toLocaleString('en-ZA')} />
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[10px] text-amber-300/80 font-mono block">
+                                Final invoice at checkout
+                              </span>
+                              <span className="text-[9px] text-white/40">
+                                Includes 10% premium & 15% VAT
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          /* Paid complete itemization */
+                          <div className="bg-white/[0.015] border border-white/5 rounded-lg p-3.5 space-y-2">
+                            <div className="flex items-center justify-between text-[10px] uppercase font-mono text-white/40 border-b border-white/5 pb-1">
+                              <span>Settlement Ledger</span>
+                              <span>Amount</span>
+                            </div>
+
+                            <div className="flex justify-between text-xs text-white/70">
+                              <span className="font-light">Winning Hammer Bid</span>
+                              <span className="font-mono text-white"><Price amount={lot.winningBid?.toLocaleString('en-ZA')} /></span>
+                            </div>
+
+                            {Number(lot.buyerPremiumAmount || 0) > 0 && (
+                              <div className="flex justify-between text-xs text-white/70">
+                                <span className="font-light">Buyer's Premium</span>
+                                <span className="font-mono text-white/90"><Price amount={lot.buyerPremiumAmount?.toLocaleString('en-ZA')} /></span>
+                              </div>
+                            )}
+
+                            {Number(lot.barChargeAmount || 0) > 0 && (
+                              <div className="flex justify-between text-xs text-white/70">
+                                <span className="font-light">BAR Administration Fee</span>
+                                <span className="font-mono text-white/90"><Price amount={lot.barChargeAmount?.toLocaleString('en-ZA')} /></span>
+                              </div>
+                            )}
+
+                            {Number(lot.vatAmount || 0) > 0 && (
+                              <div className="flex justify-between text-xs text-white/70">
+                                <span className="font-light">Value Added Tax (15% VAT)</span>
+                                <span className="font-mono text-white/90"><Price amount={lot.vatAmount?.toLocaleString('en-ZA')} /></span>
+                              </div>
+                            )}
+
+                            {lot.shippingCost !== undefined && (
+                              <div className="flex justify-between text-xs text-white/70">
+                                <span className="font-light">Insured Logistics & Delivery</span>
+                                <span className="font-mono text-white/90">
+                                  {Number(lot.shippingCost) === 0 ? 'Complimentary' : <Price amount={lot.shippingCost?.toLocaleString('en-ZA')} />}
+                                </span>
+                              </div>
+                            )}
+
+                            <div className="flex justify-between items-baseline pt-2.5 mt-1.5 border-t border-white/10">
+                              <div>
+                                <span className="text-[11px] uppercase tracking-wider text-[var(--color-gold)] font-mono font-bold block">
+                                  Total Paid
+                                </span>
+                                <span className="text-[9px] text-emerald-400/90 font-mono flex items-center gap-1 mt-0.5">
+                                  <ShieldCheck size={10} /> Fully Settled
+                                </span>
+                              </div>
+                              <div className="text-lg sm:text-xl font-serif font-bold text-white">
+                                <Price amount={lot.totalPaidByBuyer?.toLocaleString('en-ZA')} />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
-              <div className="text-center py-8 text-[#918a7f]">
-                 <p>No auction wins yet.</p>
+              <div className="text-center py-10 px-4 rounded-xl border border-dashed border-white/10 bg-white/[0.01]">
+                <div className="w-12 h-12 rounded-full bg-[var(--color-gold)]/10 text-[var(--color-gold)] flex items-center justify-center mx-auto mb-3 border border-[var(--color-gold)]/20">
+                  <Trophy size={22} />
+                </div>
+                <p className="text-white font-serif text-base mb-1">No Auction Wins Yet</p>
+                <p className="text-[var(--color-ivory-muted)] text-xs max-w-sm mx-auto mb-4 font-light">
+                  When your bids win in live auctions, your allocations, settlement receipts, and logistics tracking will appear here.
+                </p>
+                <Link
+                  to="/auction"
+                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-gold-gradient text-black font-semibold text-xs tracking-wider uppercase hover:opacity-95 transition-opacity"
+                >
+                  Explore Live Auctions
+                </Link>
               </div>
             )}
           </div>

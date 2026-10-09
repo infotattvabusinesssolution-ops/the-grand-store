@@ -1,0 +1,210 @@
+.trade-navbar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 1000;
+  height: 104px;
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background 320ms ease, border-color 320ms ease, box-shadow 320ms ease, backdrop-filter 320ms ease;
+}
+
+.trade-navbar--home:not(.is-scrolled) {
+  background: linear-gradient(180deg, rgba(3, 3, 3, .76), rgba(3, 3, 3, .3) 62%, transparent);
+}
+
+.trade-navbar--inner,
+.trade-navbar.is-scrolled {
+  background: rgba(7, 7, 7, .78);
+  border-bottom-color: rgba(219, 176, 73, .31);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, .2);
+  backdrop-filter: blur(20px) saturate(125%);
+}
+
+.trade-nav-inner {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) auto minmax(220px, 1fr);
+  align-items: center;
+  gap: 34px;
+}
+
+.trade-brand {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  text-decoration: none;
+}
+
+.trade-brand img {
+  width: 290px;
+  height: 82px;
+  object-fit: contain;
+  object-position: left center;
+  filter: none;
+}
+
+.trade-brand span {
+  padding-left: 18px;
+  color: #b9b5ab;
+  border-left: 1px solid rgba(255, 255, 255, .16);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .17em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.trade-nav-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(25px, 2.45vw, 40px);
+}
+
+.trade-nav-link {
+  position: relative;
+  padding: 37px 0 34px;
+  color: rgba(255, 255, 255, .82);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: .13em;
+  line-height: 1;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 200ms ease;
+}
+
+.trade-nav-link::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 24px;
+  left: 0;
+  height: 1px;
+  background: #d8ad45;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 240ms ease;
+}
+
+.trade-nav-link:hover,
+.trade-nav-link.active {
+  color: #f2eee5;
+}
+
+.trade-nav-link:hover::after,
+.trade-nav-link.active::after {
+  transform: scaleX(1);
+}
+
+.trade-partner-btn {
+  min-height: 50px;
+  padding: 0 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  justify-self: end;
+  color: #080909;
+  background: linear-gradient(110deg, #be8e31, #efd276 52%, #bd8b2c);
+  border: 1px solid #d9b355;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .105em;
+  line-height: 1;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: transform 220ms ease, filter 220ms ease;
+}
+
+.trade-partner-btn:hover {
+  color: #080909;
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.trade-menu-toggle,
+.trade-mobile-enquiry {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  .trade-nav-inner {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .trade-desktop-enquiry {
+    display: none;
+  }
+
+  .trade-menu-toggle {
+    width: 43px;
+    height: 43px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #e3c261;
+    background: transparent;
+    border: 1px solid rgba(221, 183, 84, .35);
+    cursor: pointer;
+  }
+
+  .trade-nav-center {
+    position: fixed;
+    top: 96px;
+    right: 0;
+    left: 0;
+    padding: 20px 24px 25px;
+    display: none;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0;
+    background: rgba(5, 6, 6, .98);
+    border-bottom: 1px solid rgba(221, 183, 84, .3);
+  }
+
+  .trade-nav-center.is-open {
+    display: flex;
+  }
+
+  .trade-nav-link {
+    padding: 16px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+  }
+
+  .trade-nav-link::after {
+    display: none;
+  }
+
+  .trade-mobile-enquiry {
+    display: inline-flex;
+    justify-self: stretch;
+    margin-top: 18px;
+  }
+}
+
+@media (max-width: 620px) {
+  .trade-navbar {
+    height: 72px;
+  }
+
+  .trade-nav-center {
+    top: 72px;
+  }
+
+  .trade-brand img {
+    width: 190px;
+    height: 58px;
+  }
+
+  .trade-brand span {
+    display: none;
+  }
+}

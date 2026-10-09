@@ -270,7 +270,7 @@ export default function AdminAuctionPanel({ onNotify }) {
     }));
   };
 
-  if (!user || user.role !== 'admin') {
+  if (!user || !['admin', 'super_admin'].includes(user.role)) {
      return <div className="min-h-screen bg-[#0a0907] flex items-center justify-center text-white">Admin access required</div>;
   }
 

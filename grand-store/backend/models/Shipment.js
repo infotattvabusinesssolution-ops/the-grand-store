@@ -32,14 +32,24 @@ const shipmentSchema = new mongoose.Schema(
     },
     deliveryMethod: {
       type: String,
-      enum: ["home_delivery", "postnet_pickup", "international_courier"],
+      enum: ["home_delivery", "postnet_pickup", "pudo_locker", "international_courier", "aramex_delivery"],
       default: "home_delivery",
     },
     pickupLocation: {
       locationId: String,
       name: String,
       address: String,
+      provider: String, // 'postnet' or 'tcg-locker'
     },
+    tcgShipmentId: { type: String },
+    tcgWaybillNumber: { type: String },
+    tcgTrackingUrl: { type: String },
+    tcgLabelUrl: { type: String },
+    aramexWaybillNumber: { type: String },
+    aramexServiceType: { type: String, default: 'ONP' },
+    aramexLabelUrl: { type: String },
+    aramexCollectionRef: { type: String },
+    aramexTrackingUrl: { type: String },
 
     packageDetails: {
       weight: Number,
@@ -79,6 +89,7 @@ const shipmentSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
+        "Payment Pending",
         "Order Confirmed",
         "Preparing",
         "Collected",
@@ -87,8 +98,9 @@ const shipmentSchema = new mongoose.Schema(
         "Delivered",
         "Delayed",
         "Failed",
+        "Cancelled",
       ],
-      default: "Order Confirmed",
+      default: "Payment Pending",
     },
 
     estimatedDeliveryDate: { type: Date },
@@ -97,6 +109,23 @@ const shipmentSchema = new mongoose.Schema(
     // Custom information
     hsCode: { type: String },
     declaredValue: { type: Number },
+
+    // === CRM LOGISTICS EXCEPTION EXTENSIONS (Non-breaking) ===
+    logisticsException: {
+      isException: { type: Boolean, default: false, index: true },
+      exceptionType: {
+        type: String,
+        enum: ['none', 'courier_delay', 'failed_delivery', 'stock_shortage', 'address_query', 'customs_hold', 'damaged_in_transit'],
+        default: 'none'
+      },
+      reportedAt: { type: Date },
+      reportedBy: { type: String, enum: ['courier_webhook', 'operations_manual', 'customer'] },
+      assignedStaff: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      resolutionNotes: { type: String },
+      resolutionStatus: { type: String, enum: ['unresolved', 'in_investigation', 'resolved'], default: 'unresolved' }
+    },
+    courierWaybillUrl: { type: String },
+    proofOfDeliveryUrl: { type: String }
   },
   { timestamps: true },
 );

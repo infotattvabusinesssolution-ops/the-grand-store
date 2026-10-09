@@ -73,9 +73,17 @@ router.put('/shipping-profile', vendorShippingController.updateShippingProfile);
 
 // Financial / Wallet Routes
 router.get('/wallet', financeController.getVendorWallet);
+router.post('/wallet/payout-request', financeController.requestVendorPayout);
+router.get('/wallet/payout-history', financeController.getVendorPayoutHistory);
+
+// Banking Details Routes
+router.get('/banking', vendorController.getVendorBanking);
+router.put('/banking', vendorController.updateVendorBanking);
+router.post('/banking/upload', uploadSingleDocument, vendorController.uploadDocument);
 
 // Maintenance Fee Routes
 router.get('/maintenance-fee', vendorController.getMaintenanceFeeStatus);
 router.post('/maintenance-fee/pay', vendorController.payMaintenanceFee);
+router.post('/maintenance-fee/submit-proof', vendorController.submitMaintenanceFeeProof);
 
 module.exports = router;

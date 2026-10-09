@@ -121,6 +121,42 @@
   text-transform: uppercase;
 }
 
+.enquire-form-card .enquire-field-full {
+  grid-column: 1 / -1;
+}
+
+.enquire-error {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 4px;
+  background: rgba(185, 28, 28, 0.08);
+  border: 1px solid rgba(185, 28, 28, 0.25);
+  color: #991b1b;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.enquire-form-card button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.animate-spin {
+  animation: enquire-spin 1s linear infinite;
+}
+
+@keyframes enquire-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .enquire-success {
   min-height: 280px;
   display: flex;
@@ -129,18 +165,65 @@
   justify-content: center;
   text-align: center;
   color: var(--wine);
+  padding: 10px 0;
+}
+
+.enquire-success-icon {
+  color: #7a263c;
 }
 
 .enquire-success h3 {
-  margin: 17px 0 8px;
+  margin: 15px 0 6px;
   font-family: var(--serif);
-  font-size: 31px;
+  font-size: 28px;
   font-weight: 400;
 }
 
-.enquire-success p {
-  margin: 0;
-  color: var(--muted);
+.enquire-ref-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 14px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: rgba(122, 38, 60, 0.08);
+  border: 1px solid rgba(122, 38, 60, 0.22);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--wine);
+}
+
+.enquire-ref-badge strong {
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.enquire-ack-note {
+  margin-top: 6px !important;
+  font-size: 13px;
+  color: #7a263c !important;
+  opacity: 0.85;
+}
+
+.enquire-reset-btn {
+  margin-top: 20px !important;
+  background: transparent !important;
+  border: 1px solid rgba(122, 38, 60, 0.3) !important;
+  color: var(--wine) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  padding: 8px 18px !important;
+  min-height: 38px !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.enquire-reset-btn:hover {
+  background: rgba(122, 38, 60, 0.08) !important;
+  border-color: var(--wine) !important;
 }
 
 .enquire-bottle {

@@ -1,5 +1,9 @@
 *.apk
 *.log
+/*.tif
+/*DOBBE*
+/*Dobbe*
+/*dobbe*
 logs
 npm-debug.log*
 
@@ -141,3 +145,20 @@ TheGrandStore/
 .playwright-mcp/
 output/
 tmp/
+
+# AI Agent Skills & Configuration
+.agents/
+.agent/
+_agents/
+_agent/
+SKILL.md
+*.skill.md
+
+# Media and archive files
+*.docx
+*.mp4
+*.tar.gz
+*.zip
+scratch/
+**/scratch/
+

@@ -13,7 +13,8 @@ const orderSchema = new mongoose.Schema({
     email: { type: String, default: '' },
     phone: { type: String, default: '' },
     phoneCountry: { type: String, default: '' },
-    phoneCountryCode: { type: String, default: '' }
+    phoneCountryCode: { type: String, default: '' },
+    isLinkedToAccount: { type: Boolean, default: false }
   },
   isAgeConfirmed: { type: Boolean, default: false },
   guestAccessToken: { type: String },
@@ -39,6 +40,7 @@ const orderSchema = new mongoose.Schema({
   orderId: { type: String, unique: true },
   paymentId: { type: String, unique: true },
   invoiceNumber: { type: String, unique: true },
+  depositReference: { type: String, index: true },
 
   orderItems: [
     {
@@ -92,7 +94,17 @@ const orderSchema = new mongoose.Schema({
   superCoinsUsed: { type: Number, default: 0 },
   superCoinsDiscount: { type: Number, default: 0 },
   superCoinsEarned: { type: Number, default: 0 },
-  deliveryPreference: { type: String, enum: ['home', 'postnet'], default: 'home' },
+  superCoinsRefunded: { type: Boolean, default: false },
+  // Product Voucher / Promotion Coupon Snapshot
+  appliedCoupon: {
+    code: { type: String, default: '' },
+    couponRef: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductCoupon' },
+    discountAmount: { type: Number, default: 0 },
+    discountType: { type: String, default: 'percentage' },
+    appliedProductId: { type: String, default: '' }
+  },
+  couponDiscount: { type: Number, default: 0 },
+  deliveryPreference: { type: String, enum: ['home', 'postnet', 'pudo', 'locker'], default: 'home' },
   selectedPostnetStore: {
     id: { type: String },
     name: { type: String },
@@ -101,6 +113,16 @@ const orderSchema = new mongoose.Schema({
     telephone: { type: String },
     postalCode: { type: String },
     distance: { type: Number }
+  },
+  selectedLocker: {
+    id: { type: String },
+    name: { type: String },
+    address: { type: String },
+    city: { type: String },
+    postalCode: { type: String },
+    province: { type: String },
+    provider: { type: String, default: 'tcg-locker' },
+    pickupPointId: { type: String }
   },
   totalPrice: { type: Number, required: true, default: 0 }, // = subTotal + shipping + VAT + duties - discounts
 
@@ -126,8 +148,14 @@ const orderSchema = new mongoose.Schema({
     enum: ['Pending', 'Awaiting_Approval', 'Authorised', 'Paid', 'Allocated', 'Settled', 'Failed', 'Cancelled', 'Refunded', 'Disputed'],
     default: 'Pending'
   },
+  status: {
+    type: String,
+    enum: ['Placed', 'Processing', 'Vendor Processing', 'Awaiting Dispatch', 'In Transit', 'Delivered', 'Completed', 'Cancelled', 'Shipment Issue'],
+    default: 'Processing'
+  },
   isPaid: { type: Boolean, required: true, default: false },
   paidAt: { type: Date },
+  failureEmailDispatched: { type: Boolean, default: false },
   isDelivered: { type: Boolean, required: true, default: false },
   deliveredAt: { type: Date },
 
@@ -144,6 +172,44 @@ const orderSchema = new mongoose.Schema({
     default: null
   },
   deliveryStatusText: { type: String, default: '' },
+  aramexWaybillNumber: { type: String, default: '' },
+  aramexLabelUrl: { type: String, default: '' },
+
+  // Physical Packaging Inspection & Tracking
+  packaging: {
+    isPacked: { type: Boolean, default: false },
+    boxType: { type: String, default: 'Certified Wine Shipper (1 Bottle)' },
+    weightKg: { type: Number, default: 1.55 },
+    dimensions: {
+      lengthCm: { type: Number, default: 10.0 },
+      widthCm: { type: Number, default: 10.0 },
+      heightCm: { type: Number, default: 33.0 }
+    },
+    isFragile: { type: Boolean, default: true },
+    isSealed: { type: Boolean, default: false },
+    packageBarcode: { type: String, default: '' },
+    packedAt: { type: Date },
+    packedBy: { type: String, default: 'Grand Store Fulfillment Hub' }
+  },
+
+  // Logistics & Driver Assignment
+  driver: {
+    courierCompany: { type: String, default: 'Aramex South Africa' },
+    serviceType: { type: String, default: 'ONP' },
+    driverName: { type: String, default: '' },
+    driverPhone: { type: String, default: '' },
+    vehicleReg: { type: String, default: '' },
+    waybillNumber: { type: String, default: '' },
+    collectionRef: { type: String, default: '' },
+    pickupWindow: { type: String, default: '13:30 - 17:00' },
+    assignedAt: { type: Date },
+    status: {
+      type: String,
+      enum: ['unassigned', 'assigned', 'collected', 'in_transit', 'delivered'],
+      default: 'unassigned'
+    },
+    handoverConfirmedAt: { type: Date }
+  },
 
   // Immutable Order Financial Snapshot (Costing GS Understanding Section 14 & 251)
   financialSnapshot: {

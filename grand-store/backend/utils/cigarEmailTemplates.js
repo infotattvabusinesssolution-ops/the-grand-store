@@ -1,4 +1,4 @@
-const CIGAR_SITE_URL = (process.env.CIGAR_SITE_URL || 'https://cigar.yogapranafitness.com').replace(/\/$/, '');
+const CIGAR_SITE_URL = (process.env.CIGAR_SITE_URL || 'https://cigarconnoisseurclub.com').replace(/\/$/, '');
 const CIGAR_LOGO_URL = process.env.CIGAR_LOGO_URL || `${CIGAR_SITE_URL}/images/cigar-connoisseur-logo.png`;
 
 const escapeHtml = (value) => String(value ?? '')

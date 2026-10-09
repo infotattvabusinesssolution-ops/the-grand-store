@@ -10,7 +10,7 @@ const vendorSchema = new mongoose.Schema({
   // Step 1: Progress Tracking
   vendorType: {
     type: String,
-    enum: ['local', 'international'],
+    enum: ['local', 'international', 'flagship'],
     default: 'local'
   },
   onboardingStep: {
@@ -97,8 +97,18 @@ const vendorSchema = new mongoose.Schema({
     accountName: String,
     accountNumber: String,
     branchCode: String,
+    accountType: {
+      type: String,
+      default: 'Cheque / Current'
+    },
     swiftCode: String,
     bankConfirmationUrl: String,
+    isVerified: {
+      type: Boolean,
+      default: false
+    },
+    verifiedAt: Date,
+    updatedAt: Date,
     payoutPreference: {
       type: String,
       enum: ['Weekly', 'Fortnightly', 'Monthly'],
@@ -212,9 +222,10 @@ const vendorSchema = new mongoose.Schema({
     amount: { type: Number, default: 500 },
     status: {
       type: String,
-      enum: ['paid', 'due', 'overdue', 'grace_period'],
+      enum: ['paid', 'due', 'overdue', 'grace_period', 'awaiting_verification'],
       default: 'paid'
     },
+    proofOfPaymentUrl: { type: String, default: null },
     lastPaidAt: { type: Date, default: null },
     nextDueAt: {
       type: Date,
@@ -226,9 +237,76 @@ const vendorSchema = new mongoose.Schema({
       paymentMethod: { type: String, default: 'card' },
       reference: String,
       gsReference: String,
-      status: { type: String, default: 'cleared' }
+      status: { type: String, default: 'cleared' },
+      proofUrl: String
     }]
-  }
+  },
+  // === CRM & ONBOARDING WORKFLOW EXTENSIONS (Non-breaking) ===
+  crmWorkflowStage: {
+    type: String,
+    enum: [
+      'application_received',
+      'kyc_verification_pending',
+      'commercial_review',
+      'product_onboarding',
+      'live_active',
+      'suspended'
+    ],
+    default: 'application_received',
+    index: true
+  },
+  crmExportCapability: {
+    type: Boolean,
+    default: false
+  },
+  crmExportLicenceVerified: {
+    type: Boolean,
+    default: false
+  },
+  crmAssignedAccountManager: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  crmAuditTrail: [{
+    action: { type: String, required: true },
+    performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    performerName: { type: String },
+    previousState: mongoose.Schema.Types.Mixed,
+    newState: mongoose.Schema.Types.Mixed,
+    timestamp: { type: Date, default: Date.now },
+    notes: { type: String }
+  }],
+  // Temporary Store Freeze & Advisory Controls (CRM & Operations)
+  isFrozen: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  freezeReason: {
+    type: String,
+    default: null
+  },
+  freezeAdvisoryMessage: {
+    type: String,
+    default: null
+  },
+  frozenAt: {
+    type: Date,
+    default: null
+  },
+  frozenBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  activeAdvisories: [{
+    id: { type: String },
+    type: { type: String, default: 'operational_advisory' },
+    title: { type: String },
+    message: { type: String, required: true },
+    priority: { type: String, enum: ['normal', 'urgent', 'critical'], default: 'normal' },
+    createdAt: { type: Date, default: Date.now },
+    createdBy: { type: String, default: 'Operations Command' }
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Vendor', vendorSchema);

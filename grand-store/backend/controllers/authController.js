@@ -22,6 +22,25 @@ const findReferrer = async (value) => {
   return User.findOne({ referralCode: code }).select('_id name referralCode');
 };
 
+const verifyPasswordAndCheckUpgrade = async (candidatePassword, user) => {
+  if (!candidatePassword || !user || !user.password) return { isMatch: false, needsUpgrade: false };
+
+  if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
+    const isMatch = await bcrypt.compare(candidatePassword, user.password);
+    return { isMatch, needsUpgrade: false };
+  }
+
+  // Legacy MD5 hash support from migrated customers (32 hex characters)
+  if (/^[a-f0-9]{32}$/i.test(user.password)) {
+    const md5 = crypto.createHash('md5').update(candidatePassword).digest('hex');
+    if (md5.toLowerCase() === user.password.toLowerCase()) {
+      return { isMatch: true, needsUpgrade: true };
+    }
+  }
+
+  return { isMatch: false, needsUpgrade: false };
+};
+
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const generateToken = (id) => {
@@ -171,7 +190,17 @@ const loginUser = async (req, res) => {
       ]
     });
 
-    if (user && user.password && (await bcrypt.compare(password, user.password))) {
+    const { isMatch, needsUpgrade } = await verifyPasswordAndCheckUpgrade(password, user);
+
+    if (user && isMatch) {
+      if (needsUpgrade) {
+        try {
+          user.password = await bcrypt.hash(password, 10);
+          await user.save();
+        } catch (upgradeErr) {
+          console.warn('Auto-upgrade to bcrypt hash failed:', upgradeErr.message);
+        }
+      }
       // Disallow administrative accounts on this standard endpoint
       const adminRoles = ['admin', 'super_admin', 'accountant', 'product_manager'];
       if (adminRoles.includes(user.role)) {
@@ -218,8 +247,17 @@ const adminLogin = async (req, res) => {
     const normalizedEmail = email.toLowerCase().trim();
     const user = await User.findOne({ email: normalizedEmail });
 
-    if (!user || !user.password || !(await bcrypt.compare(password, user.password))) {
+    const { isMatch, needsUpgrade } = await verifyPasswordAndCheckUpgrade(password, user);
+    if (!user || !user.password || !isMatch) {
       return res.status(401).json({ message: 'Invalid administrative credentials' });
+    }
+    if (needsUpgrade) {
+      try {
+        user.password = await bcrypt.hash(password, 10);
+        await user.save();
+      } catch (upgradeErr) {
+        console.warn('Auto-upgrade to bcrypt hash failed:', upgradeErr.message);
+      }
     }
 
     // Strict role check: allow only administrative and authorized staff roles
@@ -430,7 +468,7 @@ const updateUserProfile = async (req, res) => {
             return res.status(400).json({ message: 'Current password is required to change password' });
           }
           
-          const isMatch = await bcrypt.compare(req.body.currentPassword, user.password);
+          const { isMatch } = await verifyPasswordAndCheckUpgrade(req.body.currentPassword, user);
           if (!isMatch) {
             return res.status(401).json({ message: 'Incorrect current password' });
           }
@@ -818,8 +856,14 @@ const getCustomerCalendarActivities = async (req, res) => {
       }
     }
 
-    // 2. Orders and Courier Deliveries (consolidate multiple events for the same order)
+    // 2. Orders and Courier Deliveries (strictly for paid and confirmed orders)
     orders.forEach((order) => {
+      // Never show cancelled, failed, or unpaid pending orders in delivery calendar
+      const isCancelled = ['cancelled', 'failed'].includes((order.paymentStatus || '').toLowerCase());
+      if (isCancelled || !order.isPaid) {
+        return;
+      }
+
       const orderRef = order.orderId || order.transactionId?.slice(-8) || order._id.toString().slice(-6);
 
       if (order.shipments && order.shipments.length > 0) {
@@ -1223,27 +1267,12 @@ const verifyOtp = async (req, res) => {
       return res.status(400).json({ message: 'Invalid phone number format' });
     }
 
-    let isFirebaseVerified = false;
-    if (firebaseIdToken) {
-      try {
-        const decoded = jwt.decode(firebaseIdToken);
-        if (decoded && decoded.iss?.includes('securetoken.google.com')) {
-          const fbPhone = decoded.phone_number ? normalizeToE164(decoded.phone_number) : null;
-          if (!fbPhone || fbPhone === cleanPhone) {
-            isFirebaseVerified = true;
-            console.log(`[AUTH OTP] Verified via Google Firebase Phone Auth token for ${cleanPhone}`);
-          }
-        }
-      } catch (e) {
-        console.warn('[AUTH OTP] Firebase token decode warning:', e.message);
-      }
-    }
-
     const stored = otpStore.get(cleanPhone);
-    const isMasterCode = String(otp || '').trim() === '123456';
+    const isTestOtpAllowed = process.env.ALLOW_TEST_OTP === 'true' && process.env.NODE_ENV !== 'production';
+    const isMasterCode = isTestOtpAllowed && String(otp || '').trim() === '123456';
     const isValidCode = stored && stored.code === String(otp || '').trim() && stored.expiresAt > Date.now();
 
-    if (!isValidCode && !isMasterCode && !isFirebaseVerified) {
+    if (!isValidCode && !isMasterCode) {
       return res.status(400).json({ message: 'Invalid or expired verification code' });
     }
 
@@ -1267,11 +1296,20 @@ const verifyOtp = async (req, res) => {
 
     if (!user) {
       // Auto-register new customer
+      const submittedReferralCode = req.body.referralCode ?? req.body.referredBy;
+      let referredBy = null;
+      if (normalizeReferralCode(submittedReferralCode)) {
+        const referringUser = await findReferrer(submittedReferralCode);
+        if (referringUser) {
+          referredBy = referringUser._id;
+        }
+      }
+
       const newReferralCode = await generateUniqueReferralCode();
       const sanitizedPhone = cleanPhone.replace(/[^\d]/g, '');
       const defaultEmail = email
         ? String(email).trim().toLowerCase()
-        : `customer_${sanitizedPhone.slice(-8)}@grandstore.co.za`;
+        : `customer_${sanitizedPhone.slice(-8)}@grandstoreglobal.com`;
 
       user = await User.create({
         name: name || `Valued Patron ${sanitizedPhone.slice(-4)}`,
@@ -1284,10 +1322,26 @@ const verifyOtp = async (req, res) => {
         role: 'customer',
         isEmailVerified: true, // Phone verified accounts are considered verified
         referralCode: newReferralCode,
+        referredBy,
       });
+
+      if (referredBy) {
+        await User.findByIdAndUpdate(referredBy, { $inc: { totalReferrals: 1 } });
+      }
     } else {
       // If user exists, ensure phone and verified status are updated
       let modified = false;
+      if (!user.referredBy) {
+        const submittedReferralCode = req.body.referralCode ?? req.body.referredBy;
+        if (normalizeReferralCode(submittedReferralCode)) {
+          const referringUser = await findReferrer(submittedReferralCode);
+          if (referringUser && String(referringUser._id) !== String(user._id)) {
+            user.referredBy = referringUser._id;
+            modified = true;
+            await User.findByIdAndUpdate(referringUser._id, { $inc: { totalReferrals: 1 } });
+          }
+        }
+      }
       if (!user.phone || user.phone !== cleanPhone) {
         user.phone = cleanPhone;
         user.phoneNumber = cleanPhone;
@@ -1542,8 +1596,10 @@ const verifyMagicLink = async (req, res) => {
 
     if (!user) {
       const newReferralCode = await generateUniqueReferralCode();
-      const localPart = targetEmail.split('@')[0];
-      const displayName = localPart.charAt(0).toUpperCase() + localPart.slice(1);
+      const rawLocal = targetEmail.split('@')[0].replace(/[._-]+/g, ' ').trim();
+      const displayName = rawLocal
+        ? rawLocal.split(' ').filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+        : 'Valued Patron';
 
       user = await User.create({
         name: displayName || 'Valued Patron',
@@ -1609,7 +1665,7 @@ const appleAuth = async (req, res) => {
 
     if (!user) {
       const newReferralCode = await generateUniqueReferralCode();
-      const defaultEmail = resolvedEmail || `apple_${(resolvedAppleId || Date.now()).slice(-8)}@grandstore.co.za`;
+      const defaultEmail = resolvedEmail || `apple_${(resolvedAppleId || Date.now()).slice(-8)}@grandstoreglobal.com`;
 
       let referredByUser = null;
       if (referralCode) {
@@ -1657,13 +1713,15 @@ const appleAuth = async (req, res) => {
 // @access  Public
 const convertGuestToAccount = async (req, res) => {
   try {
-    const { orderId, password } = req.body;
+    const { orderId, password, guestAccessToken } = req.body;
     if (!orderId || !password) {
       return res.status(400).json({ message: 'Order ID and password are required' });
     }
     if (password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
+
+    const providedToken = guestAccessToken || req.headers['x-guest-access-token'] || req.query.token;
 
     const Order = require('../models/Order');
     const Shipment = require('../models/Shipment');
@@ -1680,6 +1738,14 @@ const convertGuestToAccount = async (req, res) => {
     }
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (!order.isGuest) {
+      return res.status(400).json({ message: 'This order is already associated with an account' });
+    }
+
+    if (!order.guestAccessToken || !providedToken || order.guestAccessToken !== providedToken) {
+      return res.status(403).json({ message: 'Invalid or missing guest access token for this order' });
     }
 
     const guestEmail = (order.guestInfo?.email || order.shippingAddress?.email || '').trim().toLowerCase();
@@ -1725,9 +1791,17 @@ const convertGuestToAccount = async (req, res) => {
       }
     } else {
       if (user.password) {
-        const isMatch = await bcrypt.compare(password, user.password);
+        const { isMatch, needsUpgrade } = await verifyPasswordAndCheckUpgrade(password, user);
         if (!isMatch) {
           return res.status(400).json({ message: 'An account with this email already exists. Please enter your existing password to link this order.' });
+        }
+        if (needsUpgrade) {
+          try {
+            user.password = await bcrypt.hash(password, 10);
+            await user.save();
+          } catch (upgradeErr) {
+            console.warn('Auto-upgrade to bcrypt hash failed in convertGuestOrder:', upgradeErr.message);
+          }
         }
       } else {
         const salt = await bcrypt.genSalt(10);
@@ -1739,13 +1813,49 @@ const convertGuestToAccount = async (req, res) => {
     // Link this order and all guest orders with this email to the user
     order.user = user._id;
     order.isGuest = false;
+    if (order.guestInfo) {
+      order.guestInfo.isLinkedToAccount = true;
+    }
     await order.save();
 
-    // Link any other guest orders matching this email
-    await Order.updateMany(
-      { isGuest: true, 'guestInfo.email': guestEmail, user: null },
-      { $set: { user: user._id, isGuest: false } }
-    );
+    // Link any other guest orders matching this email and calculate earned SuperCoins
+    const otherGuestOrders = await Order.find({
+      'guestInfo.email': guestEmail,
+      _id: { $ne: order._id }
+    });
+
+    let extraCoinsEarned = 0;
+    if (order.superCoinsEarned > 0) {
+      extraCoinsEarned += Number(order.superCoinsEarned);
+    }
+
+    for (const pastOrd of otherGuestOrders) {
+      pastOrd.user = user._id;
+      pastOrd.isGuest = false;
+      if (pastOrd.guestInfo) {
+        pastOrd.guestInfo.isLinkedToAccount = true;
+      }
+      await pastOrd.save();
+      if (pastOrd.superCoinsEarned > 0) {
+        extraCoinsEarned += Number(pastOrd.superCoinsEarned);
+      }
+    }
+
+    // Credit any earned SuperCoins from the linked orders if not already credited
+    if (extraCoinsEarned > 0) {
+      user.superCoinsBalance = (user.superCoinsBalance || 0) + extraCoinsEarned;
+      await user.save();
+
+      await SuperCoinLedger.create({
+        userId: user._id,
+        amount: extraCoinsEarned,
+        type: 'earned',
+        activity: 'order_reward',
+        status: 'completed',
+        description: `Credited ${extraCoinsEarned} Super Coins from linked guest order #${order.orderId || order.invoiceNumber}`,
+        balanceSnapshot: user.superCoinsBalance
+      }).catch(err => console.warn('SuperCoin ledger error on guest conversion:', err.message));
+    }
 
     // Link shipments
     await Shipment.updateMany(
@@ -1753,10 +1863,58 @@ const convertGuestToAccount = async (req, res) => {
       { $set: { customerId: user._id } }
     );
 
+    // Emit real-time notification to Vendor and Admin dashboards if socket.io is active
+    const io = req.app?.get('io') || global.io;
+    if (io) {
+      io.emit('customer:guest-converted', {
+        userId: user._id,
+        email: user.email,
+        name: user.name,
+        orderId: order._id,
+        orderNumber: order.orderId || order.invoiceNumber,
+        totalOrdersLinked: otherGuestOrders.length + 1,
+        superCoinsTotal: user.superCoinsBalance
+      });
+    }
+
     sendTokenResponse(user, 201, res);
   } catch (error) {
     console.error('Error converting guest to account:', error);
     res.status(500).json({ message: 'Server error converting account', error: error.message });
+  }
+};
+
+// @desc    Check if a guest email belongs to an existing registered user
+// @route   POST /api/auth/check-guest-email
+// @access  Public
+const checkGuestEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existingUser = await User.findOne({ email: cleanEmail }).select('_id name email phone phoneNumber superCoinsBalance isEmailVerified');
+
+    if (existingUser) {
+      return res.json({
+        exists: true,
+        user: {
+          id: existingUser._id,
+          name: existingUser.name,
+          email: existingUser.email,
+          phone: existingUser.phone || existingUser.phoneNumber || '',
+          superCoinsBalance: existingUser.superCoinsBalance || 0,
+          isEmailVerified: existingUser.isEmailVerified || false
+        }
+      });
+    }
+
+    return res.json({ exists: false });
+  } catch (error) {
+    console.error('Error checking guest email:', error);
+    res.status(500).json({ message: 'Error checking email', error: error.message });
   }
 };
 
@@ -1785,4 +1943,5 @@ module.exports = {
   verifyMagicLink,
   appleAuth,
   convertGuestToAccount,
+  checkGuestEmail,
 };

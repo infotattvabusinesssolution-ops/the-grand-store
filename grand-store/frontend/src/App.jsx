@@ -14,6 +14,7 @@ import './trade/TradeProfessional.css'
 import WineFarmPage from './features/wine-farm/WineFarmPage'
 import Hero from './features/home/components/Hero'
 import Arrivals from './features/home/components/Arrivals'
+import LuxuryPosterSection from './features/home/components/LuxuryPosterSection'
 import WhiskyShowcase from './features/home/components/WhiskyShowcase'
 import TastingCampaign from './features/home/components/TastingCampaign'
 import TequilaShowcase from './features/home/components/TequilaShowcase'
@@ -29,6 +30,7 @@ import Testimonials from './features/home/components/Testimonials'
 import LuxuryBannerSection from './features/home/components/LuxuryBannerSection'
 import AuctionCampaign from './features/home/components/AuctionCampaign'
 import AdminProducts from './features/admin/AdminProducts'
+import AdminLuxuryShowcase from './features/admin/AdminLuxuryShowcase'
 import AdminOrders from './features/admin/AdminOrders'
 import AdminOrderDetail from './features/admin/AdminOrderDetail'
 import LatestBlogs from './features/home/components/LatestBlogs'
@@ -100,7 +102,9 @@ import EstateDetail from './features/wine-farm/EstateDetail'
 import EventAttendees from './features/vendor/EventAttendees'
 import VendorInventory from './features/vendor/VendorInventory'
 import VendorWallet from './features/vendor/VendorWallet'
+import VendorBankDetails from './features/vendor/VendorBankDetails'
 import VendorOrders from './features/vendor/VendorOrders'
+import VendorOrderDetail from './features/vendor/VendorOrderDetail'
 import VendorShippingProfile from './features/vendor/VendorShippingProfile'
 import AdminLoginPage from './features/admin/AdminLoginPage'
 import AdminLayout from './features/admin/AdminLayout'
@@ -113,6 +117,8 @@ import AdminCoupons from './features/admin/AdminCoupons'
 import AdminExpertReviews from './features/admin/AdminExpertReviews'
 import AdminSettings from './features/admin/AdminSettings'
 import AdminTestimonials from './features/admin/AdminTestimonials'
+import AdminPartnerDestinations from './features/admin/AdminPartnerDestinations'
+import AdminBlogs from './features/admin/AdminBlogs'
 import AdminFinancials from './features/admin/AdminFinancials'
 import AdminBankTransfers from './features/admin/AdminBankTransfers'
 import AdminAccessories from './features/admin/AdminAccessories'
@@ -121,6 +127,8 @@ import AdminMarquees from './features/admin/AdminMarquees'
 import AdminTradeEnquiries from './features/admin/AdminTradeEnquiries'
 import AdminCigarEnquiries from './features/admin/AdminCigarEnquiries'
 import AdminCigarEnquiryDetail from './features/admin/AdminCigarEnquiryDetail'
+import AdminWineEnquiries from './features/admin/AdminWineEnquiries'
+import AdminWineEnquiryDetail from './features/admin/AdminWineEnquiryDetail'
 import AdminAttributes from './features/admin/AdminAttributes'
 import AdminAdvertisementRequests from './features/admin/AdminAdvertisementRequests'
 import AdminAdvertisementRequestDetail from './features/admin/AdminAdvertisementRequestDetail'
@@ -253,36 +261,92 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const { wishlistCount, toggleWishlist } = useWishlist();
-  const { products, loading } = useProducts();
+  const { products } = useProducts();
 
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem("grand-store-cart");
+      if (!stored) return [];
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((item) => ({
+          ...item,
+          quantity: Math.max(1, Number(item.quantity) || 1),
+          option: item.option || "Single bottle",
+        }));
+      }
+    } catch (e) {
+      console.error("Error reading cart from localStorage on init", e);
+    }
+    return [];
+  });
   const [compareItems, setCompareItems] = useState([]);
-  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Safely persist entire cart item payload to localStorage
+  const saveCartToStorage = (items) => {
+    try {
+      window.localStorage.setItem(
+        "grand-store-cart",
+        JSON.stringify(
+          items.map((item) => ({
+            id: item.id || item._id,
+            _id: item._id,
+            name: item.name || item.fullName,
+            fullName: item.fullName || item.name,
+            slug: item.slug,
+            price: item.price,
+            image: item.image,
+            brand: item.brand,
+            category: item.category,
+            storeId: item.storeId || item.vendorId || "admin",
+            storeName: item.storeName || "The Grand Store",
+            sku: item.sku,
+            origin: item.origin,
+            quantity: item.quantity,
+            option: item.option || "Single bottle",
+          })),
+        ),
+      );
+    } catch (e) {
+      console.error("Error saving cart to localStorage", e);
+    }
+  };
+
+  // When live catalog loads, enrich cart items without ever dropping or wiping out existing items
   useEffect(() => {
-    if (products.length > 0 && !isInitialized) {
-      try {
-        const storedItems = JSON.parse(
-          window.localStorage.getItem("grand-store-cart") || "[]",
-        );
-        setCartItems(
-          storedItems
-            .map((storedItem) => {
-              const product = products.find(
-                (item) =>
-                  item.id === storedItem.id || item._id === storedItem.id,
-              );
-              if (!product) return null;
-              return {
-                ...product,
-                quantity: Math.max(1, Number(storedItem.quantity) || 1),
-                option:
-                  storedItem.option || product.options?.[0] || "Pack of 1",
-              };
-            })
-            .filter(Boolean),
-        );
+    if (products.length > 0) {
+      setCartItems((prevItems) => {
+        if (!prevItems || prevItems.length === 0) return prevItems;
+        const enriched = prevItems.map((cartItem) => {
+          const prodId = cartItem.id || cartItem._id;
+          const matched = products.find(
+            (p) =>
+              (p.id && p.id === prodId) ||
+              (p._id && (p._id === prodId || String(p._id) === String(prodId))),
+          );
+          if (!matched) {
+            return cartItem; // Never drop un-matched items!
+          }
+          return {
+            ...matched,
+            ...cartItem,
+            name: matched.name || cartItem.name,
+            fullName: matched.name || cartItem.fullName || cartItem.name,
+            price: cartItem.price || matched.price,
+            image: matched.image || cartItem.image,
+            storeId: matched.storeId || matched.vendorId || cartItem.storeId || "admin",
+            storeName: matched.storeName || cartItem.storeName || "The Grand Store",
+            brand: matched.brand || cartItem.brand,
+            category: matched.category || cartItem.category,
+            quantity: cartItem.quantity,
+            option: cartItem.option || matched.options?.[0] || "Single bottle",
+          };
+        });
+        saveCartToStorage(enriched);
+        return enriched;
+      });
 
+      try {
         const storedIds = JSON.parse(
           window.localStorage.getItem("grand-store-compare") || "[]",
         );
@@ -297,36 +361,25 @@ function App() {
             .slice(0, 4),
         );
       } catch (e) {
-        console.error("Error loading cart/compare from storage", e);
+        console.error("Error loading compare from storage", e);
       }
-      setIsInitialized(true);
     }
-  }, [products, isInitialized]);
+  }, [products]);
+
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
   useEffect(() => {
-    if (!isInitialized) return;
-    window.localStorage.setItem(
-      "grand-store-cart",
-      JSON.stringify(
-        cartItems.map((item) => ({
-          id: item.id || item._id,
-          quantity: item.quantity,
-          option: item.option,
-        })),
-      ),
-    );
-  }, [cartItems, isInitialized]);
-  useEffect(() => {
-    if (!isInitialized) return;
-    window.localStorage.setItem(
-      "grand-store-compare",
-      JSON.stringify(compareItems.map((product) => product.id || product._id)),
-    );
-  }, [compareItems, isInitialized]);
+    try {
+      window.localStorage.setItem(
+        "grand-store-compare",
+        JSON.stringify(compareItems.map((product) => product.id || product._id)),
+      );
+    } catch (e) {}
+  }, [compareItems]);
 
   const showToast = (message) => {
     setToast(message);
@@ -337,25 +390,29 @@ function App() {
   const addToCart = (
     product,
     quantity = 1,
-    option = product.options?.[0] || "Pack of 1",
-    redirect = true
+    option = product.option || product.options?.[0] || "Single bottle",
+    redirect = true,
   ) => {
+    const prodId = product.id || product._id;
     setCartItems((items) => {
-      const prodId = product.id || product._id;
       const existingItem = items.find(
         (item) => (item.id || item._id) === prodId && item.option === option,
       );
+      let updated;
       if (existingItem) {
-        return items.map((item) =>
+        updated = items.map((item) =>
           (item.id || item._id) === prodId && item.option === option
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, ...product, quantity: item.quantity + quantity }
             : item,
         );
+      } else {
+        updated = [...items, { ...product, quantity, option }];
       }
-      return [...items, { ...product, quantity, option }];
+      saveCartToStorage(updated);
+      return updated;
     });
     showToast(
-      `${quantity > 1 ? `${quantity} × ` : ""}${product.name} added to your bag`,
+      `${quantity > 1 ? `${quantity} × ` : ""}${product.name || product.fullName || "Product"} added to your bag`,
     );
     if (redirect) {
       navigate("/customer/cart");
@@ -363,44 +420,52 @@ function App() {
   };
 
   const updateCartQuantity = (productId, option, quantity) => {
-    if (quantity < 1) {
-      setCartItems((items) =>
-        items.filter(
+    setCartItems((items) => {
+      let updated;
+      if (quantity < 1) {
+        updated = items.filter(
           (item) =>
             !((item.id || item._id) === productId && item.option === option),
-        ),
-      );
-      return;
-    }
-    setCartItems((items) =>
-      items.map((item) =>
-        (item.id || item._id) === productId && item.option === option
-          ? { ...item, quantity }
-          : item,
-      ),
-    );
+        );
+      } else {
+        updated = items.map((item) =>
+          (item.id || item._id) === productId && item.option === option
+            ? { ...item, quantity }
+            : item,
+        );
+      }
+      saveCartToStorage(updated);
+      return updated;
+    });
   };
 
   const removeFromCart = (product) => {
     const prodId = product.id || product._id;
-    setCartItems((items) =>
-      items.filter(
+    setCartItems((items) => {
+      const updated = items.filter(
         (item) =>
           !((item.id || item._id) === prodId && item.option === product.option),
-      ),
-    );
-    showToast(`${product.name} removed from your bag`);
+      );
+      saveCartToStorage(updated);
+      return updated;
+    });
+    showToast(`${product.name || product.fullName || "Product"} removed from your bag`);
   };
 
   const clearCart = () => {
     setCartItems([]);
+    saveCartToStorage([]);
     showToast("Your cart has been cleared");
   };
 
   const clearVendorCart = (vendorId) => {
-    setCartItems((items) =>
-      items.filter((item) => (item.storeId || item.vendorId) !== vendorId),
-    );
+    setCartItems((items) => {
+      const updated = items.filter(
+        (item) => (item.storeId || item.vendorId) !== vendorId,
+      );
+      saveCartToStorage(updated);
+      return updated;
+    });
   };
 
   const handleWishlist = (product) => {
@@ -445,14 +510,6 @@ function App() {
   const isAuthRoute =
     location.pathname === "/login" || location.pathname === "/register" || location.pathname === "/verify-email" || location.pathname === "/forgot-password" || location.pathname.startsWith("/reset-password");
   const isEstateRoute = location.pathname.startsWith("/estate");
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0a0907] flex items-center justify-center text-[#e1bd70]">
-        Loading...
-      </div>
-    );
-  }
 
   return (
     <div className="app">
@@ -508,6 +565,10 @@ function App() {
                 onWish={handleWishlist}
                 onCompare={addToCompare}
                 compareItems={compareItems}
+              />
+              <LuxuryPosterSection
+                onAdd={addToCart}
+                onWish={handleWishlist}
               />
               <WhiskyShowcase
                 onAdd={addToCart}
@@ -695,7 +756,15 @@ function App() {
           element={<OrderSuccessPage onClearCart={clearCart} />}
         />
         <Route
+          path="/orders/:id"
+          element={<OrderSuccessPage onClearCart={clearCart} />}
+        />
+        <Route
           path="/customer/event-order/:id"
+          element={<EventSuccessPage />}
+        />
+        <Route
+          path="/events/booking-success/:id"
           element={<EventSuccessPage />}
         />
         <Route
@@ -785,8 +854,10 @@ function App() {
         <Route path="/vendor" element={<VendorLayout />}>
           <Route path="dashboard" element={<VendorDashboard />} />
           <Route path="orders" element={<VendorOrders />} />
+          <Route path="orders/:id" element={<VendorOrderDetail onNotify={showToast} />} />
           <Route path="inventory" element={<VendorInventory />} />
           <Route path="wallet" element={<VendorWallet />} />
+          <Route path="banking" element={<VendorBankDetails />} />
           <Route path="marketing" element={<VendorMarketing />} />
           <Route path="academy" element={<VendorAcademy />} />
           <Route path="products" element={<VendorProducts />} />
@@ -844,6 +915,14 @@ function App() {
           <Route path="expert-reviews" element={<AdminExpertReviews />} />
           <Route path="accessories" element={<AdminAccessories />} />
           <Route path="testimonials" element={<AdminTestimonials />} />
+          <Route
+            path="partner-destinations"
+            element={<AdminPartnerDestinations onNotify={showToast} />}
+          />
+          <Route
+            path="blogs"
+            element={<AdminBlogs onNotify={showToast} />}
+          />
           <Route path="attributes" element={<AdminAttributes />} />
           <Route path="host-applications" element={<AdminHostApplications />} />
           <Route
@@ -864,16 +943,18 @@ function App() {
           />
           <Route path="events" element={<AdminEventsPanel onNotify={showToast} />} />
           <Route path="settings" element={<AdminSettings />} />
-          <Route path="testimonials" element={<AdminTestimonials />} />
           <Route path="trade-enquiries" element={<AdminTradeEnquiries />} />
           <Route path="cigar-enquiries" element={<AdminCigarEnquiries />} />
           <Route path="cigar-enquiries/:id" element={<AdminCigarEnquiryDetail />} />
+          <Route path="wine-enquiries" element={<AdminWineEnquiries />} />
+          <Route path="wine-enquiries/:id" element={<AdminWineEnquiryDetail />} />
           <Route path="financials" element={<AdminFinancials />} />
           <Route path="bank-transfers" element={<AdminBankTransfers />} />
           <Route path="glossary" element={<AdminGlossary />} />
           <Route path="newsletter" element={<AdminNewsletter />} />
           <Route path="chatbot" element={<AdminChatbot />} />
           <Route path="products" element={<AdminProducts />} />
+          <Route path="luxury-showcase" element={<AdminLuxuryShowcase />} />
 
           <Route path="orders" element={<AdminOrders />} />
           <Route path="orders/:id" element={<AdminOrderDetail onNotify={showToast} />} />
@@ -891,6 +972,10 @@ function App() {
         <Route path="/auctions" element={<Navigate to="/auction" replace />} />
         <Route
           path="/auction/:id"
+          element={<AuctionLotDetail onNotify={showToast} />}
+        />
+        <Route
+          path="/auction/lot/:id"
           element={<AuctionLotDetail onNotify={showToast} />}
         />
         <Route

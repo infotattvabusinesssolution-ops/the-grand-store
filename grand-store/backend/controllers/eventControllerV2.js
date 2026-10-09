@@ -358,7 +358,13 @@ const bookEvent = async (req, res) => {
       }
     }
 
-    return res.status(201).json(savedBooking);
+    const bookingResponse = savedBooking.toObject ? savedBooking.toObject() : { ...savedBooking };
+    if (!["Paid", "Completed"].includes(bookingResponse.paymentStatus)) {
+      delete bookingResponse.ticketId;
+      delete bookingResponse.qrCodeData;
+    }
+
+    return res.status(201).json(bookingResponse);
   } catch (error) {
     console.error("Error booking event:", error);
     return res.status(error.statusCode || 500).json({
@@ -381,7 +387,9 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
     }
     if (!booking) throw new Error("Event booking not found");
 
-    if (booking.paymentStatus === "Refunded") throw new Error("Refunded bookings cannot be paid again");
+    if (["Refunded", "Cancelled", "Failed"].includes(booking.paymentStatus)) {
+      throw new Error(`Cannot process payment for ${booking.paymentStatus.toLowerCase()} booking`);
+    }
 
     const event = await Event.findById(booking.event);
     if (!event) throw new Error("Event not found for booking");
@@ -574,6 +582,88 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
   return { success: true, booking: result.booking, event: result.event };
 };
 
+const cancelEventPayment = async (bookingId, reason = "Payment cancelled") => {
+  try {
+    let booking = null;
+    if (mongoose.Types.ObjectId.isValid(bookingId)) {
+      booking = await Booking.findById(bookingId);
+    }
+    if (!booking) {
+      booking = await Booking.findOne({ $or: [{ ticketId: bookingId }, { gsReference: bookingId }] });
+    }
+    if (!booking) {
+      return { cancelled: false, message: "Event booking not found" };
+    }
+
+    if (["Paid", "Completed"].includes(booking.paymentStatus)) {
+      return { cancelled: false, message: "Paid booking cannot be cancelled via gateway cancel" };
+    }
+
+    // Release reserved seats from event tier
+    if (booking.inventoryStatus === "reserved") {
+      const event = await Event.findById(booking.event);
+      if (event && event.ticketTiers) {
+        const tier = booking.ticketTierId
+          ? event.ticketTiers.id(booking.ticketTierId)
+          : event.ticketTiers.find((item) => item.name === booking.ticketType);
+        if (tier) {
+          tier.reserved = Math.max(0, (tier.reserved || 0) - booking.quantity);
+          await event.save();
+        }
+      }
+      booking.inventoryStatus = "released";
+    }
+
+    booking.paymentStatus = "Cancelled";
+    booking.ticketStatus = "Cancelled";
+    booking.reservationExpiresAt = null;
+    booking.cancellationReason = reason;
+    booking.cancelledAt = new Date();
+    await booking.save();
+
+    // Dispatch payment failure notice to customer's Gmail
+    if (!booking.failureEmailDispatched) {
+      try {
+        const { sendEmail } = require("../utils/emailService");
+        const { paymentFailedEmailTemplate } = require("../utils/emailTemplates");
+        const User = require("../models/User");
+        const userId = booking.user?._id || (mongoose.Types.ObjectId.isValid(booking.user) ? booking.user : null);
+        const user = userId ? await User.findById(userId) : null;
+        const recipientEmail = booking.user?.email || user?.email || booking.customerEmail;
+        const customerName = booking.user?.name || user?.name || "Valued Patron";
+        const event = await Event.findById(booking.event);
+
+        if (recipientEmail) {
+          const storeUrl = process.env.FRONTEND_URL || "https://grandstoreglobal.com";
+          const retryUrl = `${storeUrl}/customer/event-order/${booking._id}?payment=cancel`;
+          await sendEmail({
+            to: recipientEmail,
+            subject: `Payment Notice • Event Booking [${booking.ticketId || booking.gsReference}] Unsuccessful`,
+            html: paymentFailedEmailTemplate({
+              customerName,
+              reference: booking.ticketId || booking.gsReference || String(booking._id),
+              itemName: `Event Ticket: ${event?.title || "Grand Store Event"} (${booking.quantity}x ${booking.ticketType})`,
+              amount: booking.totalPrice,
+              retryUrl,
+              reason: reason || "Your ticket payment attempt was cancelled or could not be completed on PayFast. Reserved tickets have been released.",
+            }),
+          });
+          booking.failureEmailDispatched = true;
+          await booking.save();
+        }
+      } catch (emailErr) {
+        console.warn("cancelEventPayment: failed to send payment failure email:", emailErr.message);
+      }
+    }
+
+    console.log(`[EVENT TICKET] Successfully cancelled booking ${booking._id} (${booking.gsReference}): ${reason}`);
+    return { cancelled: true, booking };
+  } catch (err) {
+    console.error("Error in cancelEventPayment:", err);
+    throw err;
+  }
+};
+
 // Public/authenticated endpoint to download ticket pass as PDF
 const downloadTicketPdf = async (req, res) => {
   try {
@@ -586,6 +676,13 @@ const downloadTicketPdf = async (req, res) => {
       booking = await Booking.findOne({ $or: [{ ticketId: bookingId }, { gsReference: bookingId }] });
     }
     if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+    const isPaid = ["Paid", "Completed"].includes(booking.paymentStatus);
+    if (!isPaid) {
+      return res.status(403).json({
+        message: "VIP Admission pass and official PDF ticket are locked until payment is verified and cleared."
+      });
+    }
 
     const eventId = booking.event?._id || booking.event;
     const event = (booking.event && booking.event.title) ? booking.event : (eventId ? await Event.findById(eventId) : null);
@@ -665,7 +762,6 @@ const resendTicketEmail = async (req, res) => {
     }
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-    // Authorization check
     if (
       req.user &&
       booking.user &&
@@ -674,6 +770,13 @@ const resendTicketEmail = async (req, res) => {
       req.user.role !== "superadmin"
     ) {
       return res.status(403).json({ message: "Not authorized to resend tickets for this booking" });
+    }
+
+    const isPaid = ["Paid", "Completed"].includes(booking.paymentStatus);
+    if (!isPaid) {
+      return res.status(403).json({
+        message: "VIP Admission pass email is only available after payment has been verified."
+      });
     }
 
     const eventId = booking.event?._id || booking.event;
@@ -1101,6 +1204,7 @@ const releaseExpiredReservations = async (now = new Date()) => {
       booking.paymentStatus = "Failed";
       booking.ticketStatus = "Cancelled";
       booking.inventoryStatus = "released";
+      booking.reservationExpiresAt = null;
       await booking.save();
       released += 1;
     } catch (err) {
@@ -1115,7 +1219,18 @@ const getUserBookings = async (req, res) => {
     const bookings = await Booking.find({ user: req.user._id })
       .populate("event", "title date startTime endTime location image status")
       .sort({ bookingDate: -1 });
-    return res.json(bookings);
+
+    const sanitizedBookings = bookings.map((b) => {
+      const doc = b.toObject ? b.toObject() : { ...b };
+      const isPaid = ["Paid", "Completed"].includes(doc.paymentStatus);
+      if (!isPaid) {
+        delete doc.ticketId;
+        delete doc.qrCodeData;
+      }
+      return doc;
+    });
+
+    return res.json(sanitizedBookings);
   } catch (error) {
     console.error("Error fetching user bookings:", error);
     return res.status(500).json({ message: "Server error fetching tickets" });
@@ -1141,7 +1256,7 @@ const getEventAttendees = async (req, res) => {
 const extractTicketIdentifier = (input) => {
   if (!input) return "";
   if (typeof input === "object") {
-    return input.ticketId || input.ticket_id || input.id || input._id || input.gsReference || "";
+    return input.ticketId || input.ticket_id || input.code || input.ticketCode || input.id || input._id || input.gsReference || "";
   }
   let str = String(input).trim();
   // Strip enclosing single/double quotes if present
@@ -1153,7 +1268,7 @@ const extractTicketIdentifier = (input) => {
     try {
       const parsed = JSON.parse(str);
       if (parsed && typeof parsed === "object") {
-        return parsed.ticketId || parsed.ticket_id || parsed.id || parsed._id || parsed.gsReference || str;
+        return parsed.ticketId || parsed.ticket_id || parsed.code || parsed.ticketCode || parsed.id || parsed._id || parsed.gsReference || str;
       }
     } catch (_) {}
   }
@@ -1169,7 +1284,7 @@ const extractTicketIdentifier = (input) => {
 
 const verifyTicket = async (req, res) => {
   try {
-    const rawInput = req.body.ticketId || req.body.code || req.body.data || req.body.qrData || req.body.ticket;
+    const rawInput = req.body.ticketId || req.body.code || req.body.data || req.body.qrData || req.body.qrPayload || req.body.ticketCode || req.body.ticket || req.body.gsReference || req.body.id || req.body._id || (typeof req.body === 'string' ? req.body : (req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : null));
     const identifier = extractTicketIdentifier(rawInput);
 
     if (!identifier) {
@@ -1272,6 +1387,7 @@ module.exports = {
   joinWaitlist,
   normalizeEventInput,
   processEventPayment,
+  cancelEventPayment,
   rejectEventBankTransfer,
   rejectEvent,
   releaseExpiredReservations,

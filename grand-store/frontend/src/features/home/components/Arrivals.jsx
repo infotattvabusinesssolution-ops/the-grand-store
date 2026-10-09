@@ -54,7 +54,7 @@ const SLOT_DEFINITIONS = [
 ];
 
 export default function Arrivals({ onAdd, onWish, onCompare, compareItems }) {
-  const { products } = useProducts();
+  const { products, loading } = useProducts();
   const sectionRef = useRef(null);
   const gridRef = useRef(null);
 
@@ -65,8 +65,8 @@ export default function Arrivals({ onAdd, onWish, onCompare, compareItems }) {
       .filter((p) => !p.vendorId || p.approvalStatus === "approved")
       .filter((p) => String(p.category || p.type || "").toLowerCase() !== "accessories")
       .sort((a, b) => {
-        const first = Date.parse(a.createdAt || "") || 0;
-        const second = Date.parse(b.createdAt || "") || 0;
+        const first = new Date(a.createdAt || a.updatedAt || 0).getTime() || 0;
+        const second = new Date(b.createdAt || b.updatedAt || 0).getTime() || 0;
         return second - first;
       });
   }, [products]);
@@ -177,19 +177,35 @@ export default function Arrivals({ onAdd, onWish, onCompare, compareItems }) {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {currentProducts.map((product, index) => (
-            <ProductCard
-              key={`${product.id || product._id}-${index}`}
-              product={product}
-              index={index}
-              onAdd={onAdd}
-              onWish={onWish}
-              onCompare={onCompare}
-              isCompared={compareItems.some(
-                (item) => (item.id || item._id) === (product.id || product._id),
-              )}
-            />
-          ))}
+          {currentProducts.length > 0 ? (
+            currentProducts.map((product, index) => (
+              <ProductCard
+                key={`${product.id || product._id}-${index}`}
+                product={product}
+                index={index}
+                onAdd={onAdd}
+                onWish={onWish}
+                onCompare={onCompare}
+                isCompared={compareItems.some(
+                  (item) => (item.id || item._id) === (product.id || product._id),
+                )}
+              />
+            ))
+          ) : (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={`arrival-skeleton-${i}`}
+                className="product-card animate-pulse rounded-2xl bg-white/[0.02] border border-white/5 p-4 min-h-[360px] flex flex-col justify-between"
+              >
+                <div className="w-full h-48 bg-white/5 rounded-xl mb-4" />
+                <div className="space-y-2">
+                  <div className="w-2/3 h-3 bg-white/5 rounded" />
+                  <div className="w-full h-4 bg-white/10 rounded" />
+                  <div className="w-1/3 h-4 bg-white/5 rounded" />
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         <p className="swipe-hint">

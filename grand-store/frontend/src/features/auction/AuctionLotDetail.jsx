@@ -16,7 +16,8 @@ import GoldenCelebrationShower from './GoldenCelebrationShower';
 import MagicalBidEffect from './MagicalBidEffect';
 import AuctionWinnerCelebrationModal from './components/AuctionWinnerCelebrationModal';
 import AuctionAcquisitionCertificate from './components/AuctionAcquisitionCertificate';
-import { useCurrency } from '../../context/CurrencyContext';
+import { useCurrency, getCountryForCurrency, CURRENCY_SYMBOLS, ZERO_DECIMAL_CURRENCIES } from '../../context/CurrencyContext';
+import { CountryFlag } from '../../components/CountryCodeSelect';
 
 const formatRelativeTime = (dateStr) => {
   if (!dateStr) return '';
@@ -69,28 +70,32 @@ export default function AuctionLotDetail({ onNotify }) {
   const { currency, rates, changeCurrency, availableCurrencies } = useCurrency();
 
   const [now, setNow] = useState(() => Date.now());
+  const [shareToast, setShareToast] = useState(false);
 
-  const CURRENCY_SYMBOLS = {
-    ZAR: 'R',
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-    INR: '₹',
-    AUD: 'A$',
-    CAD: 'C$',
-    JPY: '¥',
-    CNY: '¥',
-    CHF: 'CHF',
-    AED: 'AED',
-    SGD: 'S$',
-    HKD: 'HK$',
-    NZD: 'NZ$',
-    BRL: 'R$',
-    KRW: '₩',
-    THB: '฿',
-    NGN: '₦',
-    KES: 'KSh',
-    GHS: 'GH₵',
+  const handleShare = async () => {
+    if (!lot) return;
+    const shareData = {
+      title: `${lot.title} | The Grand Store Auction`,
+      text: `Inspect Lot #${lot.lotNumber}: ${lot.title} on The Grand Store Auction Vault`,
+      url: window.location.href,
+    };
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error(err);
+        }
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShareToast(true);
+      setTimeout(() => setShareToast(false), 2400);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const fetchBidderProfile = async () => {
@@ -147,6 +152,27 @@ export default function AuctionLotDetail({ onNotify }) {
       clearInterval(interval);
     };
   }, [id]);
+
+  useEffect(() => {
+    let pollInterval = null;
+    if (paymentStatus === 'success' && id) {
+      fetchLot();
+      let attempts = 0;
+      pollInterval = setInterval(async () => {
+        attempts += 1;
+        await fetchLot();
+        if (attempts >= 10) clearInterval(pollInterval);
+      }, 2500);
+    } else if (paymentStatus === 'cancel' && id) {
+      api.post('/payfast/cancel-payment', { auctionId: id })
+        .then(() => fetchLot())
+        .catch(err => console.log('Auction cancel-payment result:', err));
+    }
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [paymentStatus, id]);
 
   const userInfo = (() => {
     try {
@@ -358,13 +384,13 @@ export default function AuctionLotDetail({ onNotify }) {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-white font-serif">Loading Luxury Lot...</div>;
   if (!lot) return <div className="min-h-screen flex items-center justify-center text-white font-serif">Lot not found</div>;
 
-  const isAdmin = user && user.role === 'admin';
+  const isAdmin = Boolean(user && ['admin', 'super_admin'].includes(user.role));
   const isVendor = user && lot.vendor && (user._id === (typeof lot.vendor === 'object' ? lot.vendor._id : lot.vendor));
 
   const vendorName = lot.vendor ? (lot.vendor.storeName || lot.vendor.name) : 'The Grand Store';
 
   const currentUserId = user?._id;
-  const isRestrictedRole = user?.role === 'admin' || user?.role === 'vendor_active';
+  const isRestrictedRole = user && (['admin', 'super_admin', 'vendor_active'].includes(user.role));
   const targetTime = isUpcoming && lot?.startDate ? new Date(lot.startDate).getTime() : new Date(lot.endDate).getTime();
 
   const currentValuation = hasEnded && lot.winningBid ? lot.winningBid : (lot.currentBid || lot.startingBid || 0);
@@ -428,23 +454,57 @@ export default function AuctionLotDetail({ onNotify }) {
         schema={auctionSchema}
       />
       
-      {/* Top Navigation Bar */}
-      <nav className="w-full border-b border-white/[0.05] bg-[#050505] sticky top-0 z-50 px-8 py-6 flex items-center justify-between">
-        <Link to="/auction" className="inline-flex items-center gap-3 text-[10px] uppercase tracking-widest font-bold text-[var(--color-ivory-muted)] hover:text-[var(--color-gold)] transition-colors group">
-          <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-          Back to Live Catalogue
-        </Link>
-        <div className="flex items-center gap-4">
-           {isLive && !hasEnded && (
-             <span className="flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold text-red-500">
-               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> Live
-             </span>
-           )}
-           <span className="text-[10px] uppercase tracking-widest font-bold text-[var(--color-ivory-muted)] px-3 py-1 border border-white/10 rounded-full">
-             Lot {lot.lotNumber}
-           </span>
+      {/* Top Navigation Bar - Centered, Minimal Luxury */}
+      <nav className="w-full border-b border-white/[0.08] bg-[#050505]/95 backdrop-blur-xl sticky top-0 z-50 px-4 sm:px-8 py-3 shadow-[0_4px_24px_rgba(0,0,0,0.6)]">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          
+          {/* Left: Clean, Elegant Return to Catalogue */}
+          <Link 
+            to="/auction" 
+            className="inline-flex items-center gap-2 text-stone-400 hover:text-[#f5d77f] text-xs uppercase tracking-widest font-semibold transition-all group active:scale-95"
+            aria-label="Return to live catalogue"
+          >
+            <ChevronLeft size={16} className="text-[#c9a35b] group-hover:-translate-x-0.5 transition-transform shrink-0" />
+            <span className="hidden sm:inline">Back to Live Catalogue</span>
+            <span className="sm:hidden text-[11px]">Catalogue</span>
+          </Link>
+
+          {/* Right: Live Bidding / Auction Phase Indicator */}
+          <div className="flex items-center gap-2">
+            {isLive && !hasEnded ? (
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-950/40 border border-red-500/30 text-red-400 text-[11px] font-bold uppercase tracking-wider shadow-[0_0_12px_rgba(239,68,68,0.25)]">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]" />
+                </span>
+                <span>Live Bidding Open</span>
+              </div>
+            ) : isUpcoming ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-950/40 border border-blue-500/30 text-blue-400 text-[11px] font-bold uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                <span>Upcoming Lot</span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/5 border border-white/10 text-stone-400 text-[11px] font-bold uppercase tracking-wider">
+                <span>Auction Concluded</span>
+              </div>
+            )}
+          </div>
+
         </div>
       </nav>
+      
+      {paymentStatus === 'cancel' && (
+        <div className="bg-rose-500/10 border-b border-rose-500/20 px-4 py-3 text-center text-xs font-mono text-rose-300 flex items-center justify-center gap-2">
+          <span>Checkout was cancelled. No funds were debited. You can resume and complete lot settlement anytime below.</span>
+        </div>
+      )}
+      {paymentStatus === 'success' && (
+        <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-4 py-3 text-center text-xs font-mono text-emerald-300 flex items-center justify-center gap-2">
+          <CheckCircle2 size={14} className="text-emerald-400" />
+          <span>Payment successful! Your acquisition of this lot is confirmed and logged in the Grand Store Vault.</span>
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row w-full min-h-[calc(100vh-80px)]">
         
@@ -548,24 +608,39 @@ export default function AuctionLotDetail({ onNotify }) {
             
             {/* Header section */}
             <div className="mb-12">
-              <div className="flex flex-wrap items-center gap-3 mb-6">
-                <span className="text-gold-gradient text-[11px] uppercase tracking-widest font-bold">
-                  LOT {lot.lotNumber || `GS-${lot._id.slice(-6).toUpperCase()}`}
-                </span>
-                <span className="text-white/20">•</span>
-                <span className="text-white/60 text-[11px] uppercase tracking-widest font-medium">{lot.category}</span>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="text-gold-gradient text-[11px] uppercase tracking-widest font-bold">
+                    LOT {lot.lotNumber || `GS-${lot._id.slice(-6).toUpperCase()}`}
+                  </span>
+                  <span className="text-white/20">•</span>
+                  <span className="text-white/60 text-[11px] uppercase tracking-widest font-medium">{lot.category}</span>
+                </div>
                 
-                {isLive && (
-                  lot.reserveMet ? (
-                    <span className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      🟢 Reserve Met
-                    </span>
-                  ) : (
-                    <span className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      🔴 Reserve Not Met
-                    </span>
-                  )
-                )}
+                <div className="flex items-center gap-2.5 ml-auto">
+                  {/* Share button */}
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] hover:bg-[#c9a35b]/15 border border-white/10 hover:border-[#c9a35b]/40 text-stone-300 hover:text-[#f5d77f] text-xs font-medium transition-all cursor-pointer shadow-sm active:scale-95"
+                    title="Share this lot"
+                  >
+                    <Share2 size={12} className="text-[#c9a35b]" />
+                    <span>Share</span>
+                  </button>
+
+                  {isLive && (
+                    lot.reserveMet ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        🟢 Reserve Met
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        🔴 Reserve Not Met
+                      </span>
+                    )
+                  )}
+                </div>
               </div>
 
               {lot.isExtended && (
@@ -766,33 +841,42 @@ export default function AuctionLotDetail({ onNotify }) {
                               className="flex items-center gap-1.5 bg-black/80 hover:bg-white/10 border border-white/20 hover:border-[var(--color-gold)]/60 px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold text-[#f5d77f] transition-all cursor-pointer shadow-md"
                               title="Change bidding currency"
                             >
-                              <span>{activeSymbol}</span>
+                              <CountryFlag iso={getCountryForCurrency(currency)} className="rounded-xs shrink-0" />
+                              {activeSymbol !== currency && (
+                                <span className="text-white/90">{activeSymbol}</span>
+                              )}
                               <span className="text-[11px] text-white/70">{currency}</span>
                               <ChevronDown size={11} className={`text-white/40 transition-transform ${showCurrencyDropdown ? 'rotate-180' : ''}`} />
                             </button>
 
                             {/* Currency Dropdown Menu */}
                             {showCurrencyDropdown && (
-                              <div className="absolute top-full left-0 mt-2 w-44 bg-[#12110e] border border-[#c9a35b]/40 rounded-xl shadow-2xl py-2 z-50 max-h-56 overflow-y-auto scrollbar-thin">
+                              <div className="absolute top-full left-0 mt-2 w-48 bg-[#12110e] border border-[#c9a35b]/40 rounded-xl shadow-2xl py-2 z-50 max-h-56 overflow-y-auto scrollbar-thin">
                                 <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-white/40 font-bold border-b border-white/5 mb-1">
                                   Select Currency
                                 </div>
-                                {(availableCurrencies || ['ZAR', 'USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD']).map((c) => (
-                                  <button
-                                    key={c}
-                                    type="button"
-                                    onClick={() => {
-                                      changeCurrency(c);
-                                      setShowCurrencyDropdown(false);
-                                    }}
-                                    className={`w-full px-3 py-1.5 text-left text-xs font-mono flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer ${
-                                      currency === c ? 'text-[#f5d77f] font-bold bg-white/5' : 'text-white/70'
-                                    }`}
-                                  >
-                                    <span>{CURRENCY_SYMBOLS[c] || c} {c}</span>
-                                    {currency === c && <Check size={12} className="text-[#f5d77f]" />}
-                                  </button>
-                                ))}
+                                {(availableCurrencies || ['ZAR', 'USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD']).map((c) => {
+                                  const sym = CURRENCY_SYMBOLS[c] || c;
+                                  return (
+                                    <button
+                                      key={c}
+                                      type="button"
+                                      onClick={() => {
+                                        changeCurrency(c);
+                                        setShowCurrencyDropdown(false);
+                                      }}
+                                      className={`w-full px-3 py-1.5 text-left text-xs font-mono flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer ${
+                                        currency === c ? 'text-[#f5d77f] font-bold bg-white/5' : 'text-white/70'
+                                      }`}
+                                    >
+                                      <span className="flex items-center gap-2">
+                                        <CountryFlag iso={getCountryForCurrency(c)} className="rounded-xs shrink-0" />
+                                        <span>{sym !== c ? `${sym} ` : ''}{c}</span>
+                                      </span>
+                                      {currency === c && <Check size={12} className="text-[#f5d77f] shrink-0" />}
+                                    </button>
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
@@ -802,10 +886,10 @@ export default function AuctionLotDetail({ onNotify }) {
                             required
                             value={bidAmount}
                             onChange={(e) => setBidAmount(e.target.value)}
-                            placeholder={`Min: ${nextMinimumInCurrency.toLocaleString(undefined, { minimumFractionDigits: currency === 'ZAR' ? 0 : 2, maximumFractionDigits: 2 })}`}
+                            placeholder={`Min: ${nextMinimumInCurrency.toLocaleString(undefined, { minimumFractionDigits: currency === 'ZAR' || ZERO_DECIMAL_CURRENCIES.has(currency) ? 0 : 2, maximumFractionDigits: currency === 'ZAR' || ZERO_DECIMAL_CURRENCIES.has(currency) ? 0 : 2 })}`}
                             min={nextMinimumInCurrency}
-                            step={currency === 'ZAR' ? "1" : "0.01"}
-                            className="w-full bg-transparent border border-white/20 rounded-none py-5 pl-28 pr-6 text-xl font-mono text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)] transition-colors placeholder-white/20"
+                            step={currency === 'ZAR' || ZERO_DECIMAL_CURRENCIES.has(currency) ? "1" : "0.01"}
+                            className="w-full bg-transparent border border-white/20 rounded-none py-5 pl-32 pr-6 text-xl font-mono text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)] transition-colors placeholder-white/20"
                           />
                        </div>
 
@@ -857,38 +941,40 @@ export default function AuctionLotDetail({ onNotify }) {
                ) : (
                   <div className="flex flex-col gap-6">
                     {lot.status === 'sold' && isWinner ? (
-                      <div id="acquisition-certificate" className="gs-acquisition-shell">
-                        <AuctionAcquisitionCertificate lot={lot} user={user} bidderProfile={bidderProfile} />
+                      <div className="space-y-4">
+                        <div id="acquisition-certificate" className="gs-acquisition-shell">
+                          <AuctionAcquisitionCertificate lot={lot} user={user} bidderProfile={bidderProfile} />
 
-                        {/* 11. Download, Share & Action Buttons */}
-                        <div className="relative z-10 pt-4 grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={handleDownloadCertificate}
-                            disabled={downloadingCert}
-                            className="w-full col-span-2 flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-[#161616] hover:bg-black text-[#f5d77f] border border-[#c5a059] font-sans font-bold uppercase tracking-widest text-xs transition-all shadow-md hover:shadow-lg cursor-pointer disabled:opacity-50"
-                          >
-                            <Download size={16} className={downloadingCert ? "animate-bounce" : ""} />
-                            <span>{downloadingCert ? "Downloading PDF..." : "Download Official Certificate"}</span>
-                          </button>
+                          {/* 11. Download, Share & Action Buttons */}
+                          <div className="relative z-10 pt-5 grid grid-cols-2 gap-3 border-t border-[#b99b60]/30 mt-4">
+                            <button
+                              type="button"
+                              onClick={handleDownloadCertificate}
+                              disabled={downloadingCert}
+                              className="w-full col-span-2 flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-[#ffd700] via-[#f5d77f] to-[#d4af37] hover:brightness-110 text-black font-sans font-black uppercase tracking-widest text-sm transition-all shadow-[0_4px_25px_rgba(212,175,55,0.5)] hover:shadow-[0_6px_35px_rgba(212,175,55,0.8)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-50"
+                            >
+                              <Download size={18} className={downloadingCert ? "animate-bounce" : ""} />
+                              <span>{downloadingCert ? "Downloading PDF..." : "Download Official Certificate (PDF)"}</span>
+                            </button>
 
-                          <button
-                            type="button"
-                            onClick={handleShareCertificate}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-[#c5a059]/15 hover:bg-[#c5a059]/25 text-[#705214] border border-[#c5a059]/50 font-sans font-bold uppercase tracking-widest text-xs transition-all cursor-pointer shadow-sm"
-                          >
-                            <Share2 size={15} />
-                            <span>Share</span>
-                          </button>
-                          
-                          <button
-                            type="button"
-                            onClick={handlePrintCertificate}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-white hover:bg-stone-100 text-[#332e27] border border-stone-300 font-sans font-bold uppercase tracking-widest text-xs transition-all cursor-pointer shadow-sm"
-                          >
-                            <Printer size={15} />
-                            <span>Print</span>
-                          </button>
+                            <button
+                              type="button"
+                              onClick={handleShareCertificate}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#f0e8d8] hover:bg-[#e4d8c2] text-[#29261f] border border-[#b99b60] font-sans font-bold uppercase tracking-widest text-xs transition-all cursor-pointer shadow-sm hover:shadow"
+                            >
+                              <Share2 size={15} />
+                              <span>Share Certificate</span>
+                            </button>
+                            
+                            <button
+                              type="button"
+                              onClick={handlePrintCertificate}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#f0e8d8] hover:bg-[#e4d8c2] text-[#29261f] border border-[#b99b60] font-sans font-bold uppercase tracking-widest text-xs transition-all cursor-pointer shadow-sm hover:shadow"
+                            >
+                              <Printer size={15} />
+                              <span>Print Certificate</span>
+                            </button>
+                          </div>
                         </div>
 
                         {/* Payment Settlement Status CTA */}
@@ -1253,6 +1339,14 @@ export default function AuctionLotDetail({ onNotify }) {
         }}
         onNotify={onNotify}
       />
+
+      {/* Floating Share Confirmation Toast */}
+      {shareToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#12110e] border border-[#c9a35b]/50 text-[#f5d77f] text-xs uppercase tracking-wider font-bold py-2.5 px-4 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200 flex items-center gap-2">
+          <span>✓</span>
+          <span>Link Copied to Clipboard</span>
+        </div>
+      )}
     </main>
   );
 }

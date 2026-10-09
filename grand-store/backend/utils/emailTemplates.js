@@ -1,4 +1,5 @@
 const { emailLogoHeader } = require('./emailBranding');
+const { getOrderDepositReference } = require('./referenceHelper');
 
 const BRAND_COLOR_GOLD = '#c9a35b';
 const BRAND_COLOR_DARK = '#050505';
@@ -15,24 +16,32 @@ const generateEmailTemplate = (title, content) => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <style>
+    * {
+      box-sizing: border-box;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
     body {
       margin: 0;
       padding: 0;
+      width: 100% !important;
       background-color: ${BRAND_COLOR_DARK};
       color: ${BRAND_COLOR_LIGHT};
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
     .email-container {
+      width: 100% !important;
       max-width: 600px;
       margin: 0 auto;
       background-color: #0a0a0a;
       border: 1px solid #222;
+      overflow: hidden;
     }
     .content {
-      padding: 35px 25px;
+      padding: 30px 22px;
       line-height: 1.6;
-      font-size: 15px;
+      font-size: 14px;
       color: #e0e0e0;
     }
     h1, h2, h3 {
@@ -76,9 +85,11 @@ const generateEmailTemplate = (title, content) => {
     .details-box {
       background-color: #111;
       border: 1px solid #333;
-      padding: 20px;
-      margin: 20px 0;
+      padding: 18px 16px;
+      margin: 18px 0;
       border-radius: 6px;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
     .details-box p {
       margin: 5px 0;
@@ -86,6 +97,20 @@ const generateEmailTemplate = (title, content) => {
     a {
       color: ${BRAND_COLOR_GOLD};
       text-decoration: none;
+    }
+    @media only screen and (max-width: 600px) {
+      .email-container {
+        width: 100% !important;
+        border-left: none !important;
+        border-right: none !important;
+      }
+      .content {
+        padding: 20px 12px !important;
+      }
+      .details-box {
+        padding: 14px 10px !important;
+        margin: 14px 0 !important;
+      }
     }
   </style>
 </head>
@@ -153,12 +178,63 @@ const newsletterWelcomeTemplate = () => {
   return generateEmailTemplate('Welcome to The Grand Store Newsletter', content);
 };
 
+const millionaireNewsletterWelcomeTemplate = () => {
+  const content = `
+    <div style="text-align: center; margin-bottom: 25px;">
+      <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: #d9b768; font-weight: bold; display: block; margin-bottom: 8px;">The Private List</span>
+      <h1 style="color: #fffaf0; font-size: 26px; font-family: 'Times New Roman', serif; margin: 0 0 10px 0; letter-spacing: 1px;">WELCOME TO THE COLLECTION</h1>
+      <p style="color: #c8bda8; font-size: 15px; margin: 0; line-height: 1.6;">You are now on the private list of the Millionaires Collection.</p>
+    </div>
+
+    <div style="background: linear-gradient(145deg, #161310 0%, #0c0a08 100%); border: 1px solid #d9b768; border-radius: 8px; padding: 25px; margin: 25px 0; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <p style="color: #fffaf0; font-size: 15px; line-height: 1.7; margin: 0 0 18px 0;">
+        As a distinguished subscriber, you will receive priority announcements regarding limited edition sparkling wine vintages, private cellar allocations, and bespoke invitations.
+      </p>
+      <a href="https://millionairescollection.com/" style="display: inline-block; padding: 12px 28px; background: #7a263c; color: #fffaf0; border: 1px solid #d9b768; font-size: 13px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; border-radius: 4px;">
+        Discover The Collection
+      </a>
+    </div>
+
+    <div style="border-top: 1px solid #222; margin-top: 30px; padding-top: 20px; font-size: 12px; color: #777; text-align: center; line-height: 1.6;">
+      <p style="margin: 0;">Millionaires Collection — A Private World of Exceptional Sparkling Wine.</p>
+      <p style="margin: 4px 0 0 0;">Strictly 18+. Enjoy responsibly.</p>
+    </div>
+  `;
+  return generateEmailTemplate('Welcome to the Millionaires Collection', content);
+};
+
+const cigarNewsletterWelcomeTemplate = () => {
+  const content = `
+    <div style="text-align: center; margin-bottom: 25px;">
+      <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: #d99a4e; font-weight: bold; display: block; margin-bottom: 8px;">The Connoisseur Circle</span>
+      <h1 style="color: #fffaf0; font-size: 26px; font-family: 'Times New Roman', serif; margin: 0 0 10px 0; letter-spacing: 1px;">WELCOME TO MCIGAR CLUB</h1>
+      <p style="color: #c8bda8; font-size: 15px; margin: 0; line-height: 1.6;">You are now part of our private cigar aficionado circle.</p>
+    </div>
+
+    <div style="background: linear-gradient(145deg, #1b140f 0%, #0d0a08 100%); border: 1px solid #d99a4e; border-radius: 8px; padding: 25px; margin: 25px 0; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <p style="color: #fffaf0; font-size: 15px; line-height: 1.7; margin: 0 0 18px 0;">
+        You will receive priority access to rare Cuban and New World cigar shipments, limited edition humidor drops, tasting notes, and private lounge invitations.
+      </p>
+      <a href="https://cigarconnoisseurclub.com/" style="display: inline-block; padding: 12px 28px; background: #8a4b1d; color: #fffaf0; border: 1px solid #d99a4e; font-size: 13px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; border-radius: 4px;">
+        Explore The Cigar Vault
+      </a>
+    </div>
+
+    <div style="border-top: 1px solid #222; margin-top: 30px; padding-top: 20px; font-size: 12px; color: #777; text-align: center; line-height: 1.6;">
+      <p style="margin: 0;">Mcigar — The Grand Store Fine Cigars &amp; Accessories.</p>
+      <p style="margin: 4px 0 0 0;">Strictly 18+. Cigars are for adult connoisseurs only.</p>
+    </div>
+  `;
+  return generateEmailTemplate('Welcome to Mcigar — The Cigar Connoisseur Club', content);
+};
+
+
 const orderConfirmationTemplate = (order) => {
   const orderReference = order.invoiceNumber || order.orderId || order._id;
   const isPostNet = order.deliveryPreference === 'postnet' || Boolean(order.selectedPostnetStore?.name);
   const courierName = isPostNet
     ? `PostNet Store Collection (${order.selectedPostnetStore?.name || 'Local Branch'})`
-    : (order.shipments?.[0]?.selectedCourier?.serviceLevel || order.shipments?.[0]?.selectedCourier?.courierName || 'Door Delivery (Courier Guy / PostNet)');
+    : (order.driver?.courierCompany ? `${order.driver.courierCompany} (${order.driver.serviceType || 'Priority Express'})` : (order.shipments?.[0]?.selectedCourier?.serviceLevel || order.shipments?.[0]?.selectedCourier?.courierName || 'Door Delivery (Aramex / PostNet)'));
 
   const subTotal = Number(order.subTotal || order.subtotal || 0);
   const shippingCost = Number(order.shippingCost || order.shippingFee || 0);
@@ -176,26 +252,31 @@ const orderConfirmationTemplate = (order) => {
     const unitPrice = Number(item.price || 0);
     const lineTotal = unitPrice * qty;
     const itemImg = item.image 
-      ? `<img src="${item.image}" alt="${item.name}" width="48" height="48" style="width: 48px; height: 48px; object-fit: cover; border-radius: 4px; border: 1px solid #333; margin-right: 12px; vertical-align: middle;" />`
+      ? `<img src="${item.image}" alt="${item.name}" width="46" height="46" style="width: 46px; height: 46px; object-fit: cover; border-radius: 4px; border: 1px solid #333; display: block;" />`
       : '';
 
     return `
-      <tr style="border-bottom: 1px solid #222;">
-        <td style="padding: 12px 8px 12px 0; vertical-align: middle;">
-          <table border="0" cellpadding="0" cellspacing="0">
+      <tr style="border-bottom: 1px solid #1f1f1f;">
+        <td style="padding: 12px 6px 12px 0; vertical-align: top;">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="width: 100%;">
             <tr>
-              ${itemImg ? `<td style="vertical-align: middle; padding-right: 10px;">${itemImg}</td>` : ''}
-              <td style="vertical-align: middle;">
-                <div style="font-weight: bold; color: #fff; font-size: 14px;">${item.name}</div>
-                ${item.option ? `<div style="font-size: 12px; color: #999; margin-top: 2px;">Option: ${item.option}</div>` : ''}
-                ${item.category ? `<div style="font-size: 11px; color: ${BRAND_COLOR_GOLD}; margin-top: 2px;">${item.category}</div>` : ''}
+              ${itemImg ? `<td style="vertical-align: top; width: 54px; padding-right: 10px;">${itemImg}</td>` : ''}
+              <td style="vertical-align: top;">
+                <div style="font-weight: 600; color: #ffffff; font-size: 13px; line-height: 1.4; margin-bottom: 3px;">${item.name}</div>
+                <div style="margin-top: 2px; line-height: 1.3;">
+                  ${item.option ? `<span style="display: inline-block; font-size: 11px; color: #a1a1aa; background: #18181b; padding: 1px 6px; border-radius: 3px; border: 1px solid #27272a; margin-right: 6px;">${item.option}</span>` : ''}
+                  ${item.category ? `<span style="font-size: 11px; color: ${BRAND_COLOR_GOLD}; font-weight: 500;">${item.category}</span>` : ''}
+                </div>
+                <div style="font-size: 12px; color: #888888; margin-top: 5px;">
+                  Qty: <span style="color: #ffffff; font-weight: bold;">${qty}</span> &times; ${formatRand(unitPrice)}
+                </div>
               </td>
             </tr>
           </table>
         </td>
-        <td style="padding: 12px 8px; text-align: center; color: #ccc; vertical-align: middle; font-size: 13px;">${qty}</td>
-        <td style="padding: 12px 8px; text-align: right; color: #ccc; vertical-align: middle; font-size: 13px;">${formatRand(unitPrice)}</td>
-        <td style="padding: 12px 0 12px 8px; text-align: right; font-weight: bold; color: #fff; vertical-align: middle; font-size: 14px;">${formatRand(lineTotal)}</td>
+        <td style="padding: 12px 0 12px 6px; text-align: right; vertical-align: top; white-space: nowrap; width: 28%;">
+          <div style="font-weight: bold; color: #ffffff; font-size: 14px;">${formatRand(lineTotal)}</div>
+        </td>
       </tr>
     `;
   }).join('');
@@ -213,35 +294,35 @@ const orderConfirmationTemplate = (order) => {
     <p>Thank you for choosing The Grand Store. We are pleased to confirm that your payment for order <strong>#${orderReference}</strong> has been successfully processed. Your order receipt is itemized below, and an official PDF Tax Invoice is attached to this email.</p>
 
     <!-- INVOICE METADATA TABLE -->
-    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #0e0e0e; border: 1px solid #222; border-radius: 6px; font-size: 13px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; margin: 18px 0; background: #0e0e0e; border: 1px solid #222; border-radius: 6px; font-size: 13px;">
       <tr>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #888; width: 40%;">Invoice Reference:</td>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: ${BRAND_COLOR_GOLD}; font-weight: bold; font-family: monospace; font-size: 14px;">${orderReference}</td>
+        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #888; width: 40%;">Invoice Reference:</td>
+        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: ${BRAND_COLOR_GOLD}; font-weight: bold; font-family: monospace; font-size: 13px; word-break: break-all;">${orderReference}</td>
       </tr>
       <tr>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #888;">Order Date:</td>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #eee;">${new Date(order.createdAt || Date.now()).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #888;">Order Date:</td>
+        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #eee;">${new Date(order.createdAt || Date.now()).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
       </tr>
       <tr>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #888;">Payment Method:</td>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #1a1a1a; color: #eee;">${order.paymentMethod || 'Instant EFT / Card (PayFast)'}</td>
+        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #888;">Payment Method:</td>
+        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #eee;">${order.paymentMethod || 'Instant EFT / Card (PayFast)'}</td>
       </tr>
       <tr>
-        <td style="padding: 10px 14px; color: #888;">Delivery Method:</td>
-        <td style="padding: 10px 14px; color: #eee; font-weight: 500;">${courierName}</td>
+        <td style="padding: 9px 12px; color: #888;">Delivery Method:</td>
+        <td style="padding: 9px 12px; color: #eee; font-weight: 500;">${courierName}</td>
       </tr>
     </table>
 
     <!-- PRODUCT RECEIPT TABLE -->
     <div class="details-box">
-      <h3 style="margin-top: 0; font-size: 16px; border-bottom: 1px solid #222; padding-bottom: 10px;">Itemized Products</h3>
-      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+      <h3 style="margin-top: 0; font-size: 15px; border-bottom: 1px solid #222; padding-bottom: 10px; color: ${BRAND_COLOR_GOLD};">
+        Itemized Products
+      </h3>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px;">
         <thead>
           <tr style="border-bottom: 2px solid #333; color: ${BRAND_COLOR_GOLD}; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
-            <th style="padding: 8px 8px 8px 0; text-align: left;">Product</th>
-            <th style="padding: 8px; text-align: center;">Qty</th>
-            <th style="padding: 8px; text-align: right;">Price</th>
-            <th style="padding: 8px 0 8px 8px; text-align: right;">Total</th>
+            <th style="padding: 8px 6px 8px 0; text-align: left;">Product Item</th>
+            <th style="padding: 8px 0 8px 6px; text-align: right; white-space: nowrap; width: 28%;">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -250,47 +331,47 @@ const orderConfirmationTemplate = (order) => {
       </table>
 
       <!-- FINANCIAL SUMMARY & TAX BREAKDOWN -->
-      <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 15px; border-top: 1px solid #333;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 14px; border-top: 1px solid #2a2a2a;">
         <tr>
-          <td style="padding: 10px 0 4px; color: #aaa;">Products Subtotal (Excl. VAT):</td>
-          <td style="padding: 10px 0 4px; text-align: right; color: #ddd;">${formatRand(subTotalExclVat)}</td>
+          <td style="padding: 9px 0 4px; color: #a1a1aa;">Products Subtotal (Excl. VAT):</td>
+          <td style="padding: 9px 0 4px; text-align: right; color: #e4e4e7; white-space: nowrap;">${formatRand(subTotalExclVat)}</td>
         </tr>
         <tr>
-          <td style="padding: 4px 0; color: #aaa;">South African VAT (15% Included):</td>
-          <td style="padding: 4px 0; text-align: right; color: ${BRAND_COLOR_GOLD};">${formatRand(vatAmount)}</td>
+          <td style="padding: 4px 0; color: #a1a1aa;">South African VAT (15% Included):</td>
+          <td style="padding: 4px 0; text-align: right; color: ${BRAND_COLOR_GOLD}; white-space: nowrap;">${formatRand(vatAmount)}</td>
         </tr>
         <tr>
-          <td style="padding: 4px 0; color: #aaa; font-weight: 500;">Products Subtotal (Incl. VAT):</td>
-          <td style="padding: 4px 0; text-align: right; color: #fff; font-weight: 500;">${formatRand(subTotal)}</td>
+          <td style="padding: 4px 0; color: #a1a1aa; font-weight: 500;">Products Subtotal (Incl. VAT):</td>
+          <td style="padding: 4px 0; text-align: right; color: #ffffff; font-weight: 500; white-space: nowrap;">${formatRand(subTotal)}</td>
         </tr>
         <tr>
-          <td style="padding: 4px 0; color: #aaa;">Shipping & Logistics (${order.deliveryPreference === 'postnet' ? 'PostNet Branch' : 'Courier Door'}):</td>
-          <td style="padding: 4px 0; text-align: right; color: #ddd;">${shippingCost > 0 ? formatRand(shippingCost) : '<span style="color: #34d399; font-weight: bold;">FREE</span>'}</td>
+          <td style="padding: 4px 0; color: #a1a1aa;">Shipping & Logistics (${order.deliveryPreference === 'postnet' ? 'PostNet Branch' : (order.driver?.courierCompany || 'Aramex Priority Door-to-Door') }):</td>
+          <td style="padding: 4px 0; text-align: right; color: #e4e4e7; white-space: nowrap;">${shippingCost > 0 ? formatRand(shippingCost) : '<span style="color: #34d399; font-weight: bold;">FREE</span>'}</td>
         </tr>
         ${order.appliedWelcomeDiscount > 0 ? `
         <tr>
           <td style="padding: 4px 0; color: #34d399;">Welcome Promotion Discount:</td>
-          <td style="padding: 4px 0; text-align: right; color: #34d399;">- ${formatRand(order.appliedWelcomeDiscount)}</td>
+          <td style="padding: 4px 0; text-align: right; color: #34d399; white-space: nowrap;">- ${formatRand(order.appliedWelcomeDiscount)}</td>
         </tr>
         ` : ''}
         ${order.superCoinsDiscount > 0 ? `
         <tr>
           <td style="padding: 4px 0; color: #fbbf24;">Super Coins Redeemed (${order.superCoinsUsed || 0} Coins):</td>
-          <td style="padding: 4px 0; text-align: right; color: #fbbf24;">- ${formatRand(order.superCoinsDiscount)}</td>
+          <td style="padding: 4px 0; text-align: right; color: #fbbf24; white-space: nowrap;">- ${formatRand(order.superCoinsDiscount)}</td>
         </tr>
         ` : ''}
         ${order.importDuties > 0 ? `
         <tr>
-          <td style="padding: 4px 0; color: #aaa;">Estimated Import Duties & Customs:</td>
-          <td style="padding: 4px 0; text-align: right; color: #ddd;">${formatRand(order.importDuties + (order.customsFees || 0))}</td>
+          <td style="padding: 4px 0; color: #a1a1aa;">Estimated Import Duties & Customs:</td>
+          <td style="padding: 4px 0; text-align: right; color: #e4e4e7; white-space: nowrap;">${formatRand(order.importDuties + (order.customsFees || 0))}</td>
         </tr>
         ` : ''}
         <tr style="border-top: 2px solid ${BRAND_COLOR_GOLD};">
-          <td style="padding: 14px 0 4px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 16px;">
+          <td style="padding: 12px 0 4px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 14px;">
             Grand Total Paid:
-            <div style="font-size: 11px; color: #888; font-weight: normal; margin-top: 2px;">Inclusive of all 15% VAT, duties & taxes</div>
+            <div style="font-size: 11px; color: #71717a; font-weight: normal; margin-top: 2px;">Inclusive of all 15% VAT, duties & taxes</div>
           </td>
-          <td style="padding: 14px 0 4px; text-align: right; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 20px;">
+          <td style="padding: 12px 0 4px; text-align: right; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 17px; white-space: nowrap;">
             ${formatRand(totalPrice)}
           </td>
         </tr>
@@ -349,51 +430,170 @@ const orderConfirmationTemplate = (order) => {
   return generateEmailTemplate(`Payment Receipt #${orderReference}`, content);
 };
 
-const bankTransferInstructionsTemplate = (order, bankDetails) => {
+const bankTransferInstructionsTemplate = (order, bankDetails = {}) => {
+  const depositRef = getOrderDepositReference(order);
+  const formattedAmount = formatRand(order.totalPrice);
+  const customerName = order.user?.name || order.shippingAddress?.name || order.guestInfo?.name || 'Valued Customer';
+  const frontendUrl = process.env.FRONTEND_URL || 'https://grandstoreglobal.com';
+  const uploadUrl = order.isGuest
+    ? `${frontendUrl}/order-success/${order._id}?token=${order.guestAccessToken || ''}&payment=bank-transfer`
+    : `${frontendUrl}/customer/order/${order._id}?payment=bank-transfer`;
+
   const content = `
-    <h1>Bank Transfer Instructions</h1>
-    <p>Dear Customer,</p>
-    <p>Thank you for placing your order (<strong>#${order._id}</strong>). To complete your purchase, please transfer the total amount to the bank account below.</p>
+    <h1 style="margin-bottom: 8px;">Bank Transfer Instructions</h1>
+    <p style="margin-top: 0; color: #a1a1aa; font-size: 14px;">Order Invoice & Deposit Reference: <strong style="color: #ffffff;">${depositRef}</strong></p>
     
-    <div class="details-box">
-      <h3 style="margin-top: 0;">Payment Details</h3>
-      <p><strong style="color: ${BRAND_COLOR_GOLD}">Amount Due:</strong> $${order.totalPrice}</p>
-      <p><strong style="color: ${BRAND_COLOR_GOLD}">Order Reference:</strong> ${order._id}</p>
-      <div class="divider"></div>
-      <h3 style="margin-top: 0;">Bank Information</h3>
-      <p><strong>Bank Name:</strong> ${bankDetails.bankName || 'FNB'}</p>
-      <p><strong>Account Name:</strong> ${bankDetails.accountName || 'The Grand Store'}</p>
-      <p><strong>Account Number:</strong> ${bankDetails.accountNumber || '62000000000'}</p>
-      <p><strong>Branch Code:</strong> ${bankDetails.branchCode || '250655'}</p>
+    <p>Dear ${customerName},</p>
+    <p>Thank you for shopping at The Grand Store. To finalize your order and initiate immediate dispatch, please transfer the exact total to our official banking account below.</p>
+    
+    <!-- HIGHLIGHTED AMOUNT & SHORT DEPOSIT REFERENCE HERO CARD -->
+    <div style="background: linear-gradient(145deg, #161410 0%, #0a0a09 100%); border: 1.5px solid ${BRAND_COLOR_GOLD}; border-radius: 12px; padding: 22px 20px; margin: 24px 0; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #a1a1aa; margin-bottom: 4px;">Total Amount Due</div>
+      <div style="font-size: 32px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px; margin-bottom: 16px;">
+        ${formattedAmount}
+      </div>
+      
+      <div style="background: rgba(201, 163, 91, 0.12); border: 1px dashed ${BRAND_COLOR_GOLD}; border-radius: 8px; padding: 12px 18px; display: inline-block; width: 100%; max-width: 440px; box-sizing: border-box;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: ${BRAND_COLOR_GOLD}; font-weight: 700; margin-bottom: 4px;">
+          Your Deposit Reference (Required)
+        </div>
+        <div style="font-family: 'Courier New', Courier, monospace; font-size: 22px; font-weight: bold; color: #ffffff; letter-spacing: 2px;">
+          ${depositRef}
+        </div>
+        <div style="font-size: 11px; color: #d4d4d8; margin-top: 4px;">
+          ⚠️ Please use this exact reference in your banking app to avoid clearance delays.
+        </div>
+      </div>
     </div>
     
-    <p>Please use your Order Reference (<strong>${order._id}</strong>) as the payment reference. Your order will be processed once the funds have cleared in our account.</p>
-    <p>You can upload your proof of payment on your order details page.</p>
-    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/customer/orders" class="btn">View Order</a>
+    <!-- BENEFICIARY BANKING DETAILS TABLE -->
+    <div class="details-box" style="background-color: #111111; border: 1px solid #262626; border-radius: 10px; padding: 20px; margin: 20px 0;">
+      <h3 style="margin-top: 0; margin-bottom: 14px; font-size: 16px; color: ${BRAND_COLOR_GOLD}; border-bottom: 1px solid #222; padding-bottom: 8px;">
+        Beneficiary Bank Account Details
+      </h3>
+      
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="padding: 9px 0; color: #888; width: 42%;">Bank Name:</td>
+          <td style="padding: 9px 0; color: #fff; font-weight: 600; text-align: right;">${bankDetails.bankName || 'FNB'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Account Name:</td>
+          <td style="padding: 9px 0; color: #fff; font-weight: 600; text-align: right;">${bankDetails.accountName || 'The Grand Store'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Account Number:</td>
+          <td style="padding: 9px 0; color: #fff; font-family: monospace; font-size: 16px; font-weight: 700; text-align: right; letter-spacing: 1px;">${bankDetails.accountNumber || '62000000000'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Branch Code:</td>
+          <td style="padding: 9px 0; color: #fff; font-family: monospace; font-weight: 600; text-align: right;">${bankDetails.branchCode || '250655'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Account Type:</td>
+          <td style="padding: 9px 0; color: #fff; text-align: right;">${bankDetails.accountType || 'Business Cheque'}</td>
+        </tr>
+        ${bankDetails.swiftCode ? `
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">SWIFT Code:</td>
+          <td style="padding: 9px 0; color: #fff; font-family: monospace; text-align: right;">${bankDetails.swiftCode}</td>
+        </tr>
+        ` : ''}
+      </table>
+    </div>
+    
+    <!-- 3 SIMPLE STEPS -->
+    <div style="background-color: #0d0d0d; border-radius: 8px; border: 1px solid #222; padding: 16px 20px; margin: 20px 0; font-size: 13px; line-height: 1.6; color: #d4d4d8;">
+      <strong style="color: #ffffff; font-size: 14px; display: block; margin-bottom: 8px;">Next Steps:</strong>
+      <ol style="margin: 0; padding-left: 20px;">
+        <li style="margin-bottom: 6px;">Open your banking app (FNB, Capitec, Standard Bank, Nedbank, ABSA).</li>
+        <li style="margin-bottom: 6px;">Transfer <strong>${formattedAmount}</strong> using <strong>${depositRef}</strong> as your recipient reference.</li>
+        <li>Tap the button below to upload your Proof of Payment (POP) so we can dispatch your items immediately.</li>
+      </ol>
+    </div>
+    
+    <!-- CALL TO ACTION -->
+    <div style="text-align: center; margin: 30px 0 15px 0;">
+      <a href="${uploadUrl}" class="btn" style="display: inline-block; background-color: ${BRAND_COLOR_GOLD}; color: #050505; font-weight: bold; padding: 14px 32px; border-radius: 4px; text-decoration: none; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; min-width: 220px;">
+        Upload Proof of Payment
+      </a>
+    </div>
+    
+    <p style="font-size: 12px; color: #777; text-align: center; margin-top: 15px;">
+      Alternatively, you can reply directly to this email or send your POP to <a href="mailto:support@grandstoreglobal.com" style="color: ${BRAND_COLOR_GOLD}; text-decoration: underline;">support@grandstoreglobal.com</a> referencing <strong>${depositRef}</strong>.
+    </p>
   `;
-  return generateEmailTemplate(`Payment Required - Order #${order._id}`, content);
+  return generateEmailTemplate(`Payment Required - Order ${depositRef}`, content);
 };
 
-const eventBankTransferInstructionsTemplate = (booking, event, bankDetails) => {
-  const reference = booking.gsReference || booking._id;
-  const content = `
-    <h1>Event Ticket Bank Transfer</h1>
-    <p>Thank you for reserving tickets for <strong>${event.title}</strong>. Transfer the exact amount below and upload your proof of payment for verification.</p>
+const eventBankTransferInstructionsTemplate = (booking, event, bankDetails = {}) => {
+  const reference = booking.gsReference || (booking._id ? `GS-${String(booking._id).slice(-6).toUpperCase()}` : 'GS-EVENT');
+  const formattedAmount = formatRand(booking.totalPrice);
+  const frontendUrl = process.env.FRONTEND_URL || 'https://grandstoreglobal.com';
+  const uploadUrl = `${frontendUrl}/customer/event-order/${booking._id}?payment=bank-transfer`;
 
-    <div class="details-box">
-      <h3 style="margin-top: 0;">Payment Details</h3>
-      <p><strong style="color: ${BRAND_COLOR_GOLD}">Amount Due:</strong> R${Number(booking.totalPrice).toFixed(2)}</p>
-      <p><strong style="color: ${BRAND_COLOR_GOLD}">Payment Reference:</strong> ${reference}</p>
-      <div class="divider"></div>
-      <h3 style="margin-top: 0;">Bank Information</h3>
-      <p><strong>Bank Name:</strong> ${bankDetails.bankName || 'Standard Bank'}</p>
-      <p><strong>Account Name:</strong> ${bankDetails.accountName || 'The Grand Store PTY LTD'}</p>
-      <p><strong>Account Number:</strong> ${bankDetails.accountNumber || '0123456789'}</p>
-      <p><strong>Branch Code:</strong> ${bankDetails.branchCode || '051001'}</p>
+  const content = `
+    <h1 style="margin-bottom: 8px;">Event Ticket Bank Transfer</h1>
+    <p style="margin-top: 0; color: #a1a1aa; font-size: 14px;">Booking Reference: <strong style="color: #ffffff;">${reference}</strong></p>
+
+    <p>Thank you for reserving tickets for <strong>${event.title}</strong>. Transfer the exact amount below and upload your proof of payment for fast verification.</p>
+
+    <!-- HIGHLIGHTED AMOUNT & SHORT DEPOSIT REFERENCE HERO CARD -->
+    <div style="background: linear-gradient(145deg, #161410 0%, #0a0a09 100%); border: 1.5px solid ${BRAND_COLOR_GOLD}; border-radius: 12px; padding: 22px 20px; margin: 24px 0; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #a1a1aa; margin-bottom: 4px;">Total Amount Due</div>
+      <div style="font-size: 32px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px; margin-bottom: 16px;">
+        ${formattedAmount}
+      </div>
+      
+      <div style="background: rgba(201, 163, 91, 0.12); border: 1px dashed ${BRAND_COLOR_GOLD}; border-radius: 8px; padding: 12px 18px; display: inline-block; width: 100%; max-width: 440px; box-sizing: border-box;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: ${BRAND_COLOR_GOLD}; font-weight: 700; margin-bottom: 4px;">
+          Your Payment Reference (Required)
+        </div>
+        <div style="font-family: 'Courier New', Courier, monospace; font-size: 22px; font-weight: bold; color: #ffffff; letter-spacing: 2px;">
+          ${reference}
+        </div>
+        <div style="font-size: 11px; color: #d4d4d8; margin-top: 4px;">
+          ⚠️ Please use this exact reference in your banking app so your tickets can be issued immediately.
+        </div>
+      </div>
     </div>
 
-    <p>Your ticket is issued only after the transfer is approved. Use the booking reference exactly so the finance team can match your payment.</p>
-    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/customer/event-order/${booking._id}?payment=bank-transfer" class="btn">Upload Proof of Payment</a>
+    <!-- BENEFICIARY BANKING DETAILS TABLE -->
+    <div class="details-box" style="background-color: #111111; border: 1px solid #262626; border-radius: 10px; padding: 20px; margin: 20px 0;">
+      <h3 style="margin-top: 0; margin-bottom: 14px; font-size: 16px; color: ${BRAND_COLOR_GOLD}; border-bottom: 1px solid #222; padding-bottom: 8px;">
+        Beneficiary Bank Account Details
+      </h3>
+      
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="padding: 9px 0; color: #888; width: 42%;">Bank Name:</td>
+          <td style="padding: 9px 0; color: #fff; font-weight: 600; text-align: right;">${bankDetails.bankName || 'Standard Bank'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Account Name:</td>
+          <td style="padding: 9px 0; color: #fff; font-weight: 600; text-align: right;">${bankDetails.accountName || 'The Grand Store PTY LTD'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Account Number:</td>
+          <td style="padding: 9px 0; color: #fff; font-family: monospace; font-size: 16px; font-weight: 700; text-align: right; letter-spacing: 1px;">${bankDetails.accountNumber || '0123456789'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Branch Code:</td>
+          <td style="padding: 9px 0; color: #fff; font-family: monospace; font-weight: 600; text-align: right;">${bankDetails.branchCode || '051001'}</td>
+        </tr>
+        <tr style="border-top: 1px solid #1a1a1a;">
+          <td style="padding: 9px 0; color: #888;">Account Type:</td>
+          <td style="padding: 9px 0; color: #fff; text-align: right;">${bankDetails.accountType || 'Business Cheque'}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- CALL TO ACTION -->
+    <div style="text-align: center; margin: 30px 0 15px 0;">
+      <a href="${uploadUrl}" class="btn" style="display: inline-block; background-color: ${BRAND_COLOR_GOLD}; color: #050505; font-weight: bold; padding: 14px 32px; border-radius: 4px; text-decoration: none; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; min-width: 220px;">
+        Upload Proof of Payment
+      </a>
+    </div>
   `;
   return generateEmailTemplate(`Payment Required - ${reference}`, content);
 };
@@ -976,13 +1176,86 @@ const vendorMaintenanceFeePaidTemplate = ({
   return generateEmailTemplate('Monthly Vendor Maintenance Fee Receipt', content);
 };
 
+const paymentFailedEmailTemplate = ({ customerName, reference, itemName, amount, retryUrl, reason }) => {
+  const content = `
+    <div style="text-align: center; margin-bottom: 25px;">
+      <div style="display: inline-block; padding: 5px 16px; border: 1px solid #c9a35b; border-radius: 20px; background-color: #12100d; color: #f5d77f; font-size: 10px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px;">
+        ✦ PAYMENT NOTICE • THE GRAND STORE ✦
+      </div>
+      <h1 style="color: #f87171; font-family: 'Times New Roman', Times, serif; font-size: 26px; font-weight: normal; margin: 0 0 10px 0; letter-spacing: 0.5px;">
+        Payment Not Completed
+      </h1>
+      <p style="color: #cccccc; font-size: 14px; margin: 0; line-height: 1.6;">
+        Dear <strong>${customerName || 'Valued Patron'}</strong>, your recent payment attempt was not completed.
+      </p>
+    </div>
+
+    <!-- Reassurance Banner with Solid Hex Colors for Gmail Compatibility -->
+    <div style="background-color: #1a1212; border: 1px solid #991b1b; border-radius: 8px; padding: 18px 20px; margin: 20px 0;">
+      <div style="color: #f87171; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+        🛡️ No Funds Have Been Debited
+      </div>
+      <div style="color: #e5e5e5; font-size: 13px; line-height: 1.5;">
+        ${reason || 'The transaction was cancelled or could not be verified by the payment gateway. No funds were debited from your card or bank account.'}
+      </div>
+    </div>
+
+    <!-- Transaction Specification Box with Full Inline Styles -->
+    <div style="background-color: #111111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #dddddd;" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="padding: 8px 0; color: #888888; width: 35%;">Reference:</td>
+          <td style="padding: 8px 0; text-align: right; font-family: monospace; color: #c9a35b; font-weight: bold;">${reference || 'N/A'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #888888;">Item / Service:</td>
+          <td style="padding: 8px 0; text-align: right; color: #ffffff; font-weight: 500;">${itemName || 'Grand Store Selection'}</td>
+        </tr>
+        ${amount ? `
+        <tr>
+          <td style="padding: 8px 0; color: #888888;">Amount:</td>
+          <td style="padding: 8px 0; text-align: right; color: #ffffff; font-weight: bold; font-size: 15px;">${formatRand(amount)}</td>
+        </tr>
+        ` : ''}
+        <tr>
+          <td style="padding: 8px 0; color: #888888;">Status:</td>
+          <td style="padding: 8px 0; text-align: right; color: #f87171; font-weight: bold;">Cancelled / Unpaid</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="color: #bbbbbb; line-height: 1.6; font-size: 14px; margin: 20px 0;">
+      You can safely retry your payment whenever you are ready. If you need any assistance or would like to arrange an alternative settlement method, our concierge team is always at your service.
+    </p>
+
+    ${retryUrl ? `
+    <div style="text-align: center; margin: 30px 0 20px 0;">
+      <a href="${retryUrl}" target="_blank" style="background-color: #c9a35b; color: #000000; padding: 14px 32px; font-weight: bold; text-decoration: none; border-radius: 6px; display: inline-block; font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;">
+        Retry Payment Now &rarr;
+      </a>
+    </div>
+    ` : ''}
+
+    <div style="height: 1px; background-color: #222222; margin: 25px 0; border: none;"></div>
+
+    <p style="font-size: 12px; color: #777777; margin-bottom: 0; line-height: 1.5;">
+      Need assistance? Contact our concierge at <a href="mailto:concierge@grandstoreglobal.com" style="color: #c9a35b; text-decoration: none;">concierge@grandstoreglobal.com</a> or message our VIP Concierge on WhatsApp at +27 76 580 9522.
+    </p>
+  `;
+
+  return generateEmailTemplate('Payment Unsuccessful Notice', content);
+};
+
 module.exports = {
   generateEmailTemplate,
   welcomeEmailTemplate,
   verificationEmailTemplate,
   passwordResetTemplate,
   newsletterWelcomeTemplate,
+  millionaireNewsletterWelcomeTemplate,
+  cigarNewsletterWelcomeTemplate,
   orderConfirmationTemplate,
+  paymentFailedEmailTemplate,
   bankTransferInstructionsTemplate,
   eventBankTransferInstructionsTemplate,
   vendorApprovalTemplate,

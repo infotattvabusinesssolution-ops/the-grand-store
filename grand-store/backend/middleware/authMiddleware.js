@@ -1,25 +1,34 @@
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 
 const protect = async (req, res, next) => {
-  let token = req.cookies?.jwt;
+  let token = null;
 
-  // Fallback to Bearer token if no cookie is present (and ignore literal 'undefined')
+  // Prioritize explicit Authorization Bearer header from API clients / SPAs
   if (
-    !token &&
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
   ) {
     const headerToken = req.headers.authorization.split(' ')[1];
-    if (headerToken !== 'undefined' && headerToken !== 'null') {
+    if (headerToken && headerToken !== 'undefined' && headerToken !== 'null') {
       token = headerToken;
     }
+  }
+
+  // Fallback to cookie if no header token was provided and cookie is not 'none'
+  if (!token && req.cookies?.jwt && req.cookies.jwt !== 'none' && req.cookies.jwt !== 'undefined') {
+    token = req.cookies.jwt;
   }
 
   if (token) {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
+      if (!decoded?.id || !mongoose.Types.ObjectId.isValid(decoded.id)) {
+        return res.status(401).json({ message: 'Invalid authentication credentials' });
+      }
+
       const user = await User.findById(decoded.id).select('-password');
       if (!user) {
         return res.status(401).json({
@@ -30,7 +39,7 @@ const protect = async (req, res, next) => {
       req.user = user;
       return next();
     } catch (error) {
-      console.error(error);
+      console.error('JWT verification error:', error.message);
       return res.status(401).json({ message: 'Not authorized, token failed' });
     }
   }
@@ -59,17 +68,20 @@ const financeStaff = requireRoles('admin', 'super_admin', 'accountant');
 const productStaff = requireRoles('admin', 'super_admin', 'product_manager');
 
 const optionalAuth = async (req, res, next) => {
-  let token = req.cookies?.jwt;
+  let token = null;
 
   if (
-    !token &&
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
   ) {
     const headerToken = req.headers.authorization.split(' ')[1];
-    if (headerToken !== 'undefined' && headerToken !== 'null') {
+    if (headerToken && headerToken !== 'undefined' && headerToken !== 'null') {
       token = headerToken;
     }
+  }
+
+  if (!token && req.cookies?.jwt && req.cookies.jwt !== 'none' && req.cookies.jwt !== 'undefined') {
+    token = req.cookies.jwt;
   }
 
   if (token) {

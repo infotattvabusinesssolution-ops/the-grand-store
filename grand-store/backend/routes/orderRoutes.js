@@ -9,7 +9,14 @@ const {
   markOrderAsPaid,
   getAdminOrders,
   getAdminOrderById,
-  sendAdminOrderMessage
+  sendAdminOrderMessage,
+  sendVendorOrderMessage,
+  getVendorOrderById,
+  cancelOrderPaymentHandler,
+  downloadOrderReceiptPdf,
+  updateOrderPackaging,
+  assignOrderDriver,
+  confirmOrderDriverHandover
 } = require('../controllers/orderController');
 const { protect, optionalAuth, requireRoles, financeStaff } = require('../middleware/authMiddleware');
 
@@ -33,18 +40,47 @@ router.route('/:id/admin-message').post(
   sendAdminOrderMessage
 );
 
-router.route('/:id/pay').put(optionalAuth, markOrderAsPaid).post(optionalAuth, markOrderAsPaid);
+// Admin Packaging Inspection & Driver Assignment Flow (with Handover QR)
+router.route('/:id/packaging').post(
+  protect,
+  requireRoles('admin', 'super_admin', 'product_manager'),
+  updateOrderPackaging
+);
+router.route('/:id/assign-driver').post(
+  protect,
+  requireRoles('admin', 'super_admin', 'product_manager'),
+  assignOrderDriver
+);
+router.route('/:id/confirm-handover').post(
+  optionalAuth,
+  confirmOrderDriverHandover
+);
+
+router.route('/:id/cancel-payment').post(optionalAuth, cancelOrderPaymentHandler);
+router.route('/:id/pay').put(protect, financeStaff, markOrderAsPaid).post(protect, financeStaff, markOrderAsPaid);
 router.route('/vendor/sales').get(
   protect,
   requireRoles('vendor_active', 'admin', 'super_admin', 'product_manager'),
   getVendorOrders,
+);
+router.route('/vendor/sales/:shipmentId').get(
+  protect,
+  requireRoles('vendor_active', 'admin', 'super_admin', 'product_manager'),
+  getVendorOrderById,
 );
 router.route('/vendor/sales/:shipmentId/status').patch(
   protect,
   requireRoles('vendor_active', 'admin', 'super_admin', 'product_manager'),
   updateShipmentStatus,
 );
+router.route('/vendor/sales/:shipmentId/message').post(
+  protect,
+  requireRoles('vendor_active', 'admin', 'super_admin', 'product_manager'),
+  sendVendorOrderMessage,
+);
 
+router.route('/:id/receipt-pdf').get(optionalAuth, downloadOrderReceiptPdf);
+router.route('/:id/invoice-pdf').get(optionalAuth, downloadOrderReceiptPdf);
 router.route('/:id').get(optionalAuth, getOrderById);
 
 // Bank Transfer Routes

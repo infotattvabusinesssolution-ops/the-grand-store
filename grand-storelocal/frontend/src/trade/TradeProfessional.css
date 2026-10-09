@@ -1,0 +1,555 @@
+/* Unified trade visual system. The animated home hero intentionally retains
+   its existing art direction; everything after it uses this professional
+   editorial blue system. */
+.trade-portal {
+  --trade-blue-950: #071f36;
+  --trade-blue-900: #0a2b49;
+  --trade-blue-800: #103f68;
+  --trade-blue-700: #175c91;
+  --trade-blue-600: #2276ad;
+  --trade-blue-100: #e7eff7;
+  --trade-blue-50: #f4f7fb;
+  --trade-heading: #0b2742;
+  --trade-copy: #43586e;
+  --trade-muted: #60748a;
+  --trade-line: #ccd9e6;
+  color: var(--trade-heading);
+  background: var(--trade-blue-50);
+  font-family: 'Inter', Arial, sans-serif;
+}
+
+.trade-portal p,
+.trade-portal li,
+.trade-portal a,
+.trade-portal label,
+.trade-portal input,
+.trade-portal textarea,
+.trade-portal button,
+.trade-portal select {
+  font-family: 'Inter', Arial, sans-serif;
+}
+
+.trade-portal h1,
+.trade-portal h2,
+.trade-portal h3,
+.trade-portal h4,
+.trade-portal .stat-number {
+  font-family: 'Playfair Display', Georgia, serif;
+  text-wrap: balance;
+}
+
+/* Navigation: solid, legible and restrained. */
+.trade-portal .trade-navbar,
+.trade-portal .trade-navbar--home:not(.is-scrolled),
+.trade-portal .trade-navbar--inner,
+.trade-portal .trade-navbar.is-scrolled {
+  background-image: none !important;
+}
+
+.trade-portal .trade-navbar--home:not(.is-scrolled) {
+  background-color: rgba(5, 25, 44, .9);
+  border-bottom-color: rgba(131, 184, 222, .24);
+  backdrop-filter: blur(12px);
+}
+
+.trade-portal .trade-navbar--inner,
+.trade-portal .trade-navbar.is-scrolled {
+  background-color: rgba(6, 31, 54, .94);
+  border-bottom-color: rgba(131, 184, 222, .32);
+  box-shadow: 0 14px 38px rgba(3, 20, 35, .2);
+}
+
+.trade-portal .trade-nav-link {
+  color: #dbe8f2;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .085em;
+}
+
+.trade-portal .trade-nav-link::after {
+  background: #70b3df;
+}
+
+.trade-portal .trade-nav-link:hover,
+.trade-portal .trade-nav-link.active {
+  color: #fff;
+}
+
+.trade-portal .trade-partner-btn,
+.trade-portal .submit-btn {
+  color: #fff;
+  background: var(--trade-blue-600);
+  background-image: none !important;
+  border-color: var(--trade-blue-600);
+  box-shadow: none;
+}
+
+.trade-portal .trade-partner-btn:hover,
+.trade-portal .submit-btn:hover {
+  color: #fff;
+  background: var(--trade-blue-700);
+  border-color: var(--trade-blue-700);
+  filter: none;
+}
+
+.trade-portal .trade-menu-toggle {
+  color: #b9d9ed;
+  border-color: rgba(151, 201, 231, .42);
+}
+
+.trade-portal .trade-nav-center.is-open {
+  background: var(--trade-blue-950);
+  border-bottom-color: rgba(151, 201, 231, .32);
+}
+
+/* No gradients outside the animated hero. */
+.trade-portal .trade-page > section:not(.trade-hero),
+.trade-portal .trade-page > section:not(.trade-hero) *:not(img),
+.trade-portal .trade-subpage,
+.trade-portal .trade-subpage *:not(img) {
+  background-image: none !important;
+}
+
+/* Home page after the hero. */
+.trade-portal .trade-page > section:not(.trade-hero) {
+  color: var(--trade-heading);
+}
+
+.trade-portal .trade-page > section:not(.trade-hero) .trade-script-accent,
+.trade-portal .trade-subpage .trade-script-accent {
+  display: block;
+  width: auto;
+  padding: 0;
+  color: var(--trade-blue-700);
+  background: transparent;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+  font-family: 'Playfair Display', Georgia, serif !important;
+  font-size: 1em;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: -.03em;
+  line-height: inherit;
+}
+
+.trade-portal .trade-kicker,
+.trade-portal .trade-sub-eyebrow {
+  color: var(--trade-blue-700);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .16em;
+}
+
+.trade-portal .trade-intro {
+  padding-top: clamp(54px, 5vw, 72px);
+  background-color: #fff;
+}
+
+.trade-portal .trade-intro h1,
+.trade-portal .trade-section-header h2,
+.trade-portal .trade-export-content h2,
+.trade-portal .trade-closing-cta h2,
+.trade-portal .trade-partnership-copy h2 {
+  color: var(--trade-heading);
+  font-weight: 600;
+  letter-spacing: -.035em;
+}
+
+.trade-portal .trade-intro-copy p,
+.trade-portal .trade-section-header > p,
+.trade-portal .trade-export-content > p,
+.trade-portal .trade-partnership-copy p,
+.trade-portal .trade-service-card p {
+  color: var(--trade-copy);
+  font-size: clamp(17px, 1.18vw, 19px);
+  line-height: 1.68;
+}
+
+.trade-portal .trade-text-link {
+  color: var(--trade-blue-800);
+  border-bottom-color: var(--trade-blue-600);
+  font-size: 13px;
+  letter-spacing: .09em;
+}
+
+.trade-portal .trade-partnership-feature {
+  border: 1px solid var(--trade-line);
+  background: #fff;
+}
+
+.trade-portal .trade-partnership-visual {
+  background: var(--trade-blue-100);
+}
+
+.trade-portal .trade-partnership-visual::before {
+  background: rgba(34, 118, 173, .1);
+}
+
+.trade-portal .trade-partnership-visual::after {
+  background: var(--trade-blue-600);
+}
+
+.trade-portal .trade-partnership-index {
+  color: var(--trade-blue-800);
+  background: #fff;
+  border-color: #aebfd0;
+  font-size: 11px;
+}
+
+.trade-portal .trade-partnership-copy {
+  background: #fff;
+}
+
+.trade-portal .trade-capability-strip {
+  background: var(--trade-blue-900);
+  border-color: var(--trade-blue-900);
+}
+
+.trade-portal .trade-capability {
+  border-right-color: rgba(211, 231, 244, .2);
+}
+
+.trade-portal .trade-capability > svg {
+  color: #b9dcf1;
+  background: rgba(255, 255, 255, .08);
+  border-color: rgba(201, 228, 244, .24);
+}
+
+.trade-portal .trade-capability strong {
+  color: #fff;
+  font-size: 23px;
+}
+
+.trade-portal .trade-capability span {
+  color: #b9cada;
+  font-size: 13px;
+}
+
+.trade-portal .trade-services-section {
+  background: #edf3f8;
+}
+
+.trade-portal .trade-service-card {
+  background: #fff;
+  border-color: var(--trade-line);
+  box-shadow: 0 14px 34px rgba(16, 63, 104, .07);
+}
+
+.trade-portal .trade-service-card:hover {
+  border-color: #7ca9c8;
+  box-shadow: 0 18px 38px rgba(16, 63, 104, .11);
+}
+
+.trade-portal .trade-service-topline,
+.trade-portal .trade-service-topline svg {
+  color: var(--trade-blue-700);
+}
+
+.trade-portal .trade-service-topline span {
+  font-size: 12px;
+}
+
+.trade-portal .trade-service-topline svg {
+  background: var(--trade-blue-100);
+}
+
+.trade-portal .trade-service-card h3 {
+  color: var(--trade-heading);
+  font-size: clamp(24px, 1.9vw, 30px);
+}
+
+.trade-portal .trade-export-section {
+  background: #fff;
+}
+
+.trade-portal .trade-export-visual {
+  background: #dfe9f2;
+  border-color: #bfd0df;
+  box-shadow: 0 20px 52px rgba(9, 42, 70, .13);
+}
+
+.trade-portal .trade-export-visual::after,
+.trade-portal .export-img-overlay {
+  background: rgba(5, 28, 48, .18);
+}
+
+.trade-portal .trade-export-badge {
+  color: #fff;
+  background: rgba(7, 31, 54, .92);
+  border-color: rgba(185, 220, 241, .5);
+  font-size: 13px;
+}
+
+.trade-portal .trade-export-list {
+  border-top-color: var(--trade-line);
+}
+
+.trade-portal .trade-export-list li {
+  color: #30475d;
+  border-bottom-color: var(--trade-line);
+  font-size: 17px;
+}
+
+.trade-portal .trade-export-list li span {
+  color: var(--trade-blue-700);
+  font-size: 13px;
+}
+
+.trade-portal .trade-page > section:not(.trade-hero) .trade-button {
+  min-height: 52px;
+  color: #fff;
+  background: var(--trade-blue-700);
+  border-color: var(--trade-blue-700);
+  font-size: 13px;
+}
+
+.trade-portal .trade-page > section:not(.trade-hero) .trade-button:hover {
+  color: #fff;
+  background: var(--trade-blue-800);
+  border-color: var(--trade-blue-800);
+}
+
+.trade-portal .trade-closing-cta {
+  background: var(--trade-blue-950);
+}
+
+.trade-portal .trade-closing-cta::before {
+  background: #6fb2dd;
+}
+
+.trade-portal .trade-closing-cta h2,
+.trade-portal .trade-closing-cta .trade-script-accent {
+  color: #fff;
+}
+
+.trade-portal .trade-closing-cta .trade-kicker {
+  color: #9dcbe7;
+}
+
+/* Inner Trade routes. */
+.trade-portal .trade-subpage {
+  min-height: 100vh;
+  padding: 132px 0 68px;
+  color: var(--trade-heading) !important;
+  background: var(--trade-blue-50) !important;
+}
+
+.trade-portal .trade-sub-title {
+  max-width: 940px;
+  margin-bottom: 24px;
+  color: var(--trade-heading) !important;
+  font-size: clamp(44px, 4.8vw, 70px);
+  font-weight: 600;
+  line-height: 1.02;
+}
+
+.trade-portal .trade-about-container,
+.trade-portal .trade-export-container,
+.trade-portal .trade-contact-wrapper,
+.trade-portal .trade-enquiry-container {
+  gap: clamp(38px, 5vw, 72px);
+}
+
+.trade-portal .trade-about-text p,
+.trade-portal .trade-export-text p,
+.trade-portal .contact-lead,
+.trade-portal .procedures-intro,
+.trade-portal .procedures-table-desc {
+  color: var(--trade-copy) !important;
+  font-size: clamp(17px, 1.15vw, 19px);
+  line-height: 1.72;
+}
+
+.trade-portal .image-frame-gold {
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #b9cbdc;
+  box-shadow: 0 20px 48px rgba(10, 55, 90, .12);
+}
+
+.trade-portal .trade-highlight-box {
+  margin: 28px 0;
+  padding: 30px;
+  color: #fff;
+  background: var(--trade-blue-900);
+  border: 0;
+  border-left: 4px solid #65a9d5;
+  box-shadow: none;
+}
+
+.trade-portal .trade-highlight-box p {
+  color: #d8e6f0 !important;
+}
+
+.trade-portal .trade-closing-statement {
+  color: var(--trade-blue-700) !important;
+  font-size: 19px !important;
+}
+
+.trade-portal .trade-closing-statement strong {
+  color: var(--trade-heading) !important;
+  font-size: clamp(24px, 2vw, 31px);
+  font-weight: 600;
+}
+
+.trade-portal .trade-export-text .lead-paragraph {
+  color: var(--trade-blue-700) !important;
+  font-size: clamp(20px, 1.55vw, 24px);
+  line-height: 1.55;
+}
+
+.trade-portal .trade-divider-gold {
+  width: 88px;
+  height: 3px;
+  background: var(--trade-blue-600);
+}
+
+.trade-portal .trade-section-heading,
+.trade-portal .form-title,
+.trade-portal .procedures-table-title {
+  color: var(--trade-heading) !important;
+  font-weight: 600;
+}
+
+.trade-portal .trade-section-heading,
+.trade-portal .procedures-table-title {
+  font-size: clamp(29px, 2.3vw, 38px);
+}
+
+.trade-portal .trade-contact-form-container,
+.trade-portal .procedures-table-wrapper {
+  padding: 34px;
+  background: #fff;
+  border: 1px solid var(--trade-line);
+  border-top: 4px solid var(--trade-blue-600);
+  box-shadow: 0 18px 46px rgba(10, 55, 90, .09);
+}
+
+.trade-portal .form-title {
+  font-size: clamp(31px, 2.5vw, 40px);
+}
+
+.trade-portal .form-group label {
+  color: #405970;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+
+.trade-portal .form-group input,
+.trade-portal .form-group textarea {
+  color: var(--trade-heading);
+  background: #f7f9fc;
+  border: 1px solid #c7d5e2;
+  font-size: 16px;
+}
+
+.trade-portal .form-group input:focus,
+.trade-portal .form-group textarea:focus {
+  border-color: var(--trade-blue-600);
+  box-shadow: 0 0 0 3px rgba(34, 118, 173, .12);
+}
+
+.trade-portal .contact-item {
+  border-top-color: var(--trade-line);
+}
+
+.trade-portal .contact-icon {
+  width: 50px;
+  height: 50px;
+  color: var(--trade-blue-700);
+  background: var(--trade-blue-100);
+  border-color: #bfd0df;
+}
+
+.trade-portal .contact-text strong {
+  color: var(--trade-heading);
+  font-size: 13px;
+}
+
+.trade-portal .contact-text a,
+.trade-portal .contact-text span {
+  color: var(--trade-copy);
+  font-size: 17px;
+}
+
+.trade-portal .contact-text a:hover {
+  color: var(--trade-blue-700);
+}
+
+.trade-portal .form-success {
+  background: #e6f1f8;
+  border-left-color: var(--trade-blue-600);
+}
+
+.trade-portal .form-success p {
+  color: var(--trade-blue-800);
+}
+
+.trade-portal .procedures-table-header {
+  color: var(--trade-blue-800);
+  border-bottom-color: var(--trade-blue-600);
+  font-size: 13px;
+}
+
+.trade-portal .procedures-table-row {
+  padding: 17px 0;
+  border-bottom-color: #dce5ed;
+}
+
+.trade-portal .procedures-table-row:hover {
+  background: #f4f8fb;
+}
+
+.trade-portal .pt-col-doc,
+.trade-portal .pt-col-purp,
+.trade-portal .pt-col-auth {
+  font-size: 16px;
+  line-height: 1.58;
+}
+
+.trade-portal .pt-col-doc {
+  color: var(--trade-blue-700);
+}
+
+.trade-portal .pt-col-purp {
+  color: var(--trade-copy);
+}
+
+.trade-portal .pt-col-auth {
+  color: var(--trade-heading);
+}
+
+.trade-portal .export-img-wrapper {
+  border-color: #b9cbdc;
+  box-shadow: 0 22px 50px rgba(10, 55, 90, .16);
+}
+
+.trade-portal .export-stats-card,
+.trade-portal .export-stats-card.bottom-card {
+  color: #fff;
+  background: rgba(7, 31, 54, .95);
+  border-color: #6da8cf;
+}
+
+.trade-portal .stat-number {
+  color: #b9dcf1;
+  font-size: 44px;
+}
+
+.trade-portal .stat-label {
+  color: #fff;
+  font-size: 14px;
+}
+
+@media (max-width: 700px) {
+  .trade-portal .trade-subpage {
+    padding-top: 104px;
+  }
+
+  .trade-portal .trade-contact-form-container,
+  .trade-portal .procedures-table-wrapper {
+    padding: 25px 20px;
+  }
+}

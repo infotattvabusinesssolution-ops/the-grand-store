@@ -359,9 +359,17 @@ const updateSettings = async (req, res) => {
     if (superCoinsBirthdayReward !== undefined) settings.superCoinsBirthdayReward = Math.max(0, Number(superCoinsBirthdayReward) || 0);
 
     // PostNet Courier Rates (ZAR)
-    if (postnetStandardFee !== undefined) settings.postnetStandardFee = Math.max(0, Number(postnetStandardFee) || 120);
-    if (postnetExpressFee !== undefined) settings.postnetExpressFee = Math.max(0, Number(postnetExpressFee) || 180);
-    if (postnetPickupFee !== undefined) settings.postnetPickupFee = Math.max(0, Number(postnetPickupFee) || 100);
+    if (postnetStandardFee !== undefined && postnetStandardFee !== null && postnetStandardFee !== '') {
+      settings.postnetStandardFee = Math.max(0, Number(postnetStandardFee));
+    } else if (shippingFee !== undefined && shippingFee !== null) {
+      settings.postnetStandardFee = Math.max(0, Number(shippingFee));
+    }
+    if (postnetExpressFee !== undefined && postnetExpressFee !== null && postnetExpressFee !== '') {
+      settings.postnetExpressFee = Math.max(0, Number(postnetExpressFee));
+    }
+    if (postnetPickupFee !== undefined && postnetPickupFee !== null && postnetPickupFee !== '') {
+      settings.postnetPickupFee = Math.max(0, Number(postnetPickupFee));
+    }
 
     // "Who Pays?" Funding Source Engine
     const {

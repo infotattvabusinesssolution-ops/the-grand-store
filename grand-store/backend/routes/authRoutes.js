@@ -5,12 +5,13 @@ const {
   deleteUserProfile, googleAuth, getReferralSummary, verifyEmail, 
   forgotPassword, resetPassword, getCustomerBankDetails, updateCustomerBankDetails,
   getCustomerCalendarActivities, testBirthdayEmail,
-  sendOtp, verifyOtp, sendEmailOtp, verifyEmailOtp, sendMagicLink, verifyMagicLink, appleAuth, convertGuestToAccount
+  sendOtp, verifyOtp, sendEmailOtp, verifyEmailOtp, sendMagicLink, verifyMagicLink, appleAuth, convertGuestToAccount, checkGuestEmail
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.post('/register', registerUser);
 router.post('/login', loginUser);
+router.post('/check-guest-email', checkGuestEmail);
 router.post('/convert-guest', convertGuestToAccount);
 router.post('/send-otp', sendOtp);
 router.post('/verify-otp', verifyOtp);

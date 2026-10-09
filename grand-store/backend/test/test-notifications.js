@@ -104,6 +104,8 @@ async function runNotificationTestSuite() {
 
     // Clean up
     await Notification.deleteMany({ recipient: user._id });
+    await User.deleteOne({ _id: user._id });
+    console.log('🧹 Cleaned up temporary notification test user from database.');
     await mongoose.disconnect();
     console.log('\n=== ALL 7 NOTIFICATION TESTS PASSED SUCCESSFULLY! ===\n');
     process.exit(0);

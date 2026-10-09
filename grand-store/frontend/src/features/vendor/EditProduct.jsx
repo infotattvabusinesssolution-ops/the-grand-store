@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
-import { Building2, Package, UploadCloud, CheckCircle2, AlertCircle, PlusCircle, User } from 'lucide-react';
+import { Building2, Package, UploadCloud, CheckCircle2, AlertCircle, PlusCircle, User, Coins, Gift } from 'lucide-react';
 import { useCategories } from '../../context/CategoryContext';
 import DynamicIcon from '../../components/DynamicIcon';
 import CatalogHierarchyFields from '../../components/CatalogHierarchyFields';
@@ -18,6 +18,14 @@ export default function EditProduct({ onNotify }) {
   const storeCategories = categories.map(c => c.name);
   
   const [costingData, setCostingData] = useState(null);
+
+  const handleCostingChange = useCallback((costing) => {
+    setCostingData(costing);
+  }, []);
+
+  const handlePriceChange = useCallback((newPrice) => {
+    setFormData(prev => ({ ...prev, price: newPrice }));
+  }, []);
   const [formData, setFormData] = useState({
     name: '',
     type: '',
@@ -38,7 +46,18 @@ export default function EditProduct({ onNotify }) {
     options: 'Pack of 1',
     tradePrice: '',
     minOrderQuantity: '',
-    exportReady: false
+    exportReady: false,
+    isSuperCoinEligible: true,
+    maxSuperCoinDiscountPct: 10,
+    isReferralEligible: true,
+    referralDiscountPct: 5,
+    weight_kg: '1.85',
+    length_cm: '12',
+    width_cm: '12',
+    height_cm: '34',
+    box_type: 'Standard Luxury Bottle Box',
+    is_fragile: true,
+    aramexServiceType: 'ONP'
   });
   
   const [imageEntries, setImageEntries] = useState([]);
@@ -93,7 +112,18 @@ export default function EditProduct({ onNotify }) {
             stock: product.stock !== undefined ? product.stock.toString() : '0',
             tradePrice: product.tradePrice || '',
             minOrderQuantity: product.minOrderQuantity || '',
-            exportReady: product.exportReady || false
+            exportReady: product.exportReady || false,
+            isSuperCoinEligible: product.isSuperCoinEligible !== undefined ? product.isSuperCoinEligible : true,
+            maxSuperCoinDiscountPct: product.maxSuperCoinDiscountPct !== undefined ? product.maxSuperCoinDiscountPct : 10,
+            isReferralEligible: product.isReferralEligible !== undefined ? product.isReferralEligible : true,
+            referralDiscountPct: product.referralDiscountPct !== undefined ? product.referralDiscountPct : 5,
+            weight_kg: (product.shipping?.weight_kg || product.weight_kg || '1.85').toString(),
+            length_cm: (product.shipping?.length_cm || product.length_cm || '12').toString(),
+            width_cm: (product.shipping?.width_cm || product.width_cm || '12').toString(),
+            height_cm: (product.shipping?.height_cm || product.height_cm || '34').toString(),
+            box_type: product.shipping?.box_type || product.box_type || 'Standard Luxury Bottle Box',
+            is_fragile: product.shipping?.is_fragile !== undefined ? product.shipping.is_fragile : true,
+            aramexServiceType: product.shipping?.aramexServiceType || 'ONP'
           });
           if (product.costing) {
             setCostingData(product.costing);
@@ -206,6 +236,25 @@ export default function EditProduct({ onNotify }) {
       if (formData.tradePrice) payload.append('tradePrice', formData.tradePrice);
       if (formData.minOrderQuantity) payload.append('minOrderQuantity', formData.minOrderQuantity);
       payload.append('exportReady', formData.exportReady);
+      payload.append('isSuperCoinEligible', formData.isSuperCoinEligible);
+      payload.append('maxSuperCoinDiscountPct', formData.maxSuperCoinDiscountPct);
+      payload.append('isReferralEligible', formData.isReferralEligible);
+      payload.append('referralDiscountPct', formData.referralDiscountPct);
+
+      payload.append('shipping', JSON.stringify({
+        weight_kg: Number(formData.weight_kg) || 1.85,
+        length_cm: Number(formData.length_cm) || 12,
+        width_cm: Number(formData.width_cm) || 12,
+        height_cm: Number(formData.height_cm) || 34,
+        box_type: formData.box_type || 'Standard Luxury Bottle Box',
+        is_fragile: formData.is_fragile,
+        aramexServiceType: formData.aramexServiceType || 'ONP'
+      }));
+      payload.append('weight_kg', formData.weight_kg);
+      payload.append('length_cm', formData.length_cm);
+      payload.append('width_cm', formData.width_cm);
+      payload.append('height_cm', formData.height_cm);
+      payload.append('box_type', formData.box_type);
 
       let uploadIndex = 0;
       const imageOrder = imageEntries.map((entry) => {
@@ -228,7 +277,7 @@ export default function EditProduct({ onNotify }) {
 
       setSuccess(true);
       if (onNotify) onNotify('Product updated successfully!');
-      if (user.role === 'admin') {
+      if (['admin', 'super_admin', 'product_manager'].includes(user.role)) {
         setTimeout(() => navigate('/admin/products'), 2000);
       } else {
         setTimeout(() => navigate('/vendor/products'), 2000);
@@ -330,8 +379,8 @@ export default function EditProduct({ onNotify }) {
                 <ProductCostingCard
                   initialCosting={costingData}
                   currentPrice={formData.price}
-                  onPriceChange={(newPrice) => setFormData(prev => ({ ...prev, price: newPrice }))}
-                  onCostingChange={(costing) => setCostingData(costing)}
+                  onPriceChange={handlePriceChange}
+                  onCostingChange={handleCostingChange}
                   isInternalProductManager={isInternalProductManager}
                 />
 
@@ -345,11 +394,26 @@ export default function EditProduct({ onNotify }) {
                       onChange={handleChange} 
                       min="0"
                       step="any"
-                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
+                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer font-mono" 
                       placeholder=" " 
                       required 
                     />
-                    <label className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6">Price (ZAR) *</label>
+                    <label className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6">
+                      Retail Selling Price (ZAR - 15% VAT Inclusive) *
+                    </label>
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[10px] text-white/40">
+                        ⚖️ South African law requires VAT-inclusive customer retail pricing.
+                      </p>
+                      {parseFloat(formData.price) > 0 && (
+                        <div className="text-[11px] font-mono flex items-center justify-between text-white/80 bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/25 px-2.5 py-1 rounded-md">
+                          <span className="text-[var(--color-gold)] font-medium">Net Vendor Payout (70%):</span>
+                          <span className="text-emerald-400 font-bold font-mono">
+                            R{(parseFloat(formData.price) * 0.70).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="relative z-0 w-full group">
@@ -393,6 +457,157 @@ export default function EditProduct({ onNotify }) {
                       placeholder=" " 
                     />
                     <label className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6">Tasting Notes (Comma separated)</label>
+                  </div>
+                </div>
+
+                {/* SuperCoins & Refer and Earn Discount Settings */}
+                <div className="bg-black/40 border border-white/10 rounded-2xl p-6 space-y-6 relative overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-4 gap-2">
+                    <div>
+                      <h3 className="text-white font-serif text-xl flex items-center gap-2">
+                        <Coins className="text-[var(--color-gold)]" size={22} />
+                        SuperCoins & Refer & Earn Discount Eligibility
+                      </h3>
+                      <p className="text-xs text-white/50 mt-1 font-light">
+                        Configure customer loyalty rewards, SuperCoins redemption limits, and referral discount eligibility for this retail bottle.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* SuperCoins Card */}
+                    <div className={`p-5 rounded-xl border transition-all ${formData.isSuperCoinEligible ? 'bg-[var(--color-gold)]/[0.03] border-[var(--color-gold)]/30' : 'bg-white/[0.02] border-white/10 opacity-70'}`}>
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/30 flex items-center justify-center text-[var(--color-gold)]">
+                            <Coins size={17} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-semibold text-white">SuperCoins Program</h4>
+                            <span className="text-[11px] text-white/50 block">Earn on purchase & redeem at checkout</span>
+                          </div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox"
+                            name="isSuperCoinEligible"
+                            checked={formData.isSuperCoinEligible}
+                            onChange={(e) => setFormData(prev => ({ ...prev, isSuperCoinEligible: e.target.checked }))}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-gold)]"></div>
+                        </label>
+                      </div>
+
+                      {formData.isSuperCoinEligible ? (
+                        <div className="space-y-3 pt-3 border-t border-white/10">
+                          <div>
+                            <label className="block text-xs uppercase tracking-wider text-white/70 mb-1 font-mono">
+                              Max SuperCoin Discount Cap (%) *
+                            </label>
+                            <div className="relative">
+                              <input 
+                                type="number" 
+                                name="maxSuperCoinDiscountPct" 
+                                value={formData.maxSuperCoinDiscountPct} 
+                                onChange={handleChange} 
+                                min="0" 
+                                max="100" 
+                                step="1" 
+                                className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:border-[var(--color-gold)] focus:outline-none pr-8 font-mono" 
+                                placeholder="10" 
+                              />
+                              <span className="absolute right-3 top-2.5 text-xs text-white/40 font-mono">%</span>
+                            </div>
+                          </div>
+
+                          <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 text-[11px] text-white/60 space-y-1">
+                            <div className="flex justify-between">
+                              <span>Max discount at current price:</span>
+                              <span className="text-[var(--color-gold)] font-mono font-medium">
+                                R{((parseFloat(formData.price || 0) * (parseFloat(formData.maxSuperCoinDiscountPct) || 0)) / 100).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Max coins customer can redeem:</span>
+                              <span className="text-white/80 font-mono">
+                                {Math.round(((parseFloat(formData.price || 0) * (parseFloat(formData.maxSuperCoinDiscountPct) || 0)) / 100) / 0.10)} coins
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-amber-400/80 pt-2 border-t border-white/5 font-mono">
+                          ⚠️ SuperCoins cannot be redeemed against this product at checkout.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Refer & Earn Card */}
+                    <div className={`p-5 rounded-xl border transition-all ${formData.isReferralEligible ? 'bg-purple-500/[0.03] border-purple-500/30' : 'bg-white/[0.02] border-white/10 opacity-70'}`}>
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                            <Gift size={17} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-semibold text-white">Refer & Earn Program</h4>
+                            <span className="text-[11px] text-white/50 block">Customer credits & reward commissions</span>
+                          </div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox"
+                            name="isReferralEligible"
+                            checked={formData.isReferralEligible}
+                            onChange={(e) => setFormData(prev => ({ ...prev, isReferralEligible: e.target.checked }))}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                        </label>
+                      </div>
+
+                      {formData.isReferralEligible ? (
+                        <div className="space-y-3 pt-3 border-t border-white/10">
+                          <div>
+                            <label className="block text-xs uppercase tracking-wider text-white/70 mb-1 font-mono">
+                              Referral Discount / Reward Value (%) *
+                            </label>
+                            <div className="relative">
+                              <input 
+                                type="number" 
+                                name="referralDiscountPct" 
+                                value={formData.referralDiscountPct} 
+                                onChange={handleChange} 
+                                min="0" 
+                                max="100" 
+                                step="1" 
+                                className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-400 focus:outline-none pr-8 font-mono" 
+                                placeholder="5" 
+                              />
+                              <span className="absolute right-3 top-2.5 text-xs text-white/40 font-mono">%</span>
+                            </div>
+                          </div>
+
+                          <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 text-[11px] text-white/60 space-y-1">
+                            <div className="flex justify-between">
+                              <span>Referral reward allocation:</span>
+                              <span className="text-purple-300 font-mono font-medium">
+                                R{((parseFloat(formData.price || 0) * (parseFloat(formData.referralDiscountPct) || 0)) / 100).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Wallet discount eligible:</span>
+                              <span className="text-emerald-400 font-mono">Active on Checkout</span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-amber-400/80 pt-2 border-t border-white/5 font-mono">
+                          ⚠️ Referral wallet credits & reward discounts cannot be applied to this product.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -454,6 +669,144 @@ export default function EditProduct({ onNotify }) {
                     <input type="checkbox" name="exportReady" checked={formData.exportReady} onChange={handleChange} className="sr-only peer" />
                     <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#c9a35b]"></div>
                   </label>
+                </div>
+              </div>
+
+              {/* Packaging & Courier Logistics Specs */}
+              <div className="space-y-8 pt-6">
+                <h2 className="text-[var(--color-ivory)] font-serif text-3xl flex items-center gap-4 border-b border-white/[0.05] pb-4">
+                  <Package size={24} className="text-[#e1bd70]" />
+                  Logistics & Packaging (Live Courier Rates)
+                </h2>
+                <p className="text-xs uppercase tracking-widest text-[#e1bd70]/80">
+                  Accurate dimensions allow Aramex and live freight engines to calculate exact courier rates dynamically.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="relative z-0 w-full group">
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      name="weight_kg" 
+                      id="weight_kg"
+                      value={formData.weight_kg} 
+                      onChange={handleChange} 
+                      required
+                      min="0.1"
+                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
+                      placeholder=" " 
+                    />
+                    <label 
+                      htmlFor="weight_kg" 
+                      className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
+                    >
+                      Weight (KG) *
+                    </label>
+                  </div>
+
+                  <div className="relative z-0 w-full group">
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      name="length_cm" 
+                      id="length_cm"
+                      value={formData.length_cm} 
+                      onChange={handleChange} 
+                      required
+                      min="1"
+                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
+                      placeholder=" " 
+                    />
+                    <label 
+                      htmlFor="length_cm" 
+                      className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
+                    >
+                      Length (CM) *
+                    </label>
+                  </div>
+
+                  <div className="relative z-0 w-full group">
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      name="width_cm" 
+                      id="width_cm"
+                      value={formData.width_cm} 
+                      onChange={handleChange} 
+                      required
+                      min="1"
+                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
+                      placeholder=" " 
+                    />
+                    <label 
+                      htmlFor="width_cm" 
+                      className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
+                    >
+                      Width (CM) *
+                    </label>
+                  </div>
+
+                  <div className="relative z-0 w-full group">
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      name="height_cm" 
+                      id="height_cm"
+                      value={formData.height_cm} 
+                      onChange={handleChange} 
+                      required
+                      min="1"
+                      className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
+                      placeholder=" " 
+                    />
+                    <label 
+                      htmlFor="height_cm" 
+                      className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
+                    >
+                      Height (CM) *
+                    </label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">Box / Packaging Type</label>
+                    <input 
+                      type="text" 
+                      name="box_type" 
+                      value={formData.box_type} 
+                      onChange={handleChange} 
+                      placeholder="e.g. Standard Luxury Bottle Box"
+                      className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)] text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] mb-2">Default Courier Service</label>
+                    <select
+                      name="aramexServiceType"
+                      value={formData.aramexServiceType}
+                      onChange={handleChange}
+                      className="w-full bg-[#111] border border-white/10 px-4 py-3 rounded text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)] text-sm"
+                    >
+                      <option value="ONP">ONP - Overnight Express (Next Day)</option>
+                      <option value="PEC">PEC - Economy Road (2-3 Days)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-6">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        name="is_fragile" 
+                        checked={formData.is_fragile} 
+                        onChange={handleChange} 
+                        className="sr-only peer" 
+                      />
+                      <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#c9a35b]"></div>
+                    </label>
+                    <span className="text-sm text-[var(--color-ivory)]">Fragile Glass / Liquid Parcel</span>
+                  </div>
                 </div>
               </div>
               

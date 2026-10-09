@@ -5,7 +5,8 @@ import { ArrowRight, Clock, ShieldCheck, ChevronDown, Check } from 'lucide-react
 import AuctionCountdown from './AuctionCountdown';
 import { getAuctionPhase, getAuctionTargetTime } from './auctionPhase';
 import Price from '../../components/ui/Price';
-import { useCurrency } from '../../context/CurrencyContext';
+import { useCurrency, getCountryForCurrency, CURRENCY_SYMBOLS, ZERO_DECIMAL_CURRENCIES } from '../../context/CurrencyContext';
+import { CountryFlag } from '../../components/CountryCodeSelect';
 
 export default function LuxuryAuctionHero({ lots, now, onNotify, onRefresh }) {
   if (!lots || lots.length === 0) return null;
@@ -43,29 +44,6 @@ export default function LuxuryAuctionHero({ lots, now, onNotify, onRefresh }) {
     </div>
   );
 }
-
-const CURRENCY_SYMBOLS = {
-  ZAR: 'R',
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  INR: '₹',
-  AUD: 'A$',
-  CAD: 'C$',
-  JPY: '¥',
-  CNY: '¥',
-  CHF: 'CHF',
-  AED: 'AED',
-  SGD: 'S$',
-  HKD: 'HK$',
-  NZD: 'NZ$',
-  BRL: 'R$',
-  KRW: '₩',
-  THB: '฿',
-  NGN: '₦',
-  KES: 'KSh',
-  GHS: 'GH₵',
-};
 
 function LuxuryAuctionSlide({ lot, now, index, total, onNotify, onRefresh }) {
   const { currency, rates, changeCurrency, availableCurrencies } = useCurrency();
@@ -260,55 +238,64 @@ function LuxuryAuctionSlide({ lot, now, index, total, onNotify, onRefresh }) {
                <div className="flex flex-col gap-2">
                  <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
                    <div className="relative flex-1">
-                     {/* Currency Selector Pill */}
-                     <div className="absolute left-3 top-1/2 -translate-y-1/2 z-20 flex items-center">
-                       <button
-                         type="button"
-                         onClick={() => setShowCurrencyDropdown(!showCurrencyDropdown)}
-                         className="flex items-center gap-1.5 bg-black/70 hover:bg-white/10 border border-white/20 hover:border-[var(--color-gold)]/60 px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold text-[#f5d77f] transition-all cursor-pointer shadow-md"
-                         title="Change bidding currency"
-                       >
-                         <span>{activeSymbol}</span>
-                         <span className="text-[11px] text-white/70">{currency}</span>
-                         <ChevronDown size={11} className={`text-white/40 transition-transform ${showCurrencyDropdown ? 'rotate-180' : ''}`} />
-                       </button>
+                      {/* Currency Selector Pill */}
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 z-20 flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrencyDropdown(!showCurrencyDropdown)}
+                          className="flex items-center gap-1.5 bg-black/80 hover:bg-white/10 border border-white/20 hover:border-[var(--color-gold)]/60 px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold text-[#f5d77f] transition-all cursor-pointer shadow-md"
+                          title="Change bidding currency"
+                        >
+                          <CountryFlag iso={getCountryForCurrency(currency)} className="rounded-xs shrink-0" />
+                          {activeSymbol !== currency && (
+                            <span className="text-white/90">{activeSymbol}</span>
+                          )}
+                          <span className="text-[11px] text-white/70">{currency}</span>
+                          <ChevronDown size={11} className={`text-white/40 transition-transform ${showCurrencyDropdown ? 'rotate-180' : ''}`} />
+                        </button>
 
-                       {/* Currency Dropdown Menu */}
-                       {showCurrencyDropdown && (
-                         <div className="absolute top-full left-0 mt-2 w-44 bg-[#12110e] border border-[#c9a35b]/40 rounded-2xl shadow-2xl py-2 z-50 max-h-56 overflow-y-auto scrollbar-thin">
-                           <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-white/40 font-bold border-b border-white/5 mb-1">
-                             Select Currency
-                           </div>
-                           {(availableCurrencies || ['ZAR', 'USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD']).map((c) => (
-                             <button
-                               key={c}
-                               type="button"
-                               onClick={() => {
-                                 changeCurrency(c);
-                                 setShowCurrencyDropdown(false);
-                               }}
-                               className={`w-full px-3 py-1.5 text-left text-xs font-mono flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer ${
-                                 currency === c ? 'text-[#f5d77f] font-bold bg-white/5' : 'text-white/70'
-                               }`}
-                             >
-                               <span>{CURRENCY_SYMBOLS[c] || c} {c}</span>
-                               {currency === c && <Check size={12} className="text-[#f5d77f]" />}
-                             </button>
-                           ))}
-                         </div>
-                       )}
-                     </div>
+                        {/* Currency Dropdown Menu */}
+                        {showCurrencyDropdown && (
+                          <div className="absolute top-full left-0 mt-2 w-48 bg-[#12110e] border border-[#c9a35b]/40 rounded-2xl shadow-2xl py-2 z-50 max-h-56 overflow-y-auto scrollbar-thin">
+                            <div className="px-3 py-1.5 text-[9px] uppercase tracking-widest text-white/40 font-bold border-b border-white/5 mb-1">
+                              Select Currency
+                            </div>
+                            {(availableCurrencies || ['ZAR', 'USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD']).map((c) => {
+                              const sym = CURRENCY_SYMBOLS[c] || c;
+                              return (
+                                <button
+                                  key={c}
+                                  type="button"
+                                  onClick={() => {
+                                    changeCurrency(c);
+                                    setShowCurrencyDropdown(false);
+                                  }}
+                                  className={`w-full px-3 py-1.5 text-left text-xs font-mono flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer ${
+                                    currency === c ? 'text-[#f5d77f] font-bold bg-white/5' : 'text-white/70'
+                                  }`}
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <CountryFlag iso={getCountryForCurrency(c)} className="rounded-xs shrink-0" />
+                                    <span>{sym !== c ? `${sym} ` : ''}{c}</span>
+                                  </span>
+                                  {currency === c && <Check size={12} className="text-[#f5d77f] shrink-0" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
 
-                     <input 
-                       type="number"
-                       required
-                       value={bidAmount}
-                       onChange={e => setBidAmount(e.target.value)}
-                       placeholder={`Min: ${nextMinimumInCurrency.toLocaleString(undefined, { minimumFractionDigits: currency === 'ZAR' ? 0 : 2, maximumFractionDigits: 2 })}`}
-                       min={nextMinimumInCurrency}
-                       step={currency === 'ZAR' ? "1" : "0.01"}
-                       className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 pl-28 pr-6 text-lg font-mono text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)] transition-colors placeholder-white/20"
-                     />
+                      <input 
+                        type="number"
+                        required
+                        value={bidAmount}
+                        onChange={e => setBidAmount(e.target.value)}
+                        placeholder={`Min: ${nextMinimumInCurrency.toLocaleString(undefined, { minimumFractionDigits: currency === 'ZAR' || ZERO_DECIMAL_CURRENCIES.has(currency) ? 0 : 2, maximumFractionDigits: currency === 'ZAR' || ZERO_DECIMAL_CURRENCIES.has(currency) ? 0 : 2 })}`}
+                        min={nextMinimumInCurrency}
+                        step={currency === 'ZAR' || ZERO_DECIMAL_CURRENCIES.has(currency) ? "1" : "0.01"}
+                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 pl-32 pr-6 text-lg font-mono text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)] transition-colors placeholder-white/20"
+                      />
                    </div>
                    <button 
                      disabled={submitting}

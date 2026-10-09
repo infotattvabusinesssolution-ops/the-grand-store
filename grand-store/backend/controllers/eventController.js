@@ -222,6 +222,11 @@ const processEventPayment = async (bookingId, gatewayDetails = {}) => {
   return await processEventPaymentV2(bookingId, gatewayDetails);
 };
 
+const cancelEventPayment = async (bookingId, reason) => {
+  const { cancelEventPayment: cancelEventPaymentV2 } = require("./eventControllerV2");
+  return await cancelEventPaymentV2(bookingId, reason);
+};
+
 // @desc    Get user's event bookings
 // @route   GET /api/events/bookings/my-tickets
 // @access  Private
@@ -233,7 +238,8 @@ const getUserBookings = async (req, res) => {
 
     const QRCode = require("qrcode");
     for (const b of bookings) {
-      if (!b.qrCodeData && b.ticketId) {
+      const isPaid = ["Paid", "Completed"].includes(b.paymentStatus);
+      if (isPaid && !b.qrCodeData && b.ticketId) {
         try {
           const qrPayload = JSON.stringify({
             ticketId: b.ticketId,
@@ -255,7 +261,19 @@ const getUserBookings = async (req, res) => {
       }
     }
 
-    res.json(bookings);
+    // STRICT PRIVACY & CREDENTIALS SECURITY:
+    // If not paid, strip ticketId and qrCodeData so unpaid users never receive any ticket credentials!
+    const sanitizedBookings = bookings.map((b) => {
+      const doc = b.toObject ? b.toObject() : { ...b };
+      const isPaid = ["Paid", "Completed"].includes(doc.paymentStatus);
+      if (!isPaid) {
+        delete doc.qrCodeData;
+        delete doc.ticketId;
+      }
+      return doc;
+    });
+
+    res.json(sanitizedBookings);
   } catch (error) {
     console.error("Error fetching user bookings:", error);
     res.status(500).json({ message: "Server error fetching tickets" });
@@ -276,7 +294,10 @@ const getEventAttendees = async (req, res) => {
         .json({ message: "Not authorized to view these attendees" });
     }
 
-    const attendees = await Booking.find({ event: eventId })
+    const attendees = await Booking.find({
+      event: eventId,
+      paymentStatus: { $in: ["Paid", "Completed"] }
+    })
       .populate("user", "name email")
       .sort({ bookingDate: -1 });
 
@@ -293,7 +314,7 @@ const getEventAttendees = async (req, res) => {
 const extractTicketIdentifierLegacy = (input) => {
   if (!input) return "";
   if (typeof input === "object") {
-    return input.ticketId || input.ticket_id || input.id || input._id || input.gsReference || "";
+    return input.ticketId || input.ticket_id || input.code || input.ticketCode || input.id || input._id || input.gsReference || "";
   }
   let str = String(input).trim();
   if ((str.startsWith('"') && str.endsWith('"')) || (str.startsWith("'") && str.endsWith("'"))) {
@@ -303,7 +324,7 @@ const extractTicketIdentifierLegacy = (input) => {
     try {
       const parsed = JSON.parse(str);
       if (parsed && typeof parsed === "object") {
-        return parsed.ticketId || parsed.ticket_id || parsed.id || parsed._id || parsed.gsReference || str;
+        return parsed.ticketId || parsed.ticket_id || parsed.code || parsed.ticketCode || parsed.id || parsed._id || parsed.gsReference || str;
       }
     } catch (_) {}
   }
@@ -318,7 +339,7 @@ const extractTicketIdentifierLegacy = (input) => {
 
 const verifyTicket = async (req, res) => {
   try {
-    const rawInput = req.body.ticketId || req.body.code || req.body.data || req.body.qrData || req.body.ticket;
+    const rawInput = req.body.ticketId || req.body.code || req.body.data || req.body.qrData || req.body.qrPayload || req.body.ticketCode || req.body.ticket || req.body.gsReference || req.body.id || req.body._id || (typeof req.body === 'string' ? req.body : (req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : null));
     const identifier = extractTicketIdentifierLegacy(rawInput);
 
     if (!identifier) {
@@ -417,6 +438,7 @@ module.exports = {
   getVendorEvents,
   bookEvent,
   processEventPayment,
+  cancelEventPayment,
   getUserBookings,
   getEventAttendees,
   verifyTicket,

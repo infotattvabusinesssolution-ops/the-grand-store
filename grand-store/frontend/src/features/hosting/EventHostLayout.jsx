@@ -44,7 +44,7 @@ export default function EventHostLayout() {
   }
 
   // Allow admin OR event hosts
-  if (user.role !== 'event_host' && user.role !== 'admin') {
+  if (user.role !== 'event_host' && user.role !== 'admin' && user.role !== 'super_admin') {
     return <Navigate to="/login" replace />;
   }
 
@@ -80,7 +80,7 @@ export default function EventHostLayout() {
             </div>
             <div className="hidden md:block h-4 w-px bg-white/20 mx-2"></div>
             <div className="hidden md:block text-sm tracking-widest text-[#c9a35b] font-medium uppercase drop-shadow-[0_0_8px_rgba(212,175,55,0.5)]">
-              {user?.role === 'admin' ? 'Admin Gateway' : 'Event Manager Portal'}
+              {['admin', 'super_admin'].includes(user?.role) ? 'Admin Gateway' : 'Event Manager Portal'}
             </div>
           </div>
         </div>
@@ -88,7 +88,7 @@ export default function EventHostLayout() {
           <div className="flex items-center gap-3">
             <div className="text-right hidden md:block">
               <div className="text-sm font-serif">{user.name}</div>
-              <div className="text-xs text-[#c9a35b] tracking-widest uppercase">{user?.role === 'admin' ? 'System Administrator' : 'Event Organizer'}</div>
+              <div className="text-xs text-[#c9a35b] tracking-widest uppercase">{['admin', 'super_admin'].includes(user?.role) ? 'System Administrator' : 'Event Organizer'}</div>
             </div>
             <div className="w-10 h-10 rounded-full bg-[#c9a35b] p-[1px]">
               <div className="w-full h-full bg-[#0a0a0a] rounded-full flex items-center justify-center">

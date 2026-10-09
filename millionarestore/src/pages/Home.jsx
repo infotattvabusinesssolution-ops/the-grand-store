@@ -8,6 +8,7 @@ import WinemakerMessage from '../components/WinemakerMessage'
 import ExperienceCollection from '../components/ExperienceCollection'
 import Process from '../components/Process'
 import AgeingGallery from '../components/AgeingGallery'
+import GalleryVideoSection from '../components/GalleryVideoSection'
 import Newsletter from '../components/Newsletter'
 import EnquireForm from '../components/EnquireForm'
 
@@ -105,6 +106,7 @@ export default function Home() {
       <WinemakerMessage />
       <ExperienceCollection />
       <Process />
+      <GalleryVideoSection />
       <AgeingGallery />
       <Newsletter />
       <EnquireForm />

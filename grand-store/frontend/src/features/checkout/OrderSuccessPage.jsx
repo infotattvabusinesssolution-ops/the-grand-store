@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { CheckCircle2, ChevronLeft, Download, Loader2, Truck, MapPin, Coins, ShieldCheck, ArrowRight, Clock, AlertTriangle, Package, FileCheck, Gift } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Download, Loader2, Truck, MapPin, Coins, ShieldCheck, ArrowRight, Clock, AlertTriangle, Package, FileCheck, Gift, CreditCard } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useCurrency } from "../../context/CurrencyContext";
 import Price from "../../components/ui/Price";
 import StoreBankDetailsCard from "../../components/StoreBankDetailsCard";
+import PaymentForm from "./PaymentForm";
 import api from "../../api";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -18,12 +19,40 @@ export default function OrderSuccessPage({ onClearCart }) {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [payfastUrl, setPayfastUrl] = useState(null);
+  const [paymentData, setPaymentData] = useState(null);
+  const [initiatingPayment, setInitiatingPayment] = useState(false);
+
+  const handlePayWithPayFast = async () => {
+    if (!order) return;
+    try {
+      setInitiatingPayment(true);
+      const pfRes = await api.post('/payfast/generate-shop', { orderId: order._id });
+      setPayfastUrl(pfRes.data.url);
+      setPaymentData(pfRes.data.data);
+    } catch (err) {
+      console.error('Failed to initiate PayFast payment:', err);
+      alert(err.response?.data?.message || err.message || 'Failed to initialize PayFast gateway.');
+    } finally {
+      setInitiatingPayment(false);
+    }
+  };
 
   // 1-Click Post-Order Account Creation State (Section 6 & Quick Buyer)
   const [accountPassword, setAccountPassword] = useState("");
   const [convertingAccount, setConvertingAccount] = useState(false);
   const [accountCreated, setAccountCreated] = useState(false);
   const [accountError, setAccountError] = useState("");
+
+  const guestTokenFromUrl = searchParams.get("token") || searchParams.get("guestAccessToken");
+  const storedGuestToken = (() => {
+    try {
+      return sessionStorage.getItem(`guestAccessToken_${id}`) || localStorage.getItem(`guestAccessToken_${id}`);
+    } catch (_) {
+      return null;
+    }
+  })();
+  const effectiveGuestToken = guestTokenFromUrl || storedGuestToken;
 
   const handleCreateAccount = async (e) => {
     e.preventDefault();
@@ -36,7 +65,8 @@ export default function OrderSuccessPage({ onClearCart }) {
     try {
       const res = await api.post("/auth/convert-guest", {
         orderId: order._id,
-        password: accountPassword
+        password: accountPassword,
+        guestAccessToken: effectiveGuestToken || order.guestAccessToken
       });
       if (updateUser) {
         updateUser(res.data);
@@ -54,13 +84,54 @@ export default function OrderSuccessPage({ onClearCart }) {
     document.title = "Order Confirmation - The Grand Store";
     window.scrollTo({ top: 0, behavior: "auto" });
 
+    let pollInterval = null;
+    const reqConfig = effectiveGuestToken
+      ? { headers: { 'x-guest-access-token': effectiveGuestToken } }
+      : {};
+    const queryParam = effectiveGuestToken ? `?guestAccessToken=${encodeURIComponent(effectiveGuestToken)}` : '';
+
     const fetchOrder = async () => {
       try {
-        const res = await api.get(`/orders/${id}`);
-        const data = res.data;
+        const res = await api.get(`/orders/${id}${queryParam}`, reqConfig);
+        let data = res.data;
+        if (paymentStatus === "cancel" && !data.isPaid && data.paymentStatus !== "Paid") {
+          try {
+            const cancelRes = await api.post(`/orders/${id}/cancel-payment`, {
+              reason: "Customer cancelled payment on PayFast"
+            });
+            if (cancelRes.data?.order) {
+              data = cancelRes.data.order;
+            } else {
+              data = { ...data, paymentStatus: "Cancelled" };
+            }
+          } catch (cancelErr) {
+            console.error("Failed to sync cancel-payment:", cancelErr);
+            data = { ...data, paymentStatus: "Cancelled" };
+          }
+        }
         setOrder(data);
         if (paymentStatus === "success" && onClearCart) {
           onClearCart();
+        }
+
+        // If returned from gateway with payment=success but webhook has not yet finished, poll for confirmation
+        if (paymentStatus === "success" && !data.isPaid && data.paymentStatus !== "Paid") {
+          let attempts = 0;
+          pollInterval = setInterval(async () => {
+            attempts += 1;
+            try {
+              const pollRes = await api.get(`/orders/${id}${queryParam}`, reqConfig);
+              if (pollRes.data && (pollRes.data.isPaid || pollRes.data.paymentStatus === "Paid")) {
+                setOrder(pollRes.data);
+                clearInterval(pollInterval);
+              }
+            } catch (pollErr) {
+              console.warn("Order polling warning:", pollErr.message);
+            }
+            if (attempts >= 12) {
+              clearInterval(pollInterval);
+            }
+          }, 2500);
         }
       } catch (error) {
         console.error("Error fetching order", error);
@@ -74,12 +145,40 @@ export default function OrderSuccessPage({ onClearCart }) {
     } else {
       setLoading(false);
     }
-  }, [id, paymentStatus]);
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [id, paymentStatus, effectiveGuestToken]);
 
   if (loading) {
+    const isCancelFlow = paymentStatus === "cancel" || searchParams.get("status") === "cancel";
     return (
-      <main className="min-h-screen bg-[#050505] flex items-center justify-center text-gold-gradient">
-        Loading receipt...
+      <main className="min-h-screen bg-[#050505] flex flex-col items-center justify-center px-6 text-center">
+        <div className="relative mb-6">
+          <div
+            className={`w-16 h-16 rounded-full border-2 border-dashed ${
+              isCancelFlow ? "border-rose-500/40" : "border-[#c9a35b]/40"
+            } animate-spin flex items-center justify-center`}
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            {isCancelFlow ? (
+              <AlertTriangle size={24} className="text-rose-400 animate-pulse" />
+            ) : (
+              <Package size={24} className="text-[#c9a35b] animate-pulse" />
+            )}
+          </div>
+        </div>
+
+        <h2 className="text-2xl md:text-3xl font-serif text-white mb-2 tracking-wide">
+          {isCancelFlow ? "Cancelling Order..." : "Loading Order Details..."}
+        </h2>
+
+        <p className="text-sm text-white/50 max-w-sm tracking-wide leading-relaxed">
+          {isCancelFlow
+            ? "Updating payment records and releasing order..."
+            : "Retrieving official order summary..."}
+        </p>
       </main>
     );
   }
@@ -95,260 +194,162 @@ export default function OrderSuccessPage({ onClearCart }) {
     );
   }
 
-  const generatePDF = () => {
+  const generatePDF = async () => {
+    if (!order) return;
     setIsGenerating(true);
-    const doc = new jsPDF();
-    const invoiceNo = order.invoiceNumber || order._id;
-
-    const buildPdfContent = (img) => {
-      // --- THEME COLORS ---
-      const themeColor = [15, 15, 15]; // Charcoal/Black
-      const accentColor = [216, 183, 109]; // Grand Store Gold
-
-      // --- WATERMARK ---
-      if (img) {
-        doc.setGState(new doc.GState({ opacity: 0.04 }));
-        doc.addImage(img, "PNG", 35, 133, 140, 30);
-        doc.setGState(new doc.GState({ opacity: 1.0 }));
-      }
-
-      // --- LOGO (Top Left) ---
-      if (img) {
-        // Fix squeezing by calculating aspect ratio
-        const ratio = img.height / img.width;
-        const targetWidth = 45;
-        const targetHeight = targetWidth * ratio;
-        doc.addImage(img, "PNG", 14, 15, targetWidth, targetHeight);
-      } else {
-        doc.setFont("times", "bold");
-        doc.setFontSize(22);
-        doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
-        doc.text("THE GRAND STORE", 14, 25);
-      }
-
-      // --- HEADER (Top Right) ---
-      doc.setFont("times", "bold");
-      doc.setFontSize(26);
-      doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]); // Gold
-      doc.text("INVOICE", 196, 24, { align: "right" });
-      
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(0);
-      doc.text(new Date(order.createdAt).toLocaleDateString(), 196, 30, { align: "right" });
-      doc.text(`Ref: #${invoiceNo.toUpperCase()}`, 196, 35, { align: "right" });
-
-      // --- ADDRESSES ---
-      // Left: Store Address
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(0);
-      doc.text("Office Address", 14, 50);
-      
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(60);
-      doc.text("The Grand Store", 14, 55);
-      doc.text("Premium Goods & Accessories", 14, 60);
-      doc.text("VAT No: 123456789", 14, 65);
-
-      // Right: Customer Address
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0);
-      doc.text("To :", 120, 50);
-      
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0);
-      doc.text(order.user?.name || order.guestInfo?.name || order.shippingAddress?.name || "Customer", 120, 55);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(60);
-      doc.text(order.user?.email || order.guestInfo?.email || order.shippingAddress?.email || "", 120, 60);
-      
-      // Wrap Address so it doesn't overflow page
-      const addressLines = doc.splitTextToSize(order.shippingAddress?.address || "", 76);
-      doc.text(addressLines, 120, 65);
-      const addressOffset = 65 + (addressLines.length * 4.5); // line height spacing
-
-      doc.text(`${order.shippingAddress?.city || ""}, ${order.shippingAddress?.postalCode || ""}`, 120, addressOffset);
-      doc.text(order.shippingAddress?.country || "", 120, addressOffset + 5);
-
-      // --- CURRENCY HELPER ---
-      const pdfPrice = (amount) => {
-        return formatPrice(amount).replace(/\u00A0/g, ' ').replace(/[^\x20-\x7E]/g, '');
-      };
-
-      // --- TABLE ---
-      const tableData = order.orderItems.map((item) => [
-        item.name,
-        pdfPrice(item.price),
-        item.qty || item.quantity || 1,
-        pdfPrice(item.price * (item.qty || item.quantity || 1)),
-      ]);
-
-      const tableStartY = Math.max(85, addressOffset + 15);
-
-      autoTable(doc, {
-        startY: tableStartY,
-        head: [["Items Description", "Unit Price", "Qnt", "Total"]],
-        body: tableData,
-        theme: "plain",
-        styles: {
-          font: "helvetica",
-          fontSize: 9,
-          textColor: [0, 0, 0],
-          cellPadding: { top: 6, right: 4, bottom: 6, left: 4 },
-        },
-        headStyles: { 
-          fillColor: themeColor,
-          textColor: accentColor,
-          font: "times",
-          fontStyle: "bold",
-        },
-        bodyStyles: {
-          lineWidth: { bottom: 0.5 },
-          lineColor: [200, 200, 200],
-        },
-        columnStyles: {
-          0: { cellWidth: 'auto', fontStyle: 'bold' },
-          1: { halign: 'center' },
-          2: { halign: 'center' },
-          3: { halign: 'right' },
-        }
+    const invoiceNo = order.invoiceNumber || order.orderId || order._id;
+    try {
+      const response = await api.get(`/orders/${order._id}/receipt-pdf`, {
+        responseType: 'blob',
+        headers: effectiveGuestToken ? { 'x-guest-access-token': effectiveGuestToken } : {}
       });
-
-      const finalY = doc.lastAutoTable.finalY + 10;
-
-      // --- NOTES (Left) ---
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0);
-      doc.text("Note:", 14, finalY + 5);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(80);
-      doc.text("Payment Method:", 14, finalY + 10);
-      doc.text(order.paymentMethod || "N/A", 14, finalY + 15);
-
-      // --- TOTALS (Right) ---
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(0);
-      doc.text("SUBTOTAL :", 150, finalY + 5, { align: "right" });
-      doc.text(pdfPrice(order.totalPrice - order.shippingCost), 196, finalY + 5, { align: "right" });
-
-      doc.text("SHIPPING :", 150, finalY + 12, { align: "right" });
-      doc.text(order.shippingCost === 0 ? "Complimentary" : pdfPrice(order.shippingCost), 196, finalY + 12, { align: "right" });
-
-      // TOTAL BLOCK
-      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2]);
-      doc.rect(120, finalY + 18, 80, 12, "F");
-
-      doc.setFont("times", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
-      doc.text("TOTAL DUE :", 130, finalY + 26);
-      doc.setTextColor(255, 255, 255);
-      doc.text(pdfPrice(order.totalPrice), 196, finalY + 26, { align: "right" });
-
-      // --- THANK YOU ---
-      doc.setFontSize(14);
-      doc.setFont("times", "bold");
-      doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
-      doc.text("Thank you for your Business", 14, finalY + 45);
-
-      // --- FOOTER DIVIDER ---
-      const pageHeight = doc.internal.pageSize.height;
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.5);
-      doc.line(14, pageHeight - 35, 196, pageHeight - 35);
-
-      // --- FOOTER 3 COLUMNS ---
-      doc.setFontSize(8);
-      
-      // Col 1
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
-      doc.text("Questions?", 14, pageHeight - 25);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(80);
-      doc.text("Email    : info@grandstore.com", 14, pageHeight - 20);
-      doc.text("Call us  : +1 234 567 890", 14, pageHeight - 15);
-
-      // Col 2
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
-      doc.text("Payment Info :", 85, pageHeight - 25);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(80);
-      doc.text(`Method   : ${order.paymentMethod}`, 85, pageHeight - 20);
-      doc.text(`Status   : ${order.paymentStatus}`, 85, pageHeight - 15);
-
-      // Col 3
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
-      doc.text("Terms & Conditions/Note:", 145, pageHeight - 25);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(80);
-      doc.text("All sales are final.", 145, pageHeight - 20);
-      doc.text("Keep this receipt for your records.", 145, pageHeight - 15);
-
-      doc.save(`${invoiceNo}_Receipt.pdf`);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `GrandStore_Tax_Invoice_${invoiceNo}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.warn('Direct blob download failed, opening in new tab:', err);
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const queryParam = effectiveGuestToken ? `?guestAccessToken=${effectiveGuestToken}` : '';
+      window.open(`${apiUrl}/api/orders/${order._id}/receipt-pdf${queryParam}`, '_blank');
+    } finally {
       setIsGenerating(false);
-    };
-
-    // Load Logo image
-    const img = new Image();
-    img.src = "/logo.png";
-    img.onload = () => {
-      buildPdfContent(img);
-    };
-    img.onerror = () => {
-      buildPdfContent(null);
-    };
+    }
   };
+
+  const isOrderPaid = Boolean(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success');
+  const isOrderCancelled = Boolean(order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || (paymentStatus === 'cancel' && !isOrderPaid));
+
+  if (isOrderCancelled) {
+    return (
+      <main className="min-h-screen bg-[#050505] text-[var(--color-ivory)] pt-20 pb-24 flex items-center justify-center">
+        <div className="max-w-2xl mx-auto px-6 w-full text-center animate-fadeIn">
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 bg-rose-500/15 border border-rose-500/30 shadow-[0_0_30px_rgba(244,63,94,0.2)]">
+            <AlertTriangle size={40} className="text-rose-400" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-serif mb-4 text-white">
+            Payment Cancelled
+          </h1>
+
+          <div className="space-y-4 max-w-md mx-auto mb-6">
+            <div className="p-4 bg-rose-950/30 border border-rose-500/40 rounded-2xl text-rose-200 text-sm leading-relaxed">
+              You cancelled your payment on PayFast. No funds were charged to your account, and this order has been cancelled.
+            </div>
+            {order.superCoinsUsed > 0 && (
+              <div className="p-3.5 bg-emerald-950/30 border border-emerald-500/40 rounded-2xl text-emerald-300 text-xs flex items-center justify-center gap-2">
+                <Coins size={16} className="text-emerald-400 shrink-0" />
+                <span><strong>{order.superCoinsUsed} SuperCoins</strong> have been safely refunded back to your wallet.</span>
+              </div>
+            )}
+            <div className="flex flex-col items-center justify-center gap-3 pt-2">
+              {order.paymentMethod === 'PayFast' && (
+                <button
+                  type="button"
+                  onClick={handlePayWithPayFast}
+                  disabled={initiatingPayment}
+                  className="w-full py-3.5 px-8 rounded-full bg-gold-gradient text-black font-bold uppercase tracking-widest text-xs hover:opacity-95 shadow-[0_0_25px_rgba(212,175,55,0.35)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                >
+                  {initiatingPayment ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Connecting to PayFast...
+                    </>
+                  ) : (
+                    `Retry Payment with PayFast (${formatPrice(order.totalPrice)})`
+                  )}
+                </button>
+              )}
+              <div className="flex items-center justify-center gap-3 w-full">
+                <Link
+                  to="/cart"
+                  className="flex-1 py-3 px-4 rounded-full bg-white/10 hover:bg-white/15 text-white font-bold uppercase tracking-widest text-[11px] transition-all text-center border border-white/10"
+                >
+                  Return to Cart
+                </Link>
+                <Link
+                  to="/shop"
+                  className="flex-1 py-3 px-4 rounded-full bg-transparent hover:bg-white/5 border border-white/20 text-white font-bold uppercase tracking-widest text-[11px] transition-all text-center"
+                >
+                  Continue Shopping
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+        <PaymentForm paymentData={paymentData} payfastUrl={payfastUrl} />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#050505] text-[var(--color-ivory)] pt-0 pb-24">
       <div className="max-w-4xl mx-auto px-6">
-        {/* Success Header */}
-        <div className="text-center mb-16">
-          <div className="w-20 h-20 bg-[var(--color-gold)]/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 size={40} className="text-gold-gradient" />
-          </div>
-          <h1 className="text-4xl md:text-5xl font-serif mb-4">
-            Order Placed Successfully
-          </h1>
+        {/* Success / Pending Header */}
+        {(() => {
+          return (
+            <div className="text-center mb-16">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
+                isOrderPaid
+                  ? "bg-[var(--color-gold)]/10"
+                  : "bg-amber-500/15 border border-amber-500/30"
+              }`}>
+                {isOrderPaid ? (
+                  <CheckCircle2 size={40} className="text-gold-gradient" />
+                ) : (
+                  <Clock size={40} className="text-amber-400" />
+                )}
+              </div>
+              <h1 className="text-4xl md:text-5xl font-serif mb-4">
+                {isOrderPaid
+                  ? "Order Placed Successfully"
+                  : "Order Created — Payment Pending"}
+              </h1>
 
-          {paymentStatus === "success" ? (
-            <div className="inline-block px-4 py-2 bg-green-900/30 border border-green-500/50 rounded-lg text-green-400 font-medium mb-4">
-              Payment completed successfully via PayFast.
+              {isOrderPaid ? (
+                <div className="inline-block px-4 py-2 bg-green-900/30 border border-green-500/50 rounded-lg text-green-400 font-medium mb-4">
+                  Payment completed successfully. Your order is confirmed and being prepared for fulfillment.
+                </div>
+              ) : order.paymentMethod === "Bank Transfer" &&
+                order.paymentStatus === "Pending" ? (
+                <div className="inline-block px-4 py-2 bg-yellow-900/30 border border-yellow-500/50 rounded-lg text-yellow-400 font-medium mb-4">
+                  Awaiting Bank Transfer. Please transfer funds and upload proof of payment below.
+                </div>
+              ) : order.paymentMethod === "Bank Transfer" &&
+                order.paymentStatus === "Awaiting_Approval" ? (
+                <div className="inline-block px-4 py-2 bg-blue-900/30 border border-blue-500/50 rounded-lg text-blue-400 font-medium mb-4">
+                  Proof of Payment Uploaded. Awaiting verification by our finance team.
+                </div>
+              ) : order.paymentMethod === "Bank Transfer" &&
+                (order.paymentStatus === "Failed" ||
+                  order.paymentStatus === "Rejected") ? (
+                <div className="inline-block px-4 py-2 bg-red-900/30 border border-red-500/50 rounded-lg text-red-400 font-medium mb-4">
+                  Your previous proof of payment was rejected. Please review and resubmit below.
+                </div>
+              ) : (
+                <div className="space-y-4 max-w-lg mx-auto mb-4">
+                  <div className="inline-block px-4 py-2 bg-amber-900/30 border border-amber-500/50 rounded-lg text-amber-300 font-medium text-sm">
+                    ⏳ Payment has not yet been completed. Complete payment to confirm order and initiate dispatch.
+                  </div>
+                  {order.paymentMethod === 'PayFast' && (
+                    <div>
+                      <button
+                        onClick={handlePayWithPayFast}
+                        disabled={initiatingPayment}
+                        className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-gold-gradient text-black font-bold uppercase tracking-widest text-xs hover:opacity-95 shadow-[0_0_25px_rgba(212,175,55,0.35)] transition-all flex items-center justify-center gap-2 mx-auto disabled:opacity-50"
+                      >
+                        {initiatingPayment ? <><Loader2 size={16} className="animate-spin" /> Connecting to PayFast...</> : `Pay Now with PayFast (${formatPrice(order.totalPrice)})`}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          ) : paymentStatus === "cancel" ? (
-            <div className="inline-block px-4 py-2 bg-red-900/30 border border-red-500/50 rounded-lg text-red-400 font-medium mb-4">
-              Payment was cancelled. You can retry payment from your account
-              dashboard.
-            </div>
-          ) : order.paymentMethod === "Bank Transfer" &&
-            order.paymentStatus === "Pending" ? (
-            <div className="inline-block px-4 py-2 bg-yellow-900/30 border border-yellow-500/50 rounded-lg text-yellow-400 font-medium mb-4">
-              Awaiting Bank Transfer. Please upload proof of payment below.
-            </div>
-          ) : order.paymentMethod === "Bank Transfer" &&
-            order.paymentStatus === "Awaiting_Approval" ? (
-            <div className="inline-block px-4 py-2 bg-blue-900/30 border border-blue-500/50 rounded-lg text-blue-400 font-medium mb-4">
-              Proof of Payment Uploaded. Awaiting verification by our team.
-            </div>
-          ) : order.paymentMethod === "Bank Transfer" &&
-            (order.paymentStatus === "Failed" ||
-              order.paymentStatus === "Rejected") ? (
-            <div className="inline-block px-4 py-2 bg-red-900/30 border border-red-500/50 rounded-lg text-red-400 font-medium mb-4">
-              Your previous proof of payment was rejected. Please review and
-              resubmit below.
-            </div>
-          ) : (
-            <p className="text-[var(--color-ivory-muted)]">
-              Thank you for your purchase. Your order is being processed.
-            </p>
-          )}
-        </div>
+          );
+        })()}
 
         {/* Guest Tracking & 18+ Verification Document Compliance Notification */}
         <div className="bg-gradient-to-br from-[#17140e] via-[#100f0a] to-[#090805] border-2 border-[var(--color-gold)]/50 rounded-3xl p-6 md:p-8 mb-10 shadow-[0_0_40px_rgba(212,175,55,0.15)] relative overflow-hidden">
@@ -363,10 +364,16 @@ export default function OrderSuccessPage({ onClearCart }) {
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-xl font-serif text-white font-bold">
-                      Order Confirmed & 18+ Compliance Clearance
+                      {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                        ? "Order Confirmed & 18+ Compliance Clearance"
+                        : "Order Reserved — Pending Payment Clearance"}
                     </h2>
-                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      Active
+                    <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded-full border ${
+                      (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                        : "bg-amber-500/20 text-amber-400 border-amber-500/40"
+                    }`}>
+                      {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success') ? "Active" : "Payment Pending"}
                     </span>
                   </div>
                   <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
@@ -403,21 +410,77 @@ export default function OrderSuccessPage({ onClearCart }) {
               </div>
 
               {/* Dispatch & Compliance Status */}
-              <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
-                <div className="flex items-center gap-2 text-emerald-400 text-sm font-semibold">
-                  <FileCheck size={16} />
-                  <span>{order.guestKyc?.documentUrl ? "18+ Document Under Review" : "Order Dispatch Clearance"}</span>
-                </div>
-                <p className="text-xs text-emerald-200/80 leading-relaxed">
-                  {order.guestKyc?.documentUrl ? (
-                    <>Your official identification document (<strong>{(order.guestKyc.idType || "ID/Passport").toUpperCase()}</strong>) has been securely transmitted to Grand Store Administration.</>
+              <div className={`p-4 rounded-2xl border space-y-2 ${
+                (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                  ? "bg-emerald-950/20 border-emerald-500/30"
+                  : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel')
+                  ? "bg-rose-950/20 border-rose-500/30"
+                  : "bg-amber-950/25 border-amber-500/40"
+              }`}>
+                <div className={`flex items-center gap-2 text-sm font-semibold ${
+                  (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                    ? "text-emerald-400"
+                    : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel')
+                    ? "text-rose-400"
+                    : "text-amber-400"
+                }`}>
+                  {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success') ? (
+                    <FileCheck size={16} />
+                  ) : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel') ? (
+                    <AlertTriangle size={16} />
                   ) : (
-                    <>Your order and payment are confirmed. Standard fulfillment and courier dispatch preparation are underway without any document verification delays.</>
+                    <Clock size={16} />
+                  )}
+                  <span>
+                    {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                      ? (order.guestKyc?.documentUrl ? "18+ Document Under Review" : "Order Dispatch Clearance")
+                      : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel')
+                      ? "Order Cancelled (No Dispatch)"
+                      : "Fulfillment On Hold (Awaiting Payment)"}
+                  </span>
+                </div>
+                <p className={`text-xs leading-relaxed ${
+                  (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                    ? "text-emerald-200/80"
+                    : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel')
+                    ? "text-rose-200/80"
+                    : "text-amber-200/85"
+                }`}>
+                  {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success') ? (
+                    order.guestKyc?.documentUrl ? (
+                      <>Your official identification document (<strong>{(order.guestKyc.idType || "ID/Passport").toUpperCase()}</strong>) has been securely transmitted to Grand Store Administration.</>
+                    ) : (
+                      <>Your order and payment are confirmed. Standard fulfillment and courier dispatch preparation are underway without any document verification delays.</>
+                    )
+                  ) : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel') ? (
+                    <>This order was cancelled because payment was aborted. No items will be dispatched or prepared. You may retry payment or place a new order at any time.</>
+                  ) : (
+                    <>Your order has been recorded and reserved in our system. Fulfillment, warehouse packaging, and courier dispatch will initiate as soon as payment is confirmed.</>
                   )}
                 </p>
-                <div className="text-[11px] text-emerald-400/70 pt-1 flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Fulfillment in progress • No further customer action required</span>
+                <div className={`text-[11px] pt-1 flex items-center gap-1.5 ${
+                  (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                    ? "text-emerald-400/70"
+                    : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel')
+                    ? "text-rose-400/80 font-medium"
+                    : "text-amber-400/80 font-medium"
+                }`}>
+                  {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success') ? (
+                    <>
+                      <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Fulfillment in progress • No further customer action required</span>
+                    </>
+                  ) : (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed' || paymentStatus === 'cancel') ? (
+                    <>
+                      <AlertTriangle size={13} className="text-rose-400" />
+                      <span>Order inactive • Zero fulfillment</span>
+                    </>
+                  ) : (
+                    <>
+                      <Clock size={13} className="text-amber-400" />
+                      <span>Awaiting payment confirmation to begin fulfillment</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -482,17 +545,27 @@ export default function OrderSuccessPage({ onClearCart }) {
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-mono tracking-widest text-[var(--color-gold)] block">
-                    Fulfillment Status
+                    {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success') ? "Fulfillment Status" : "Fulfillment Status (On Hold)"}
                   </span>
                   <h3 className="text-white font-serif text-lg leading-snug">
-                    {order.deliveryPreference === 'pickup' || order.selectedPostnetStore
-                      ? "Your order has been received — Arriving at your PostNet collection branch"
-                      : "Your order has been received — Delivery Soon"}
+                    {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                      ? (order.deliveryPreference === 'pickup' || order.selectedPostnetStore
+                          ? "Your order has been received — Arriving at your PostNet collection branch"
+                          : "Your order has been received — Delivery Soon")
+                      : (order.deliveryPreference === 'pickup' || order.selectedPostnetStore
+                          ? "Payment Pending — Will be dispatched to PostNet once paid"
+                          : "Payment Pending — Delivery on hold until payment confirmed")}
                   </h3>
                 </div>
               </div>
-              <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                {order.deliveryPreference === 'pickup' || order.selectedPostnetStore ? '2–3 Business Days' : '2–5 Business Days'}
+              <span className={`text-xs font-mono px-2.5 py-1 rounded-full border ${
+                (order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                  : "bg-amber-500/15 text-amber-300 border-amber-500/40 font-semibold"
+              }`}>
+                {(order.isPaid || order.paymentStatus === 'Paid' || paymentStatus === 'success')
+                  ? (order.deliveryPreference === 'pickup' || order.selectedPostnetStore ? '2–3 Business Days' : '2–5 Business Days')
+                  : 'Est. 2–3 Days Post-Payment'}
               </span>
             </div>
 
@@ -742,8 +815,8 @@ export default function OrderSuccessPage({ onClearCart }) {
                 </p>
 
                 <StoreBankDetailsCard
-                  reference={(order.invoiceNumber || order._id).slice(-6).toUpperCase()}
-                  referenceLabel="Order Reference"
+                  reference={order.depositReference || (order.orderId ? 'GS-' + order.orderId.split('-').pop() : (order.invoiceNumber ? 'GS-' + order.invoiceNumber.split('-').pop() : `GS-${String(order._id).slice(-6).toUpperCase()}`))}
+                  referenceLabel="Deposit Reference"
                   className="max-w-xl mx-auto mb-6"
                 />
 
@@ -1021,6 +1094,8 @@ export default function OrderSuccessPage({ onClearCart }) {
             </Link>
           </div>
         )}
+
+        <PaymentForm paymentData={paymentData} payfastUrl={payfastUrl} />
       </div>
     </main>
   );

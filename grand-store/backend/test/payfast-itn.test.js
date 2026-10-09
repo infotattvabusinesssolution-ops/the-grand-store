@@ -25,9 +25,16 @@ const generateSignature = (data, passphrase) => {
   return crypto.createHash('md5').update(fields.join('&')).digest('hex');
 };
 
+const axios = require('axios');
+
 const withServer = async (callback) => {
+  const originalPost = axios.post;
+  // Default mock to VALID so tests run deterministically in CI without external network dependencies
+  axios.post = async () => ({ data: 'VALID' });
+
   const app = express();
   app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
   app.use('/api/payfast', payfastRoutes);
 
   const server = await new Promise((resolve) => {
@@ -36,8 +43,9 @@ const withServer = async (callback) => {
 
   try {
     const address = server.address();
-    await callback(`http://127.0.0.1:${address.port}`);
+    await callback(`http://127.0.0.1:${address.port}`, axios);
   } finally {
+    axios.post = originalPost;
     await new Promise((resolve, reject) => {
       server.close((error) => error ? reject(error) : resolve());
     });
@@ -65,7 +73,8 @@ test('PayFast ITN route parses urlencoded form posts', async () => {
 });
 
 test('PayFast ITN route rejects an invalid signature', async () => {
-  await withServer(async (baseUrl) => {
+  await withServer(async (baseUrl, axiosInstance) => {
+    axiosInstance.post = async () => ({ data: 'INVALID' });
     const response = await fetch(`${baseUrl}/api/payfast/itn`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -107,37 +116,31 @@ test('PayFast ITN verification follows PHP encoding and stops at signature', asy
 });
 
 test('PayFast server confirmation excludes the received signature field', async () => {
-  const axios = require('axios');
-  const originalPost = axios.post;
   let validationBody = '';
 
-  axios.post = async (url, body) => {
-    validationBody = body;
-    return { data: 'VALID' };
-  };
+  await withServer(async (baseUrl, axiosInstance) => {
+    axiosInstance.post = async (url, body) => {
+      validationBody = body;
+      return { data: 'VALID' };
+    };
 
-  try {
-    await withServer(async (baseUrl) => {
-      const payload = {
-        m_payment_id: 'IGNORED-123',
-        payment_status: 'COMPLETE',
-        merchant_id: process.env.PAYFAST_TEST_MERCHANT_ID,
-        amount_gross: '10.00',
-      };
-      payload.signature = generateSignature(payload, process.env.PAYFAST_TEST_PASSPHRASE);
+    const payload = {
+      m_payment_id: 'IGNORED-123',
+      payment_status: 'COMPLETE',
+      merchant_id: process.env.PAYFAST_TEST_MERCHANT_ID,
+      amount_gross: '10.00',
+    };
+    payload.signature = generateSignature(payload, process.env.PAYFAST_TEST_PASSPHRASE);
 
-      const response = await fetch(`${baseUrl}/api/payfast/itn`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(payload),
-      });
-
-      assert.equal(response.status, 200);
-      assert.equal(await response.text(), 'OK');
-      assert.equal(new URLSearchParams(validationBody).has('signature'), false);
-      assert.equal(new URLSearchParams(validationBody).get('payment_status'), 'COMPLETE');
+    const response = await fetch(`${baseUrl}/api/payfast/itn`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(payload),
     });
-  } finally {
-    axios.post = originalPost;
-  }
+
+    assert.equal(response.status, 200);
+    assert.equal(await response.text(), 'OK');
+    assert.equal(new URLSearchParams(validationBody).has('signature'), false);
+    assert.equal(new URLSearchParams(validationBody).get('payment_status'), 'COMPLETE');
+  });
 });

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const SystemCode = require('../models/SystemCode');
@@ -13,15 +14,98 @@ const addOrderItems = async (req, res) => {
   try {
     const { quote, shippingAddress, paymentMethod, isGift, giftRecipientName, giftMessage } = req.body;
 
+    if (shippingAddress?.phoneCountry || shippingAddress?.phoneCountryCode) {
+      const { phoneCountry, phoneCountryCode } = shippingAddress;
+      const { isSupportedCountry, getCountryCallingCode } = require('libphonenumber-js/min');
+      if (phoneCountry && !isSupportedCountry(phoneCountry)) {
+        return res.status(400).json({ message: 'Invalid phone country code' });
+      }
+      if (phoneCountry && phoneCountryCode) {
+        try {
+          const expectedCode = `+${getCountryCallingCode(phoneCountry)}`;
+          if (phoneCountryCode !== expectedCode) {
+            return res.status(400).json({ message: 'Invalid phone country code' });
+          }
+        } catch {
+          return res.status(400).json({ message: 'Invalid phone country code' });
+        }
+      }
+    }
+
     if (!quote || !quote.shipments || quote.shipments.length === 0) {
       return res.status(400).json({ message: 'Valid quote with shipments is required' });
     }
 
-    const isPostnetCollection = req.body.deliveryPreference === 'postnet' ||
-      quote.shipments.some((shp) => shp.selectedCourier?.deliveryType === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection'));
+    const effectivePostnetStore = req.body.selectedPostnetStore ||
+      req.body.preferredPostnetStore ||
+      quote.selectedPostnetStore ||
+      (quote.shipments || []).find((s) => s.selectedPickupStore)?.selectedPickupStore || null;
 
-    if (isPostnetCollection && quote.shipments.some((shp) => !shp.selectedPickupStore)) {
-      return res.status(400).json({ message: 'A PostNet branch must be selected for PostNet store collection' });
+    const effectiveLocker = req.body.selectedLocker ||
+      req.body.preferredLocker ||
+      req.body.selectedPickupPoint ||
+      quote.selectedLocker ||
+      (quote.shipments || []).find((s) => s.selectedLocker)?.selectedLocker || null;
+
+    const isPudoShipment = (shp) => {
+      const code = shp.selectedCourier?.serviceCode;
+      const courier = (shp.selectedCourier?.courierName || '').toLowerCase();
+      const service = (shp.selectedCourier?.serviceLevel || '').toLowerCase();
+      return code === 'D2L' || courier.includes('pudo') || service.includes('pudo') || service.includes('smart locker');
+    };
+
+    const isPostnetShipment = (shp) => {
+      const courier = (shp.selectedCourier?.courierName || '').toLowerCase();
+      const type = (shp.selectedCourier?.deliveryType || '').toLowerCase();
+      const service = (shp.selectedCourier?.serviceLevel || '').toLowerCase();
+      return courier.includes('postnet') && (type === 'pickup' || service.includes('collection') || service.includes('store'));
+    };
+
+    const isPostnetOrder = req.body.deliveryPreference === 'postnet' || (quote.shipments || []).some(isPostnetShipment);
+    const isPudoOrder = req.body.deliveryPreference === 'pudo' || req.body.deliveryPreference === 'locker' || (quote.shipments || []).some(isPudoShipment);
+
+    if (isPostnetOrder && effectivePostnetStore) {
+      quote.shipments.forEach((shp) => {
+        if (isPostnetShipment(shp) || req.body.deliveryPreference === 'postnet') {
+          if (!shp.selectedPickupStore) {
+            shp.selectedPickupStore = effectivePostnetStore;
+          }
+        }
+      });
+    }
+
+    if (isPudoOrder && effectiveLocker) {
+      quote.shipments.forEach((shp) => {
+        if (isPudoShipment(shp) || req.body.deliveryPreference === 'pudo' || req.body.deliveryPreference === 'locker') {
+          if (!shp.selectedLocker) {
+            shp.selectedLocker = effectiveLocker;
+          }
+        }
+      });
+    }
+
+    if (isPostnetOrder) {
+      const missingPostnet = quote.shipments.some((shp) => {
+        if (isPostnetShipment(shp) || req.body.deliveryPreference === 'postnet') {
+          return !shp.selectedPickupStore;
+        }
+        return false;
+      });
+      if (missingPostnet) {
+        return res.status(400).json({ message: 'A PostNet branch must be selected for PostNet store collection' });
+      }
+    }
+
+    if (isPudoOrder) {
+      const missingLocker = quote.shipments.some((shp) => {
+        if (isPudoShipment(shp) || req.body.deliveryPreference === 'pudo' || req.body.deliveryPreference === 'locker') {
+          return !shp.selectedLocker;
+        }
+        return false;
+      });
+      if (missingLocker) {
+        return res.status(400).json({ message: 'A PUDO smart locker station must be selected for locker collection' });
+      }
     }
     
     // Check expiration
@@ -46,20 +130,64 @@ const addOrderItems = async (req, res) => {
     const orderId = `GS-${year}-${moduleCode}-ORD-${sequence}`;
     const paymentId = `GS-${year}-${moduleCode}-PAY-${sequence}`;
     const invoiceNumber = `GS-${year}-${moduleCode}-INV-${sequence}`;
+    const depositReference = `GS-${sequence}`;
 
     const commissionPct = settings.marketplaceCommissionPct || 15;
     const gatewayFeePct = settings.gatewayFeePct || 2.5;
 
-    // === RECONSTRUCT ACCOUNTING FROM QUOTE ===
-    const subTotal = Number(quote.globalSubtotal || quote.subTotal || 0);
-    const shippingCost = Number(quote.aggregatedTotals?.shipping || quote.shippingCost || 0);
+    // === VALIDATE AND RECONSTRUCT ACCOUNTING FROM DATABASE (PRICE INTEGRITY) ===
+    let calculatedServerSubtotal = 0;
+    for (const shp of quote.shipments) {
+      let shipmentSubtotal = 0;
+      if (Array.isArray(shp.items)) {
+        for (const item of shp.items) {
+          const productId = item.product || item.id || item._id;
+          let product = null;
+          if (productId) {
+            product = await Product.findOne({ id: productId });
+            if (!product && /^[0-9a-fA-F]{24}$/.test(productId.toString())) {
+              product = await Product.findById(productId);
+            }
+          }
+          if (!product && item.name) {
+            product = await Product.findOne({ name: item.name });
+          }
+          if (!product) {
+            return res.status(404).json({ message: `Product not found in catalog: ${item.name || productId}` });
+          }
+          const authoritativePrice = Number(product.price);
+          if (isNaN(authoritativePrice) || authoritativePrice < 0) {
+            return res.status(400).json({ message: `Invalid catalog price for ${product.name}` });
+          }
+          // Enforce authoritative catalog price on item
+          item.price = authoritativePrice;
+          const qty = Number(item.quantity) || 1;
+          if (product.stock !== undefined && product.stock !== null && product.stock < qty) {
+            return res.status(400).json({ 
+              message: `Insufficient stock for product ${product.name}. Available: ${product.stock}, requested: ${qty}` 
+            });
+          }
+          const lineSubtotal = parseFloat((authoritativePrice * qty).toFixed(2));
+          shipmentSubtotal += lineSubtotal;
+          calculatedServerSubtotal += lineSubtotal;
+        }
+      }
+      shp.subtotal = parseFloat(shipmentSubtotal.toFixed(2));
+    }
+
+    const subTotal = parseFloat(calculatedServerSubtotal.toFixed(2));
+    const rawShipping = Number(quote.aggregatedTotals?.shipping || quote.shippingCost || 0);
+    const shippingCost = rawShipping <= 0.01 ? 0 : rawShipping;
     const vatAmount = Number(quote.aggregatedTotals?.vat || quote.vatAmount || 0);
     const importDuties = Number(quote.aggregatedTotals?.estimatedImportDuties || quote.importDuties || 0);
     const importTaxes = Number(quote.aggregatedTotals?.estimatedImportTaxes || quote.importTaxes || 0);
     const customsFees = Number(quote.aggregatedTotals?.estimatedCustomsFees || quote.customsFees || 0);
     
     const calculatedTotal = parseFloat((subTotal + shippingCost).toFixed(2));
-    const commissionAmount = parseFloat(((subTotal * commissionPct) / 100).toFixed(2));
+    const vendorSubTotal = (quote.shipments || [])
+      .filter(s => Boolean(s.vendorId))
+      .reduce((sum, s) => sum + Number(s.subtotal || 0), 0);
+    const commissionAmount = parseFloat(((vendorSubTotal * commissionPct) / 100).toFixed(2));
     const gatewayFeeAmount = parseFloat((calculatedTotal * gatewayFeePct / 100).toFixed(2));
 
     // Calculate Referral/Rewards discounts
@@ -116,7 +244,18 @@ const addOrderItems = async (req, res) => {
     */
 
     const User = require('../models/User');
-    const user = req.user ? await User.findById(req.user._id) : null;
+    let user = req.user ? await User.findById(req.user._id) : null;
+    let isGuestLinkedToExistingAccount = false;
+
+    // If guest checkout, check if the email belongs to an existing registered user
+    if (!user && isGuest && guestEmail) {
+      const existingUser = await User.findOne({ email: guestEmail });
+      if (existingUser) {
+        user = existingUser;
+        isGuestLinkedToExistingAccount = true;
+      }
+    }
+
     const previousOrders = user ? await Order.countDocuments({ user: user._id }) : 0;
 
     // If authenticated user also attached KYC document during checkout, update profile
@@ -144,10 +283,19 @@ const addOrderItems = async (req, res) => {
         }
     }
 
+    const superCoinEligibleSubtotal = Number(
+      quote.superCoinEligibleSubtotal !== undefined 
+        ? quote.superCoinEligibleSubtotal 
+        : (quote.superCoins?.eligibleSubtotal !== undefined ? quote.superCoins.eligibleSubtotal : subTotal)
+    );
+    const referralEligibleSubtotal = Number(
+      quote.referralEligibleSubtotal !== undefined ? quote.referralEligibleSubtotal : subTotal
+    );
+
     let appliedRewards = 0;
     if (req.body.applyRewards && user && user.rewardBalance > 0) {
-        // Can only apply up to the order total
-        appliedRewards = Math.min(user.rewardBalance, calculatedTotal - appliedWelcomeDiscount);
+        // Can only apply up to eligible referral total
+        appliedRewards = Math.min(user.rewardBalance, Math.max(0, referralEligibleSubtotal - appliedWelcomeDiscount));
         user.rewardBalance -= appliedRewards;
         await user.save();
     }
@@ -163,7 +311,7 @@ const addOrderItems = async (req, res) => {
     if (req.body.useSuperCoins && user && (user.superCoinsBalance || 0) > 0) {
       const redemptionCheck = SuperCoinEngine.calculateAllowedRedemption({
         userCoins: user.superCoinsBalance || 0,
-        eligibleSubtotal: subTotal,
+        eligibleSubtotal: superCoinEligibleSubtotal,
         shippingCost,
         commissionPct,
         gatewayFeePct,
@@ -177,12 +325,8 @@ const addOrderItems = async (req, res) => {
       await user.save();
     }
 
-    // Calculate potential coins earned on eligible product subtotal
-    superCoinsEarned = SuperCoinEngine.calculateEarnedCoins(subTotal, settings);
-    if (superCoinsEarned > 0 && user) {
-      user.pendingSuperCoins = (user.pendingSuperCoins || 0) + superCoinsEarned;
-      await user.save();
-    }
+    // Calculate potential coins earned on eligible product subtotal (credited upon payment confirmation)
+    superCoinsEarned = SuperCoinEngine.calculateEarnedCoins(superCoinEligibleSubtotal, settings);
 
     if (shippingAddress && (shippingAddress.phone || shippingAddress.phoneNumber) && user && !user.phone) {
       user.phone = (shippingAddress.phone || shippingAddress.phoneNumber).trim();
@@ -204,19 +348,120 @@ const addOrderItems = async (req, res) => {
       }
     }
 
-    const finalTotal = parseFloat(Math.max(0, calculatedTotal - appliedWelcomeDiscount - appliedRewards - superCoinsDiscount).toFixed(2));
+    if (user && superCoinsEarned > 0) {
+      user.pendingSuperCoins = (user.pendingSuperCoins || 0) + superCoinsEarned;
+      await user.save().catch(err => console.warn('Error updating pendingSuperCoins on order creation:', err.message));
+    }
+
+    // Product Voucher / Coupon Application (Exclusively for Admin Products)
+    let appliedCoupon = { code: '', couponRef: null, discountAmount: 0, discountType: 'percentage', appliedProductId: '' };
+    let couponDiscount = 0;
+
+    const rawCouponCode = req.body.couponCode || req.body.voucherCode;
+    if (rawCouponCode && typeof rawCouponCode === 'string') {
+      try {
+        const ProductCoupon = require('../models/ProductCoupon');
+        const cleanCode = rawCouponCode.trim().toUpperCase();
+        const couponDoc = await ProductCoupon.findOne({ code: cleanCode, isActive: true });
+        if (couponDoc && couponDoc.isValid()) {
+          let allCartItems = [];
+          (quote.shipments || []).forEach(s => {
+            if (Array.isArray(s.items)) allCartItems.push(...s.items);
+          });
+
+          const targetProductIds = new Set(
+            (couponDoc.applicableProducts || []).flatMap(p => [
+              p.productId ? String(p.productId) : null,
+              p.productRef ? String(p.productRef) : null,
+              p._id ? String(p._id) : null,
+              p.id ? String(p.id) : null
+            ]).filter(Boolean)
+          );
+          const targetProductNames = new Set(
+            (couponDoc.applicableProducts || []).map(p => (p.name || '').trim().toLowerCase()).filter(Boolean)
+          );
+          let matchingLineTotal = 0;
+          let matchedProductId = '';
+
+          for (const item of allCartItems) {
+            const itemIds = [
+              item.product ? String(item.product) : null,
+              item.id ? String(item.id) : null,
+              item._id ? String(item._id) : null,
+              item.productId ? String(item.productId) : null
+            ].filter(Boolean);
+            const itemName = (item.name || item.fullName || '').trim().toLowerCase();
+
+            const isMatch = (targetProductIds.size === 0 && targetProductNames.size === 0) ||
+                            itemIds.some(id => targetProductIds.has(id)) ||
+                            (itemName && targetProductNames.has(itemName));
+
+            if (isMatch) {
+              const itemPrice = Number(item.price) || 0;
+              const itemQty = Number(item.quantity) || 1;
+              matchingLineTotal += itemPrice * itemQty;
+              matchedProductId = itemIds[0] || '';
+            }
+          }
+
+          if (matchingLineTotal > 0 && (!couponDoc.minSpendZar || subTotal >= couponDoc.minSpendZar)) {
+            if (couponDoc.discountType === 'percentage') {
+              couponDiscount = parseFloat(((matchingLineTotal * couponDoc.discountValue) / 100).toFixed(2));
+            } else {
+              couponDiscount = Math.min(matchingLineTotal, couponDoc.discountValue);
+            }
+
+            appliedCoupon = {
+              code: couponDoc.code,
+              couponRef: couponDoc._id,
+              discountAmount: couponDiscount,
+              discountType: couponDoc.discountType,
+              appliedProductId: matchedProductId
+            };
+
+            couponDoc.usedCount = (couponDoc.usedCount || 0) + 1;
+            couponDoc.redeemedBy.push({
+              userId: user ? user._id : null,
+              userEmail: user ? user.email : guestEmail,
+              orderId: orderId,
+              discountApplied: couponDiscount,
+              redeemedAt: new Date()
+            });
+            await couponDoc.save().catch(e => console.warn('Could not record coupon redemption:', e.message));
+          }
+        }
+      } catch (couponErr) {
+        console.warn('Error processing product coupon during checkout:', couponErr.message);
+      }
+    }
+
+    const finalTotal = parseFloat(Math.max(0, calculatedTotal - appliedWelcomeDiscount - appliedRewards - superCoinsDiscount - couponDiscount).toFixed(2));
 
     let allOrderItems = [];
     let vendorPayables = [];
 
-    const selectedPickupStore = req.body.selectedPostnetStore || quote.shipments?.find(s => s.selectedPickupStore)?.selectedPickupStore || null;
-    const deliveryPreference = req.body.deliveryPreference || (selectedPickupStore ? 'postnet' : 'home');
+    const isPickupSelected = (quote.shipments || []).some(shp => {
+      const type = (shp.selectedCourier?.deliveryType || '').toLowerCase();
+      const service = (shp.selectedCourier?.serviceLevel || '').toLowerCase();
+      if (type === 'home' || service.includes('door') || service.includes('standard delivery') || service.includes('express delivery')) return false;
+      return type === 'pickup' || service.includes('collection') || service.includes('pudo');
+    });
+
+    let resolvedDeliveryPreference = 'home';
+    if (isPudoOrder) resolvedDeliveryPreference = 'pudo';
+    else if (isPostnetOrder) resolvedDeliveryPreference = 'postnet';
+    else if (req.body.deliveryPreference) resolvedDeliveryPreference = req.body.deliveryPreference;
 
     // Create the master order with isPaid: false
     const order = new Order({
       user: user ? user._id : null,
       isGuest: isGuest,
-      guestInfo: isGuest ? { name: guestName, email: guestEmail, phone: guestPhone } : undefined,
+      guestInfo: isGuest ? {
+        name: guestName,
+        email: guestEmail,
+        phone: guestPhone,
+        isLinkedToAccount: Boolean(isGuestLinkedToExistingAccount)
+      } : undefined,
       guestAccessToken: isGuest ? guestAccessToken : undefined,
       isAgeConfirmed: isAgeConfirmed,
       guestKyc: isGuest ? {
@@ -236,8 +481,9 @@ const addOrderItems = async (req, res) => {
         confirmedAt: new Date()
       },
       shippingAddress,
-      deliveryPreference,
-      selectedPostnetStore: selectedPickupStore,
+      deliveryPreference: resolvedDeliveryPreference,
+      selectedPostnetStore: isPostnetOrder ? effectivePostnetStore : null,
+      selectedLocker: isPudoOrder ? effectiveLocker : null,
       paymentMethod,
       isGift: isGift || false,
       giftRecipientName: giftRecipientName || "",
@@ -257,11 +503,14 @@ const addOrderItems = async (req, res) => {
       superCoinsUsed,
       superCoinsDiscount,
       superCoinsEarned,
+      appliedCoupon,
+      couponDiscount,
       totalPrice: finalTotal,
       transactionId,
       orderId,
       paymentId,
       invoiceNumber,
+      depositReference,
       isPaid: false, // Changed for PayFast integration
       paymentStatus: 'Pending', // Changed for PayFast integration
       orderItems: [],
@@ -293,20 +542,23 @@ const addOrderItems = async (req, res) => {
       }
       allOrderItems = allOrderItems.concat(shp.items || []);
       
-      const vendorGross = shp.subtotal;
-      const vendorCommission = parseFloat(((vendorGross * commissionPct) / 100).toFixed(2));
-      const vendorVat = shp.taxData.vatAmount;
-      const shippingCostVendorGets = shp.selectedCourier ? shp.selectedCourier.cost : 0;
+      const isVendorShipment = Boolean(shp.vendorId);
+      const vendorGross = Number(shp.subtotal || 0);
+      const vendorCommission = isVendorShipment ? parseFloat(((vendorGross * commissionPct) / 100).toFixed(2)) : 0;
+      const vendorVat = Number(shp.taxData?.vatAmount || 0);
+      const shippingCostVendorGets = (isVendorShipment && shp.selectedCourier) ? Number(shp.selectedCourier.cost || 0) : 0;
       
-      const vendorNet = parseFloat((vendorGross - vendorCommission - vendorVat + shippingCostVendorGets).toFixed(2));
+      const vendorNet = isVendorShipment ? parseFloat((vendorGross - vendorCommission - vendorVat + shippingCostVendorGets).toFixed(2)) : 0;
 
-      vendorPayables.push({
-        vendorId: shp.vendorId,
-        grossAmount: vendorGross,
-        commission: vendorCommission,
-        vatDeducted: vendorVat,
-        netPayable: vendorNet
-      });
+      if (isVendorShipment) {
+        vendorPayables.push({
+          vendorId: shp.vendorId,
+          grossAmount: vendorGross,
+          commission: vendorCommission,
+          vatDeducted: vendorVat,
+          netPayable: vendorNet
+        });
+      }
 
       const shipmentSeqString = `${sequence}-${shipmentSeqCounter.toString().padStart(2, '0')}`;
       const shipmentId = `GS-${year}-${moduleCode}-SHP-${shipmentSeqString}`;
@@ -324,8 +576,39 @@ const addOrderItems = async (req, res) => {
         actualCost = internalLegs.reduce((sum, leg) => sum + leg.cost, 0);
       }
 
-      const activePickupStore = shp.selectedPickupStore || selectedPickupStore;
-      const isPickupMode = deliveryPreference === 'postnet' || shp.selectedCourier?.deliveryType === 'pickup' || Boolean(activePickupStore);
+      const isShipmentPudo = shp.selectedCourier?.serviceCode === 'D2L' ||
+        (shp.selectedCourier?.courierName || '').toLowerCase().includes('pudo') ||
+        (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('pudo');
+      const isShipmentPostnet = (shp.selectedCourier?.courierName || '').toLowerCase().includes('postnet') &&
+        ((shp.selectedCourier?.deliveryType || '') === 'pickup' || (shp.selectedCourier?.serviceLevel || '').toLowerCase().includes('collection'));
+
+      let shipmentDeliveryMethod = 'home_delivery';
+      if (shp.isInternational) {
+        shipmentDeliveryMethod = 'international_courier';
+      } else if (isShipmentPudo || resolvedDeliveryPreference === 'pudo') {
+        shipmentDeliveryMethod = 'pudo_locker';
+      } else if (isShipmentPostnet || resolvedDeliveryPreference === 'postnet') {
+        shipmentDeliveryMethod = 'postnet_pickup';
+      }
+
+      const activeLocker = (shipmentDeliveryMethod === 'pudo_locker') ? (shp.selectedLocker || effectiveLocker) : null;
+      const activePostnet = (shipmentDeliveryMethod === 'postnet_pickup') ? (shp.selectedPickupStore || effectivePostnetStore) : null;
+
+      const activePickupLocation = activeLocker
+        ? {
+            locationId: activeLocker.id || activeLocker.pickupPointId,
+            name: activeLocker.name,
+            address: activeLocker.address,
+            provider: 'tcg-locker'
+          }
+        : (activePostnet
+          ? {
+              locationId: activePostnet.id,
+              name: activePostnet.name,
+              address: activePostnet.address,
+              provider: 'postnet'
+            }
+          : undefined);
 
       const newShipment = new Shipment({
         shipmentId,
@@ -334,23 +617,15 @@ const addOrderItems = async (req, res) => {
         vendorId: shp.vendorId,
         customerId: user ? user._id : null,
         pickupAddress: { country: shp.originCountry },
-        deliveryAddress: activePickupStore
-          ? { ...shippingAddress, address: activePickupStore.address }
+        deliveryAddress: activePickupLocation
+          ? { ...shippingAddress, address: activePickupLocation.address }
           : shippingAddress,
-        deliveryMethod: isPickupMode
-          ? 'postnet_pickup'
-          : (shp.isInternational ? 'international_courier' : 'home_delivery'),
-        pickupLocation: activePickupStore
-          ? {
-              locationId: activePickupStore.id,
-              name: activePickupStore.name,
-              address: activePickupStore.address
-            }
-          : undefined,
+        deliveryMethod: shipmentDeliveryMethod,
+        pickupLocation: activePickupLocation,
         customerShippingCharge: shp.selectedCourier ? shp.selectedCourier.cost : 0,
         actualShippingCost: actualCost,
         legs: internalLegs,
-        status: 'Order Confirmed' // We keep it Confirmed, or could change to 'Payment Pending'
+        status: order.isPaid ? 'Order Confirmed' : 'Payment Pending'
       });
 
       await newShipment.save();
@@ -382,24 +657,7 @@ const addOrderItems = async (req, res) => {
       }).catch(err => console.error('Error logging SuperCoin redemption ledger:', err));
     }
 
-    if (superCoinsEarned > 0 && user) {
-      const expiryMonths = settings?.superCoinsExpiryMonths || 12;
-      const expiryDate = new Date();
-      expiryDate.setMonth(expiryDate.getMonth() + expiryMonths);
-
-      await SuperCoinLedger.create({
-        userId: user._id,
-        amount: superCoinsEarned,
-        type: 'earned',
-        activity: 'purchase',
-        status: 'pending',
-        orderId: order._id,
-        orderRef: order.invoiceNumber || order.orderId,
-        expiryDate,
-        description: `Earned ${superCoinsEarned} Super Coins on order #${order.invoiceNumber || order.orderId} (Pending delivery clearance)`,
-        balanceSnapshot: user.superCoinsBalance
-      }).catch(err => console.error('Error logging SuperCoin earning ledger:', err));
-    }
+    // Note: superCoinsEarned will be credited and logged to ledger once payment is confirmed in processOrderPayment
     const createdOrder = order;
     
     // === EVENT SOURCING: Log the initial sequence of events ===
@@ -497,19 +755,23 @@ const addOrderItems = async (req, res) => {
     try {
       const { sendEmail } = require('../utils/emailService');
       const { bankTransferInstructionsTemplate } = require('../utils/emailTemplates');
+      const { getOrderDepositReference } = require('../utils/referenceHelper');
       const recipientEmail = user ? user.email : guestEmail;
 
       if (recipientEmail && paymentMethod === 'Bank Transfer') {
-        const bankDetails = {
-          bankName: 'FNB',
-          accountName: 'The Grand Store',
-          accountNumber: '62000000000',
-          branchCode: '250655'
+        const depositRef = getOrderDepositReference(createdOrder);
+        const resolvedBankDetails = {
+          bankName: settings?.bankDetails?.bankName || 'FNB',
+          accountName: settings?.bankDetails?.accountName || 'The Grand Store',
+          accountNumber: settings?.bankDetails?.accountNumber || '62000000000',
+          branchCode: settings?.bankDetails?.branchCode || '250655',
+          accountType: settings?.bankDetails?.accountType || 'Business Cheque',
+          swiftCode: settings?.bankDetails?.swiftCode || ''
         };
         await sendEmail({
           to: recipientEmail,
-          subject: `Payment Required - Order #${createdOrder._id}`,
-          html: bankTransferInstructionsTemplate(createdOrder, bankDetails)
+          subject: `Payment Instructions - Order ${depositRef} (The Grand Store)`,
+          html: bankTransferInstructionsTemplate(createdOrder, resolvedBankDetails)
         });
       }
     } catch (err) {
@@ -528,15 +790,65 @@ const addOrderItems = async (req, res) => {
  * This function will be called by the PayFast ITN Webhook Controller
  */
 const processOrderPayment = async (orderId) => {
-  const order = await Order.findById(orderId);
-  if (!order) throw new Error('Order not found');
+  let order = null;
+  if (mongoose.Types.ObjectId.isValid(orderId)) {
+    order = await Order.findById(orderId);
+  }
+  if (!order) {
+    order = await Order.findOne({
+      $or: [
+        { orderId: orderId },
+        { invoiceNumber: orderId },
+        { depositReference: orderId },
+        { transactionId: orderId }
+      ]
+    });
+  }
+  if (!order) throw new Error(`Order not found for identifier: ${orderId}`);
   if (order.isPaid) return true; // Already paid, idempotent
+  if (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed') {
+    throw new Error(`Cannot process payment for ${order.paymentStatus.toLowerCase()} order`);
+  }
 
   // Update order status
   order.isPaid = true;
   order.paidAt = Date.now();
   order.paymentStatus = 'Paid';
   await order.save();
+
+  // Transition all associated shipments to 'Order Confirmed' now that payment is cleared
+  if (Array.isArray(order.shipments) && order.shipments.length > 0) {
+    const Shipment = require('../models/Shipment');
+    await Shipment.updateMany(
+      { _id: { $in: order.shipments } },
+      { status: 'Order Confirmed' }
+    ).catch(err => console.error('Error updating shipment status to Order Confirmed:', err));
+  }
+
+  // Atomically decrement stock for all purchased items
+  if (Array.isArray(order.orderItems)) {
+    for (const item of order.orderItems) {
+      const productId = item.product || item.id || item._id;
+      const qty = Number(item.quantity) || 1;
+      if (productId) {
+        try {
+          const isOid = /^[0-9a-fA-F]{24}$/.test(productId.toString());
+          await Product.updateOne(
+            {
+              $or: [
+                ...(isOid ? [{ _id: productId }] : []),
+                { id: productId.toString() }
+              ],
+              stock: { $gte: qty }
+            },
+            { $inc: { stock: -qty } }
+          );
+        } catch (stockErr) {
+          console.error(`Error decrementing stock for product ${productId}:`, stockErr);
+        }
+      }
+    }
+  }
   
   // Reward the referrer if this was the customer's first order
   try {
@@ -590,28 +902,33 @@ const processOrderPayment = async (orderId) => {
       const User = require('../models/User');
       const user = await User.findById(order.user);
       if (user) {
-        // Move from pending to balance
-        if ((user.pendingSuperCoins || 0) >= order.superCoinsEarned) {
-          user.pendingSuperCoins -= order.superCoinsEarned;
-        } else {
-          user.pendingSuperCoins = 0;
-        }
+        user.pendingSuperCoins = Math.max(0, (user.pendingSuperCoins || 0) - order.superCoinsEarned);
         user.superCoinsBalance = (user.superCoinsBalance || 0) + order.superCoinsEarned;
         await user.save();
         console.log(`Credited ${order.superCoinsEarned} Super Coins to user ${user.email} after payment.`);
         
-        // Ledger entry update
+        // Ledger entry update or insert
         const SuperCoinLedger = require('../models/SuperCoinLedger');
-        await SuperCoinLedger.updateOne(
-          { orderId: order._id, type: 'earned', status: 'pending' },
-          { 
-            $set: { 
-              status: 'completed', 
-              description: `Earned ${order.superCoinsEarned} Super Coins on order #${order.invoiceNumber || order.orderId} (Payment Confirmed)`,
-              balanceSnapshot: user.superCoinsBalance
-            } 
-          }
-        );
+        const existingEarnLedger = await SuperCoinLedger.findOne({ orderId: order._id, type: 'earned' });
+        if (existingEarnLedger) {
+          existingEarnLedger.status = 'completed';
+          existingEarnLedger.amount = order.superCoinsEarned;
+          existingEarnLedger.description = `Earned ${order.superCoinsEarned} Super Coins on order #${order.invoiceNumber || order.orderId} (Payment Confirmed)`;
+          existingEarnLedger.balanceSnapshot = user.superCoinsBalance;
+          await existingEarnLedger.save();
+        } else {
+          await SuperCoinLedger.create({
+            userId: user._id,
+            amount: order.superCoinsEarned,
+            type: 'earned',
+            activity: 'purchase',
+            status: 'completed',
+            orderId: order._id,
+            orderRef: order.invoiceNumber || order.orderId,
+            description: `Earned ${order.superCoinsEarned} Super Coins on order #${order.invoiceNumber || order.orderId} (Payment Confirmed)`,
+            balanceSnapshot: user.superCoinsBalance
+          });
+        }
       }
     }
   } catch (err) {
@@ -785,7 +1102,7 @@ const processOrderPayment = async (orderId) => {
   try {
     const AuctionLot = require('../models/AuctionLot');
     for (const item of order.orderItems) {
-      if (item.product) {
+      if (item.product && mongoose.Types.ObjectId.isValid(item.product)) {
         const lot = await AuctionLot.findById(item.product);
         if (lot) {
           lot.paymentStatus = 'Paid';
@@ -802,7 +1119,7 @@ const processOrderPayment = async (orderId) => {
   try {
     const AuctionLedger = require('../models/AuctionLedger');
     for (const item of order.orderItems) {
-      if (item.product) {
+      if (item.product && mongoose.Types.ObjectId.isValid(item.product)) {
         const ledger = await AuctionLedger.findOne({ lot: item.product });
         if (ledger) {
           ledger.settlementStatus = 'HELD_IN_ESCROW';
@@ -816,6 +1133,203 @@ const processOrderPayment = async (orderId) => {
   }
 
   return true;
+};
+
+/**
+ * Global cancellation of an unpaid order payment
+ * Can be invoked by PayFast ITN (CANCELLED/FAILED), customer aborting on gateway, or admin.
+ */
+const cancelOrderPayment = async (orderId, reason = 'Payment cancelled', forceRefund = false) => {
+  const mongoose = require('mongoose');
+  const Order = require('../models/Order');
+  const Shipment = require('../models/Shipment');
+  const User = require('../models/User');
+  const SuperCoinLedger = require('../models/SuperCoinLedger');
+  const CheckoutEngine = require('../services/CheckoutEngine');
+
+  let order = null;
+  if (mongoose.Types.ObjectId.isValid(orderId)) {
+    order = await Order.findById(orderId);
+  }
+  if (!order) {
+    order = await Order.findOne({ $or: [{ orderId: orderId }, { invoiceNumber: orderId }] });
+  }
+  if (!order) {
+    console.warn(`cancelOrderPayment: Order ${orderId} not found`);
+    return null;
+  }
+
+  // Idempotent & safety guard: If order is already paid, do NOT cancel it unless forceRefund is explicitly requested
+  if ((order.isPaid || order.paymentStatus === 'Paid') && !forceRefund) {
+    console.warn(`cancelOrderPayment: Order ${order._id} is already paid. Cancellation skipped.`);
+    return order;
+  }
+
+  // If order was paid, restore product stock
+  if (order.isPaid && Array.isArray(order.orderItems)) {
+    for (const item of order.orderItems) {
+      const productId = item.product || item.id || item._id;
+      const qty = Number(item.quantity) || 1;
+      if (productId) {
+        try {
+          const isOid = /^[0-9a-fA-F]{24}$/.test(productId.toString());
+          await Product.updateOne(
+            {
+              $or: [
+                ...(isOid ? [{ _id: productId }] : []),
+                { id: productId.toString() }
+              ]
+            },
+            { $inc: { stock: qty } }
+          );
+        } catch (stockErr) {
+          console.error(`Error restoring stock for product ${productId}:`, stockErr);
+        }
+      }
+    }
+  }
+
+  order.paymentStatus = 'Cancelled';
+  order.deliveryStatusText = 'Cancelled';
+  await order.save();
+
+  // 1. Transition all associated shipments to 'Cancelled'
+  if (Array.isArray(order.shipments) && order.shipments.length > 0) {
+    await Shipment.updateMany(
+      { _id: { $in: order.shipments } },
+      { $set: { status: 'Cancelled' } }
+    ).catch(err => console.error('Error updating shipments to Cancelled:', err));
+  }
+
+  // 2. Refund any SuperCoins redeemed by the user and reverse any pending earned coins
+  if (order.user) {
+    try {
+      const user = await User.findById(order.user);
+      if (user) {
+        let userModified = false;
+
+        // Refund redeemed SuperCoins if not yet refunded
+        if (order.superCoinsUsed > 0 && !order.superCoinsRefunded) {
+          user.superCoinsBalance = (user.superCoinsBalance || 0) + order.superCoinsUsed;
+          order.superCoinsRefunded = true;
+          userModified = true;
+
+          await SuperCoinLedger.create({
+            userId: user._id,
+            amount: order.superCoinsUsed,
+            type: 'earned',
+            activity: 'order_discount',
+            status: 'completed',
+            orderId: order._id,
+            orderRef: order.invoiceNumber || order.orderId,
+            description: `Refunded ${order.superCoinsUsed} Super Coins for cancelled order #${order.invoiceNumber || order.orderId}`,
+            balanceSnapshot: user.superCoinsBalance
+          }).catch(err => console.error('Error recording SuperCoin refund ledger:', err));
+        }
+
+        // Deduct any pending earned coins from this cancelled order
+        if (order.superCoinsEarned > 0 && (user.pendingSuperCoins || 0) > 0) {
+          user.pendingSuperCoins = Math.max(0, (user.pendingSuperCoins || 0) - order.superCoinsEarned);
+          userModified = true;
+        }
+
+        if (userModified) {
+          await user.save();
+          await order.save();
+        }
+
+        // Mark any pending earned ledger entries for this cancelled order as cancelled
+        await SuperCoinLedger.updateMany(
+          { orderId: order._id, status: 'pending' },
+          { $set: { status: 'cancelled' } }
+        ).catch(err => console.error('Error cancelling pending SuperCoin ledger:', err));
+      }
+    } catch (scErr) {
+      console.error('Error refunding Super Coins on order cancellation:', scErr);
+    }
+  }
+
+  // 3. Append Event Sourcing: OrderCancelled
+  try {
+    await CheckoutEngine.appendEvent(order._id.toString(), 'OrderCancelled', {
+      reason,
+      cancelledAt: new Date()
+    }, order.user || null);
+  } catch (evErr) {
+    console.warn('CheckoutEngine appendEvent OrderCancelled warning:', evErr.message);
+  }
+
+  // 4. Dispatch Payment Failed / Cancelled Notification to Customer's Gmail
+  if (!order.failureEmailDispatched) {
+    try {
+      const { sendEmail } = require('../utils/emailService');
+      const { paymentFailedEmailTemplate } = require('../utils/emailTemplates');
+      const user = order.user ? await User.findById(order.user) : null;
+      const customerEmail = user?.email || order.guestInfo?.email || order.shippingAddress?.email;
+      const customerName = user?.name || order.guestInfo?.name || order.shippingAddress?.fullName || 'Valued Patron';
+
+      if (customerEmail) {
+        const storeUrl = process.env.FRONTEND_URL || 'https://grandstoreglobal.com';
+        const isAuctionOrder = Boolean(
+          (order.transactionId && order.transactionId.includes('AUC')) ||
+          (order.orderItems || []).some(it => it.category === 'Auction' || (it.name && it.name.toLowerCase().includes('auction')))
+        );
+        const auctionLotId = isAuctionOrder && order.orderItems?.[0]?.product ? String(order.orderItems[0].product) : null;
+
+        let retryUrl = '';
+        let itemName = '';
+        let subject = '';
+
+        if (isAuctionOrder && auctionLotId) {
+          itemName = order.orderItems?.[0]?.name || 'Won Auction Lot';
+          retryUrl = `${storeUrl}/auction/checkout/${auctionLotId}?payment=cancel`;
+          subject = `Payment Notice • ${itemName} Checkout Unsuccessful`;
+        } else {
+          itemName = `Shop Order (${(order.orderItems || []).length} item${(order.orderItems || []).length === 1 ? '' : 's'})`;
+          retryUrl = order.isGuest
+            ? `${storeUrl}/order-success/${order._id}?payment=cancel&guest=true`
+            : `${storeUrl}/customer/order/${order._id}?payment=cancel`;
+          subject = `Payment Notice: Order #${order.invoiceNumber || order.orderId} Unsuccessful`;
+        }
+
+        await sendEmail({
+          to: customerEmail,
+          subject,
+          html: paymentFailedEmailTemplate({
+            customerName,
+            reference: order.orderId || order.invoiceNumber || String(order._id),
+            itemName,
+            amount: order.totalPrice,
+            retryUrl,
+            reason: reason || 'Your payment attempt was cancelled or could not be verified by PayFast. No funds were debited.'
+          })
+        });
+        order.failureEmailDispatched = true;
+        await order.save();
+      }
+    } catch (emailErr) {
+      console.warn('cancelOrderPayment: failed to send payment failure email:', emailErr.message);
+    }
+  }
+
+  console.log(`Order ${order._id} successfully marked Cancelled. Reason: ${reason}`);
+  return order;
+};
+
+// Route controller for POST /api/orders/:id/cancel-payment
+const cancelOrderPaymentHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body || {};
+    const order = await cancelOrderPayment(id, reason || 'Customer cancelled payment on gateway');
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    res.json({ success: true, message: 'Order payment cancelled successfully', order });
+  } catch (error) {
+    console.error('Error in cancelOrderPaymentHandler:', error);
+    res.status(500).json({ message: 'Failed to cancel order payment', error: error.message });
+  }
 };
 
 // Helper to guarantee all order items have product images populated
@@ -924,6 +1438,41 @@ const getMyOrders = async (req, res) => {
       }
     }
 
+    // Safety Net: Reconcile any unrefunded SuperCoins on cancelled/failed orders
+    try {
+      const User = require('../models/User');
+      const SuperCoinLedger = require('../models/SuperCoinLedger');
+      let coinsToRefund = 0;
+
+      for (const ord of orders) {
+        const isCancelled = ['cancelled', 'failed'].includes((ord.paymentStatus || '').toLowerCase());
+        if (isCancelled && ord.superCoinsUsed > 0 && !ord.superCoinsRefunded) {
+          ord.superCoinsRefunded = true;
+          coinsToRefund += ord.superCoinsUsed;
+          await ord.save();
+
+          await SuperCoinLedger.create({
+            userId: req.user._id,
+            amount: ord.superCoinsUsed,
+            type: 'earned',
+            activity: 'order_discount',
+            status: 'completed',
+            orderId: ord._id,
+            orderRef: ord.invoiceNumber || ord.orderId,
+            description: `Refunded ${ord.superCoinsUsed} Super Coins for cancelled order #${ord.invoiceNumber || ord.orderId}`,
+          }).catch(() => {});
+        }
+      }
+
+      if (coinsToRefund > 0) {
+        await User.findByIdAndUpdate(req.user._id, {
+          $inc: { superCoinsBalance: coinsToRefund }
+        });
+      }
+    } catch (scCheckErr) {
+      console.warn('SuperCoin auto-reconcile in getMyOrders warning:', scCheckErr.message);
+    }
+
     await ensureOrderItemsImages(orders);
     res.json(orders);
   } catch (error) {
@@ -937,15 +1486,44 @@ const getMyOrders = async (req, res) => {
 // @access  Private
 const getOrderById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id)
+    const lookupId = req.params.id;
+    let order = null;
+
+    if (mongoose.Types.ObjectId.isValid(lookupId)) {
+      order = await Order.findById(lookupId)
+        .populate('user', 'name email')
+        .populate('shipments');
+    }
+
+    if (!order && lookupId) {
+      order = await Order.findOne({
+        $or: [
+          { orderId: lookupId },
+          { depositReference: lookupId },
+          { invoiceNumber: lookupId }
+        ]
+      })
       .populate('user', 'name email')
       .populate('shipments');
-    if (order) {
-      await ensureOrderItemsImages(order);
-      res.json(order);
-    } else {
-      res.status(404).json({ message: 'Order not found' });
     }
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Access control:
+    const isOwner = order.user && req.user && (order.user._id ? order.user._id.toString() : order.user.toString()) === req.user._id.toString();
+    const isAdmin = req.user && ['admin', 'super_admin', 'product_manager', 'finance_staff', 'accountant'].includes(req.user.role);
+    const providedGuestToken = req.headers['x-guest-access-token'] || req.query.token || req.query.guestAccessToken;
+    const isAuthorizedGuest = order.isGuest && order.guestAccessToken && providedGuestToken && order.guestAccessToken === providedGuestToken;
+    const isVendorForShipment = req.user && (order.shipments || []).some(s => s.vendorId && s.vendorId.toString() === req.user._id.toString());
+
+    if (!isOwner && !isAdmin && !isAuthorizedGuest && !isVendorForShipment) {
+      return res.status(403).json({ message: 'Not authorized to view this order' });
+    }
+
+    await ensureOrderItemsImages(order);
+    res.json(order);
   } catch (error) {
     console.error('Get Order Error:', error);
     res.status(500).json({ message: 'Server Error getting order' });
@@ -983,6 +1561,7 @@ const getVendorOrders = async (req, res) => {
       return {
         _id: shp._id,
         shipmentId: shp.shipmentId,
+        orderId: shp.orderId,
         orderRef: shp.orderRef,
         createdAt: shp.createdAt,
         status: shp.status,
@@ -990,7 +1569,11 @@ const getVendorOrders = async (req, res) => {
         shippingCost: shp.customerShippingCharge,
         trackingNumber: shp.mainTrackingNumber,
         deliveryAddress: shp.deliveryAddress,
-        customerName: shp.customerId ? shp.customerId.name : 'Guest',
+        customerName: shp.customerId ? shp.customerId.name : (masterOrder.shippingAddress?.fullName || masterOrder.guestInfo?.name || 'Customer'),
+        customerEmail: shp.customerId ? shp.customerId.email : (masterOrder.shippingAddress?.email || masterOrder.guestInfo?.email || ''),
+        customerPhone: masterOrder.shippingAddress?.phone || masterOrder.shippingAddress?.phoneNumber || masterOrder.guestInfo?.phone || '',
+        adminMessages: masterOrder.adminMessages || [],
+        latestAdminMessage: masterOrder.latestAdminMessage || null,
         items: items,
         vendorTotal: items.reduce((acc, item) => acc + (item.price * item.quantity), 0)
       };
@@ -1006,12 +1589,87 @@ const getVendorOrders = async (req, res) => {
   }
 };
 
+// @desc    Get single vendor shipment/order detail
+// @route   GET /api/orders/vendor/sales/:shipmentId
+// @access  Private (Vendor/Product Staff)
+const getVendorOrderById = async (req, res) => {
+  try {
+    const Shipment = require('../models/Shipment');
+    const Order = require('../models/Order');
+    const mongoose = require('mongoose');
+
+    const { shipmentId } = req.params;
+    let shipment = null;
+    if (mongoose.Types.ObjectId.isValid(shipmentId)) {
+      shipment = await Shipment.findById(shipmentId);
+    }
+    if (!shipment) {
+      shipment = await Shipment.findOne({ shipmentId });
+    }
+    if (!shipment) {
+      return res.status(404).json({ message: 'Shipment not found' });
+    }
+
+    const managesInternalOrders = ['admin', 'super_admin', 'product_manager'].includes(req.user.role);
+    const ownsShipment = shipment.vendorId && shipment.vendorId.toString() === req.user._id.toString();
+    if ((!shipment.vendorId && !managesInternalOrders) || (shipment.vendorId && !ownsShipment && !managesInternalOrders)) {
+      return res.status(403).json({ message: 'Not authorized to view this shipment' });
+    }
+
+    const masterOrder = await Order.findById(shipment.orderId).populate('customerId', 'name email');
+    if (!masterOrder) {
+      return res.status(404).json({ message: 'Master order not found' });
+    }
+
+    let items = masterOrder.orderItems.filter(item => {
+      if (managesInternalOrders) return !item.vendorId;
+      return item.vendorId && item.vendorId.toString() === req.user._id.toString();
+    });
+
+    const result = {
+      _id: shipment._id,
+      shipmentId: shipment.shipmentId,
+      orderId: shipment.orderId,
+      orderRef: shipment.orderRef || masterOrder.invoiceNumber || masterOrder.orderId,
+      createdAt: shipment.createdAt,
+      status: shipment.status,
+      courierName: shipment.legs && shipment.legs.length > 0 ? shipment.legs[0].courierName : 'Vendor Managed',
+      shippingCost: shipment.customerShippingCharge,
+      trackingNumber: shipment.mainTrackingNumber,
+      deliveryAddress: shipment.deliveryAddress || masterOrder.shippingAddress,
+      deliveryPreference: masterOrder.deliveryPreference,
+      selectedPostnetStore: masterOrder.selectedPostnetStore,
+      customerName: masterOrder.customerId ? masterOrder.customerId.name : (masterOrder.shippingAddress?.fullName || masterOrder.guestInfo?.name || 'Customer'),
+      customerEmail: masterOrder.customerId ? masterOrder.customerId.email : (masterOrder.shippingAddress?.email || masterOrder.guestInfo?.email || ''),
+      customerPhone: masterOrder.shippingAddress?.phone || masterOrder.shippingAddress?.phoneNumber || masterOrder.guestInfo?.phone || '',
+      adminMessages: masterOrder.adminMessages || [],
+      latestAdminMessage: masterOrder.latestAdminMessage || null,
+      packaging: masterOrder.packaging || null,
+      driver: masterOrder.driver || null,
+      aramexWaybillNumber: masterOrder.aramexWaybillNumber || shipment.aramexWaybillNumber || (masterOrder.driver && masterOrder.driver.waybillNumber) || null,
+      aramexCollectionRef: masterOrder.driver?.collectionRef || shipment.aramexCollectionRef || null,
+      isPaid: masterOrder.isPaid,
+      paymentMethod: masterOrder.paymentMethod,
+      items: items,
+      vendorTotal: items.reduce((acc, item) => acc + (item.price * item.quantity), 0)
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error('Get Vendor Order Detail Error:', error);
+    res.status(500).json({ message: 'Server error retrieving shipment details' });
+  }
+};
+
 // @desc    Update a retail shipment's fulfilment status
 // @route   PATCH /api/orders/vendor/sales/:shipmentId/status
 // @access  Private (Vendor/Product Staff)
 const updateShipmentStatus = async (req, res) => {
   try {
     const Shipment = require('../models/Shipment');
+    const Order = require('../models/Order');
+    const mongoose = require('mongoose');
+
     const allowedStatuses = [
       'Order Confirmed',
       'Preparing',
@@ -1027,24 +1685,201 @@ const updateShipmentStatus = async (req, res) => {
       return res.status(400).json({ message: 'Invalid shipment status' });
     }
 
-    const shipment = await Shipment.findById(req.params.shipmentId);
+    let shipment = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.shipmentId)) {
+      shipment = await Shipment.findById(req.params.shipmentId);
+    }
+    if (!shipment) {
+      shipment = await Shipment.findOne({ shipmentId: req.params.shipmentId });
+    }
     if (!shipment) {
       return res.status(404).json({ message: 'Shipment not found' });
     }
 
     const managesInternalOrders = ['admin', 'super_admin', 'product_manager'].includes(req.user.role);
     const ownsShipment = shipment.vendorId?.toString() === req.user._id.toString();
-    if ((!shipment.vendorId && !managesInternalOrders) || (shipment.vendorId && !ownsShipment)) {
+    if ((!shipment.vendorId && !managesInternalOrders) || (shipment.vendorId && !ownsShipment && !managesInternalOrders)) {
       return res.status(403).json({ message: 'Not authorized to update this shipment' });
     }
 
     shipment.status = status;
+    if (req.body.trackingNumber) {
+      shipment.mainTrackingNumber = String(req.body.trackingNumber).trim();
+    }
     shipment.actualDeliveryDate = status === 'Delivered' ? new Date() : shipment.actualDeliveryDate;
     await shipment.save();
-    res.json({ _id: shipment._id, status: shipment.status, actualDeliveryDate: shipment.actualDeliveryDate });
+
+    // Synchronize delivery status on Master Order
+    if (shipment.orderId) {
+      const order = await Order.findById(shipment.orderId);
+      if (order) {
+        order.deliveryStatusText = status;
+        if (status === 'Delivered') {
+          const allShipments = await Shipment.find({ orderId: order._id });
+          const allDelivered = allShipments.length > 0 && allShipments.every(s => s._id.toString() === shipment._id.toString() ? true : s.status === 'Delivered');
+          if (allDelivered) {
+            order.isDelivered = true;
+            order.deliveredAt = new Date();
+          }
+        }
+        await order.save();
+      }
+    }
+
+    res.json({ _id: shipment._id, status: shipment.status, actualDeliveryDate: shipment.actualDeliveryDate, trackingNumber: shipment.mainTrackingNumber });
   } catch (error) {
     console.error('Update Shipment Status Error:', error);
     res.status(500).json({ message: 'Server Error updating shipment status' });
+  }
+};
+
+// @desc    Send custom / advisory notice from Vendor to customer for a shipment / order
+// @route   POST /api/orders/vendor/sales/:shipmentId/message
+// @access  Private (Vendor / Admin Staff)
+const sendVendorOrderMessage = async (req, res) => {
+  try {
+    const Shipment = require('../models/Shipment');
+    const Order = require('../models/Order');
+    const mongoose = require('mongoose');
+
+    const { shipmentId } = req.params;
+    const { message, type = 'info', shipmentStatus, trackingNumber } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'Message content is required' });
+    }
+
+    let shipment = null;
+    if (mongoose.Types.ObjectId.isValid(shipmentId)) {
+      shipment = await Shipment.findById(shipmentId);
+    }
+    if (!shipment) {
+      shipment = await Shipment.findOne({ shipmentId });
+    }
+    if (!shipment) {
+      return res.status(404).json({ message: 'Shipment not found' });
+    }
+
+    const managesInternalOrders = ['admin', 'super_admin', 'product_manager'].includes(req.user.role);
+    const ownsShipment = shipment.vendorId && shipment.vendorId.toString() === req.user._id.toString();
+    if ((!shipment.vendorId && !managesInternalOrders) || (shipment.vendorId && !ownsShipment && !managesInternalOrders)) {
+      return res.status(403).json({ message: 'Not authorized to send notice for this shipment' });
+    }
+
+    const order = await Order.findById(shipment.orderId).populate('user', 'name email');
+    if (!order) {
+      return res.status(404).json({ message: 'Master order not found' });
+    }
+
+    // Determine vendor display name
+    const senderName = req.user.vendorProfile?.storeName || req.user.vendorProfile?.companyName || req.user.name || 'Grand Store Partner';
+    const messageObj = {
+      message: message.trim(),
+      type: ['info', 'warning', 'emergency', 'stock_issue'].includes(type) ? type : 'info',
+      sentAt: new Date(),
+      sentBy: req.user._id,
+      sentByName: senderName,
+      isVendor: true,
+      shipmentId: shipment.shipmentId || shipment._id
+    };
+
+    if (!Array.isArray(order.adminMessages)) {
+      order.adminMessages = [];
+    }
+    order.adminMessages.push(messageObj);
+    order.latestAdminMessage = messageObj;
+
+    // Optional status update
+    const allowedStatuses = [
+      'Order Confirmed',
+      'Preparing',
+      'Collected',
+      'In Transit',
+      'Out for Delivery',
+      'Delivered',
+      'Delayed',
+      'Failed',
+    ];
+    if (shipmentStatus && allowedStatuses.includes(shipmentStatus)) {
+      shipment.status = shipmentStatus;
+      shipment.actualDeliveryDate = shipmentStatus === 'Delivered' ? new Date() : shipment.actualDeliveryDate;
+      order.deliveryStatusText = shipmentStatus;
+
+      if (shipmentStatus === 'Delivered') {
+        const allShipments = await Shipment.find({ orderId: order._id });
+        const allDelivered = allShipments.length > 0 && allShipments.every(s => s._id.toString() === shipment._id.toString() ? true : s.status === 'Delivered');
+        if (allDelivered) {
+          order.isDelivered = true;
+          order.deliveredAt = new Date();
+        }
+      }
+    }
+
+    if (trackingNumber && typeof trackingNumber === 'string') {
+      shipment.mainTrackingNumber = trackingNumber.trim();
+    }
+
+    await shipment.save();
+    await order.save();
+
+    // 1. In-app notification for registered customer
+    if (order.user && order.user._id) {
+      try {
+        const Notification = require('../models/Notification');
+        await Notification.create({
+          recipient: order.user._id,
+          recipientType: 'customer',
+          title: `Order Advisory from ${senderName}: #${order.invoiceNumber || order.orderId}`,
+          message: messageObj.message,
+          type: 'order',
+          link: '/customer/orders',
+          metadata: {
+            orderId: order._id,
+            shipmentId: shipment._id,
+            orderReference: order.invoiceNumber || order.orderId,
+            type: messageObj.type
+          }
+        });
+      } catch (notifErr) {
+        console.error('Failed to create in-app notification for vendor message:', notifErr.message);
+      }
+    }
+
+    // 2. Email notification to customer
+    const customerEmail = order.guestInfo?.email || order.shippingAddress?.email || (order.user && order.user.email);
+    const customerName = order.guestInfo?.name || order.shippingAddress?.fullName || (order.user && order.user.name) || 'Valued Customer';
+
+    if (customerEmail) {
+      try {
+        const { sendEmail } = require('../utils/emailService');
+        const { adminOrderMessageEmailTemplate } = require('../utils/emailTemplates');
+        await sendEmail({
+          to: customerEmail,
+          subject: `[Order #${order.invoiceNumber || order.orderId}] Notice from ${senderName}`,
+          html: adminOrderMessageEmailTemplate({
+            customerName,
+            orderReference: order.invoiceNumber || order.orderId || order._id,
+            message: messageObj.message,
+            type: messageObj.type,
+            storeUrl: process.env.FRONTEND_URL || 'https://grandstoreglobal.com'
+          })
+        });
+      } catch (emailErr) {
+        console.error('Failed to send vendor order message email:', emailErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Notice sent to customer successfully',
+      adminMessage: messageObj,
+      shipmentStatus: shipment.status,
+      trackingNumber: shipment.mainTrackingNumber,
+      orderAdminMessages: order.adminMessages
+    });
+  } catch (error) {
+    console.error('Send Vendor Order Message Error:', error);
+    res.status(500).json({ message: 'Server error sending notice to customer' });
   }
 };
 
@@ -1066,16 +1901,18 @@ const markOrderAsPaid = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // Verify user ownership or staff/admin or guest order
-    const isOwner = order.user && req.user && order.user.toString() === req.user._id.toString();
-    const isAdmin = req.user && ['admin', 'super_admin', 'product_manager', 'finance_staff'].includes(req.user?.role);
-    const isGuestOwner = order.isGuest;
-    if (!isOwner && !isAdmin && !isGuestOwner) {
-      return res.status(403).json({ message: 'Not authorized to update this order' });
+    // Verify staff/admin authorization (strictly restricted to finance and admin staff)
+    const isAdmin = req.user && ['admin', 'super_admin', 'product_manager', 'finance_staff', 'accountant'].includes(req.user?.role);
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Only authorized administrative finance staff can manually confirm order payment.' });
     }
 
     if (order.isPaid) {
       return res.json(order);
+    }
+
+    if (order.paymentStatus === 'Cancelled' || order.paymentStatus === 'Failed') {
+      return res.status(400).json({ message: `Cannot mark a ${order.paymentStatus.toLowerCase()} order as paid` });
     }
 
     // Process ledger, wallet, referrer rewards, events, and set isPaid=true
@@ -1113,6 +1950,13 @@ const getAdminOrders = async (req, res) => {
       ];
     }
 
+    // Strictly exclude cancelled, failed, aborted, and pending/unpaid orders from admin order list
+    query.paymentStatus = { $nin: ['Cancelled', 'Failed', 'cancelled', 'failed', 'Pending', 'pending'] };
+    query.$or = [
+      { isPaid: true },
+      { paymentStatus: { $in: ['Paid', 'Allocated', 'Settled', 'Authorised', 'Awaiting_Approval'] } }
+    ];
+
     const rawOrders = await Order.find(query)
       .sort({ createdAt: -1 })
       .limit(Math.min(200, Number(limit) || 100))
@@ -1138,11 +1982,22 @@ const getAdminOrders = async (req, res) => {
       });
     }
 
-    let filtered = enriched;
+    // Filter strictly excluding any cancelled, failed, or pending/unpaid orders
+    let filtered = enriched.filter(ord => {
+      const pStatus = String(ord.paymentStatus || '').toLowerCase();
+      if (['cancelled', 'failed', 'pending'].includes(pStatus)) return false;
+      if (!ord.isPaid && ord.paymentStatus !== 'Paid' && ord.paymentStatus !== 'Awaiting_Approval') return false;
+      return true;
+    });
+
     if (tab === 'paid') {
-      filtered = enriched.filter(ord => ord.isPaid || ord.paymentStatus === 'Paid');
-    } else if (tab === 'pending') {
-      filtered = enriched.filter(ord => !ord.isPaid && ord.paymentStatus !== 'Paid');
+      filtered = filtered.filter(ord => ord.isPaid || ord.paymentStatus === 'Paid');
+    } else if (tab === 'awaiting_approval') {
+      filtered = filtered.filter(ord => ord.paymentStatus === 'Awaiting_Approval');
+    } else if (tab === 'unfulfilled') {
+      filtered = filtered.filter(ord => !ord.isDelivered);
+    } else if (tab === 'delivered') {
+      filtered = filtered.filter(ord => ord.isDelivered);
     }
 
     res.json(filtered);
@@ -1191,7 +2046,9 @@ const getAdminOrderById = async (req, res) => {
       retailSubtotal: retailItems.reduce((acc, it) => acc + (Number(it.price || 0) * Number(it.quantity || 1)), 0),
       customerName: order.guestInfo?.name || order.shippingAddress?.fullName || order.user?.name || 'Customer',
       customerEmail: order.guestInfo?.email || order.shippingAddress?.email || order.user?.email || '',
-      customerPhone: order.guestInfo?.phone || order.shippingAddress?.phone || order.shippingAddress?.phoneNumber || order.user?.phoneNumber || ''
+      customerPhone: order.guestInfo?.phone || order.shippingAddress?.phone || order.shippingAddress?.phoneNumber || order.user?.phoneNumber || '',
+      customerPhoneCountry: order.guestInfo?.phoneCountry || order.shippingAddress?.phoneCountry || '',
+      customerPhoneCountryCode: order.guestInfo?.phoneCountryCode || order.shippingAddress?.phoneCountryCode || ''
     });
   } catch (error) {
     console.error('Get Admin Order By Id Error:', error);
@@ -1298,6 +2155,270 @@ const sendAdminOrderMessage = async (req, res) => {
   }
 };
 
+// @desc    Download / Stream Order Tax Invoice Receipt PDF
+// @route   GET /api/orders/:id/receipt-pdf
+// @access  Public / Optional Auth
+const downloadOrderReceiptPdf = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      order = await Order.findById(id).populate('user', 'name email phone').catch(() => null);
+    }
+    if (!order && id) {
+      order = await Order.findOne({
+        $or: [{ orderId: id }, { invoiceNumber: id }, { transactionId: id }]
+      }).populate('user', 'name email phone').catch(() => null);
+    }
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const customer = order.user || {
+      name: order.guestInfo?.name || order.shippingAddress?.name || 'Valued Customer',
+      email: order.guestInfo?.email || order.shippingAddress?.email || 'customer@grandstoreglobal.com',
+      phone: order.guestInfo?.phone || order.shippingAddress?.phone || ''
+    };
+
+    const { generateOrderReceiptBuffer } = require('../utils/pdfService');
+    const pdfBuffer = await generateOrderReceiptBuffer(order, customer);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Tax_Invoice_${order.invoiceNumber || order.orderId || order._id}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('Download Order Receipt PDF Error:', err);
+    res.status(500).json({ message: 'Failed to generate tax invoice PDF', error: err.message });
+  }
+};
+
+// @desc    Update & Verify Physical Packaging Inspection for Order
+// @route   POST /api/orders/:id/packaging
+// @access  Private (Admin / Ops)
+const updateOrderPackaging = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      boxType = 'Certified Wine Shipper (1 Bottle)',
+      weightKg = 1.55,
+      dimensions = { lengthCm: 10, widthCm: 10, heightCm: 33 },
+      isFragile = true,
+      isSealed = true,
+      packedBy = 'Grand Store Dispatch Vault'
+    } = req.body;
+
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      order = await Order.findById(id);
+    }
+    if (!order) {
+      order = await Order.findOne({
+        $or: [{ orderId: id }, { invoiceNumber: id }, { depositReference: id }]
+      });
+    }
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const orderSuffix = order.orderId ? order.orderId.split('-').pop() : order._id.toString().slice(-6).toUpperCase();
+    const barcode = order.packaging?.packageBarcode || `GS-PKG-${orderSuffix}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    order.packaging = {
+      isPacked: true,
+      boxType,
+      weightKg: Number(weightKg) || 1.55,
+      dimensions: {
+        lengthCm: Number(dimensions.lengthCm || dimensions.length_cm) || 10,
+        widthCm: Number(dimensions.widthCm || dimensions.width_cm) || 10,
+        heightCm: Number(dimensions.heightCm || dimensions.height_cm) || 33
+      },
+      isFragile: Boolean(isFragile),
+      isSealed: Boolean(isSealed),
+      packageBarcode: barcode,
+      packedAt: new Date(),
+      packedBy: packedBy || req.user?.name || 'Grand Store Vault Ops'
+    };
+
+    if (order.status === 'Processing') {
+      order.status = 'Awaiting Dispatch';
+    }
+
+    await order.save();
+
+    res.json({
+      success: true,
+      message: 'Packaging verified and sealed successfully',
+      packaging: order.packaging,
+      orderStatus: order.status
+    });
+  } catch (err) {
+    console.error('Packaging verification error:', err);
+    res.status(500).json({ message: 'Failed to verify packaging', error: err.message });
+  }
+};
+
+// @desc    Assign Courier / Vault Driver to Order (Gated by Packaging!)
+// @route   POST /api/orders/:id/assign-driver
+// @access  Private (Admin / Ops)
+const assignOrderDriver = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      courierCompany = 'Aramex South Africa',
+      serviceType = 'ONP',
+      driverName,
+      driverPhone,
+      vehicleReg,
+      pickupWindow = '13:30 - 17:00'
+    } = req.body;
+
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      order = await Order.findById(id);
+    }
+    if (!order) {
+      order = await Order.findOne({
+        $or: [{ orderId: id }, { invoiceNumber: id }, { depositReference: id }]
+      });
+    }
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // GATING REQUIREMENT: Packaging must be verified before driver can be assigned
+    if (!order.packaging?.isPacked) {
+      return res.status(400).json({
+        message: 'Packaging inspection and verification is required before assigning a driver.'
+      });
+    }
+
+    const isAramex = courierCompany.toLowerCase().includes('aramex');
+    const waybill = isAramex
+      ? `31${Date.now().toString().slice(-9)}`
+      : `GS-DRV-${Date.now().toString().slice(-6)}`;
+    const collectionRef = isAramex
+      ? `COL-${Math.floor(100000 + Math.random() * 900000)}`
+      : `VAULT-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    order.driver = {
+      courierCompany,
+      serviceType,
+      driverName: driverName || (isAramex ? 'Aramex Express Dispatch Courier' : 'Dedicated Vault Courier'),
+      driverPhone: driverPhone || (isAramex ? '+27 11 883 4000' : '+27 82 555 0192'),
+      vehicleReg: vehicleReg || (isAramex ? 'Aramex Fleet (Gauteng Hub)' : 'Toyota Hilux Vault Van'),
+      waybillNumber: waybill,
+      collectionRef,
+      pickupWindow,
+      assignedAt: new Date(),
+      status: 'assigned',
+      handoverConfirmedAt: null
+    };
+
+    order.status = 'Awaiting Dispatch';
+    await order.save();
+
+    // Link/update Shipment record
+    try {
+      const Shipment = require('../models/Shipment');
+      let shipment = null;
+      if (Array.isArray(order.shipments) && order.shipments.length > 0) {
+        shipment = await Shipment.findById(order.shipments[0]);
+      }
+      if (!shipment) {
+        shipment = await Shipment.findOne({ orderId: order._id });
+      }
+      if (shipment) {
+        shipment.aramexWaybillNumber = waybill;
+        shipment.aramexServiceType = serviceType;
+        shipment.aramexCollectionRef = collectionRef;
+        shipment.deliveryMethod = isAramex ? 'aramex_delivery' : 'home_delivery';
+        shipment.status = 'Preparing';
+        await shipment.save();
+      } else {
+        const newShipment = await Shipment.create({
+          shipmentId: `GS-SHP-${Date.now().toString().slice(-6)}`,
+          orderId: order._id,
+          orderRef: order.orderId || order.invoiceNumber || String(order._id),
+          deliveryMethod: isAramex ? 'aramex_delivery' : 'home_delivery',
+          courierName: courierCompany,
+          aramexWaybillNumber: waybill,
+          aramexServiceType: serviceType,
+          aramexCollectionRef: collectionRef,
+          customerShippingCharge: order.shippingCost || 0,
+          status: 'Preparing',
+          packageDetails: {
+            weight: order.packaging.weightKg,
+            length: order.packaging.dimensions.lengthCm,
+            width: order.packaging.dimensions.widthCm,
+            height: order.packaging.dimensions.heightCm
+          },
+          deliveryAddress: {
+            address: order.shippingAddress?.address || '',
+            city: order.shippingAddress?.city || '',
+            postalCode: order.shippingAddress?.postalCode || '',
+            country: order.shippingAddress?.country || 'South Africa'
+          }
+        });
+        order.shipments = [newShipment._id];
+        await order.save();
+      }
+    } catch (shipErr) {
+      console.warn('Shipment sync warning in assignOrderDriver:', shipErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: `Driver assigned successfully. Collection booked under ${collectionRef}.`,
+      driver: order.driver,
+      orderStatus: order.status
+    });
+  } catch (err) {
+    console.error('Driver assignment error:', err);
+    res.status(500).json({ message: 'Failed to assign driver', error: err.message });
+  }
+};
+
+// @desc    Confirm Driver Parcel Handover via QR Code Scan
+// @route   POST /api/orders/:id/confirm-handover
+// @access  Public / Optional Auth (Scanned by Driver or Vault Staff)
+const confirmOrderDriverHandover = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      order = await Order.findById(id);
+    }
+    if (!order) {
+      order = await Order.findOne({
+        $or: [{ orderId: id }, { invoiceNumber: id }, { depositReference: id }]
+      });
+    }
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    if (!order.driver) {
+      order.driver = {};
+    }
+    order.driver.status = 'in_transit';
+    order.driver.handoverConfirmedAt = new Date();
+    order.status = 'In Transit';
+    await order.save();
+
+    try {
+      const Shipment = require('../models/Shipment');
+      await Shipment.updateMany(
+        { orderId: order._id },
+        { $set: { status: 'In Transit' } }
+      );
+    } catch (e) {}
+
+    res.json({
+      success: true,
+      message: 'Driver parcel handover confirmed successfully. Order is now In Transit.',
+      status: order.status,
+      driver: order.driver
+    });
+  } catch (err) {
+    console.error('Confirm handover error:', err);
+    res.status(500).json({ message: 'Failed to confirm handover', error: err.message });
+  }
+};
+
 module.exports = {
   addOrderItems,
   getOrderById,
@@ -1306,7 +2427,15 @@ module.exports = {
   getMyOrders,
   markOrderAsPaid,
   processOrderPayment, // Exported for ITN webhook
+  cancelOrderPayment,  // Exported for ITN webhook & cancellation flow
+  cancelOrderPaymentHandler, // Exported for route POST /api/orders/:id/cancel-payment
   getAdminOrders,
   getAdminOrderById,
-  sendAdminOrderMessage
+  sendAdminOrderMessage,
+  sendVendorOrderMessage,
+  getVendorOrderById,
+  downloadOrderReceiptPdf,
+  updateOrderPackaging,
+  assignOrderDriver,
+  confirmOrderDriverHandover
 };

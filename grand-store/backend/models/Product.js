@@ -85,6 +85,17 @@ const productSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    shipping: {
+      box_type: { type: String, default: 'Standard Box' },
+      weight_kg: { type: Number, default: 1.5 },
+      length_cm: { type: Number, default: 10.0 },
+      width_cm: { type: Number, default: 10.0 },
+      height_cm: { type: Number, default: 32.0 },
+      is_fragile: { type: Boolean, default: true },
+      parcel_value: { type: Number, default: 0 },
+      hs_code: { type: String, default: '2208.30' },
+      aramexServiceType: { type: String, default: 'ONP' },
+    },
     // Social Proof Engine Metrics
     badges: [
       {
@@ -147,6 +158,23 @@ const productSchema = new mongoose.Schema(
       minimumSellingPrice: { type: Number, default: 0 },
       rrp: { type: Number, default: 0 },
       marginStatus: { type: String, enum: ['healthy', 'warning', 'blocked'], default: 'healthy' }
+    },
+    // Loyalty & Referral Promotion Controls
+    isSuperCoinEligible: {
+      type: Boolean,
+      default: true,
+    },
+    maxSuperCoinDiscountPct: {
+      type: Number,
+      default: 10,
+    },
+    isReferralEligible: {
+      type: Boolean,
+      default: true,
+    },
+    referralDiscountPct: {
+      type: Number,
+      default: 5,
     },
   },
   { timestamps: true },

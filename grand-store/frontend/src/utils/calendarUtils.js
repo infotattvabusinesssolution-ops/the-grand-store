@@ -73,8 +73,8 @@ export function buildAuctionCalendarDetails(lot, options = {}) {
     ...(specs.length > 0 ? [`PIECE SPECIFICATIONS:`, `--------------------------------------------------`, ...specs, ``] : []),
     `DIRECT VAULT ACCESS:`,
     `--------------------------------------------------`,
-    `• View Digital Certificate: https://grandstore.yogapranafitness.com/auction/${lot._id}`,
-    `• Order & Logistics Hub: https://grandstore.yogapranafitness.com/customer/orders`,
+    `• View Digital Certificate: https://grandstoreglobal.com/auction/${lot._id}`,
+    `• Order & Logistics Hub: https://grandstoreglobal.com/customer/orders`,
     `• Grand Store Private Concierge: +27 (0) 21 000 0000 | concierge@grandstore.com`,
     `• Hours: 08:00 - 18:00 SAST (Monday - Saturday)`
   ];

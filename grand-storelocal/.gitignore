@@ -1,0 +1,67 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+/dist
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# chrome preview profiles & test screenshots
+.*preview*
+*preview*.png
+
+# AI Agent Skills & Configuration
+.agents/
+.agent/
+_agents/
+_agent/
+SKILL.md
+*.skill.md
+
+# Database dumps & docs
+/*.sql
+/*.docx
+/*.py
+/*.txt
+/*.cjs
+/*.ps1
+/test_api.js
+/*.js
+/package-lock.json
+/package.json
+/*.jpg
+/*.pdf
+/*.html
+/deploy/
+/.tmp/
+/backend/
+node_modules/
+dist/
+.env*
+!.env.example

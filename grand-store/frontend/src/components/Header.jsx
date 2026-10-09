@@ -22,16 +22,16 @@ import { storeCategories, accessoryCategories, menuCategories } from "../data";
 import { useAuth } from "../context/AuthContext";
 import { useProducts } from "../context/ProductContext";
 import { useGeoLocation } from "../context/LocationContext";
-import { useCurrency } from "../context/CurrencyContext";
+import { useCurrency, getCountryForCurrency } from "../context/CurrencyContext";
 import LocaleSelector, { LocaleIcon } from "./LocaleSelector";
 import NotificationBell from "./NotificationBell";
 import api from "../api";
 
 const currencyFlagCountries = {
   AED: 'AE', AUD: 'AU', BWP: 'BW', BRL: 'BR', CAD: 'CA', CHF: 'CH', CNY: 'CN',
-  EUR: 'EU', GBP: 'GB', GHS: 'GH', HKD: 'HK', INR: 'IN', JPY: 'JP', KES: 'KE',
-  KRW: 'KR', MUR: 'MU', MXN: 'MX', NAD: 'NA', NGN: 'NG', NZD: 'NZ', RUB: 'RU',
-  SAR: 'SA', SGD: 'SG', TRY: 'TR', USD: 'US', ZAR: 'ZA'
+  CLP: 'CL', EUR: 'EU', GBP: 'GB', GHS: 'GH', HKD: 'HK', INR: 'IN', JPY: 'JP',
+  KES: 'KE', KRW: 'KR', MUR: 'MU', MXN: 'MX', NAD: 'NA', NGN: 'NG', NZD: 'NZ',
+  RUB: 'RU', SAR: 'SA', SGD: 'SG', TRY: 'TR', USD: 'US', ZAR: 'ZA'
 };
 
 const currencyNames = typeof Intl !== 'undefined' && Intl.DisplayNames
@@ -62,7 +62,7 @@ export default function Header({
   const currencyOptions = useMemo(() => availableCurrencies.map((currencyCode) => ({
     value: currencyCode,
     label: currencyNames?.of(currencyCode) || currencyCode,
-    flagCode: currencyFlagCountries[currencyCode],
+    flagCode: currencyFlagCountries[currencyCode] || getCountryForCurrency(currencyCode),
     icon: '¤'
   })), [availableCurrencies]);
 
@@ -103,24 +103,44 @@ export default function Header({
   const [mobileSearchQuery, setMobileSearchQuery] = useState("");
   const mobileSearchRef = useRef(null);
 
+  const normalizeForSearch = (str) =>
+    String(str || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
   const searchResults = searchQuery.trim()
     ? products
-        .filter(
-          (p) =>
-            p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.brand?.toLowerCase().includes(searchQuery.toLowerCase()),
-        )
-        .slice(0, 5)
+        .filter((p) => {
+          const q = normalizeForSearch(searchQuery);
+          return (
+            normalizeForSearch(p.name).includes(q) ||
+            normalizeForSearch(p.brand).includes(q) ||
+            normalizeForSearch(p.storeName).includes(q) ||
+            normalizeForSearch(p.vendorName).includes(q) ||
+            normalizeForSearch(p.category).includes(q) ||
+            normalizeForSearch(p.subcategory).includes(q) ||
+            (Array.isArray(p.tags) && p.tags.some(t => normalizeForSearch(t).includes(q)))
+          );
+        })
+        .slice(0, 8)
     : [];
 
   const mobileSearchResults = mobileSearchQuery.trim()
     ? products
-        .filter(
-          (p) =>
-            p.name?.toLowerCase().includes(mobileSearchQuery.toLowerCase()) ||
-            p.brand?.toLowerCase().includes(mobileSearchQuery.toLowerCase()),
-        )
-        .slice(0, 5)
+        .filter((p) => {
+          const q = normalizeForSearch(mobileSearchQuery);
+          return (
+            normalizeForSearch(p.name).includes(q) ||
+            normalizeForSearch(p.brand).includes(q) ||
+            normalizeForSearch(p.storeName).includes(q) ||
+            normalizeForSearch(p.vendorName).includes(q) ||
+            normalizeForSearch(p.category).includes(q) ||
+            normalizeForSearch(p.subcategory).includes(q) ||
+            (Array.isArray(p.tags) && p.tags.some(t => normalizeForSearch(t).includes(q)))
+          );
+        })
+        .slice(0, 8)
     : [];
 
   const [hasLiveAuction, setHasLiveAuction] = useState(false);
@@ -310,8 +330,7 @@ export default function Header({
       <div className="announcement-bar py-1.5 bg-[#c9a35b] text-black">
         <div className="shell announcement-inner">
           <p className="font-bold tracking-widest uppercase text-[10px]">
-            <PackageCheck size={14} className="mr-2" /> Complimentary delivery
-            over <Price amount={1500} />
+            <PackageCheck size={14} className="mr-2" /> Complimentary delivery over selected products
           </p>
           <p className="announcement-message font-bold tracking-widest uppercase text-[10px]">
             Private cellar sourcing available worldwide

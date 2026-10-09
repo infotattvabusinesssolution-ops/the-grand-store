@@ -17,9 +17,14 @@ const prepareEmailBranding = (html, attachments = []) => {
   if (typeof html !== 'string' || !html.trim()) return { html, attachments };
 
   const logoReference = `cid:${EMAIL_LOGO_CID}`;
-  // Keep the separate Mcigar shell branded for that service. A Grand Store email
-  // mentioning a Mcigar product still needs its own inline logo attached.
-  if (!html.includes(logoReference) && (html.includes('cigar-connoisseur-logo') || html.includes('Private cigar concierge'))) {
+  // Keep the separate Mcigar and Millionaires Collection shells branded for their services.
+  // A Grand Store email mentioning a Mcigar or wine product still needs its own inline logo attached.
+  if (!html.includes(logoReference) && (
+    html.includes('cigar-connoisseur-logo') ||
+    html.includes('Private cigar concierge') ||
+    html.includes('Millionaires Collection') ||
+    html.includes('Premium Sparkling Wine · Private Concierge')
+  )) {
     return { html, attachments };
   }
 

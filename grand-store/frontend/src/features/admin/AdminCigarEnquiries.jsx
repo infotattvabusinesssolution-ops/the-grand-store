@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Clock3, Mail, MessageSquare, Search, Send, XCircle } from 'lucide-react';
 import api from '../../api';
 
-const CIGAR_SITE_URL = 'https://cigar.yogapranafitness.com';
+const CIGAR_SITE_URL = 'https://cigarconnoisseurclub.com';
 const imageUrl = (value) => !value ? '' : /^https?:\/\//i.test(value) ? value : `${CIGAR_SITE_URL}${value.startsWith('/') ? '' : '/'}${value}`;
 
 const statusStyles = {

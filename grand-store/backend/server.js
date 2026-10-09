@@ -31,6 +31,9 @@ let allowedOrigins = process.env.ALLOWED_ORIGINS
       "http://localhost:5173",
       "http://localhost:5174",
       "http://localhost:5175",
+      "http://localhost:5176",
+      "http://localhost:5177",
+      "http://localhost:5178",
       "http://localhost:56842",
     ];
 
@@ -39,12 +42,18 @@ const productionDomains = [
   "https://www.grandstoreglobal.com",
   "http://grandstoreglobal.com",
   "http://www.grandstoreglobal.com",
-  "https://grandstore.yogapranafitness.com",
-  "https://www.grandstore.yogapranafitness.com",
-  "http://grandstore.yogapranafitness.com",
-  "http://www.grandstore.yogapranafitness.com",
-  "https://cigar.yogapranafitness.com",
-  "https://www.cigar.yogapranafitness.com",
+  "https://grandstore.co.za",
+  "https://www.grandstore.co.za",
+  "http://grandstore.co.za",
+  "http://www.grandstore.co.za",
+  "https://cigarconnoisseurclub.com",
+  "https://www.cigarconnoisseurclub.com",
+  "http://cigarconnoisseurclub.com",
+  "http://www.cigarconnoisseurclub.com",
+  "https://millionairescollection.com",
+  "https://www.millionairescollection.com",
+  "http://millionairescollection.com",
+  "http://www.millionairescollection.com",
 ];
 
 productionDomains.forEach((domain) => {
@@ -90,10 +99,13 @@ const mongoSanitizeExpress5 = require("./middleware/mongoSanitizeExpress5");
 app.use(mongoSanitizeExpress5);
 
 // Global Rate Limiter
+const rateLimitValidateConfig = { trustProxy: false, xForwardedForHeader: false };
+
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1000,
-  message: 'Too many requests from this IP, please try again after 15 minutes'
+  message: 'Too many requests from this IP, please try again after 15 minutes',
+  validate: rateLimitValidateConfig,
 });
 app.use(globalLimiter);
 
@@ -101,13 +113,16 @@ app.use(globalLimiter);
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: 'Too many authentication attempts, please try again later'
+  message: 'Too many authentication attempts, please try again later',
+  validate: rateLimitValidateConfig,
 });
 
 const paymentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 50,
-  message: 'Too many payment requests, please try again later'
+  max: 100,
+  message: 'Too many payment requests, please try again later',
+  skip: (req) => req.path === '/itn' || req.path === '/notify' || req.originalUrl?.includes('/api/payfast/itn') || req.originalUrl?.includes('/api/payfast/notify'),
+  validate: rateLimitValidateConfig,
 });
 
 app.use("/uploads", express.static("uploads"));
@@ -131,12 +146,16 @@ mongoose
     console.log("MongoDB connected successfully");
     const seedAdminStaff = require("./services/seedAdminStaff");
     await seedAdminStaff();
+    const seedAdminStore = require("./services/seedAdminStore");
+    await seedAdminStore();
     // Start jobs ONLY after successful DB connection to avoid Mongoose buffering timeouts
     startAuctionCronJobs();
     startVendorTrustJobs();
     startReminderJobs();
     startEventJobs();
     startVendorJobs();
+    const startCrmEscalationJobs = require("./jobs/crmEscalationJob");
+    startCrmEscalationJobs();
   })
   .catch((err) => console.error("MongoDB connection error:", err));
 
@@ -153,6 +172,8 @@ const socialProofRoutes = require("./routes/socialProofRoutes");
 const estateRoutes = require("./routes/estateRoutes");
 const hostApplicationRoutes = require("./routes/hostApplicationRoutes");
 const postnetRoutes = require("./routes/postnetRoutes");
+const tcgRoutes = require("./routes/tcgRoutes");
+const aramexRoutes = require("./routes/aramexRoutes");
 const payfastRoutes = require("./routes/payfastRoutes");
 const configRoutes = require("./routes/configRoutes");
 const newsletterRoutes = require("./routes/newsletterRoutes");
@@ -179,6 +200,8 @@ app.use("/api/social-proof", socialProofRoutes);
 app.use("/api/estates", estateRoutes);
 app.use("/api/host-applications", hostApplicationRoutes);
 app.use("/api/postnet", postnetRoutes);
+app.use("/api/tcg", tcgRoutes);
+app.use("/api/aramex", aramexRoutes);
 app.use("/api/payfast", paymentLimiter, payfastRoutes);
 app.use("/api/testimonials", testimonialRoutes);
 app.use("/api/attributes", attributeRoutes);
@@ -186,11 +209,17 @@ app.use("/api/glossary", glossaryRoutes);
 app.use("/api/config", configRoutes);
 app.use("/api/trade-enquiries", require("./routes/tradeEnquiryRoutes"));
 app.use("/api/cigar-enquiries", require("./routes/cigarEnquiryRoutes"));
+app.use("/api/wine-enquiries", require("./routes/wineEnquiryRoutes"));
 app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/advertisements", require("./routes/advertisementRoutes"));
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/notifications', require("./routes/notificationRoutes"));
 app.use('/api/academy', require("./routes/vendorAcademyRoutes"));
+app.use('/api/partners', require("./routes/partnerDestinationRoutes"));
+app.use('/api/blogs', require("./routes/blogPostRoutes"));
+app.use('/api/luxury-showcase', require("./routes/luxuryShowcaseRoutes"));
+app.use('/api/tickets', require("./routes/ticketRoutes"));
+app.use('/api/crm', require("./routes/crmRoutes"));
 
 // Sitemap endpoints (Dynamic XML for Google and crawlers)
 const sitemapRoutes = require("./routes/sitemapRoutes");
@@ -213,21 +242,32 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const PORT = process.env.PORT || 5015;
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
 
-  // Auto-reverse port 5000 and 8081 for connected Android devices
+  // Initialize Daily Competitor Price Intelligence Cron (Norman Goodfellows at 06:00 SAST)
   try {
-    const { exec } = require('child_process');
-    const autoReverse = () => {
-      exec('adb reverse tcp:5000 tcp:5000', () => {});
-      exec('adb reverse tcp:8081 tcp:8081', () => {});
-    };
-    autoReverse();
-    setInterval(autoReverse, 10000);
-  } catch (e) {
-    // ignore if adb unavailable
+    const { initCompetitorPriceCron } = require('./cron/competitorPriceCron');
+    initCompetitorPriceCron();
+  } catch (cronErr) {
+    console.warn('Competitor price cron initialization deferred:', cronErr.message);
+  }
+
+  // Auto-reverse port 5015, 5000 and 8081 for connected Android devices (local dev only)
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      const { exec } = require('child_process');
+      const autoReverse = () => {
+        exec('adb reverse tcp:5015 tcp:5015', () => {});
+        exec('adb reverse tcp:5000 tcp:5000', () => {});
+        exec('adb reverse tcp:8081 tcp:8081', () => {});
+      };
+      autoReverse();
+      setInterval(autoReverse, 10000);
+    } catch (e) {
+      // ignore if adb unavailable
+    }
   }
 });
 

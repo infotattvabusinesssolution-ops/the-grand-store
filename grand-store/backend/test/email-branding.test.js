@@ -28,6 +28,9 @@ const samples = [
   ['genericNotificationTemplate', ['Order update', 'Ready for delivery']],
   ['birthdayCelebrationEmailTemplate', [{ name: 'Alex' }]],
   ['eventTicketConfirmationTemplate', [{ booking, event, user: { name: 'Alex' }, qrCodeCid: 'cid:ticketqrcode' }]],
+  ['millionaireNewsletterWelcomeTemplate', []],
+  ['cigarNewsletterWelcomeTemplate', []],
+  ['paymentFailedEmailTemplate', [{ customerName: 'Alex', reference: 'GS-123', itemName: 'Wine', amount: 150, retryUrl: 'https://example.invalid', reason: 'Declined' }]],
   ['adminOrderMessageEmailTemplate', [{ orderReference: 'GS-123', customerName: 'Alex', message: 'Ready for delivery' }]],
   ['giftOrderAdminNotificationTemplate', [order]],
 ];
@@ -74,10 +77,12 @@ test('PDF and ticket QR attachments survive without mutating the caller or dupli
   assert.equal(prepareEmailBranding(prepared.html, prepared.attachments).attachments.length, 3);
 });
 
-test('text-only and separate Mcigar emails retain their existing format', () => {
+test('text-only, separate Mcigar and Millionaires Collection emails retain their existing format', () => {
   assert.deepEqual(prepareEmailBranding(undefined), { html: undefined, attachments: [] });
-  const html = '<p>Private cigar concierge</p><img src="https://example.invalid/cigar-connoisseur-logo.png">';
-  assert.deepEqual(prepareEmailBranding(html), { html, attachments: [] });
+  const cigarHtml = '<p>Private cigar concierge</p><img src="https://example.invalid/cigar-connoisseur-logo.png">';
+  assert.deepEqual(prepareEmailBranding(cigarHtml), { html: cigarHtml, attachments: [] });
+  const wineHtml = '<p>Millionaires Collection</p><p>Premium Sparkling Wine · Private Concierge</p>';
+  assert.deepEqual(prepareEmailBranding(wineHtml), { html: wineHtml, attachments: [] });
   const grandStoreEmail = templates.genericNotificationTemplate('Your order', 'Your Mcigar product is ready.');
   assert.equal(prepareEmailBranding(grandStoreEmail).attachments[0].cid, EMAIL_LOGO_CID);
 });

@@ -16,7 +16,8 @@ const chatbotLimiter = rateLimit({
   max: 40,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: 'Too many chat requests. Please wait a few minutes and try again.' }
+  message: { message: 'Too many chat requests. Please wait a few minutes and try again.' },
+  validate: { trustProxy: false, xForwardedForHeader: false },
 });
 
 // Public routes

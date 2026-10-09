@@ -272,6 +272,7 @@ export default function ProductCard({
   isCompared = false,
   onQuickView,
 }) {
+  const navigate = useNavigate();
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const productId = product.id || product._id;
   const productPath = `/product/${product.slug || productId}`;
@@ -422,7 +423,6 @@ export default function ProductCard({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  if (onAdd) onAdd(product, 1, product.options?.[0] || "Pack of 1", false);
                   setIsCheckoutModalOpen(true);
                 }}
                 style={{ 
@@ -463,13 +463,21 @@ export default function ProductCard({
         <ConfirmCheckoutModal 
           isOpen={isCheckoutModalOpen} 
           onClose={() => setIsCheckoutModalOpen(false)} 
-          inline={true} 
+          product={product}
+          initialQuantity={1}
+          selectedOption={product.options?.[0] || "Pack of 1"}
+          onAddToCart={(prod, qty, opt, openCart) => {
+            if (onAdd) onAdd(prod, qty, opt, openCart);
+          }}
+          onProceed={(prod, qty, opt) => {
+            if (onAdd) onAdd(prod, qty, opt, false);
+            navigate('/customer/checkout');
+          }}
         />
       </article>
     </>
   );
 }
-
 
 
 

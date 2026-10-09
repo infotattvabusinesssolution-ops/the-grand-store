@@ -11,6 +11,12 @@ import {
   Link2,
   ArrowRight,
   X,
+  Truck,
+  ShieldCheck,
+  Package,
+  Clock,
+  Globe,
+  Sparkles,
 } from "lucide-react";
 import { useWishlist } from "../../wishlistContext";
 import { useGeoLocation } from "../../context/LocationContext";
@@ -51,17 +57,23 @@ const resolveImageUrl = (src) => {
 
 export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   const navigate = useNavigate();
-  const { products } = useProducts();
+  const { products, loading: productsLoading } = useProducts();
   const { slug } = useParams();
   const { currency, country_name } = useGeoLocation();
 
-  const product = products.find(
+  const [directProduct, setDirectProduct] = useState(null);
+  const [directLoading, setDirectLoading] = useState(false);
+  const [fetchAttempted, setFetchAttempted] = useState(false);
+
+  const matchedProduct = products.find(
     (item) =>
       item.slug === slug ||
       item.id === slug ||
       item.id === Number(slug) ||
       item._id === slug
   );
+
+  const product = matchedProduct || directProduct;
   const { isWishlisted } = useWishlist();
   const wishlisted = product ? isWishlisted(product) : false;
   const [selectedImage, setSelectedImage] = useState(resolveImageUrl(product?.image ?? ""));
@@ -70,14 +82,45 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
     product?.options?.[0] ?? "Pack of 1",
   );
 
+  useEffect(() => {
+    if (matchedProduct) return;
+    if (!slug) return;
+
+    let cancelled = false;
+    const fetchDirect = async () => {
+      setDirectLoading(true);
+      try {
+        const res = await api.get(`/products/slugs/${encodeURIComponent(slug)}`);
+        const item = res.data?.data || res.data;
+        if (!cancelled && item && (item.name || item._id)) {
+          setDirectProduct(item);
+        }
+      } catch (err) {
+        try {
+          const resId = await api.get(`/products/${encodeURIComponent(slug)}`);
+          const item = resId.data?.data || resId.data;
+          if (!cancelled && item && (item.name || item._id)) {
+            setDirectProduct(item);
+          }
+        } catch (e) {}
+      } finally {
+        if (!cancelled) {
+          setDirectLoading(false);
+          setFetchAttempted(true);
+        }
+      }
+    };
+
+    fetchDirect();
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, matchedProduct]);
+
   // For zooming/gallery
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomOrigin, setZoomOrigin] = useState("50% 50%");
   const [showCertificate, setShowCertificate] = useState(false);
-
-  // Shipping Estimation
-  const [deliveryCountry, setDeliveryCountry] = useState("South Africa");
-  const [shippingEstimate, setShippingEstimate] = useState(null);
 
   const [reviews, setReviews] = useState([]);
   const [reviewSummary, setReviewSummary] = useState({ averageRating: 0, reviewCount: 0 });
@@ -143,17 +186,18 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
     };
   }, [product?.id, product?._id]);
 
-  // Mock shipping estimate effect
-  useEffect(() => {
-    if (!product) return;
-    const isDomestic = deliveryCountry === "South Africa";
-    setShippingEstimate({
-      cost: isDomestic ? <Price amount={150} /> : <Price amount={450} />,
-      time: isDomestic ? "2-4 days" : "5-8 days",
-    });
-  }, [deliveryCountry, product, currency]);
+  if (productsLoading || directLoading || (!product && !fetchAttempted)) {
+    return (
+      <div className="min-h-screen bg-[#0d0907] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+          <p className="text-sm tracking-widest uppercase text-amber-200/60 font-serif">Loading Vintage...</p>
+        </div>
+      </div>
+    );
+  }
 
-  if (!product) return <Navigate to="/" replace />;
+  if (!product) return <Navigate to="/shop" replace />;
 
   const gallery = [...new Set(
     [product.image, ...(product.gallery || [])].filter(Boolean).map(resolveImageUrl)
@@ -169,6 +213,13 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
     .slice(0, 4);
   const detailEntries = product.details ? Object.entries(product.details) : [];
   const identity = getProductIdentity(product);
+  const shippingInfo = product.shipping || {};
+  const pkgWeight = shippingInfo.weight_kg || product.weight_kg;
+  const pkgLength = shippingInfo.length_cm || product.length_cm;
+  const pkgWidth = shippingInfo.width_cm || product.width_cm;
+  const pkgHeight = shippingInfo.height_cm || product.height_cm;
+  const pkgBox = shippingInfo.box_type || product.box_type;
+
   const identityItems = [
     { label: "Type", value: identity.type },
     { label: "Style", value: identity.style },
@@ -177,6 +228,9 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
     { label: "Age", value: identity.age },
     { label: "Bottle Size", value: identity.bottleSize },
     { label: "ABV", value: identity.abv },
+    ...(pkgWeight ? [{ label: "Gross Weight", value: `${pkgWeight} kg` }] : []),
+    ...(pkgLength && pkgWidth && pkgHeight ? [{ label: "Package Dims", value: `${pkgLength} × ${pkgWidth} × ${pkgHeight} cm` }] : []),
+    ...(pkgBox ? [{ label: "Packaging", value: pkgBox }] : []),
   ];
   const categoryLabel = product.category || product.type || "Collection";
   const hasDistinctStyle = identity.style &&
@@ -184,6 +238,37 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   const taxonomySecondary = hasDistinctStyle
     ? { label: "Style", value: identity.style }
     : { label: "Origin", value: identity.origin || product.country };
+
+  // Dynamic Product Delivery & Provenance metadata
+  const fulfillmentSource = product.vendorName
+    ? product.vendorName
+    : product.brand
+      ? `The Grand Store Vault (${product.brand} Allocation)`
+      : "The Grand Store Private Cellar";
+
+  const provenanceOrigin = identity.origin
+    || product.identity?.origin
+    || product.country
+    || product.origin
+    || "Direct Bonded Cellars";
+
+  const isWineOrChampagne = /champagne|wine|sparkling|prosecco|cava/i.test(
+    `${product.category || ''} ${product.type || ''} ${product.name || ''}`
+  );
+  const isSpirits = /whisky|whiskey|cognac|brandy|vodka|gin|rum|tequila/i.test(
+    `${product.category || ''} ${product.type || ''} ${product.name || ''}`
+  );
+  const isCigar = /cigar/i.test(
+    `${product.category || ''} ${product.type || ''} ${product.name || ''}`
+  );
+
+  const packagingNote = isWineOrChampagne
+    ? "Climate-stable thermal packaging with shock-proof bottle protection."
+    : isCigar
+      ? "Humidity-sealed protective pack maintaining optimal 69% RH freshness."
+      : isSpirits
+        ? "Reinforced collector-grade protective buffer for glass & luxury gift boxes."
+        : "Specialized shock-absorbing luxury bottle packaging.";
 
   const productUrl = typeof window === "undefined" ? "" : window.location.href;
   const encodedUrl = encodeURIComponent(productUrl);
@@ -452,12 +537,17 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                 </span>
               </div>
 
-              <div className="mt-4 min-w-0 text-[clamp(2rem,10vw,3rem)] font-semibold leading-none text-[#e1bd70]">
-                <Price amount={product.price * quantity} presentation="product" />
+              <div className="mt-4 min-w-0 flex flex-wrap items-baseline gap-3">
+                <div className="text-[clamp(2rem,10vw,3rem)] font-semibold leading-none text-[#e1bd70]">
+                  <Price amount={product.price * quantity} presentation="product" />
+                </div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-2.5 py-1 text-xs font-mono text-[var(--color-gold)] font-medium">
+                  Incl. 15% VAT
+                </span>
               </div>
 
               <p className="mt-4 border-t border-white/[0.08] pt-3 text-xs leading-relaxed text-[#837b70]">
-                Taxes included <span className="mx-2 text-[#c9a35b]/60">•</span> Delivery calculated at checkout
+                15% South African VAT Included <span className="mx-2 text-[#c9a35b]/60">•</span> Delivery calculated at checkout
               </p>
             </div>
 
@@ -630,76 +720,131 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
             </div>
           </div>
 
-          {/* Fulfilled By Widget */}
-          <div className="mb-8 border border-white/10 bg-white/5 p-4 sm:p-5">
-            <h4 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.1em] text-gold-gradient">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="3" y1="9" x2="21" y2="9"></line>
-                <line x1="9" y1="21" x2="9" y2="9"></line>
-              </svg>
-              Delivery & Fulfillment
-            </h4>
-            <div className="mb-4 grid grid-cols-2 gap-4 text-sm">
+          {/* Delivery & Provenance Assurance Card */}
+          <div className="mb-8 border border-white/10 bg-[#0d0c0a] p-4 sm:p-5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+              <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-gold-gradient m-0">
+                <Truck size={15} className="text-[#dfbd72]" />
+                Delivery & Provenance Assurance
+              </h4>
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                {product.stock > 0 ? "Ready for Dispatch" : "Allocation Order"}
+              </span>
+            </div>
+
+            {/* Provenance & Fulfillment Grid */}
+            <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-black/40 p-3.5 border border-white/5">
               <div className="min-w-0">
-                <span className="mb-1.5 block text-xs uppercase tracking-[0.08em] text-[#918a7f]">
+                <span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[#918a7f]">
                   Fulfilled By
                 </span>
-                <span className="break-words font-medium">
-                  {product.vendorName || "ABC Winery"}
+                <span className="font-medium text-[#eee8dd] truncate block" title={fulfillmentSource}>
+                  {fulfillmentSource}
                 </span>
               </div>
               <div className="min-w-0">
-                <span className="mb-1.5 block text-xs uppercase tracking-[0.08em] text-[#918a7f]">
-                  Ships From
+                <span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[#918a7f]">
+                  Provenance
                 </span>
-                <span className="break-words font-medium">
-                  {product.origin || "South Africa"}
+                <span className="font-medium text-[#eee8dd] truncate block" title={provenanceOrigin}>
+                  {provenanceOrigin}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[#918a7f]">
+                  Dispatch Window
+                </span>
+                <span className="font-medium text-[#dfbd72] flex items-center gap-1">
+                  <Clock size={12} /> 24–48 Business Hours
                 </span>
               </div>
             </div>
 
-            <div className="border-t border-white/10 pt-4 mt-2">
-              <label className="mb-3 block text-xs uppercase tracking-[0.08em] text-[#918a7f]">
-                Estimate Delivery To
-              </label>
-              <div className="flex min-w-0 gap-2">
-                <select
-                  className="min-w-0 flex-1 border border-white/20 bg-[#0a0907] p-3 text-sm text-[#eee8dd] outline-none focus:border-[#c9a35b]"
-                  value={deliveryCountry}
-                  onChange={(e) => setDeliveryCountry(e.target.value)}
-                >
-                  <option value="South Africa">South Africa</option>
-                  <option value="United Arab Emirates">Dubai, UAE</option>
-                  <option value="France">France</option>
-                  <option value="United Kingdom">United Kingdom</option>
-                  <option value="United States">United States</option>
-                </select>
+            {/* Packaging & Courier Logistics Specs */}
+            <div className="mb-4 bg-[#14120e] p-3.5 border border-[#dfbd72]/20 rounded text-xs space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#dfbd72]">
+                <span className="flex items-center gap-1.5">
+                  <Package size={14} className="text-[#dfbd72]" /> Verified Packaging & Freight Dimensions
+                </span>
+                <span className="text-[10px] text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/20">
+                  Live Courier Rate Ready
+                </span>
               </div>
-              {shippingEstimate && (
-                <div className="mt-3 flex flex-col gap-2 border border-white/10 bg-[#0a0907] p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <span className="text-[#918a7f] mr-2">Est. Time:</span>
-                    <span className="font-medium">{shippingEstimate.time}</span>
-                  </div>
-                  <div>
-                    <span className="text-[#918a7f] mr-2">Cost:</span>
-                    <span className="font-medium text-gold-gradient">
-                      {shippingEstimate.cost}
-                    </span>
-                  </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
+                <div className="bg-black/40 p-2 border border-white/5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#918a7f] block">Box Type</span>
+                  <span className="text-white font-medium truncate block">{pkgBox || 'Standard Luxury Box'}</span>
                 </div>
-              )}
+                <div className="bg-black/40 p-2 border border-white/5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#918a7f] block">Dimensions</span>
+                  <span className="text-white font-medium">{pkgLength && pkgWidth && pkgHeight ? `${pkgLength} × ${pkgWidth} × ${pkgHeight} cm` : '12 × 12 × 34 cm'}</span>
+                </div>
+                <div className="bg-black/40 p-2 border border-white/5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#918a7f] block">Gross Weight</span>
+                  <span className="text-[#dfbd72] font-semibold">{pkgWeight ? `${pkgWeight} kg` : '1.85 kg'}</span>
+                </div>
+                <div className="bg-black/40 p-2 border border-white/5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#918a7f] block">Protection</span>
+                  <span className="text-rose-400 font-medium">Fragile Glass (Insured)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Courier Delivery Timelines */}
+            <div className="space-y-2 border-b border-white/10 pb-4">
+              <span className="block text-[10px] uppercase tracking-[0.12em] text-[#918a7f]">
+                Estimated Courier Timelines
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="p-2.5 bg-black/30 border border-white/5 text-left">
+                  <div className="flex items-center gap-1.5 text-white font-medium text-xs mb-0.5">
+                    <Truck size={13} className="text-[#dfbd72]" /> SA Door Courier
+                  </div>
+                  <div className="text-[11px] text-[#eee8dd]/80 font-mono">2–4 Business Days</div>
+                  <div className="text-[9px] text-[#918a7f] mt-0.5">The Courier Guy / Door-to-Door</div>
+                </div>
+
+                <div className="p-2.5 bg-black/30 border border-white/5 text-left">
+                  <div className="flex items-center gap-1.5 text-white font-medium text-xs mb-0.5">
+                    <Package size={13} className="text-emerald-400" /> PostNet / PUDO
+                  </div>
+                  <div className="text-[11px] text-[#eee8dd]/80 font-mono">2–3 Business Days</div>
+                  <div className="text-[9px] text-[#918a7f] mt-0.5">Counter or 24/7 Smart Locker</div>
+                </div>
+
+                <div className="p-2.5 bg-black/30 border border-white/5 text-left">
+                  <div className="flex items-center gap-1.5 text-white font-medium text-xs mb-0.5">
+                    <Globe size={13} className="text-red-400" /> Aramex Worldwide
+                  </div>
+                  <div className="text-[11px] text-[#eee8dd]/80 font-mono">3–5 Business Days</div>
+                  <div className="text-[9px] text-[#918a7f] mt-0.5">Insured Express Air Courier</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Accurate Shipping Cost Notice */}
+            <div className="pt-3.5 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="text-[#918a7f] uppercase tracking-wider text-[10px] font-semibold">
+                  Shipping Cost
+                </span>
+                <span className="font-semibold text-gold-gradient text-xs">
+                  Calculated at Checkout via Live Courier API
+                </span>
+              </div>
+              <p className="text-[11px] text-[#918a7f] leading-relaxed m-0">
+                Live rates from The Courier Guy, PostNet, and Aramex are computed at checkout based on destination address, parcel volumetric weight, and insurance value.
+              </p>
+
+              {/* Protective Packaging Assurance */}
+              <div className="mt-1 flex items-start gap-2 bg-[#17140f] p-2.5 border border-[#dfbd72]/20 text-[11px] text-[#eee8dd]/90">
+                <ShieldCheck size={16} className="text-[#dfbd72] shrink-0 mt-0.5" />
+                <div className="leading-snug">
+                  <span className="font-semibold text-[#dfbd72]">100% Transit Protection Included: </span>
+                  {packagingNote} Fully covered against loss, breakage, or temperature damage with adult signature verification (18+).
+                </div>
+              </div>
             </div>
           </div>
 

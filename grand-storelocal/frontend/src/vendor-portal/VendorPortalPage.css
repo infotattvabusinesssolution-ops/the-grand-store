@@ -1,0 +1,259 @@
+.vendor-portal-page {
+  min-height: 100vh;
+  overflow: clip;
+  background: #0b0a08;
+  color: #f4eee0;
+}
+
+.vendor-portal-page__editorial {
+  position: relative;
+  padding: clamp(48px, 5vw, 74px) 24px;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(201, 151, 54, .07) 1px, transparent 1px) 0 0 / 9vw 100%,
+    #f0ece4;
+}
+
+.vendor-portal-page__editorial::before {
+  position: absolute;
+  left: max(24px, calc((100% - 1180px) / 2));
+  top: 0;
+  width: 72px;
+  height: 3px;
+  background: #b78431;
+  content: '';
+}
+
+.vendor-portal-page__editorial--warm {
+  background:
+    linear-gradient(90deg, rgba(201, 151, 54, .06) 1px, transparent 1px) 0 0 / 9vw 100%,
+    #e9e1d4;
+}
+
+.vendor-portal-page__text-container {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  columns: 2;
+  column-gap: clamp(42px, 6vw, 82px);
+}
+
+.vendor-portal-page__text-container p {
+  break-inside: avoid;
+  margin: 0 0 18px;
+  color: #29251f;
+  font-size: clamp(15px, 1.15vw, 17px);
+  line-height: 1.78;
+}
+
+.vendor-portal-page__seller-banner {
+  padding: clamp(40px, 5vw, 72px) 24px;
+  background:
+    radial-gradient(circle at 50% 0, rgba(209, 163, 66, .12), transparent 36%),
+    #0b0a08;
+}
+
+.vendor-portal-page__seller-banner a {
+  position: relative;
+  display: block;
+  width: min(1380px, 100%);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(223, 183, 88, .4);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .38);
+}
+
+.vendor-portal-page__seller-banner a::after {
+  position: absolute;
+  inset: 0;
+  border: 8px solid rgba(11, 10, 8, .62);
+  content: '';
+  pointer-events: none;
+}
+
+.vendor-portal-page__seller-banner img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transition: transform 700ms cubic-bezier(.2,.75,.25,1), filter 300ms ease;
+}
+
+.vendor-portal-page__seller-banner a:hover img {
+  filter: brightness(1.06);
+  transform: scale(1.012);
+}
+
+.vendor-portal-page__info-blocks {
+  padding: clamp(62px, 7vw, 108px) 24px;
+  background: #f2eee7;
+}
+
+.vendor-portal-page__info-row {
+  width: min(1240px, 100%);
+  min-height: 430px;
+  display: grid;
+  grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr);
+  align-items: stretch;
+  margin: 0 auto 44px;
+  overflow: hidden;
+  border: 1px solid rgba(126, 89, 28, .24);
+  background: #fffdf9;
+  box-shadow: 0 18px 55px rgba(49, 37, 18, .09);
+}
+
+.vendor-portal-page__info-row:last-child {
+  margin-bottom: 0;
+}
+
+.vendor-portal-page__info-row--reverse .vendor-portal-page__info-content {
+  order: 2;
+}
+
+.vendor-portal-page__info-row--reverse .vendor-portal-page__info-img {
+  order: 1;
+}
+
+.vendor-portal-page__info-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(34px, 4.8vw, 68px);
+}
+
+.vendor-portal-page__info-title {
+  position: relative;
+  margin: 0 0 24px;
+  padding-top: 18px;
+  color: #1d1914;
+  font-family: var(--serif);
+  font-size: clamp(34px, 3.5vw, 50px);
+  font-weight: 500;
+  line-height: 1.06;
+}
+
+.vendor-portal-page__info-title::before {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 58px;
+  height: 2px;
+  background: #b88430;
+  content: '';
+}
+
+.vendor-portal-page__info-subtitle {
+  margin: 0 0 17px;
+  color: #9a6d25;
+  font-family: var(--serif);
+  font-size: clamp(19px, 1.7vw, 24px);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.vendor-portal-page__info-content p {
+  margin: 0 0 14px;
+  color: #484038;
+  font-size: clamp(15px, 1.08vw, 17px);
+  line-height: 1.72;
+}
+
+.vendor-portal-page__info-img {
+  min-height: 430px;
+  overflow: hidden;
+  background: #e9e2d8;
+}
+
+.vendor-portal-page__info-img img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 800ms cubic-bezier(.2,.75,.25,1);
+}
+
+.vendor-portal-page__info-row:hover .vendor-portal-page__info-img img {
+  transform: scale(1.035);
+}
+
+.vendor-portal-page__closing {
+  min-height: 470px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  padding: 72px 24px;
+  text-align: center;
+  background:
+    linear-gradient(rgba(7, 6, 5, .7), rgba(7, 6, 5, .85)),
+    url('/assets/blogs/whiskey-brands.jpg') center 45% / cover;
+}
+
+.vendor-portal-page__closing > span {
+  margin-bottom: 13px;
+  color: #d7ac54;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.vendor-portal-page__closing h2 {
+  margin: 0 0 30px;
+  color: #fffaf0;
+  font-family: var(--serif);
+  font-size: clamp(42px, 5.4vw, 76px);
+  font-weight: 500;
+  line-height: 1.02;
+}
+
+.vendor-portal-page__closing a {
+  display: inline-flex;
+  min-height: 50px;
+  align-items: center;
+  padding: 0 25px;
+  border: 1px solid #d8ae54;
+  background: linear-gradient(135deg, #e2bc62, #ac7528);
+  color: #100d08;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+/* Component-level entrance states keep the existing site motion language. */
+.vendor-portal-page .hidden-left { opacity: 0; transform: translateX(-44px); transition: opacity .8s ease, transform .8s ease; }
+.vendor-portal-page .reveal-left { opacity: 1; transform: translateX(0); transition: opacity .8s ease, transform .8s ease; }
+.vendor-portal-page .hidden-right { opacity: 0; transform: translateX(44px); transition: opacity .8s ease, transform .8s ease; }
+.vendor-portal-page .reveal-right { opacity: 1; transform: translateX(0); transition: opacity .8s ease, transform .8s ease; }
+.vendor-portal-page .hidden-up { opacity: 0; transform: translateY(28px); transition: opacity .8s ease, transform .8s ease; }
+.vendor-portal-page .reveal-up { opacity: 1; transform: translateY(0); transition: opacity .8s ease, transform .8s ease; }
+
+@media (max-width: 860px) {
+  .vendor-portal-page__text-container {
+    columns: 1;
+  }
+
+  .vendor-portal-page__info-row {
+    grid-template-columns: 1fr;
+  }
+
+  .vendor-portal-page__info-row--reverse .vendor-portal-page__info-content,
+  .vendor-portal-page__info-content {
+    order: 2;
+  }
+
+  .vendor-portal-page__info-row--reverse .vendor-portal-page__info-img,
+  .vendor-portal-page__info-img {
+    min-height: 300px;
+    order: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vendor-portal-page *,
+  .vendor-portal-page *::before,
+  .vendor-portal-page *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}

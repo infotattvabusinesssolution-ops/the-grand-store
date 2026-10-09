@@ -22,7 +22,7 @@ const bidderDepositSchema = new mongoose.Schema({
   },
   paymentStatus: {
     type: String,
-    enum: ['pending', 'paid', 'refunded', 'forfeited'],
+    enum: ['pending', 'paid', 'refunded', 'forfeited', 'cancelled'],
     default: 'pending'
   },
   paymentReference: {
@@ -62,6 +62,10 @@ const bidderDepositSchema = new mongoose.Schema({
   },
   adminNotes: {
     type: String
+  },
+  failureEmailDispatched: {
+    type: Boolean,
+    default: false
   }
 }, { timestamps: true });
 
