@@ -79,7 +79,7 @@ export default function EstateDetail() {
           type: 'Wine Tasting',
           title: t.name,
           priceStr: t.price ? `R${t.price} / person` : null,
-          image: t.imageUrl || hospitality.tastingsImageUrl || 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+          image: resolveImageUrl(t.imageUrl) || resolveImageUrl(hospitality.tastingsImageUrl) || 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
           desc: t.description,
           duration: t.duration,
           capacity: t.capacity
@@ -164,7 +164,7 @@ export default function EstateDetail() {
         {/* Full background image */}
         <div className="absolute inset-0 w-full h-full z-0">
            <img 
-             src={estate.heroImageUrl || 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80'} 
+             src={resolveImageUrl(estate.heroImageUrl) || 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80'} 
              alt={estate.estateName}
              className="w-full h-full object-cover object-bottom"
            />
@@ -225,7 +225,7 @@ export default function EstateDetail() {
                           key={i} 
                           className={`w-full h-full overflow-hidden ${count === 3 && i === 0 ? "col-span-2 row-span-1" : ""}`}
                         >
-                          <img src={img} alt="Our Story" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                          <img src={resolveImageUrl(img)} alt="Our Story" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
                         </div>
                       ))}
                     </div>
@@ -292,9 +292,9 @@ export default function EstateDetail() {
                   
                   {/* Top Image Area */}
                   <Link to={`/product/${p.slug || p.id || p._id}`} className="block w-full h-72 relative overflow-hidden bg-ink/5 p-4">
-                    {p.image || p.images?.[0] ? (
+                    {p.image || p.gallery?.[0] ? (
                       (() => {
-                        const imgSrc = p.image || p.images[0];
+                        const imgSrc = p.image || p.gallery[0];
                         const finalSrc = resolveImageUrl(imgSrc);
                         return (
                           <img 
@@ -441,7 +441,7 @@ export default function EstateDetail() {
                   {/* Top Image Area */}
                   {card.image ? (
                     <div className="w-full h-64 overflow-hidden relative">
-                      <img src={card.image} alt={card.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                      <img src={resolveImageUrl(card.image)} alt={card.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                       <div className="absolute top-4 left-4 bg-ink text-white text-[10px] uppercase tracking-widest px-3 py-1">
                         {card.type}
                       </div>
@@ -510,7 +510,7 @@ export default function EstateDetail() {
             {/* Image Side */}
             <div className="w-full md:w-1/2 relative min-h-[300px] md:min-h-full bg-ink/5">
               {hospitality.restaurant?.imageUrl && (
-                <img src={hospitality.restaurant.imageUrl} alt={hospitality.restaurant.name || 'Restaurant'} className="absolute inset-0 w-full h-full object-cover" />
+                <img src={resolveImageUrl(hospitality.restaurant.imageUrl)} alt={hospitality.restaurant.name || 'Restaurant'} className="absolute inset-0 w-full h-full object-cover" />
               )}
             </div>
             {/* Content Side */}
@@ -553,7 +553,7 @@ export default function EstateDetail() {
             {/* Image Side */}
             <div className="w-full md:w-1/2 relative min-h-[300px] md:min-h-full bg-white/5">
               {hospitality.accommodation?.imageUrl && (
-                <img src={hospitality.accommodation.imageUrl} alt="Accommodation" className="absolute inset-0 w-full h-full object-cover" />
+                <img src={resolveImageUrl(hospitality.accommodation.imageUrl)} alt="Accommodation" className="absolute inset-0 w-full h-full object-cover" />
               )}
             </div>
             {/* Content Side */}
