@@ -331,7 +331,7 @@ function About() {
         <blockquote>“Every bottle carries the landscape that raised it.”</blockquote>
       </div>
       <div className="about-copy">
-        <SectionHeading kicker="About us" title={<>Welcome to South African<br /><em>Wine Farms Estate</em></>} />
+        <SectionHeading kicker="About us" title={<>Welcome to<br /><em>Wine Farm Estate</em></>} />
         <p>We've crafted a unique platform tailored specifically for wine farmers from South Africa and beyond. Our mission is to provide a seamless way for vineyards to showcase their products and reach a global audience. Whether you're a small family-run vineyard or a larger estate, our portal is designed to help you expand your market presence and connect with wine lovers and businesses around the world.</p>
         <p>By joining our platform, wine farmers can easily register as vendors and create detailed profiles that highlight their farm’s story, unique offerings, and the rich heritage behind their wines. This not only allows you to tell your vineyard’s story but also provides potential customers and retailers with an in-depth look at what makes your wines special.</p>
         <p>You can list your entire range of products with detailed descriptions, pricing, and high-quality images, making it easy for consumers to find and purchase your wines directly from the comfort of their homes.</p>
@@ -471,16 +471,16 @@ function Categories() {
     <section className="categories section-pad" id="categories">
       <div className="categories-copy">
         <SectionHeading kicker="Shop the cellar" title={<>Explore Top <em>Categories</em></>} />
-        <p>Discover South Africa's finest wines, selected from celebrated regions and expressive vineyards.</p>
+        <p>Discover our finest wines, selected from celebrated regions and expressive vineyards.</p>
       </div>
       <div className="category-wheel">
         {categories.map((category, index) => (
-          <a href={category.href} className="category-card" key={category.name}>
+          <Link to={category.href} className="category-card" key={category.name}>
             <span className="category-index">0{index + 1}</span>
             <div className="category-bottle"><img src={category.image} alt="" /></div>
-            <div><h3>{category.name}</h3><p>Discover South Africa's finest {category.name.toLowerCase()}s.</p></div>
+            <div><h3>{category.name}</h3><p>Discover the finest {category.name.toLowerCase()}s.</p></div>
             <span className="category-arrow">↗</span>
-          </a>
+          </Link>
         ))}
       </div>
     </section>
@@ -651,7 +651,7 @@ function AboutPage() {
       <section className="about-page-hero">
         <div className="about-page-hero-copy">
           <div className="kicker"><LeafMark /> The Grand Store - Wine Farm</div>
-          <h1>Welcome to South African<br /><em>Wine Farms Estate</em></h1>
+          <h1>Welcome to<br /><em>Wine Farm Estate</em></h1>
           <p>A platform made for the people, places and stories behind every bottle.</p>
           <a className="button button-light" href="#our-story">Our Story <span>↓</span></a>
         </div>

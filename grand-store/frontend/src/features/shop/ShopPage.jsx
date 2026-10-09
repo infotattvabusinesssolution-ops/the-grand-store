@@ -163,7 +163,11 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
       .toLowerCase();
 
   let filteredProducts = shopProducts.filter((product) => {
-    const matchesStyle = selectedStyles.length === 0 || selectedStyles.some(style => WINE_STYLES[style]?.includes(product.subcategory));
+    const matchesStyle = selectedStyles.length === 0 || selectedStyles.some(style => {
+      const allowedSubcategories = WINE_STYLES[style] || [];
+      const prodSub = (product.subcategory || '').toLowerCase();
+      return allowedSubcategories.some(s => s.toLowerCase() === prodSub);
+    });
 
     let matchesSearch = true;
     if (searchTerm) {
@@ -181,12 +185,12 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
     return (
       matchesSearch &&
       (!selectedCategories.length ||
-        selectedCategories.includes(getProductCategory(product))) &&
+        selectedCategories.some(c => c.toLowerCase() === getProductCategory(product).toLowerCase())) &&
       matchesStyle &&
-      (!selectedSubcategories.length || selectedSubcategories.includes(product.subcategory)) &&
-      (!selectedBrands.length || selectedBrands.includes(product.brand)) &&
-      (!selectedCountries.length || selectedCountries.includes(product.country)) &&
-      (!selectedSizes.length || selectedSizes.includes(product.size)) &&
+      (!selectedSubcategories.length || selectedSubcategories.some(sc => sc.toLowerCase() === (product.subcategory || '').toLowerCase())) &&
+      (!selectedBrands.length || selectedBrands.some(b => b.toLowerCase() === (product.brand || '').toLowerCase())) &&
+      (!selectedCountries.length || selectedCountries.some(c => c.toLowerCase() === (product.country || '').toLowerCase())) &&
+      (!selectedSizes.length || selectedSizes.some(s => s.toLowerCase() === (product.size || '').toLowerCase())) &&
       priceValue(product) >= minP &&
       priceValue(product) <= maxP
     );

@@ -11,7 +11,7 @@ export default function WineFarmAbout() {
               The Grand Store
             </span>
             <h2 className="font-serif text-[36px] text-ink font-medium leading-[1.2] mb-6">
-              Welcome to South African Wine Farms Estate
+              Welcome to Wine Farm Estate
             </h2>
             
             <div className="mb-[30px]">

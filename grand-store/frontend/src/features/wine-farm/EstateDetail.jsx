@@ -292,11 +292,17 @@ export default function EstateDetail() {
                   {/* Top Image Area */}
                   <Link to={`/product/${p.slug || p.id || p._id}`} className="block w-full h-72 relative overflow-hidden bg-ink/5 p-4">
                     {p.image || p.images?.[0] ? (
-                      <img 
-                        src={`${API}${p.image || p.images[0]}`} 
-                        alt={p.name}
-                        className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105 drop-shadow-md"
-                      />
+                      (() => {
+                        const imgSrc = p.image || p.images[0];
+                        const finalSrc = imgSrc.startsWith('http') ? imgSrc : `${API}${imgSrc}`;
+                        return (
+                          <img 
+                            src={finalSrc} 
+                            alt={p.name}
+                            className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105 drop-shadow-md"
+                          />
+                        );
+                      })()
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Wine size={48} className="text-ink/20" />
