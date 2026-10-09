@@ -70,10 +70,10 @@ const FALLBACK_FARMS = [
 ]
 
 const categories = [
-  { name: 'Red Wine', image: '/assets/category-red.webp', href: '/shop?category=Wine&style=Red' },
-  { name: 'White Wine', image: '/assets/category-white.webp', href: '/shop?category=Wine&style=White' },
-  { name: 'Sparkling Wine', image: '/assets/category-sparkling.webp', href: '/shop?category=Wine&style=Sparkling' },
-  { name: 'Rose Wine', image: '/assets/category-rose.webp', href: '/shop?category=Wine&style=Rose' },
+  { name: 'Red Wine', image: '/assets/category-red.webp', href: '/shop?category=Wine&subcategory=Red Wine' },
+  { name: 'White Wine', image: '/assets/category-white.webp', href: '/shop?category=Wine&subcategory=White Wine' },
+  { name: 'Sparkling Wine', image: '/assets/category-sparkling.webp', href: '/shop?category=Wine&subcategory=Sparkling Wine' },
+  { name: 'Rose Wine', image: '/assets/category-rose.webp', href: '/shop?category=Wine&subcategory=Rose Wine' },
 ]
 
 const videos = [
