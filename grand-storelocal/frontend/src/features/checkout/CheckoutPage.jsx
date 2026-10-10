@@ -771,6 +771,7 @@ export default function CheckoutPage({
       onNotify('Please choose a PostNet branch from the list.');
       return;
     }
+    setDeliveryPreference('postnet');
     setPreferredPostnetStore(store);
     setSelectedPostnetBranch(store);
     setIsChangingPostnetBranch(false);
@@ -1306,12 +1307,6 @@ export default function CheckoutPage({
                     <span className="text-white"><Price amount={cartSubtotal} /></span>
                   </div>
 
-                  <div className="flex justify-between text-[11px] text-white/50 pl-2">
-                    <span>Includes 15% South African VAT:</span>
-                    <span className="text-white/70 font-mono">
-                      <Price amount={(cartSubtotal * 0.15).toFixed(2)} />
-                    </span>
-                  </div>
 
                   <div className="flex justify-between text-[var(--color-ivory-muted)]">
                     <span className="flex items-center gap-1.5">
@@ -1455,7 +1450,7 @@ export default function CheckoutPage({
                         <p className="text-[10px] text-[var(--color-gold)] font-medium leading-tight mt-0.5">🇿🇦 South Africa Direct Courier</p>
                       </div>
                     </div>
-                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Door-to-door courier via Courier Guy & PostNet</p>
+                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Door-to-door courier via The Courier Guy</p>
                   </button>
 
                   {/* Card 2: PUDO Smart Locker (The Courier Guy) */}
@@ -1837,21 +1832,9 @@ export default function CheckoutPage({
                               setIsChangingPostnetBranch(true);
                               setSelectedPostnetBranch(preferredPostnetStore);
                             }}
-                            className="px-3.5 py-2.5 rounded-lg border border-white/20 bg-white/5 hover:bg-white/10 text-xs font-semibold text-white uppercase tracking-wider transition-all cursor-pointer"
+                            className="px-3.5 py-2.5 rounded-lg border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)] hover:text-black text-xs font-bold text-[var(--color-gold)] uppercase tracking-wider transition-all cursor-pointer"
                           >
                             Change Branch
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleProceedToDeliveryMethod(e, preferredPostnetStore)}
-                            disabled={quoteLoading}
-                            className="px-4 py-2.5 rounded-lg bg-[var(--color-gold)] hover:shadow-[0_0_15px_rgba(212,175,55,0.4)] text-black text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                          >
-                            {quoteLoading ? (
-                              <><Loader2 size={14} className="animate-spin" /> Calculating Rates...</>
-                            ) : (
-                              <><span>Get Prices & Rates</span> <ArrowRight size={14} /></>
-                            )}
                           </button>
                         </div>
                       </div>
@@ -2003,15 +1986,12 @@ export default function CheckoutPage({
                                 )}
                                 <button
                                   type="button"
-                                  disabled={!selectedPostnetBranch || quoteLoading}
-                                  onClick={() => handleConfirmPostnetStore(selectedPostnetBranch, true)}
+                                  disabled={!selectedPostnetBranch}
+                                  onClick={() => handleConfirmPostnetStore(selectedPostnetBranch, false)}
                                   className="px-5 py-2.5 rounded-lg bg-[var(--color-gold)] text-black text-xs font-bold uppercase tracking-wider hover:shadow-[0_0_15px_rgba(212,175,55,0.4)] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
-                                  {quoteLoading ? (
-                                    <><Loader2 size={14} className="animate-spin" /> Calculating Rates...</>
-                                  ) : (
-                                    <><CheckCircle2 size={14} /><span>Confirm & Get Delivery Rates</span></>
-                                  )}
+                                  <CheckCircle2 size={14} />
+                                  <span>Confirm PostNet Branch</span>
                                 </button>
                               </div>
                             </div>
@@ -2558,6 +2538,11 @@ export default function CheckoutPage({
                                         </span>
                                       )}
                                     </div>
+                                    {opt.courierName === 'PostNet' && (preferredPostnetStore || selectedPostnetBranch) && (
+                                      <p className="text-xs text-[var(--color-gold)] font-medium mt-1 flex items-center gap-1.5">
+                                        <Store size={12} /> Collection Point: {(preferredPostnetStore || selectedPostnetBranch).name}
+                                      </p>
+                                    )}
                                     <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
                                       Estimated delivery: {opt.estimatedDays}
                                     </p>

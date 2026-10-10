@@ -16,6 +16,14 @@ export default function Newsletter() {
     const checkGiveaway = () => {
       const hash = window.location.hash.toLowerCase()
       const search = window.location.search.toLowerCase()
+      if (hash.includes('bottle-giveaway') || hash.includes('bottle-poster')) {
+        setIsGiveawayMode(true)
+        const posterEl = document.getElementById('bottle-giveaway')
+        if (posterEl) {
+          posterEl.scrollIntoView({ behavior: 'smooth' })
+          return
+        }
+      }
       if (hash.includes('win') || hash.includes('giveaway') || search.includes('win') || search.includes('giveaway')) {
         setIsGiveawayMode(true)
         const el = document.getElementById('giveaway')

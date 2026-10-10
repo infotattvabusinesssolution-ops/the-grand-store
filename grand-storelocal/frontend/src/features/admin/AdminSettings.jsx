@@ -273,19 +273,17 @@ export default function AdminSettings() {
             </div>
           </div>
 
-          {/* POSTNET COURIER RATES */}
+          {/* POSTNET STORE COLLECTION RATES */}
           <div className="bg-[#111] border border-white/10 rounded-xl p-6">
             <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
               <h2 className="text-white font-serif text-xl flex items-center gap-2">
-                <Truck className="text-[var(--color-gold)]" size={20} /> PostNet Delivery & Collection Rates
+                <Truck className="text-[var(--color-gold)]" size={20} /> PostNet Store Collection Rates
               </h2>
               <span className="text-xs uppercase tracking-widest text-[#c9a35b] font-mono bg-[#c9a35b]/10 px-2.5 py-1 rounded-full border border-[#c9a35b]/20">
-                Courier Rates
+                Collection Rates
               </span>
             </div>
             <div className="space-y-6">
-              <FeeRow label="PostNet Standard Home Delivery (ZAR)" field="postnetStandardFee" isAmount={true} note="Door-to-door courier delivery (2–5 business days, default R120)" />
-              <FeeRow label="PostNet Express Home Delivery (ZAR)" field="postnetExpressFee" isAmount={true} note="Priority overnight delivery (1–2 business days, default R180)" />
               <FeeRow label="PostNet Store Collection Point (ZAR)" field="postnetPickupFee" isAmount={true} note="PostNet-to-PostNet branch collection (2–3 business days, default R100)" />
             </div>
           </div>

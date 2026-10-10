@@ -347,13 +347,16 @@ function Specials() {
       <div className="specials-title">
         <SectionHeading kicker="Curated escapes" title={<>Get The <em>Specials</em></>} />
         <p>Beyond the cellar door, discover considered journeys made for the curious traveller.</p>
-        <a className="text-link" href={`${liveBase}/vendor-portal`} target="_blank" rel="noreferrer">Advertise With Us <span>↗</span></a>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <a className="text-link" href="https://millionairescollection.com/#giveaway" target="_blank" rel="noreferrer">Win Collection Bottle <span>↗</span></a>
+          <a className="text-link" href={`${liveBase}/vendor-portal`} target="_blank" rel="noreferrer" style={{ opacity: 0.75 }}>Advertise With Us <span>↗</span></a>
+        </div>
       </div>
       <div className="specials-list">
-        <a className="special-card" href={`${liveBase}/vendor-portal`} target="_blank" rel="noreferrer" aria-label="View the Victoria Falls travel promotion">
+        <a className="special-card" href="https://millionairescollection.com/#giveaway" target="_blank" rel="noreferrer" aria-label="Stand a chance to win M Collection bottle and private cellar tours">
           <img src="/assets/ad-flight.png" alt="Win a trip to Victoria Falls, Zambia with an exclusive tour package" loading="lazy" />
         </a>
-        <a className="special-card" href={`${liveBase}/vendor-portal`} target="_blank" rel="noreferrer" aria-label="View the Zambia resort promotion">
+        <a className="special-card" href="https://millionairescollection.com/#giveaway" target="_blank" rel="noreferrer" aria-label="View the Zambia resort promotion">
           <img src="/assets/ad-resort.png" alt="Save up to twenty percent on hotel offers in Zambia" loading="lazy" />
         </a>
       </div>

@@ -1,0 +1,347 @@
+.bottle-poster-section {
+  position: relative;
+  padding: clamp(60px, 8vw, 110px) clamp(20px, 4vw, 60px);
+  background: radial-gradient(circle at 50% 20%, #20070e 0%, #0d0407 70%, #070204 100%);
+  color: var(--cream, #fffaf0);
+  overflow: hidden;
+  border-top: 1px solid rgba(217, 183, 104, 0.18);
+  border-bottom: 1px solid rgba(217, 183, 104, 0.18);
+}
+
+.bottle-poster-section::before {
+  content: '';
+  position: absolute;
+  top: -150px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(217, 183, 104, 0.12) 0%, rgba(122, 38, 60, 0.15) 45%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bottle-poster-container {
+  position: relative;
+  z-index: 2;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.bottle-poster-header {
+  text-align: center;
+  max-width: 780px;
+  margin: 0 auto clamp(36px, 5vw, 54px);
+}
+
+.bottle-poster-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--sans, sans-serif);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold-bright, #d9b768);
+  background: rgba(217, 183, 104, 0.1);
+  border: 1px solid rgba(217, 183, 104, 0.28);
+  padding: 6px 16px;
+  border-radius: 999px;
+  margin-bottom: 18px;
+}
+
+.bottle-poster-kicker .kicker-sparkle {
+  color: var(--gold-bright, #d9b768);
+  animation: sparkle-pulse 2s ease-in-out infinite;
+}
+
+.bottle-poster-title {
+  margin: 0 0 14px;
+  font-family: var(--serif, 'Italiana', serif);
+  font-size: clamp(34px, 4.8vw, 62px);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: #fffaf0;
+}
+
+.bottle-poster-title em {
+  font-style: italic;
+  color: var(--gold-bright, #d9b768);
+  font-family: inherit;
+}
+
+.bottle-poster-subtitle {
+  margin: 0 auto;
+  font-family: var(--sans, sans-serif);
+  font-size: clamp(14px, 1.4vw, 17px);
+  line-height: 1.6;
+  color: rgba(255, 250, 240, 0.72);
+  max-width: 620px;
+}
+
+/* Poster Card Frame */
+.bottle-poster-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+  background: linear-gradient(145deg, rgba(30, 10, 18, 0.85) 0%, rgba(15, 5, 9, 0.95) 100%);
+  border: 1px solid rgba(217, 183, 104, 0.3);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(217, 183, 104, 0.08);
+  transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s ease;
+  cursor: pointer;
+}
+
+.bottle-poster-card:hover {
+  border-color: rgba(217, 183, 104, 0.6);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.75), 0 0 55px rgba(217, 183, 104, 0.16);
+  transform: translateY(-2px);
+}
+
+/* Image Visual Column */
+.bottle-poster-image-wrap {
+  position: relative;
+  min-height: 480px;
+  overflow: hidden;
+  background: #090305;
+}
+
+.bottle-poster-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bottle-poster-card:hover .bottle-poster-image {
+  transform: scale(1.04);
+}
+
+.bottle-poster-image-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, transparent 60%, rgba(15, 5, 9, 0.95) 100%),
+              linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+.bottle-poster-floating-badge {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(13, 4, 7, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(217, 183, 104, 0.4);
+  border-radius: 999px;
+  font-family: var(--sans, sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-bright, #d9b768);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 3;
+}
+
+.bottle-poster-trophy-badge {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  background: rgba(13, 4, 7, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(217, 183, 104, 0.35);
+  border-radius: 12px;
+  color: #fffaf0;
+  z-index: 3;
+}
+
+.trophy-badge-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(217, 183, 104, 0.18);
+  color: var(--gold-bright, #d9b768);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.trophy-badge-text strong {
+  display: block;
+  font-family: var(--sans, sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  color: #fffaf0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.trophy-badge-text span {
+  font-family: var(--sans, sans-serif);
+  font-size: 11px;
+  color: var(--gold-bright, #d9b768);
+}
+
+/* Info Details Column */
+.bottle-poster-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(32px, 4vw, 54px);
+  background: rgba(18, 6, 11, 0.7);
+  backdrop-filter: blur(8px);
+}
+
+.poster-info-top {
+  margin-bottom: 28px;
+}
+
+.poster-cuvee-tag {
+  display: inline-block;
+  font-family: var(--sans, sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--gold-bright, #d9b768);
+  margin-bottom: 12px;
+}
+
+.poster-info-heading {
+  font-family: var(--serif, 'Italiana', serif);
+  font-size: clamp(26px, 2.8vw, 36px);
+  line-height: 1.15;
+  color: #fffaf0;
+  margin: 0 0 16px;
+  font-weight: 400;
+}
+
+.poster-info-desc {
+  font-family: var(--sans, sans-serif);
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: rgba(255, 250, 240, 0.76);
+  margin: 0 0 24px;
+}
+
+.poster-perks-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.poster-perk-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--sans, sans-serif);
+  font-size: 13.5px;
+  color: rgba(255, 250, 240, 0.9);
+}
+
+.perk-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(217, 183, 104, 0.15);
+  border: 1px solid rgba(217, 183, 104, 0.4);
+  color: var(--gold-bright, #d9b768);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+/* CTA Button */
+.poster-action-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.poster-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 18px 24px;
+  background: linear-gradient(135deg, #d9b768 0%, #b88c43 100%);
+  color: #0b0507;
+  font-family: var(--sans, sans-serif);
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(217, 183, 104, 0.25);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+
+.poster-cta-btn:hover {
+  background: linear-gradient(135deg, #f0c354 0%, #cb9d4b 100%);
+  box-shadow: 0 15px 40px rgba(217, 183, 104, 0.4);
+  transform: translateY(-2px);
+}
+
+.poster-cta-btn .cta-arrow-bubble {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(11, 5, 7, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.poster-cta-btn:hover .cta-arrow-bubble {
+  transform: translateY(3px);
+}
+
+.poster-disclaimer {
+  font-family: var(--sans, sans-serif);
+  font-size: 11.5px;
+  color: rgba(255, 250, 240, 0.45);
+  line-height: 1.4;
+  margin: 0;
+}
+
+@keyframes sparkle-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.2); }
+}
+
+@media (max-width: 960px) {
+  .bottle-poster-card {
+    grid-template-columns: 1fr;
+  }
+
+  .bottle-poster-image-wrap {
+    min-height: 380px;
+  }
+
+  .bottle-poster-image-overlay {
+    background: linear-gradient(to top, rgba(15, 5, 9, 0.95) 0%, transparent 60%);
+  }
+}

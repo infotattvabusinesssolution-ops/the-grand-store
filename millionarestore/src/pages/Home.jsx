@@ -9,6 +9,7 @@ import ExperienceCollection from '../components/ExperienceCollection'
 import Process from '../components/Process'
 import AgeingGallery from '../components/AgeingGallery'
 import GalleryVideoSection from '../components/GalleryVideoSection'
+import BottleGiveawayPoster from '../components/BottleGiveawayPoster'
 import Newsletter from '../components/Newsletter'
 import EnquireForm from '../components/EnquireForm'
 
@@ -108,6 +109,7 @@ export default function Home() {
       <Process />
       <GalleryVideoSection />
       <AgeingGallery />
+      <BottleGiveawayPoster />
       <Newsletter />
       <EnquireForm />
     </main>
