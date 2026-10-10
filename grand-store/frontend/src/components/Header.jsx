@@ -26,6 +26,7 @@ import { useCurrency, getCountryForCurrency } from "../context/CurrencyContext";
 import LocaleSelector, { LocaleIcon } from "./LocaleSelector";
 import NotificationBell from "./NotificationBell";
 import api from "../api";
+import { resolveImageUrl } from "../utils/imageUtils";
 
 const currencyFlagCountries = {
   AED: 'AE', AUD: 'AU', BWP: 'BW', BRL: 'BR', CAD: 'CA', CHF: 'CH', CNY: 'CN',
@@ -1422,7 +1423,7 @@ export default function Header({
                         {brandProducts.slice(0, 8).map(p => (
                           <Link key={p.id || p._id} to={`/product/${p.slug || p.id || p._id}`} onClick={closeMenus} className="flex items-center gap-4 !p-0 !border-0 group !bg-transparent hover:!bg-transparent">
                              <div className="w-[60px] h-[75px] bg-[#1a1a1a] rounded overflow-hidden shrink-0 border border-white/10 group-hover:border-white/30 transition-colors flex items-center justify-center">
-                               {p.image ? <img src={p.image} alt={p.name} className="max-w-full max-h-full object-contain p-1" /> : <div className="w-full h-full bg-[#222]"></div>}
+                               {p.image ? <img src={resolveImageUrl(p.image)} alt={p.name} className="max-w-full max-h-full object-contain p-1" /> : <div className="w-full h-full bg-[#222]"></div>}
                              </div>
                              <div className="flex-1 min-w-0">
                                <p className="text-[#888] text-[10px] uppercase tracking-wider mb-1 truncate">{p.brand}</p>
@@ -1454,7 +1455,7 @@ export default function Header({
                         {matchedProducts.map(p => (
                           <Link key={p.id || p._id} to={`/product/${p.slug || p.id || p._id}`} onClick={closeMenus} className="flex items-center gap-4 !p-0 !border-0 group !bg-transparent hover:!bg-transparent">
                              <div className="w-[60px] h-[75px] bg-[#1a1a1a] rounded overflow-hidden shrink-0 border border-white/10 group-hover:border-white/30 transition-colors flex items-center justify-center">
-                               {p.image ? <img src={p.image} alt={p.name} className="max-w-full max-h-full object-contain p-1" /> : <div className="w-full h-full bg-[#222]"></div>}
+                               {p.image ? <img src={resolveImageUrl(p.image)} alt={p.name} className="max-w-full max-h-full object-contain p-1" /> : <div className="w-full h-full bg-[#222]"></div>}
                              </div>
                              <div className="flex-1 min-w-0">
                                <p className="text-[#888] text-[10px] uppercase tracking-wider mb-1 truncate">{p.brand}</p>

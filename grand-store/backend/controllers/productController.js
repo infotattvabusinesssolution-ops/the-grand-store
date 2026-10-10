@@ -52,11 +52,19 @@ const getOrderedImages = ({ imageOrder, uploadedImages = [], existingImages = []
   return cleanImageList(existingImages);
 };
 
+const { getCache, setCache } = require('../utils/cache');
+
 // @desc    Fetch all products
 // @route   GET /api/products
 // @access  Public
 const getProducts = async (req, res) => {
   try {
+    const cacheKey = `products_${JSON.stringify(req.query)}`;
+    const cachedData = getCache(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
     const query = { isCatalogDuplicate: { $ne: true } };
     if (req.query.type) {
       query.type = req.query.type;
@@ -99,6 +107,8 @@ const getProducts = async (req, res) => {
       // If vendor is not approved or not paid, skip this product
       return acc;
     }, []);
+
+    setCache(cacheKey, productsWithStore, 300); // cache for 5 minutes
 
     res.json(productsWithStore);
   } catch (error) {

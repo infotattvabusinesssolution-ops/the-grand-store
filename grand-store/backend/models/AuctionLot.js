@@ -51,12 +51,12 @@ const auctionLotSchema = new mongoose.Schema({
   // === CONDITION & PROVENANCE ===
   fillLevel: { 
     type: String, 
-    enum: ['High Fill', 'Into Neck', 'Top Shoulder', 'Upper Mid Shoulder', 'Mid Shoulder', 'Low Shoulder', 'Below Shoulder', 'Unknown'],
+    enum: ['High Fill', 'Into Neck', 'Into Neck / High Shoulder', 'Top Shoulder', 'Upper Mid Shoulder', 'Mid Shoulder', 'Low Shoulder', 'Below Shoulder', 'Unknown'],
     default: 'Into Neck' 
   },
   boxCondition: { 
     type: String, 
-    enum: ['Original Box / Case Pristine', 'Original Box / Minor Wear', 'Damaged Packaging', 'No Original Box', 'Tube Packaging'],
+    enum: ['Original Box / Case Pristine', 'Original Box / Minor Wear', 'Damaged Packaging', 'No Original Box', 'Tube Packaging', 'Bottle Only / Historical Cellar Patina'],
     default: 'Original Box / Case Pristine' 
   },
   sealCondition: { 
