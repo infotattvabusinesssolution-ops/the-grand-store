@@ -1367,17 +1367,23 @@ export default function AdminNewsletter() {
 
               {/* Email Content (Visual Rich Text Editor) */}
               <div className="flex-1 flex flex-col min-h-[300px]">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-white/60 text-xs uppercase tracking-widest font-bold">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <label className="text-white/70 text-xs uppercase tracking-widest font-bold">
                     Email Content {emailFormat === 'plain' ? '(Plain Text Mode)' : '(Rich Text Editor)'}
                   </label>
-                  <span className="text-[10px] text-[#c9a35b]/80 font-mono">
-                    {emailFormat === 'normal' 
-                      ? 'Delivers as clean normal text email (white background, styled text)' 
-                      : emailFormat === 'plain'
-                      ? 'Delivers strictly as plain text (no HTML tags)'
-                      : 'Delivers with luxury dark header branding'}
-                  </span>
+                  {emailFormat === 'normal' ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      ✓ Clean White Email Format
+                    </span>
+                  ) : emailFormat === 'plain' ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                      ⚡ 100% Plain Text Format
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                      ✨ Luxury Dark Flyer
+                    </span>
+                  )}
                 </div>
                 <RichTextEditor
                   value={htmlContent}
