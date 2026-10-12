@@ -215,11 +215,22 @@ const sendBulkNewsletter = async (req, res) => {
     }
 
     try {
+      // If content was submitted as plain text without HTML tags, wrap nicely into luxury paragraphs
+      let formattedHtml = htmlContent;
+      if (typeof formattedHtml === 'string' && !/<[a-z][\s\S]*>/i.test(formattedHtml)) {
+        formattedHtml = formattedHtml
+          .split(/\r?\n\r?\n/)
+          .map(p => p.trim())
+          .filter(Boolean)
+          .map(p => `<p style="margin-bottom: 16px; line-height: 1.65; color: #e0e0e0;">${p.replace(/\r?\n/g, '<br/>')}</p>`)
+          .join('');
+      }
+
       await sendEmail({
         to: process.env.SMTP_USER || emails[0],
         bcc: emails.join(','),
         subject,
-        html: bulkNewsletterTemplate(subject, htmlContent)
+        html: bulkNewsletterTemplate(subject, formattedHtml)
       });
     } catch (err) {
       console.error(`Failed to send bulk newsletter batch:`, err);

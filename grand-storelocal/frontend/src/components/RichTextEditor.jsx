@@ -1,0 +1,784 @@
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  Bold,
+  Italic,
+  Underline,
+  Heading1,
+  Heading2,
+  Heading3,
+  Type,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  List,
+  ListOrdered,
+  Link2,
+  Palette,
+  Minus,
+  Undo2,
+  Redo2,
+  Code2,
+  Eye,
+  Sparkles,
+  Quote,
+  Check,
+  X,
+  ExternalLink
+} from 'lucide-react';
+
+const FONT_OPTIONS = [
+  { label: 'Default Serif', value: "'Playfair Display', Georgia, serif" },
+  { label: 'Luxury Display', value: "'Cinzel', 'Times New Roman', serif" },
+  { label: 'Modern Sans', value: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
+  { label: 'Classic Roman', value: "'Times New Roman', Times, serif" },
+  { label: 'Monospace', value: "monospace" },
+];
+
+const FONT_SIZES = [
+  { label: 'Small (13px)', value: '2' },
+  { label: 'Regular (15px)', value: '3' },
+  { label: 'Medium (18px)', value: '4' },
+  { label: 'Large (22px)', value: '5' },
+  { label: 'Title (28px)', value: '6' },
+];
+
+const COLOR_PALETTE = [
+  { name: 'Luxury Gold', value: '#c9a35b' },
+  { name: 'Bright Gold', value: '#e5a93c' },
+  { name: 'Warm Cream', value: '#ded8ce' },
+  { name: 'Pure White', value: '#ffffff' },
+  { name: 'Muted Gray', value: '#9ca3af' },
+  { name: 'Wine Red', value: '#991b1b' },
+  { name: 'Champagne', value: '#f5d77f' },
+];
+
+export default function RichTextEditor({
+  value = '',
+  onChange,
+  subject = '',
+  placeholder = 'Type your message normally... Highlight text to format headings, fonts, colors, and lists.'
+}) {
+  const editorRef = useRef(null);
+  const [mode, setMode] = useState('visual'); // 'visual' | 'code' | 'preview'
+  const [selectedFont, setSelectedFont] = useState(FONT_OPTIONS[0].value);
+  const [selectedSize, setSelectedSize] = useState('3');
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkText, setLinkText] = useState('');
+  const [savedSelection, setSavedSelection] = useState(null);
+  const [showSnippets, setShowSnippets] = useState(false);
+  const isInternalUpdate = useRef(false);
+
+  // Sync external value into contentEditable when needed
+  useEffect(() => {
+    if (editorRef.current && !isInternalUpdate.current) {
+      if (editorRef.current.innerHTML !== (value || '')) {
+        editorRef.current.innerHTML = value || '';
+      }
+    }
+    isInternalUpdate.current = false;
+  }, [value, mode]);
+
+  // Execute DOM command safely while keeping focus
+  const executeCommand = (command, valueArg = null) => {
+    if (mode !== 'visual') return;
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
+    document.execCommand(command, false, valueArg);
+    handleEditorInput();
+  };
+
+  const handleEditorInput = () => {
+    if (!editorRef.current) return;
+    isInternalUpdate.current = true;
+    const html = editorRef.current.innerHTML;
+    // Normalize empty content
+    if (html === '<p><br></p>' || html === '<br>' || html === '<div><br></div>') {
+      onChange('');
+    } else {
+      onChange(html);
+    }
+  };
+
+  // Format block (Headings / Paragraph / Quote)
+  const handleFormatBlock = (tag) => {
+    executeCommand('formatBlock', tag);
+  };
+
+  // Font family change
+  const handleFontChange = (fontFamily) => {
+    setSelectedFont(fontFamily);
+    executeCommand('fontName', fontFamily);
+  };
+
+  // Font size change
+  const handleSizeChange = (size) => {
+    setSelectedSize(size);
+    executeCommand('fontSize', size);
+  };
+
+  // Fore color change
+  const handleColorSelect = (hex) => {
+    executeCommand('foreColor', hex);
+    setShowColorPicker(false);
+  };
+
+  // Save current selection for Link Dialog
+  const openLinkDialog = (e) => {
+    e.preventDefault();
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      setSavedSelection(range);
+      setLinkText(range.toString());
+    } else {
+      setSavedSelection(null);
+      setLinkText('');
+    }
+    setLinkUrl('');
+    setShowLinkModal(true);
+  };
+
+  const insertLink = (e) => {
+    e.preventDefault();
+    if (!linkUrl.trim()) return;
+
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
+
+    if (savedSelection) {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedSelection);
+    }
+
+    const cleanUrl = linkUrl.startsWith('http://') || linkUrl.startsWith('https://') || linkUrl.startsWith('mailto:') 
+      ? linkUrl.trim() 
+      : `https://${linkUrl.trim()}`;
+
+    if (linkText.trim()) {
+      const anchorHtml = `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" style="color: #c9a35b; font-weight: 600; text-decoration: underline;">${linkText.trim()}</a>`;
+      document.execCommand('insertHTML', false, anchorHtml);
+    } else {
+      executeCommand('createLink', cleanUrl);
+    }
+
+    setShowLinkModal(false);
+    setLinkUrl('');
+    setLinkText('');
+    setSavedSelection(null);
+    handleEditorInput();
+  };
+
+  // Luxury Snippet Templates insertion
+  const insertSnippet = (snippetHtml) => {
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
+    document.execCommand('insertHTML', false, snippetHtml);
+    setShowSnippets(false);
+    handleEditorInput();
+  };
+
+  // Word & character stats
+  const cleanText = (value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const charCount = cleanText.length;
+  const wordCount = cleanText ? cleanText.split(' ').length : 0;
+
+  // Handle Paste
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    if (!text) return;
+
+    // Convert multi-line plain text to clean paragraphs
+    const paragraphs = text
+      .split(/\r?\n\r?\n/)
+      .map(p => p.trim())
+      .filter(Boolean)
+      .map(p => `<p style="margin-bottom: 14px; line-height: 1.65;">${p.replace(/\r?\n/g, '<br/>')}</p>`)
+      .join('');
+
+    if (paragraphs) {
+      document.execCommand('insertHTML', false, paragraphs);
+    } else {
+      document.execCommand('insertText', false, text);
+    }
+    handleEditorInput();
+  };
+
+  return (
+    <div className="w-full flex flex-col border border-white/10 rounded-2xl bg-black/40 overflow-hidden shadow-xl">
+      {/* Top Bar: Mode Switcher & Luxury Badges */}
+      <div className="px-4 py-2.5 bg-black/60 border-b border-white/10 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-xl border border-white/10">
+          <button
+            type="button"
+            onClick={() => setMode('visual')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+              mode === 'visual'
+                ? 'bg-[#c9a35b] text-black shadow-[0_0_12px_rgba(201,163,91,0.4)]'
+                : 'text-white/60 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Type size={13} /> Visual Editor
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('preview')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+              mode === 'preview'
+                ? 'bg-[#c9a35b] text-black shadow-[0_0_12px_rgba(201,163,91,0.4)]'
+                : 'text-white/60 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Eye size={13} /> Email Preview
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('code')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+              mode === 'code'
+                ? 'bg-[#c9a35b] text-black shadow-[0_0_12px_rgba(201,163,91,0.4)]'
+                : 'text-white/60 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Code2 size={13} /> HTML Source
+          </button>
+        </div>
+
+        {/* Quick Luxury Snippets Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowSnippets(!showSnippets)}
+            className="px-3 py-1.5 bg-[#c9a35b]/10 hover:bg-[#c9a35b]/20 border border-[#c9a35b]/30 rounded-xl text-xs text-[#c9a35b] font-medium transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Sparkles size={13} /> Quick Templates
+          </button>
+
+          {showSnippets && (
+            <div className="absolute right-0 top-full mt-2 w-64 bg-[#14120e] border border-[#c9a35b]/30 rounded-2xl p-2 shadow-2xl z-30 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
+              <span className="text-[10px] text-white/40 uppercase tracking-widest font-bold px-2 py-1">
+                Insert Luxury Block
+              </span>
+              <button
+                type="button"
+                onClick={() => insertSnippet('<p style="margin-bottom: 14px;">Dear Connoisseur,</p>')}
+                className="text-left px-3 py-2 text-xs text-white/80 hover:text-[#c9a35b] hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+              >
+                🍷 VIP Salutation
+              </button>
+              <button
+                type="button"
+                onClick={() => insertSnippet('<h2 style="color: #c9a35b; font-family: \'Playfair Display\', Georgia, serif; font-size: 22px; margin: 18px 0 8px 0;">Exclusive Cellar Allocation</h2><p style="margin-bottom: 14px;">We are delighted to present an ultra-rare allocation curated exclusively for our distinguished patrons.</p>')}
+                className="text-left px-3 py-2 text-xs text-white/80 hover:text-[#c9a35b] hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+              >
+                🍾 New Allocation Notice
+              </button>
+              <button
+                type="button"
+                onClick={() => insertSnippet('<div style="margin: 24px 0; padding: 20px; background: #12100d; border: 1px dashed #c9a35b; border-radius: 8px; text-align: center;"><p style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #c9a35b; margin: 0 0 6px 0; font-weight: bold;">Exclusive Privilege Code</p><p style="font-size: 22px; font-weight: bold; color: #ffffff; letter-spacing: 3px; margin: 0; font-family: monospace;">GRAND-VIP20</p><p style="font-size: 11px; color: #888888; margin: 6px 0 0 0;">Valid for complimentary delivery on your next acquisition</p></div>')}
+                className="text-left px-3 py-2 text-xs text-white/80 hover:text-[#c9a35b] hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+              >
+                🏷️ VIP Privilege Box
+              </button>
+              <button
+                type="button"
+                onClick={() => insertSnippet('<div style="text-align: center; margin: 26px 0;"><a href="https://grandstoreglobal.com" style="display: inline-block; background: linear-gradient(135deg, #c9a35b 0%, #e5a93c 100%); color: #050505; font-weight: bold; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 13px; letter-spacing: 2px; text-transform: uppercase;">Explore Collection &rarr;</a></div>')}
+                className="text-left px-3 py-2 text-xs text-white/80 hover:text-[#c9a35b] hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+              >
+                🔘 Gold Action Button
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* WYSIWYG Formatting Toolbar (Visible in Visual Mode) */}
+      {mode === 'visual' && (
+        <div className="p-2 bg-[#14120e] border-b border-white/10 flex flex-wrap items-center gap-1.5 select-none">
+          {/* Headings Dropdown */}
+          <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-xl border border-white/10">
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); handleFormatBlock('<p>'); }}
+              title="Normal Paragraph"
+              className="px-2 py-1 text-xs text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer font-medium"
+            >
+              Normal
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); handleFormatBlock('<h1>'); }}
+              title="Main Title"
+              className="px-2 py-1 text-xs text-white/70 hover:text-[#c9a35b] hover:bg-white/10 rounded-lg transition-colors cursor-pointer font-serif font-bold"
+            >
+              H1
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); handleFormatBlock('<h2>'); }}
+              title="Section Header"
+              className="px-2 py-1 text-xs text-white/70 hover:text-[#c9a35b] hover:bg-white/10 rounded-lg transition-colors cursor-pointer font-serif font-bold"
+            >
+              H2
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); handleFormatBlock('<h3>'); }}
+              title="Sub-heading"
+              className="px-2 py-1 text-xs text-white/70 hover:text-[#c9a35b] hover:bg-white/10 rounded-lg transition-colors cursor-pointer font-serif font-medium"
+            >
+              H3
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); handleFormatBlock('<blockquote>'); }}
+              title="Quote Callout"
+              className="p-1 text-white/70 hover:text-[#c9a35b] hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+            >
+              <Quote size={13} />
+            </button>
+          </div>
+
+          <div className="h-4 w-px bg-white/10 mx-0.5" />
+
+          {/* Font Family Selector */}
+          <select
+            value={selectedFont}
+            onChange={(e) => handleFontChange(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl px-2.5 py-1 text-xs text-white/80 focus:outline-none focus:border-[#c9a35b] cursor-pointer"
+            title="Font Family"
+          >
+            {FONT_OPTIONS.map(f => (
+              <option key={f.value} value={f.value} className="bg-[#14120e] text-white">
+                {f.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Font Size Selector */}
+          <select
+            value={selectedSize}
+            onChange={(e) => handleSizeChange(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl px-2.5 py-1 text-xs text-white/80 focus:outline-none focus:border-[#c9a35b] cursor-pointer"
+            title="Font Size"
+          >
+            {FONT_SIZES.map(s => (
+              <option key={s.value} value={s.value} className="bg-[#14120e] text-white">
+                {s.label}
+              </option>
+            ))}
+          </select>
+
+          <div className="h-4 w-px bg-white/10 mx-0.5" />
+
+          {/* Inline Styles: Bold, Italic, Underline */}
+          <div className="flex items-center gap-0.5 bg-white/5 p-0.5 rounded-xl border border-white/10">
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); executeCommand('bold'); }}
+              title="Bold"
+              className="p-1.5 text-white/70 hover:text-[#c9a35b] hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+            >
+              <Bold size={14} />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); executeCommand('italic'); }}
+              title="Italic"
+              className="p-1.5 text-white/70 hover:text-[#c9a35b] hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+            >
+              <Italic size={14} />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); executeCommand('underline'); }}
+              title="Underline"
+              className="p-1.5 text-white/70 hover:text-[#c9a35b] hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+            >
+              <Underline size={14} />
+            </button>
+          </div>
+
+          {/* Color Picker Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowColorPicker(!showColorPicker)}
+              title="Text Color"
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs text-white/80 transition-colors cursor-pointer"
+            >
+              <Palette size={13} className="text-[#c9a35b]" />
+              <span>Color</span>
+            </button>
+
+            {showColorPicker && (
+              <div className="absolute left-0 top-full mt-2 w-48 bg-[#14120e] border border-white/20 rounded-2xl p-2.5 shadow-2xl z-30 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-150">
+                <span className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Palette</span>
+                <div className="grid grid-cols-4 gap-2 py-1">
+                  {COLOR_PALETTE.map(col => (
+                    <button
+                      key={col.value}
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); handleColorSelect(col.value); }}
+                      title={col.name}
+                      style={{ backgroundColor: col.value }}
+                      className="w-7 h-7 rounded-lg border border-white/30 hover:scale-110 transition-transform cursor-pointer shadow-sm"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="h-4 w-px bg-white/10 mx-0.5" />
+
+          {/* Alignment */}
+          <div className="flex items-center gap-0.5 bg-white/5 p-0.5 rounded-xl border border-white/10">
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); executeCommand('justifyLeft'); }}
+              title="Align Left"
+              className="p-1.5 text-white/70 hover:text-[#c9a35b] hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+            >
+              <AlignLeft size={14} />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); executeCommand('justifyCenter'); }}
+              title="Align Center"
+              className="p-1.5 text-white/70 hover:text-[#c9a35b] hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+            >
+              <AlignCenter size={14} />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); executeCommand('justifyRight'); }}
+              title="Align Right"
+              className="p-1.5 text-white/70 hover:text-[#c9a35b] hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+            >
+              <AlignRight size={14} />
+            </button>
+          </div>
+
+          {/* Lists */}
+          <div className="flex items-center gap-0.5 bg-white/5 p-0.5 rounded-xl border border-white/10">
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); executeCommand('insertUnorderedList'); }}
+              title="Bullet List"
+              className="p-1.5 text-white/70 hover:text-[#c9a35b] hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+            >
+              <List size={14} />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); executeCommand('insertOrderedList'); }}
+              title="Numbered List"
+              className="p-1.5 text-white/70 hover:text-[#c9a35b] hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+            >
+              <ListOrdered size={14} />
+            </button>
+          </div>
+
+          {/* Insert Link & Divider */}
+          <div className="flex items-center gap-0.5 bg-white/5 p-0.5 rounded-xl border border-white/10">
+            <button
+              type="button"
+              onClick={openLinkDialog}
+              title="Insert Link"
+              className="p-1.5 text-white/70 hover:text-[#c9a35b] hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+            >
+              <Link2 size={14} />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); executeCommand('insertHorizontalRule'); }}
+              title="Insert Horizontal Divider"
+              className="p-1.5 text-white/70 hover:text-[#c9a35b] hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+            >
+              <Minus size={14} />
+            </button>
+          </div>
+
+          <div className="h-4 w-px bg-white/10 mx-0.5" />
+
+          {/* Undo / Redo */}
+          <div className="flex items-center gap-0.5 bg-white/5 p-0.5 rounded-xl border border-white/10">
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); executeCommand('undo'); }}
+              title="Undo"
+              className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+            >
+              <Undo2 size={14} />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); executeCommand('redo'); }}
+              title="Redo"
+              className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+            >
+              <Redo2 size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Editor Body */}
+      <div className="relative min-h-[220px] max-h-[380px] flex flex-col overflow-hidden bg-black/50">
+        {mode === 'visual' && (
+          <div className="relative flex-1 flex flex-col overflow-y-auto scrollbar-thin">
+            <div
+              ref={editorRef}
+              contentEditable
+              onInput={handleEditorInput}
+              onPaste={handlePaste}
+              className="flex-1 p-5 text-white/90 focus:outline-none focus:ring-0 leading-relaxed font-sans text-sm selection:bg-[#c9a35b]/30 selection:text-white"
+              style={{
+                minHeight: '220px',
+              }}
+              data-placeholder={placeholder}
+            />
+
+            {/* Subtle placeholder when empty */}
+            {(!value || value === '<p><br></p>' || value === '<br>') && (
+              <div className="absolute top-5 left-5 text-white/25 pointer-events-none text-sm font-sans select-none italic">
+                {placeholder}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* HTML Code Source View */}
+        {mode === 'code' && (
+          <textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full flex-1 min-h-[220px] p-5 bg-[#090807] text-[#c9a35b] font-mono text-xs focus:outline-none focus:border-[#c9a35b] leading-relaxed resize-none scrollbar-thin placeholder-white/20"
+            placeholder="<p>Enter custom HTML directly...</p>"
+          />
+        )}
+
+        {/* Email Live Preview (Branded Inbox Mockup) */}
+        {mode === 'preview' && (
+          <div className="flex-1 overflow-y-auto p-4 bg-[#0a0a0a] scrollbar-thin">
+            <div className="max-w-[560px] mx-auto bg-[#050505] border border-white/15 rounded-2xl overflow-hidden shadow-2xl text-white">
+              {/* Luxury Header Banner */}
+              <div className="bg-gradient-to-b from-[#161410] to-[#0a0a0a] p-6 text-center border-b border-[#c9a35b]/30">
+                <span className="text-[10px] tracking-[0.4em] uppercase text-[#c9a35b] font-serif block mb-1">
+                  The Concierge Dispatch
+                </span>
+                <h3 className="font-serif text-2xl text-[#f5d77f] tracking-widest font-normal m-0">
+                  THE GRAND STORE
+                </h3>
+                {subject && (
+                  <p className="mt-2 text-xs text-white/60 italic font-serif">
+                    &ldquo;{subject}&rdquo;
+                  </p>
+                )}
+              </div>
+
+              {/* Email Content Body */}
+              <div 
+                className="p-6 text-white/90 text-sm leading-relaxed font-sans email-preview-content"
+                dangerouslySetInnerHTML={{
+                  __html: value || '<p style="color: rgba(255,255,255,0.4); font-style: italic; text-align: center;">No email content composed yet.</p>'
+                }}
+              />
+
+              {/* Signoff */}
+              <div className="px-6 pb-6 pt-2 border-t border-white/5 text-xs text-white/60">
+                <p className="m-0 mb-1">Best Regards,</p>
+                <strong className="text-[#c9a35b] font-serif tracking-wide text-sm">
+                  The Grand Store Team
+                </strong>
+              </div>
+
+              {/* Email Footer */}
+              <div className="bg-[#020202] p-4 text-center border-t border-white/10 text-[11px] text-white/40 leading-relaxed font-sans">
+                <p className="m-0">© {new Date().getFullYear()} The Grand Store. All rights reserved.</p>
+                <p className="m-0 mt-0.5 text-white/30">Official Concierge Dispatch &bull; support@grandstoreglobal.com</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer Bar: Stats & Helper */}
+      <div className="px-4 py-2 bg-black/60 border-t border-white/10 flex items-center justify-between text-[11px] text-white/40">
+        <div className="flex items-center gap-4">
+          <span>Words: <strong className="text-white/70 font-mono">{wordCount}</strong></span>
+          <span>Characters: <strong className="text-white/70 font-mono">{charCount}</strong></span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-[#c9a35b]/80 font-mono">
+            {mode === 'visual' ? 'Rich WYSIWYG Mode' : mode === 'code' ? 'Raw HTML Mode' : 'Live Preview Mode'}
+          </span>
+        </div>
+      </div>
+
+      {/* Link Dialog Modal */}
+      {showLinkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#14120e] border border-[#c9a35b]/40 rounded-2xl p-5 w-full max-w-sm shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h4 className="text-sm font-semibold text-white flex items-center gap-2 font-serif">
+                <Link2 size={16} className="text-[#c9a35b]" /> Insert Hyperlink
+              </h4>
+              <button
+                type="button"
+                onClick={() => setShowLinkModal(false)}
+                className="text-white/40 hover:text-white cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="text-[11px] uppercase tracking-wider text-white/60 font-bold block mb-1">
+                  Destination URL
+                </label>
+                <input
+                  type="text"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  placeholder="https://grandstoreglobal.com/shop"
+                  className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#c9a35b]"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] uppercase tracking-wider text-white/60 font-bold block mb-1">
+                  Display Text (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={linkText}
+                  onChange={(e) => setLinkText(e.target.value)}
+                  placeholder="e.g., View Curated Collection"
+                  className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#c9a35b]"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setShowLinkModal(false)}
+                className="px-3 py-1.5 text-xs text-white/60 hover:text-white rounded-lg cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={insertLink}
+                disabled={!linkUrl.trim()}
+                className="px-4 py-1.5 bg-[#c9a35b] hover:bg-white text-black font-semibold text-xs rounded-xl disabled:opacity-40 transition-colors cursor-pointer"
+              >
+                Insert Link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Editor scoped styles for rendered HTML */}
+      <style>{`
+        [contenteditable] h1 {
+          font-family: 'Cinzel', 'Playfair Display', Georgia, serif;
+          font-size: 24px;
+          color: #c9a35b;
+          font-weight: 700;
+          margin: 14px 0 8px 0;
+          line-height: 1.25;
+        }
+        [contenteditable] h2 {
+          font-family: 'Playfair Display', Georgia, serif;
+          font-size: 20px;
+          color: #c9a35b;
+          font-weight: 600;
+          margin: 12px 0 6px 0;
+          line-height: 1.3;
+        }
+        [contenteditable] h3 {
+          font-family: 'Playfair Display', Georgia, serif;
+          font-size: 16px;
+          color: #e5a93c;
+          font-weight: 600;
+          margin: 10px 0 4px 0;
+        }
+        [contenteditable] p {
+          margin: 0 0 12px 0;
+          line-height: 1.65;
+          color: #e5e5e5;
+        }
+        [contenteditable] blockquote {
+          border-left: 3px solid #c9a35b;
+          padding: 8px 14px;
+          margin: 14px 0;
+          background: rgba(201, 163, 91, 0.08);
+          border-radius: 0 8px 8px 0;
+          color: #ded8ce;
+          font-style: italic;
+        }
+        [contenteditable] ul {
+          list-style-type: disc;
+          padding-left: 24px;
+          margin: 8px 0 12px 0;
+        }
+        [contenteditable] ol {
+          list-style-type: decimal;
+          padding-left: 24px;
+          margin: 8px 0 12px 0;
+        }
+        [contenteditable] li {
+          margin-bottom: 4px;
+          color: #e5e5e5;
+        }
+        [contenteditable] a {
+          color: #c9a35b;
+          text-decoration: underline;
+        }
+        [contenteditable] hr {
+          border: 0;
+          border-top: 1px solid rgba(201, 163, 91, 0.35);
+          margin: 18px 0;
+        }
+        .email-preview-content h1 {
+          color: #c9a35b;
+          font-family: 'Cinzel', 'Playfair Display', Georgia, serif;
+          font-size: 24px;
+          margin: 14px 0 8px 0;
+        }
+        .email-preview-content h2 {
+          color: #c9a35b;
+          font-family: 'Playfair Display', Georgia, serif;
+          font-size: 20px;
+          margin: 12px 0 6px 0;
+        }
+        .email-preview-content h3 {
+          color: #e5a93c;
+          font-family: 'Playfair Display', Georgia, serif;
+          font-size: 16px;
+          margin: 10px 0 4px 0;
+        }
+        .email-preview-content p {
+          margin: 0 0 14px 0;
+          line-height: 1.65;
+        }
+        .email-preview-content a {
+          color: #c9a35b;
+          text-decoration: underline;
+        }
+      `}</style>
+    </div>
+  );
+}

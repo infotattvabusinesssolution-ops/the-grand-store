@@ -46,14 +46,43 @@ const generateEmailTemplate = (title, content) => {
     }
     h1, h2, h3 {
       color: ${BRAND_COLOR_GOLD};
-      font-family: 'Times New Roman', Times, serif;
+      font-family: 'Playfair Display', 'Times New Roman', Times, serif;
       font-weight: normal;
-      margin-top: 0;
+      margin-top: 14px;
+      margin-bottom: 8px;
     }
     h1 {
       font-size: 24px;
       letter-spacing: 1px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
+    }
+    h2 {
+      font-size: 20px;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+    h3 {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    p {
+      margin: 0 0 14px 0;
+      line-height: 1.65;
+    }
+    blockquote {
+      border-left: 3px solid ${BRAND_COLOR_GOLD};
+      padding: 8px 16px;
+      margin: 16px 0;
+      background-color: #12100d;
+      color: #ded8ce;
+      font-style: italic;
+    }
+    ul, ol {
+      padding-left: 24px;
+      margin: 10px 0 16px 0;
+    }
+    li {
+      margin-bottom: 6px;
     }
     .btn {
       display: inline-block;

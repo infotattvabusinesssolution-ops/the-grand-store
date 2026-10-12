@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../../api';
+import RichTextEditor from '../../components/RichTextEditor';
 
 // Helper to normalize any source string into the 3 canonical store keys
 export const getStoreCategory = (source, isGiveawayEntry = false) => {
@@ -1040,7 +1041,7 @@ export default function AdminNewsletter() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <form 
             onSubmit={handleSend} 
-            className="bg-[#0f0e0c] border border-[#c9a35b]/30 rounded-3xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden"
+            className="bg-[#0f0e0c] border border-[#c9a35b]/30 rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden"
           >
             {/* Modal Header */}
             <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/40 shrink-0">
@@ -1297,20 +1298,19 @@ export default function AdminNewsletter() {
                 />
               </div>
 
-              {/* HTML Body */}
-              <div className="flex-1 flex flex-col min-h-[220px]">
+              {/* Email Content (Visual Rich Text Editor) */}
+              <div className="flex-1 flex flex-col min-h-[300px]">
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-white/60 text-xs uppercase tracking-widest font-bold">
-                    Email Content (HTML Supported)
+                    Email Content (Rich Text Editor)
                   </label>
                   <span className="text-[10px] text-[#c9a35b]/80 font-mono">Dispatched with luxury header branding</span>
                 </div>
-                <textarea 
+                <RichTextEditor
                   value={htmlContent}
-                  onChange={(e) => setHtmlContent(e.target.value)}
-                  className="w-full flex-1 min-h-[180px] bg-black/50 border border-white/10 rounded-xl p-4 text-white font-mono text-xs focus:outline-none focus:border-[#c9a35b] transition-colors leading-relaxed placeholder-white/20"
-                  placeholder="<h2>Exclusive Drop Notice</h2><p>Dear Connoisseur,</p><p>We are delighted to present a private release...</p>"
-                  required
+                  onChange={setHtmlContent}
+                  subject={subject}
+                  placeholder="Type your email message here normally... Highlight text to format headings, fonts, colors, and lists."
                 />
               </div>
             </div>
