@@ -44,11 +44,22 @@ const heroFilms = [
     ctaText: 'Explore',
     ctaLink: 'https://cigarconnoisseurclub.com',
   },
+  {
+    src: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?q=80&w=2070&auto=format&fit=crop',
+    isImage: true,
+    label: 'Join our exclusive Wine Farm',
+    maxTime: 8,
+    titleLine1: 'The Grand',
+    titleLine2: 'Wine Farm.',
+    titleLine2Class: 'hero-title-line font-serif not-italic text-[#c9a35b]',
+    ctaText: 'Explore',
+    ctaLink: 'https://grandstoreglobal.com/winefarm',
+  },
 ]
 
 export default function HeroDesktop() {
   const sectionRef = useRef(null)
-  const videoRef = useRef(null)
+  const mediaRef = useRef(null)
   const heroContentRef = useRef(null)
   const transitionLockRef = useRef(false)
   const [activeFilmIndex, setActiveFilmIndex] = useState(0)
@@ -56,15 +67,15 @@ export default function HeroDesktop() {
   const changeFilm = (nextIndex) => {
     if (nextIndex === activeFilmIndex || transitionLockRef.current) return
 
-    const video = videoRef.current
-    if (!video) {
+    const media = mediaRef.current
+    if (!media) {
       setActiveFilmIndex(nextIndex)
       return
     }
 
     transitionLockRef.current = true
-    gsap.killTweensOf(video)
-    gsap.to(video, {
+    gsap.killTweensOf(media)
+    gsap.to(media, {
       autoAlpha: 0,
       scale: 1.018,
       duration: 0.42,
@@ -93,39 +104,61 @@ export default function HeroDesktop() {
   }, [])
 
   useEffect(() => {
-    const video = videoRef.current
-    if (!video) return undefined
+    const media = mediaRef.current
+    if (!media) return undefined
+    
+    const activeFilm = heroFilms[activeFilmIndex]
 
     transitionLockRef.current = false
-    video.currentTime = 0
-    video.muted = true
-    video.defaultMuted = true
-    video.volume = 0
+
+    if (activeFilm.isImage) {
+      // It's an image, so no video events. Use a timer.
+      const timer = setTimeout(() => {
+        changeFilm((activeFilmIndex + 1) % heroFilms.length)
+      }, (activeFilm.maxTime || 8) * 1000)
+
+      gsap.fromTo(
+        media,
+        { autoAlpha: 0, scale: 1.018 },
+        { autoAlpha: 1, scale: 1, duration: 0.72, ease: 'power2.out' },
+      )
+
+      return () => {
+        clearTimeout(timer)
+        gsap.killTweensOf(media)
+      }
+    }
+
+    // It's a video
+    media.currentTime = 0
+    media.muted = true
+    media.defaultMuted = true
+    media.volume = 0
 
     const revealVideo = () => {
-      video.muted = true
-      video.volume = 0
-      video.play().catch(() => undefined)
+      media.muted = true
+      media.volume = 0
+      media.play().catch(() => undefined)
       gsap.fromTo(
-        video,
+        media,
         { autoAlpha: 0, scale: 1.018 },
         { autoAlpha: 1, scale: 1, duration: 0.72, ease: 'power2.out' },
       )
     }
 
-    if (video.readyState >= 3) revealVideo()
-    else video.addEventListener('canplay', revealVideo, { once: true })
+    if (media.readyState >= 3) revealVideo()
+    else media.addEventListener('canplay', revealVideo, { once: true })
 
     return () => {
-      video.removeEventListener('canplay', revealVideo)
-      video.pause()
-      gsap.killTweensOf(video)
+      media.removeEventListener('canplay', revealVideo)
+      media.pause()
+      gsap.killTweensOf(media)
     }
   }, [activeFilmIndex])
 
   const handleFilmProgress = (event) => {
     const film = heroFilms[activeFilmIndex]
-    if (event.currentTarget.currentTime >= film.maxTime) {
+    if (!film.isImage && event.currentTarget.currentTime >= film.maxTime) {
       changeFilm((activeFilmIndex + 1) % heroFilms.length)
     }
   }
@@ -135,20 +168,30 @@ export default function HeroDesktop() {
   return (
     <section className="hero-scroll" ref={sectionRef}>
       <div className="hero-sticky">
-        <video
-          key={activeFilm.src}
-          ref={videoRef}
-          className="hero-video"
-          src={activeFilm.src}
-          muted
-          defaultMuted
-          autoPlay
-          playsInline
-          preload="auto"
-          onTimeUpdate={handleFilmProgress}
-          onEnded={() => changeFilm((activeFilmIndex + 1) % heroFilms.length)}
-          aria-label={activeFilm.label}
-        />
+        {activeFilm.isImage ? (
+          <img
+            key={activeFilm.src}
+            ref={mediaRef}
+            className="hero-video object-cover"
+            src={activeFilm.src}
+            alt={activeFilm.label}
+          />
+        ) : (
+          <video
+            key={activeFilm.src}
+            ref={mediaRef}
+            className="hero-video"
+            src={activeFilm.src}
+            muted
+            defaultMuted
+            autoPlay
+            playsInline
+            preload="auto"
+            onTimeUpdate={handleFilmProgress}
+            onEnded={() => changeFilm((activeFilmIndex + 1) % heroFilms.length)}
+            aria-label={activeFilm.label}
+          />
+        )}
         <div className="hero-shade" />
         <div className="hero-grain" />
 
@@ -158,17 +201,19 @@ export default function HeroDesktop() {
               <span className="hero-title-line">{activeFilm.titleLine1}</span>
               <span className={activeFilm.titleLine2Class || "hero-title-line italic"}>{activeFilm.titleLine2}</span>
             </h1>
-            <div className="hero-cta-row" key={`cta-${activeFilmIndex}`}>
-              {activeFilm.ctaLink.startsWith('http') || activeFilm.ctaLink.startsWith('#') ? (
-                <a className="button button-gold" href={activeFilm.ctaLink} target={activeFilm.ctaLink.startsWith('http') ? '_blank' : '_self'} rel="noreferrer">
-                  {activeFilm.ctaText} <ArrowRight size={17} />
-                </a>
-              ) : (
-                <Link className="button button-gold" to={activeFilm.ctaLink}>
-                  {activeFilm.ctaText} <ArrowRight size={17} />
-                </Link>
-              )}
-            </div>
+            {activeFilm.ctaText && (
+              <div className="hero-cta-row" key={`cta-${activeFilmIndex}`}>
+                {activeFilm.ctaLink.startsWith('http') || activeFilm.ctaLink.startsWith('#') ? (
+                  <a className="button button-gold" href={activeFilm.ctaLink} target={activeFilm.ctaLink.startsWith('http') ? '_blank' : '_self'} rel="noreferrer">
+                    {activeFilm.ctaText} <ArrowRight size={17} />
+                  </a>
+                ) : (
+                  <Link className="button button-gold" to={activeFilm.ctaLink}>
+                    {activeFilm.ctaText} <ArrowRight size={17} />
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
