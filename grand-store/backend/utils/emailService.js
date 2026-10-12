@@ -91,6 +91,8 @@ const sendEmail = async ({
   replyTo,
   type,
   channel,
+  skipBranding = false,
+  isPlainTextOnly = false,
 }) => {
   try {
     const selectedChannel = resolveChannel({ type, channel, subject });
@@ -102,17 +104,17 @@ const sendEmail = async ({
     const effectiveReplyTo = replyTo || senderEmail;
 
     const plainText = text || (typeof html === "string" ? html.replace(/<[^>]+>/g, "\n").replace(/\n\s*\n/g, "\n").trim() : "");
-    const brandedEmail = prepareEmailBranding(html, attachments);
+    const emailPayload = skipBranding ? { html, attachments: attachments || [] } : prepareEmailBranding(html, attachments);
 
     const mailOptions = {
       from: effectiveFrom,
       to,
-      bcc,
+      ...(bcc ? { bcc } : {}),
       replyTo: effectiveReplyTo,
       subject,
       text: plainText,
-      html: brandedEmail.html,
-      attachments: brandedEmail.attachments,
+      ...(isPlainTextOnly || !emailPayload.html ? {} : { html: emailPayload.html }),
+      ...(emailPayload.attachments && emailPayload.attachments.length > 0 ? { attachments: emailPayload.attachments } : {}),
     };
 
     const info = await defaultTransporter.sendMail(mailOptions);

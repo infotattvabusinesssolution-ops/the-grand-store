@@ -23,8 +23,29 @@ import {
   Quote,
   Check,
   X,
-  ExternalLink
+  ExternalLink,
+  FileText,
+  Moon,
+  Sun
 } from 'lucide-react';
+
+const stripToPlainText = (raw) => {
+  if (!raw) return '';
+  return raw
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/h[1-6]>/gi, '\n\n')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\n\s*\n\s*\n/g, '\n\n')
+    .trim();
+};
 
 const FONT_OPTIONS = [
   { label: 'Default Serif', value: "'Playfair Display', Georgia, serif" },
@@ -56,10 +77,23 @@ export default function RichTextEditor({
   value = '',
   onChange,
   subject = '',
+  emailFormat = 'normal',
   placeholder = 'Type your message normally... Highlight text to format headings, fonts, colors, and lists.'
 }) {
   const editorRef = useRef(null);
   const [mode, setMode] = useState('visual'); // 'visual' | 'code' | 'preview'
+  const [canvasTheme, setCanvasTheme] = useState(() => {
+    return emailFormat === 'luxury' ? 'dark' : 'paper';
+  });
+
+  useEffect(() => {
+    if (emailFormat === 'luxury') {
+      setCanvasTheme('dark');
+    } else {
+      setCanvasTheme('paper');
+    }
+  }, [emailFormat]);
+
   const [selectedFont, setSelectedFont] = useState(FONT_OPTIONS[0].value);
   const [selectedSize, setSelectedSize] = useState('3');
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -250,15 +284,31 @@ export default function RichTextEditor({
           </button>
         </div>
 
-        {/* Quick Luxury Snippets Dropdown */}
-        <div className="relative">
+        <div className="flex items-center gap-2">
+          {/* Canvas Mode Toggle: Paper vs Dark */}
           <button
             type="button"
-            onClick={() => setShowSnippets(!showSnippets)}
-            className="px-3 py-1.5 bg-[#c9a35b]/10 hover:bg-[#c9a35b]/20 border border-[#c9a35b]/30 rounded-xl text-xs text-[#c9a35b] font-medium transition-all flex items-center gap-1.5 cursor-pointer"
+            onClick={() => setCanvasTheme(prev => prev === 'paper' ? 'dark' : 'paper')}
+            className={`px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer border ${
+              canvasTheme === 'paper'
+                ? 'bg-white text-zinc-900 border-zinc-300 shadow-sm'
+                : 'bg-white/5 text-white/70 border-white/10 hover:text-white'
+            }`}
+            title="Switch between Paper Document Canvas (White) and Dark Canvas"
           >
-            <Sparkles size={13} /> Quick Templates
+            {canvasTheme === 'paper' ? <FileText size={13} className="text-amber-600" /> : <Moon size={13} />}
+            <span>{canvasTheme === 'paper' ? 'Paper Canvas' : 'Dark Canvas'}</span>
           </button>
+
+          {/* Quick Luxury Snippets Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowSnippets(!showSnippets)}
+              className="px-3 py-1.5 bg-[#c9a35b]/10 hover:bg-[#c9a35b]/20 border border-[#c9a35b]/30 rounded-xl text-xs text-[#c9a35b] font-medium transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Sparkles size={13} /> Quick Templates
+            </button>
 
           {showSnippets && (
             <div className="absolute right-0 top-full mt-2 w-64 bg-[#14120e] border border-[#c9a35b]/30 rounded-2xl p-2 shadow-2xl z-30 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
@@ -297,6 +347,7 @@ export default function RichTextEditor({
           )}
         </div>
       </div>
+    </div>
 
       {/* WYSIWYG Formatting Toolbar (Visible in Visual Mode) */}
       {mode === 'visual' && (
@@ -530,8 +581,19 @@ export default function RichTextEditor({
         </div>
       )}
 
+      {/* Format Notice Strip */}
+      {emailFormat === 'plain' && (
+        <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-amber-300 text-xs flex items-center justify-between">
+          <span className="flex items-center gap-1.5 font-medium">
+            ⚡ <strong>Pure Plain Text Active:</strong> Recipient receives raw text (no HTML tags). Spacing, line breaks, and bullet points will be preserved cleanly.
+          </span>
+        </div>
+      )}
+
       {/* Editor Body */}
-      <div className="relative min-h-[220px] max-h-[380px] flex flex-col overflow-hidden bg-black/50">
+      <div className={`relative min-h-[220px] max-h-[380px] flex flex-col overflow-hidden transition-colors ${
+        canvasTheme === 'paper' ? 'bg-[#ffffff]' : 'bg-black/50'
+      }`}>
         {mode === 'visual' && (
           <div className="relative flex-1 flex flex-col overflow-y-auto scrollbar-thin">
             <div
@@ -539,7 +601,11 @@ export default function RichTextEditor({
               contentEditable
               onInput={handleEditorInput}
               onPaste={handlePaste}
-              className="flex-1 p-5 text-white/90 focus:outline-none focus:ring-0 leading-relaxed font-sans text-sm selection:bg-[#c9a35b]/30 selection:text-white"
+              className={`flex-1 p-5 focus:outline-none focus:ring-0 leading-relaxed font-sans text-sm ${
+                canvasTheme === 'paper'
+                  ? 'text-zinc-900 selection:bg-amber-100 selection:text-zinc-900'
+                  : 'text-white/90 selection:bg-[#c9a35b]/30 selection:text-white'
+              }`}
               style={{
                 minHeight: '220px',
               }}
@@ -548,7 +614,9 @@ export default function RichTextEditor({
 
             {/* Subtle placeholder when empty */}
             {(!value || value === '<p><br></p>' || value === '<br>') && (
-              <div className="absolute top-5 left-5 text-white/25 pointer-events-none text-sm font-sans select-none italic">
+              <div className={`absolute top-5 left-5 pointer-events-none text-sm font-sans select-none italic ${
+                canvasTheme === 'paper' ? 'text-zinc-400' : 'text-white/25'
+              }`}>
                 {placeholder}
               </div>
             )}
@@ -565,47 +633,86 @@ export default function RichTextEditor({
           />
         )}
 
-        {/* Email Live Preview (Branded Inbox Mockup) */}
+        {/* Email Live Preview */}
         {mode === 'preview' && (
           <div className="flex-1 overflow-y-auto p-4 bg-[#0a0a0a] scrollbar-thin">
-            <div className="max-w-[560px] mx-auto bg-[#050505] border border-white/15 rounded-2xl overflow-hidden shadow-2xl text-white">
-              {/* Luxury Header Banner */}
-              <div className="bg-gradient-to-b from-[#161410] to-[#0a0a0a] p-6 text-center border-b border-[#c9a35b]/30">
-                <span className="text-[10px] tracking-[0.4em] uppercase text-[#c9a35b] font-serif block mb-1">
-                  The Concierge Dispatch
-                </span>
-                <h3 className="font-serif text-2xl text-[#f5d77f] tracking-widest font-normal m-0">
-                  THE GRAND STORE
-                </h3>
-                {subject && (
-                  <p className="mt-2 text-xs text-white/60 italic font-serif">
-                    &ldquo;{subject}&rdquo;
-                  </p>
-                )}
+            {emailFormat === 'plain' ? (
+              /* Pure Plain Text Simulated Inbox Preview */
+              <div className="max-w-[580px] mx-auto bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-2xl text-zinc-900 font-sans">
+                <div className="bg-zinc-100/90 px-5 py-3 border-b border-zinc-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="space-y-0.5">
+                    <div><span className="text-zinc-500 font-mono">From:</span> The Grand Store &lt;info@grandstore.co.za&gt;</div>
+                    <div><span className="text-zinc-500 font-mono">Subject:</span> <strong className="text-zinc-800">{subject || '(No Subject)'}</strong></div>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-zinc-200 text-zinc-700">
+                    text/plain
+                  </span>
+                </div>
+                <div className="p-6 font-mono text-xs whitespace-pre-wrap leading-relaxed text-zinc-800 selection:bg-zinc-200 bg-white min-h-[160px]">
+                  {stripToPlainText(value) || <span className="text-zinc-400 italic">No text composed yet.</span>}
+                </div>
+                <div className="px-6 py-2.5 bg-zinc-50 border-t border-zinc-100 text-[11px] text-zinc-400 flex items-center justify-between">
+                  <span>Dispatched strictly as plain text (no HTML)</span>
+                  <span className="font-mono text-[10px] text-zinc-500">MIME text/plain</span>
+                </div>
               </div>
-
-              {/* Email Content Body */}
-              <div 
-                className="p-6 text-white/90 text-sm leading-relaxed font-sans email-preview-content"
-                dangerouslySetInnerHTML={{
-                  __html: value || '<p style="color: rgba(255,255,255,0.4); font-style: italic; text-align: center;">No email content composed yet.</p>'
-                }}
-              />
-
-              {/* Signoff */}
-              <div className="px-6 pb-6 pt-2 border-t border-white/5 text-xs text-white/60">
-                <p className="m-0 mb-1">Best Regards,</p>
-                <strong className="text-[#c9a35b] font-serif tracking-wide text-sm">
-                  The Grand Store Team
-                </strong>
+            ) : emailFormat === 'normal' ? (
+              /* Clean Normal Text Email Preview */
+              <div className="max-w-[580px] mx-auto bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-2xl text-zinc-900 font-sans">
+                <div className="bg-zinc-50 px-5 py-3 border-b border-zinc-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="space-y-0.5">
+                    <div><span className="text-zinc-500 font-mono">From:</span> The Grand Store &lt;info@grandstore.co.za&gt;</div>
+                    <div><span className="text-zinc-500 font-mono">Subject:</span> <strong className="text-zinc-800">{subject || '(No Subject)'}</strong></div>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    Clean Normal Email
+                  </span>
+                </div>
+                <div 
+                  className="p-6 text-zinc-900 text-sm leading-relaxed font-sans email-preview-clean bg-white min-h-[160px]"
+                  dangerouslySetInnerHTML={{
+                    __html: value || '<p style="color: #9ca3af; font-style: italic;">No email content composed yet.</p>'
+                  }}
+                />
+                <div className="px-6 py-2.5 bg-zinc-50 border-t border-zinc-100 text-[11px] text-zinc-400 flex items-center justify-between">
+                  <span>Clean standard inbox format &bull; White background</span>
+                  <span className="font-mono text-[10px] text-zinc-500">Standard Email</span>
+                </div>
               </div>
-
-              {/* Email Footer */}
-              <div className="bg-[#020202] p-4 text-center border-t border-white/10 text-[11px] text-white/40 leading-relaxed font-sans">
-                <p className="m-0">© {new Date().getFullYear()} The Grand Store. All rights reserved.</p>
-                <p className="m-0 mt-0.5 text-white/30">Official Concierge Dispatch &bull; support@grandstoreglobal.com</p>
+            ) : (
+              /* Luxury Dark Flyer Mockup */
+              <div className="max-w-[560px] mx-auto bg-[#050505] border border-white/15 rounded-2xl overflow-hidden shadow-2xl text-white">
+                <div className="bg-gradient-to-b from-[#161410] to-[#0a0a0a] p-6 text-center border-b border-[#c9a35b]/30">
+                  <span className="text-[10px] tracking-[0.4em] uppercase text-[#c9a35b] font-serif block mb-1">
+                    The Concierge Dispatch
+                  </span>
+                  <h3 className="font-serif text-2xl text-[#f5d77f] tracking-widest font-normal m-0">
+                    THE GRAND STORE
+                  </h3>
+                  {subject && (
+                    <p className="mt-2 text-xs text-white/60 italic font-serif">
+                      &ldquo;{subject}&rdquo;
+                    </p>
+                  )}
+                </div>
+                <div 
+                  className="p-6 text-white/90 text-sm leading-relaxed font-sans email-preview-content min-h-[160px]"
+                  dangerouslySetInnerHTML={{
+                    __html: value || '<p style="color: rgba(255,255,255,0.4); font-style: italic; text-align: center;">No email content composed yet.</p>'
+                  }}
+                />
+                <div className="px-6 pb-6 pt-2 border-t border-white/5 text-xs text-white/60">
+                  <p className="m-0 mb-1">Best Regards,</p>
+                  <strong className="text-[#c9a35b] font-serif tracking-wide text-sm">
+                    The Grand Store Team
+                  </strong>
+                </div>
+                <div className="bg-[#020202] p-4 text-center border-t border-white/10 text-[11px] text-white/40 leading-relaxed font-sans">
+                  <p className="m-0">© {new Date().getFullYear()} The Grand Store. All rights reserved.</p>
+                  <p className="m-0 mt-0.5 text-white/30">Official Concierge Dispatch &bull; support@grandstoreglobal.com</p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>

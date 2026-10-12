@@ -1,6 +1,6 @@
 const Newsletter = require('../models/Newsletter');
 const { sendEmail } = require('../utils/emailService');
-const { newsletterWelcomeTemplate, millionaireNewsletterWelcomeTemplate, cigarNewsletterWelcomeTemplate, bulkNewsletterTemplate } = require('../utils/emailTemplates');
+const { newsletterWelcomeTemplate, millionaireNewsletterWelcomeTemplate, cigarNewsletterWelcomeTemplate, bulkNewsletterTemplate, cleanStandardEmailTemplate } = require('../utils/emailTemplates');
 const geoip = require('geoip-lite');
 const countryNames = new Intl.DisplayNames(['en'], { type: 'region' });
 
@@ -173,10 +173,10 @@ const getSubscribers = async (req, res) => {
 // @access  Private/Admin
 const sendBulkNewsletter = async (req, res) => {
   try {
-    const { subject, htmlContent, country, source, recipientEmails } = req.body || {};
+    const { subject, htmlContent, country, source, recipientEmails, emailFormat = 'normal' } = req.body || {};
     
     if (!subject || !htmlContent) {
-      return res.status(400).json({ message: 'Subject and HTML content are required' });
+      return res.status(400).json({ message: 'Subject and email content are required' });
     }
 
     let emails = [];
@@ -215,23 +215,80 @@ const sendBulkNewsletter = async (req, res) => {
     }
 
     try {
-      // If content was submitted as plain text without HTML tags, wrap nicely into luxury paragraphs
+      // Helper to generate clean plain text
+      const stripToPlainText = (raw) => {
+        if (!raw) return '';
+        return raw
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/p>/gi, '\n\n')
+          .replace(/<\/h[1-6]>/gi, '\n\n')
+          .replace(/<li[^>]*>/gi, '• ')
+          .replace(/<\/li>/gi, '\n')
+          .replace(/<[^>]+>/g, '')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/\n\s*\n\s*\n/g, '\n\n')
+          .trim();
+      };
+
+      const plainText = stripToPlainText(htmlContent);
+
+      // If content was submitted as plain text without HTML tags, wrap nicely into paragraphs
       let formattedHtml = htmlContent;
       if (typeof formattedHtml === 'string' && !/<[a-z][\s\S]*>/i.test(formattedHtml)) {
         formattedHtml = formattedHtml
           .split(/\r?\n\r?\n/)
           .map(p => p.trim())
           .filter(Boolean)
-          .map(p => `<p style="margin-bottom: 16px; line-height: 1.65; color: #e0e0e0;">${p.replace(/\r?\n/g, '<br/>')}</p>`)
+          .map(p => `<p style="margin-bottom: 14px; line-height: 1.65; color: #1a1a1a;">${p.replace(/\r?\n/g, '<br/>')}</p>`)
           .join('');
       }
 
-      await sendEmail({
-        to: process.env.SMTP_USER || emails[0],
-        bcc: emails.join(','),
-        subject,
-        html: bulkNewsletterTemplate(subject, formattedHtml)
-      });
+      const isPlain = emailFormat === 'plain';
+      const isLuxury = emailFormat === 'luxury';
+
+      let finalHtml = undefined;
+      let skipBranding = true;
+
+      if (isPlain) {
+        // Pure plain text: no HTML
+        finalHtml = undefined;
+        skipBranding = true;
+      } else if (isLuxury) {
+        // Dark luxury newsletter flyer with branding header
+        finalHtml = bulkNewsletterTemplate(subject, formattedHtml);
+        skipBranding = false;
+      } else {
+        // Default: Clean normal text email on white background (no dark flyer wrapper)
+        finalHtml = cleanStandardEmailTemplate(subject, formattedHtml);
+        skipBranding = true;
+      }
+
+      if (emails.length === 1) {
+        // Direct single recipient delivery
+        await sendEmail({
+          to: emails[0],
+          subject,
+          text: plainText,
+          html: isPlain ? undefined : finalHtml,
+          skipBranding,
+          isPlainTextOnly: isPlain,
+        });
+      } else {
+        // Bulk delivery via BCC
+        await sendEmail({
+          to: process.env.SMTP_USER || emails[0],
+          bcc: emails.join(','),
+          subject,
+          text: plainText,
+          html: isPlain ? undefined : finalHtml,
+          skipBranding,
+          isPlainTextOnly: isPlain,
+        });
+      }
     } catch (err) {
       console.error(`Failed to send bulk newsletter batch:`, err);
       return res.status(500).json({ message: 'Failed to send newsletter. SMTP error: ' + (err.message || 'Delivery failed') });

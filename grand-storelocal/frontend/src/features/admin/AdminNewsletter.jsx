@@ -3,7 +3,7 @@ import {
   Mail, Search, Filter, Send, X, Users, Globe, Clock, CheckCircle, 
   XCircle, CheckSquare, Square, RotateCcw, Check, Sparkles, UserCheck, 
   ShieldAlert, Flame, Crown, Store, Trophy, Dice5, Gift, Phone, User, Award,
-  ExternalLink 
+  ExternalLink, FileText, AlignLeft 
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../../api';
@@ -90,6 +90,16 @@ export default function AdminNewsletter() {
   const [subject, setSubject] = useState('');
   const [htmlContent, setHtmlContent] = useState('');
   const [sending, setSending] = useState(false);
+  const [emailFormat, setEmailFormat] = useState(() => {
+    return localStorage.getItem('admin_newsletter_email_format') || 'normal';
+  });
+
+  const handleFormatSelect = (fmt) => {
+    setEmailFormat(fmt);
+    try {
+      localStorage.setItem('admin_newsletter_email_format', fmt);
+    } catch (_) {}
+  };
   const [message, setMessage] = useState('');
 
   // M Collection Bottle Giveaway & Random Draw state
@@ -386,7 +396,8 @@ export default function AdminNewsletter() {
 
       const payload = {
         subject,
-        htmlContent
+        htmlContent,
+        emailFormat
       };
 
       if (recipientMode === 'selected') {
@@ -1298,18 +1309,81 @@ export default function AdminNewsletter() {
                 />
               </div>
 
+              {/* Email Delivery Format Selector */}
+              <div>
+                <label className="block text-white/60 text-xs uppercase tracking-widest font-bold mb-2">
+                  Email Delivery Format
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => handleFormatSelect('normal')}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                      emailFormat === 'normal'
+                        ? 'bg-[#c9a35b]/20 border-[#c9a35b] text-[#c9a35b] shadow-[0_0_15px_rgba(201,163,91,0.25)]'
+                        : 'bg-black/40 border-white/10 text-white/70 hover:border-white/20'
+                    }`}
+                  >
+                    <FileText size={18} className={emailFormat === 'normal' ? 'text-[#c9a35b]' : 'text-white/40'} />
+                    <div>
+                      <div className="text-xs font-bold text-white">Normal Text Email</div>
+                      <div className="text-[10px] text-white/40">Clean white inbox format (Recommended)</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleFormatSelect('plain')}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                      emailFormat === 'plain'
+                        ? 'bg-[#c9a35b]/20 border-[#c9a35b] text-[#c9a35b] shadow-[0_0_15px_rgba(201,163,91,0.25)]'
+                        : 'bg-black/40 border-white/10 text-white/70 hover:border-white/20'
+                    }`}
+                  >
+                    <AlignLeft size={18} className={emailFormat === 'plain' ? 'text-[#c9a35b]' : 'text-white/40'} />
+                    <div>
+                      <div className="text-xs font-bold text-white">Pure Plain Text</div>
+                      <div className="text-[10px] text-white/40">100% plain text (No HTML tags at all)</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleFormatSelect('luxury')}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                      emailFormat === 'luxury'
+                        ? 'bg-[#c9a35b]/20 border-[#c9a35b] text-[#c9a35b] shadow-[0_0_15px_rgba(201,163,91,0.25)]'
+                        : 'bg-black/40 border-white/10 text-white/70 hover:border-white/20'
+                    }`}
+                  >
+                    <Sparkles size={18} className={emailFormat === 'luxury' ? 'text-[#c9a35b]' : 'text-white/40'} />
+                    <div>
+                      <div className="text-xs font-bold text-white">Luxury Dark Flyer</div>
+                      <div className="text-[10px] text-white/40">Black background with header banner</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               {/* Email Content (Visual Rich Text Editor) */}
               <div className="flex-1 flex flex-col min-h-[300px]">
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-white/60 text-xs uppercase tracking-widest font-bold">
-                    Email Content (Rich Text Editor)
+                    Email Content {emailFormat === 'plain' ? '(Plain Text Mode)' : '(Rich Text Editor)'}
                   </label>
-                  <span className="text-[10px] text-[#c9a35b]/80 font-mono">Dispatched with luxury header branding</span>
+                  <span className="text-[10px] text-[#c9a35b]/80 font-mono">
+                    {emailFormat === 'normal' 
+                      ? 'Delivers as clean normal text email (white background, styled text)' 
+                      : emailFormat === 'plain'
+                      ? 'Delivers strictly as plain text (no HTML tags)'
+                      : 'Delivers with luxury dark header branding'}
+                  </span>
                 </div>
                 <RichTextEditor
                   value={htmlContent}
                   onChange={setHtmlContent}
                   subject={subject}
+                  emailFormat={emailFormat}
                   placeholder="Type your email message here normally... Highlight text to format headings, fonts, colors, and lists."
                 />
               </div>
@@ -1317,9 +1391,15 @@ export default function AdminNewsletter() {
 
             {/* Modal Footer */}
             <div className="p-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4 bg-black/40 shrink-0">
-              <div className="text-xs text-white/50 flex items-center gap-1.5">
-                <Users size={14} className="text-[#c9a35b]" />
-                <span>Will dispatch to <strong className="text-white font-mono">{targetRecipientCount}</strong> subscriber{targetRecipientCount === 1 ? '' : 's'}</span>
+              <div className="text-xs text-white/50 flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Users size={14} className="text-[#c9a35b]" />
+                  <span>Will dispatch to <strong className="text-white font-mono">{targetRecipientCount}</strong> subscriber{targetRecipientCount === 1 ? '' : 's'}</span>
+                </div>
+                <span className="text-white/20">&bull;</span>
+                <span className="text-[11px] font-mono text-[#c9a35b]">
+                  {emailFormat === 'plain' ? 'Format: Pure Plain Text' : emailFormat === 'normal' ? 'Format: Clean Normal Email' : 'Format: Luxury Dark Flyer'}
+                </span>
               </div>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">

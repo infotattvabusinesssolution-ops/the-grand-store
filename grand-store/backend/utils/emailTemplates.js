@@ -878,6 +878,88 @@ const bulkNewsletterTemplate = (subject, htmlContent) => {
   return generateEmailTemplate(subject, htmlContent);
 };
 
+const cleanStandardEmailTemplate = (subject, htmlContent) => {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject || 'The Grand Store'}</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff !important;
+      color: #1a1a1a !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.65;
+    }
+    .email-wrapper {
+      width: 100% !important;
+      background-color: #ffffff !important;
+      padding: 24px 16px;
+    }
+    .email-container {
+      max-width: 620px;
+      margin: 0 auto;
+      background-color: #ffffff !important;
+      color: #1a1a1a !important;
+    }
+    h1, h2, h3, h4 {
+      color: #111111 !important;
+      font-family: inherit;
+      font-weight: 600;
+      margin-top: 18px;
+      margin-bottom: 8px;
+    }
+    h1 { font-size: 23px; }
+    h2 { font-size: 19px; }
+    h3 { font-size: 16px; }
+    p {
+      margin: 0 0 14px 0;
+      line-height: 1.65;
+      color: #222222 !important;
+    }
+    a {
+      color: #b38628;
+      text-decoration: underline;
+    }
+    blockquote {
+      border-left: 3px solid #c9a35b;
+      margin: 14px 0;
+      padding: 8px 14px;
+      background: #faf8f5;
+      color: #444444;
+      font-style: italic;
+    }
+    ul, ol {
+      padding-left: 22px;
+      margin: 10px 0 14px 0;
+    }
+    li {
+      margin-bottom: 6px;
+      color: #222222 !important;
+    }
+    hr {
+      border: 0;
+      border-top: 1px solid #e5e5e5;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #ffffff; color: #1a1a1a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <div class="email-wrapper" style="width: 100%; background-color: #ffffff; padding: 24px 16px;">
+    <div class="email-container" style="max-width: 620px; margin: 0 auto; background-color: #ffffff; color: #1a1a1a; font-size: 15px; line-height: 1.65;">
+      ${htmlContent}
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+};
+
 const birthdayCelebrationEmailTemplate = ({
   name,
   discountEnabled = true,
@@ -1295,6 +1377,7 @@ module.exports = {
   auctionReminderTemplate,
   auctionWinTemplate,
   bulkNewsletterTemplate,
+  cleanStandardEmailTemplate,
   genericNotificationTemplate,
   birthdayCelebrationEmailTemplate,
   eventTicketConfirmationTemplate,
