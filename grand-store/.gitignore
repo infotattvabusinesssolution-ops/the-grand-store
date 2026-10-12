@@ -46,3 +46,12 @@ SKILL.md
 
 # Database dumps
 *.sql
+
+# Temporary, scratch, and backup files
+scratch/
+**/scratch/
+*.bak
+temp_docx/
+**/temp_docx/
+.tmp/
+**/.tmp/

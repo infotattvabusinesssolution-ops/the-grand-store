@@ -161,4 +161,9 @@ SKILL.md
 *.zip
 scratch/
 **/scratch/
+*.bak
+temp_docx/
+**/temp_docx/
+.tmp/
+**/.tmp/
 
