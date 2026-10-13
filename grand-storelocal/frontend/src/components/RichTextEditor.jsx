@@ -408,26 +408,26 @@ export default function RichTextEditor({
 
       {/* Editor Content Box — Clean, Spacious White Document Canvas */}
       {!isPreview ? (
-        <div className="relative bg-white min-h-[300px] max-h-[460px] overflow-y-auto p-6 transition-all scrollbar-thin">
+        <div className="relative bg-white min-h-[300px] max-h-[480px] overflow-y-auto pl-6 pr-4 py-5 transition-all editor-canvas-scroll">
           <div
             ref={editorRef}
             contentEditable
             onInput={handleEditorInput}
             onPaste={handlePaste}
-            className="focus:outline-none focus:ring-0 leading-relaxed font-sans text-sm text-[#18181b] min-h-[260px] selection:bg-amber-100 selection:text-zinc-900"
+            className="focus:outline-none focus:ring-0 leading-relaxed font-sans text-sm text-[#18181b] min-h-[220px] selection:bg-amber-100 selection:text-zinc-900"
             data-placeholder={placeholder}
           />
 
           {/* Subtle placeholder when empty */}
           {(!value || value === '<p><br></p>' || value === '<br>') && (
-            <div className="absolute top-6 left-6 text-zinc-400 pointer-events-none text-sm font-sans select-none italic">
+            <div className="absolute top-5 left-6 text-zinc-400 pointer-events-none text-sm font-sans select-none italic pr-8">
               {placeholder}
             </div>
           )}
         </div>
       ) : (
         /* Email Live Preview Tab */
-        <div className="bg-[#0c0a08] min-h-[300px] max-h-[460px] overflow-y-auto p-5 scrollbar-thin">
+        <div className="bg-[#0c0a08] min-h-[300px] max-h-[480px] overflow-y-auto p-5 preview-canvas-scroll">
           {emailFormat === 'plain' ? (
             /* Plain Text Mode Preview */
             <div className="max-w-[620px] mx-auto bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-2xl text-zinc-900 font-sans">
@@ -697,6 +697,62 @@ export default function RichTextEditor({
         .email-preview-content a {
           color: #c9a35b;
           text-decoration: underline;
+        }
+
+        /* Document Canvas Sleek Custom Scrollbar */
+        .editor-canvas-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: #cbd5e1 transparent;
+        }
+        .editor-canvas-scroll::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        .editor-canvas-scroll::-webkit-scrollbar-track {
+          background: transparent;
+          margin: 8px 3px;
+          border-radius: 9999px;
+        }
+        .editor-canvas-scroll::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 9999px;
+          transition: background-color 0.2s ease;
+        }
+        .editor-canvas-scroll::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+        .editor-canvas-scroll::-webkit-scrollbar-button {
+          display: none;
+          width: 0;
+          height: 0;
+        }
+
+        /* Preview Canvas Sleek Custom Scrollbar */
+        .preview-canvas-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(201, 163, 91, 0.35) transparent;
+        }
+        .preview-canvas-scroll::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        .preview-canvas-scroll::-webkit-scrollbar-track {
+          background: transparent;
+          margin: 8px 3px;
+          border-radius: 9999px;
+        }
+        .preview-canvas-scroll::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.18);
+          border-radius: 9999px;
+          transition: background-color 0.2s ease;
+        }
+        .preview-canvas-scroll::-webkit-scrollbar-thumb:hover {
+          background: #c9a35b;
+        }
+        .preview-canvas-scroll::-webkit-scrollbar-button {
+          display: none;
+          width: 0;
+          height: 0;
         }
       `}</style>
     </div>

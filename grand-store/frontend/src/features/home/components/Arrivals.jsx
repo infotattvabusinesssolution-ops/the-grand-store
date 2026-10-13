@@ -96,16 +96,10 @@ export default function Arrivals({ onAdd, onWish, onCompare, compareItems }) {
   const [rotationIndex, setRotationIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Time-to-time rotation: cycle through category bottles every 6 seconds
+  // Keep showcase steady & locked — timer rotation disabled so items stay fixed
   useEffect(() => {
-    if (categoryBuckets.every((b) => b.length <= 1) || isHovered) return;
-
-    const timer = setInterval(() => {
-      setRotationIndex((prev) => prev + 1);
-    }, ROTATION_INTERVAL_MS);
-
-    return () => clearInterval(timer);
-  }, [categoryBuckets, isHovered]);
+    setRotationIndex(0);
+  }, []);
 
   // GSAP animation whenever the bottles rotate
   useEffect(() => {

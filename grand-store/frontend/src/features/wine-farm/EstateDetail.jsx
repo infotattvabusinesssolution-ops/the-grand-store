@@ -177,16 +177,64 @@ export default function EstateDetail() {
              {estate.tagline || (story.foundedYear ? `Handcrafting wines since ${story.foundedYear}` : 'Premium Wine Estate')}
           </p>
           
-          <h1 className="font-serif font-light text-[clamp(36px,6vw,64px)] leading-[1.2] text-white uppercase tracking-normal drop-shadow-lg flex flex-col items-center gap-2">
-            <span className="text-[0.5em] tracking-widest opacity-90 mb-2">Discover</span>
-            {estate.estateName?.split(' ').reduce((acc, word, i) => {
-              if (i % 2 === 0) acc.push([word]);
-              else acc[acc.length - 1].push(word);
-              return acc;
-            }, []).map((chunk, i) => (
-              <span key={i}>{chunk.join(' ')}</span>
-            ))}
-          </h1>
+          {/* Hero Main Brand Presentation */}
+          {(estate.slug === 'bruno-andreu' || slug === 'bruno-andreu' || estate.estateName?.toLowerCase().includes('bruno')) ? (
+            <div className="flex flex-col items-center justify-center text-center my-3 max-w-5xl w-full px-4 select-none animate-fadeIn">
+              {/* Emblem Row: Left Rule + BRUNO + Intertwined BA Monogram + ANDREU + Right Rule */}
+              <div className="flex items-center justify-center gap-3 sm:gap-6 md:gap-8 w-full">
+                {/* Left Thin Rule */}
+                <div className="h-[1px] flex-1 max-w-[50px] sm:max-w-[120px] md:max-w-[180px] bg-white/70 shadow-sm" />
+
+                {/* Brand Typography & Central Monogram */}
+                <div className="flex items-center gap-2.5 sm:gap-5 md:gap-7">
+                  <span className="font-serif font-light text-2xl sm:text-4xl md:text-5xl lg:text-6xl text-white tracking-[0.2em] sm:tracking-[0.26em] drop-shadow-xl">
+                    BRUNO
+                  </span>
+
+                  {/* Intertwined BA Monogram Emblem */}
+                  <div className="relative flex items-center justify-center w-12 sm:w-16 md:w-20 h-16 sm:h-20 md:h-24 select-none shrink-0 mx-0.5">
+                    <span className="absolute font-serif text-4xl sm:text-6xl md:text-7xl font-bold text-white leading-none top-0 -translate-x-1 drop-shadow-2xl">
+                      B
+                    </span>
+                    <span className="absolute font-serif text-3xl sm:text-5xl md:text-6xl font-light text-white/95 leading-none bottom-0 translate-x-1 drop-shadow-2xl">
+                      A
+                    </span>
+                  </div>
+
+                  <span className="font-serif font-light text-2xl sm:text-4xl md:text-5xl lg:text-6xl text-white tracking-[0.2em] sm:tracking-[0.26em] drop-shadow-xl">
+                    ANDREU
+                  </span>
+                </div>
+
+                {/* Right Thin Rule */}
+                <div className="h-[1px] flex-1 max-w-[50px] sm:max-w-[120px] md:max-w-[180px] bg-white/70 shadow-sm" />
+              </div>
+
+              {/* Sub-label: FRANCE */}
+              <span className="text-white/95 uppercase tracking-[0.45em] sm:tracking-[0.6em] md:tracking-[0.7em] text-xs sm:text-sm md:text-base font-light mt-3 sm:mt-4 drop-shadow-md">
+                FRANCE
+              </span>
+            </div>
+          ) : estate.logoUrl ? (
+            <div className="flex flex-col items-center justify-center my-2 max-w-lg w-full px-4">
+              <img
+                src={resolveImageUrl(estate.logoUrl)}
+                alt={estate.estateName}
+                className="max-h-28 sm:max-h-36 w-auto object-contain drop-shadow-2xl"
+              />
+            </div>
+          ) : (
+            <h1 className="font-serif font-light text-[clamp(36px,6vw,64px)] leading-[1.2] text-white uppercase tracking-normal drop-shadow-lg flex flex-col items-center gap-2">
+              <span className="text-[0.5em] tracking-widest opacity-90 mb-2">Discover</span>
+              {estate.estateName?.split(' ').reduce((acc, word, i) => {
+                if (i % 2 === 0) acc.push([word]);
+                else acc[acc.length - 1].push(word);
+                return acc;
+              }, []).map((chunk, i) => (
+                <span key={i}>{chunk.join(' ')}</span>
+              ))}
+            </h1>
+          )}
         </div>
         
         {/* Scroll Down */}

@@ -54,7 +54,7 @@ export function AuthProvider({ children }) {
 
       try {
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const base = isLocalhost ? 'http://localhost:5015' : 'https://api.grandstoreglobal.com';
+        const base = import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:5000' : 'https://api.grandstoreglobal.com');
         
         // Auto-login explicitly requests Master CRM Admin
         const res = await axios.post(`${base}/api/crm/auth/login`, { isDevAuto: true });
@@ -89,7 +89,7 @@ export function AuthProvider({ children }) {
     setLoading(true);
     try {
       const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const base = isLocalhost ? 'http://localhost:5015' : 'https://api.grandstoreglobal.com';
+      const base = import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:5000' : 'https://api.grandstoreglobal.com');
       const res = await axios.post(`${base}/api/crm/auth/login`, { 
         email: email?.trim(), 
         password: password?.trim() 
