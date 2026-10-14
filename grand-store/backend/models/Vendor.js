@@ -13,6 +13,93 @@ const vendorSchema = new mongoose.Schema({
     enum: ['local', 'international', 'flagship'],
     default: 'local'
   },
+  sellingCapabilities: {
+    type: String,
+    enum: ['domestic', 'international', 'both'],
+    default: 'domestic'
+  },
+  // Dedicated Structured Export Capability Profile
+  exportProfile: {
+    approvalStatus: {
+      type: String,
+      enum: ['not_applied', 'pending_approval', 'approved', 'rejected'],
+      default: 'not_applied'
+    },
+    isExportApproved: {
+      type: String,
+      enum: ['not_applied', 'pending_approval', 'approved', 'rejected'],
+      default: 'not_applied'
+    },
+    approvedAt: Date,
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    rejectionReason: String,
+    businessType: {
+      type: String,
+      enum: ['winery', 'distillery', 'brewery', 'manufacturer', 'importer', 'distributor', 'wholesaler', 'other'],
+      default: 'winery'
+    },
+    exportExperience: {
+      type: String,
+      enum: ['first_time', 'occasional', 'established'],
+      default: 'first_time'
+    },
+    customsExportCode: String,
+    exportLicenceStatus: {
+      type: String,
+      enum: ['active', 'applied_for', 'exempt', 'not_applicable'],
+      default: 'active'
+    },
+    supplyCapacity: {
+      monthlyCapacityBottles: { type: Number, default: 0 },
+      maxPerShipmentBottles: { type: Number, default: 0 },
+      standardLeadTimeDays: { type: Number, default: 14 },
+      canFulfilLongTermContracts: { type: Boolean, default: false }
+    },
+    logisticsCapabilities: {
+      palletTypesSupported: [{ type: String }],
+      containerLoadingLocation: String,
+      preferredFreightForwarder: String,
+      exportPackagingReady: { type: Boolean, default: true },
+      bottlesPerCase: { type: Number, default: 6 },
+      casesPerPallet: { type: Number, default: 100 },
+      palletsPer20ftContainer: { type: Number, default: 10 },
+      palletsPer40ftContainer: { type: Number, default: 20 }
+    },
+    markets: {
+      activeMarkets: [String],
+      willingToSupply: [String],
+      restrictedMarkets: [String],
+      exclusiveAgreements: String
+    },
+    tradeTerms: {
+      supportedIncoterms: [{
+        type: String,
+        enum: ['EXW', 'FCA', 'FOB', 'CIF', 'DAP', 'DDP']
+      }],
+      preferredCurrency: {
+        type: String,
+        enum: ['USD', 'EUR', 'GBP', 'ZAR', 'AED'],
+        default: 'USD'
+      },
+      paymentTerms: { type: String, default: '30% deposit upon order confirmation, 70% against Bill of Lading' }
+    },
+    documents: [{
+      docType: {
+        type: String,
+        enum: ['liquor_licence', 'export_code', 'certificate_of_origin', 'phytosanitary', 'analysis_cert', 'brand_authorisation', 'other']
+      },
+      docName: String,
+      fileUrl: String,
+      referenceNumber: String,
+      issuingAuthority: String,
+      issueDate: Date,
+      expiryDate: Date,
+      verified: { type: Boolean, default: false },
+      verifiedAt: Date,
+      verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      notes: String
+    }]
+  },
   onboardingStep: {
     type: Number,
     default: 1

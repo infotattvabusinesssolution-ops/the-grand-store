@@ -24,8 +24,22 @@ const exportEnquirySchema = new mongoose.Schema({
     destinationPort: { type: String, trim: true }, // e.g. "Jebel Ali, Dubai" or "Rotterdam"
     customsRequirementsNotes: { type: String }
   },
+  // Parent RFQ tracking (when a buyer requests from multiple wineries)
+  parentEnquiryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ExportEnquiry',
+    default: null
+  },
+  // Primary Assigned Vendor (Winery/Distillery) for this enquiry/sub-enquiry
+  vendorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   itemsRequested: [{
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    productCode: { type: String },
     productName: { type: String, required: true },
+    vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     vintage: { type: String },
     bottlesPerCase: { type: Number, default: 6 },
     packFormat: { type: String, default: '6x750ml (6 btls/case)' },
@@ -53,16 +67,29 @@ const exportEnquirySchema = new mongoose.Schema({
   },
   quotation: {
     quoteNumber: { type: String },
+    vendorQuoteSubmitted: { type: Boolean, default: false },
+    vendorQuoteAmount: { type: Number, default: 0 },
     subtotalAmount: { type: Number, default: 0 },
     freightAmount: { type: Number, default: 0 },
     insuranceAmount: { type: Number, default: 0 },
+    platformCommissionPct: { type: Number, default: 10 },
+    platformCommissionAmount: { type: Number, default: 0 },
     totalQuoteAmount: { type: Number, default: 0 },
+    leadTimeDays: { type: Number, default: 14 },
+    shippingTermsNotes: { type: String },
     validUntil: { type: Date },
     status: {
       type: String,
       enum: ['draft', 'prepared', 'sent_to_buyer', 'accepted', 'declined', 'expired'],
       default: 'draft'
-    }
+    },
+    revisionHistory: [{
+      revision: { type: Number, default: 1 },
+      date: { type: Date, default: Date.now },
+      totalAmount: Number,
+      updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      notes: String
+    }]
   },
   stage: {
     type: String,

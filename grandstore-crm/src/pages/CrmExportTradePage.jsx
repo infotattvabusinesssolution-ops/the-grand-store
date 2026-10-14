@@ -6,7 +6,8 @@ import StatusBadge from '../components/common/StatusBadge';
 import { 
   Globe, FileText, CheckCircle2, Clock, Plus, 
   ExternalLink, X, MapPin, Building, ShieldCheck, Printer,
-  Wine, Package, Layers, Info, MessageSquare, Send, User, Check, FileCheck
+  Wine, Package, Layers, Info, MessageSquare, Send, User, Check, FileCheck,
+  Truck, Sparkles, Search, Award, Sliders, RefreshCw, AlertTriangle
 } from 'lucide-react';
 
 const EXPORT_CHECKLIST_DOCS = [
@@ -78,6 +79,76 @@ export default function CrmExportTradePage() {
     currency: 'USD'
   });
   const [submitting, setSubmitting] = useState(false);
+  const [activeMainTab, setActiveMainTab] = useState('pipeline'); // 'pipeline' | 'vendors' | 'matcher'
+  const [exportVendors, setExportVendors] = useState([]);
+  const [loadingVendors, setLoadingVendors] = useState(false);
+  const [verificationModalVendor, setVerificationModalVendor] = useState(null);
+  const [verificationStatus, setVerificationStatus] = useState('approved');
+  const [reviewerNotes, setReviewerNotes] = useState('');
+  const [submittingVerification, setSubmittingVerification] = useState(false);
+
+  const [matcherQuery, setMatcherQuery] = useState({
+    category: 'Wine',
+    destinationMarket: 'United Kingdom',
+    volumeCases: 50,
+    incoterm: 'FOB'
+  });
+  const [matcherResults, setMatcherResults] = useState(null);
+  const [runningMatcher, setRunningMatcher] = useState(false);
+
+  const fetchExportVendors = async () => {
+    try {
+      setLoadingVendors(true);
+      const res = await crmApi.getExportVendors();
+      if (res.data?.success) {
+        setExportVendors(res.data.vendors || []);
+      }
+    } catch (err) {
+      console.error('Failed to load export vendors:', err);
+      toast.error('Failed to load export vendors');
+    } finally {
+      setLoadingVendors(false);
+    }
+  };
+
+  const handleUpdateVendorVerification = async (e) => {
+    if (e) e.preventDefault();
+    if (!verificationModalVendor) return;
+
+    try {
+      setSubmittingVerification(true);
+      const res = await crmApi.updateVendorExportVerification(verificationModalVendor._id, {
+        status: verificationStatus,
+        reviewerNotes
+      });
+      if (res.data?.success) {
+        toast.success(`Vendor export capability set to ${verificationStatus}`);
+        setVerificationModalVendor(null);
+        fetchExportVendors();
+      }
+    } catch (err) {
+      console.error('Failed to update vendor verification:', err);
+      toast.error('Failed to update vendor status');
+    } finally {
+      setSubmittingVerification(false);
+    }
+  };
+
+  const runSupplierMatcher = async (e) => {
+    if (e) e.preventDefault();
+    try {
+      setRunningMatcher(true);
+      const res = await crmApi.matchExportSuppliers(matcherQuery);
+      if (res.data?.success) {
+        setMatcherResults(res.data);
+      }
+    } catch (err) {
+      console.error('Error matching suppliers:', err);
+      toast.error('Supplier matching query failed');
+    } finally {
+      setRunningMatcher(false);
+    }
+  };
 
   // Load catalog products for quick autocomplete suggestion
   useEffect(() => {
@@ -381,7 +452,55 @@ export default function CrmExportTradePage() {
         </button>
       </div>
 
+      {/* 3 Main Integrated Operations Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
+        <button
+          onClick={() => setActiveMainTab('pipeline')}
+          className={`flex items-center gap-2 pb-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            activeMainTab === 'pipeline'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Globe size={15} />
+          <span>Export RFQs & Trade Pipeline</span>
+          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-mono text-slate-600">
+            {enquiries.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => { setActiveMainTab('vendors'); fetchExportVendors(); }}
+          className={`flex items-center gap-2 pb-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            activeMainTab === 'vendors'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <ShieldCheck size={15} />
+          <span>Vendor Export Verification</span>
+          {exportVendors.length > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-mono text-slate-600">
+              {exportVendors.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => { setActiveMainTab('matcher'); if (!matcherResults) runSupplierMatcher(); }}
+          className={`flex items-center gap-2 pb-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            activeMainTab === 'matcher'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Sparkles size={15} />
+          <span>Automated Supplier Matcher</span>
+        </button>
+      </div>
+
       {/* Enquiries Table */}
+      {activeMainTab === 'pipeline' && (
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -502,6 +621,440 @@ export default function CrmExportTradePage() {
           </table>
         </div>
       </div>
+      )}
+
+      {/* TAB 2: Vendor Export Verification & Compliance Directory */}
+      {activeMainTab === 'vendors' && (
+        <div className="space-y-6">
+          {/* Summary / Filter Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Vendor Export Compliance & Customs Directory
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Centralized registry of wineries, distilleries, and producers with customs clearance and export capabilities
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={fetchExportVendors}
+                disabled={loadingVendors}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-all cursor-pointer"
+              >
+                <RefreshCw size={13} className={loadingVendors ? 'animate-spin' : ''} />
+                Refresh Registry
+              </button>
+            </div>
+          </div>
+
+          {/* Vendors Table */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/80 text-slate-500 uppercase font-semibold border-b border-slate-100">
+                  <tr>
+                    <th className="px-6 py-3.5">Producer / Vendor</th>
+                    <th className="px-6 py-3.5">Customs Export Code</th>
+                    <th className="px-6 py-3.5">Capabilities</th>
+                    <th className="px-6 py-3.5">Export Status</th>
+                    <th className="px-6 py-3.5">Monthly Capacity</th>
+                    <th className="px-6 py-3.5">Trade Products</th>
+                    <th className="px-6 py-3.5">Compliance Docs</th>
+                    <th className="px-6 py-3.5 text-right">Audit & Verification</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {loadingVendors ? (
+                    <tr>
+                      <td colSpan="8" className="px-6 py-12 text-center text-slate-400">
+                        <RefreshCw size={24} className="animate-spin mx-auto mb-2 text-blue-500" />
+                        Loading export vendors registry...
+                      </td>
+                    </tr>
+                  ) : exportVendors.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="px-6 py-12 text-center text-slate-400">
+                        <Building size={32} className="mx-auto mb-2 text-slate-300" />
+                        <p className="font-semibold text-slate-600">No Export-Capable Vendors Registered Yet</p>
+                        <p className="text-xs text-slate-400 mt-1">Vendors selecting 'International' or 'Both' capabilities will appear here for customs verification.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    exportVendors.map((vendor) => {
+                      const ep = vendor.exportProfile || {};
+                      const tradingName = vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || vendor.userId?.name || 'Producer';
+                      const customsCode = ep.customsExportCode || vendor.customsInfo?.exportCode || 'Not Assigned';
+                      const status = ep.isExportApproved || 'pending_approval';
+                      const docCount = (ep.documents || []).length;
+
+                      return (
+                        <tr key={vendor._id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-slate-900 text-sm">{tradingName}</div>
+                            <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                              <span>{vendor.userId?.email || 'No email'}</span>
+                              {vendor.businessInfo?.address?.country && (
+                                <>
+                                  <span>•</span>
+                                  <span>{vendor.businessInfo.address.country}</span>
+                                </>
+                              )}
+                            </div>
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <span className="font-mono text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md border border-slate-200">
+                              {customsCode}
+                            </span>
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
+                              {vendor.sellingCapabilities === 'both' ? 'Domestic & Export' : (vendor.sellingCapabilities || 'Export')}
+                            </span>
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${
+                              status === 'approved' 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : status === 'rejected'
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}>
+                              {status === 'approved' && <CheckCircle2 size={11} />}
+                              {status === 'pending_approval' && <Clock size={11} />}
+                              {status === 'rejected' && <AlertTriangle size={11} />}
+                              {status === 'approved' ? 'Export Certified' : status === 'rejected' ? 'Rejected' : 'Audit Pending'}
+                            </span>
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <span className="font-semibold text-slate-700">
+                              {ep.monthlyCapacityCases ? `${ep.monthlyCapacityCases.toLocaleString()} cases/mo` : 'Unspecified'}
+                            </span>
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <span className="font-bold text-blue-700 px-2 py-0.5 bg-blue-50 rounded-md border border-blue-200">
+                              {vendor.tradeProductCount || 0} Ready
+                            </span>
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <span className="text-[11px] font-semibold text-slate-600 flex items-center gap-1">
+                              <FileText size={12} className="text-slate-400" />
+                              {docCount} File{docCount !== 1 ? 's' : ''}
+                            </span>
+                          </td>
+
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVerificationModalVendor(vendor);
+                                setVerificationStatus(ep.isExportApproved || 'approved');
+                                setReviewerNotes(ep.reviewerNotes || '');
+                              }}
+                              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded-xl font-bold transition-all text-xs cursor-pointer shadow-2xs inline-flex items-center gap-1"
+                            >
+                              <ShieldCheck size={12} /> Audit & Verify
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: Automated Supplier Matcher */}
+      {activeMainTab === 'matcher' && (
+        <div className="space-y-6">
+          {/* Query Form */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6 space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+              <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Intelligent International Supplier & Product Matcher
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Instant algorithmic matching of RFQs to certified export wineries and bulk trade inventory
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={runSupplierMatcher} className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Product Category</label>
+                <select
+                  value={matcherQuery.category}
+                  onChange={(e) => setMatcherQuery({ ...matcherQuery, category: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                >
+                  <option value="Wine">Wine (Red, White, Rosé, Cap Classique)</option>
+                  <option value="Spirits">Spirits (Gin, Brandy, Whisky, Rum)</option>
+                  <option value="Beer">Craft Beer & Ciders</option>
+                  <option value="Cigars">Cigars & Tobacco</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Destination Market</label>
+                <input
+                  type="text"
+                  placeholder="e.g. United Kingdom, UAE, USA"
+                  value={matcherQuery.destinationMarket}
+                  onChange={(e) => setMatcherQuery({ ...matcherQuery, destinationMarket: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Volume (Cases)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={matcherQuery.volumeCases}
+                  onChange={(e) => setMatcherQuery({ ...matcherQuery, volumeCases: Number(e.target.value) || 10 })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Required Incoterms</label>
+                <div className="flex gap-2">
+                  <select
+                    value={matcherQuery.incoterm}
+                    onChange={(e) => setMatcherQuery({ ...matcherQuery, incoterm: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                  >
+                    <option value="FOB">FOB (Free On Board)</option>
+                    <option value="CIF">CIF (Cost, Ins, Freight)</option>
+                    <option value="EXW">EXW (Ex Works)</option>
+                    <option value="DDP">DDP (Delivered Duty Paid)</option>
+                  </select>
+
+                  <button
+                    type="submit"
+                    disabled={runningMatcher}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
+                  >
+                    <Sparkles size={14} className={runningMatcher ? 'animate-spin' : ''} />
+                    {runningMatcher ? 'Matching...' : 'Match'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          {/* Match Results */}
+          {matcherResults && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <span>Matched Producers & Inventory</span>
+                  <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-200">
+                    {matcherResults.totalMatches} Matches Found
+                  </span>
+                </h4>
+              </div>
+
+              {matcherResults.matches?.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400">
+                  <AlertTriangle size={32} className="mx-auto mb-2 text-amber-500" />
+                  <p className="font-semibold text-slate-700">No Direct Producer Match Found</p>
+                  <p className="text-xs text-slate-400 mt-1">Try adjusting the destination market or volume criteria.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {matcherResults.matches.map((item, idx) => (
+                    <div key={idx} className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 space-y-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h5 className="font-extrabold text-slate-900 text-base">{item.vendor.businessName}</h5>
+                            <span className="font-mono text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">
+                              {item.vendor.exportCode}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Capacity: {typeof item.vendor.monthlyCapacityCases === 'number' ? `${item.vendor.monthlyCapacityCases.toLocaleString()} cases/mo` : item.vendor.monthlyCapacityCases}
+                          </p>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black border ${
+                            item.matchScore >= 70
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : item.matchScore >= 40
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-slate-50 text-slate-600 border-slate-200'
+                          }`}>
+                            <Sparkles size={11} /> {item.matchScore}% Match
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Match Reasons */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.matchReasons?.map((reason, rIdx) => (
+                          <span key={rIdx} className="text-[10px] font-semibold px-2 py-0.5 bg-slate-50 text-slate-600 rounded-md border border-slate-200 flex items-center gap-1">
+                            <Check size={10} className="text-emerald-500" /> {reason}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Matching Export Products */}
+                      {item.matchingProducts?.length > 0 && (
+                        <div className="border-t border-slate-100 pt-3 space-y-2">
+                          <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Available Export Stock</p>
+                          <div className="space-y-1.5">
+                            {item.matchingProducts.slice(0, 3).map((prod) => (
+                              <div key={prod._id} className="flex items-center justify-between p-2 bg-slate-50 rounded-xl text-xs">
+                                <div className="flex items-center gap-2">
+                                  {prod.image && (
+                                    <img src={prod.image} alt={prod.name} className="w-8 h-8 rounded-lg object-cover border border-slate-200" />
+                                  )}
+                                  <div>
+                                    <div className="font-bold text-slate-900">{prod.name}</div>
+                                    <div className="text-[10px] text-slate-400">
+                                      MOQ: {prod.moqBottles} btls • {prod.bottlesPerCase} btls/case
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-extrabold text-blue-700">R {prod.tradePrice}</div>
+                                  <div className="text-[10px] text-slate-400">Wholesale / btl</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Vendor Export Capability Audit Modal */}
+      {verificationModalVendor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">
+                  Audit Export Capability & Customs Compliance
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Verify customs registration, international documentation, and capacity
+                </p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setVerificationModalVendor(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateVendorVerification} className="space-y-4 text-xs">
+              {/* Vendor summary card */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                <div className="font-bold text-slate-900 text-sm">
+                  {verificationModalVendor.businessInfo?.tradingName || verificationModalVendor.businessInfo?.legalName || verificationModalVendor.userId?.name}
+                </div>
+                <div className="text-slate-500 flex flex-wrap gap-x-3 text-[11px]">
+                  <span>Customs Code: <strong>{verificationModalVendor.exportProfile?.customsExportCode || 'None'}</strong></span>
+                  <span>Contact: {verificationModalVendor.userId?.email}</span>
+                </div>
+              </div>
+
+              {/* Status Select */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Export Approval Status *</label>
+                <select
+                  value={verificationStatus}
+                  onChange={(e) => setVerificationStatus(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                >
+                  <option value="approved">Approved (Certified for International Export)</option>
+                  <option value="pending_approval">Pending Approval (Under Compliance Audit)</option>
+                  <option value="rejected">Rejected (Non-Compliant / Missing Customs Docs)</option>
+                </select>
+              </div>
+
+              {/* Reviewer Notes */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Compliance Auditor Notes & Reason</label>
+                <textarea
+                  rows="3"
+                  value={reviewerNotes}
+                  onChange={(e) => setReviewerNotes(e.target.value)}
+                  placeholder="Document review notes, verified permits, required revisions..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                />
+              </div>
+
+              {/* Uploaded Documents List */}
+              {verificationModalVendor.exportProfile?.documents?.length > 0 && (
+                <div className="space-y-1.5 border-t border-slate-100 pt-3">
+                  <label className="block font-bold text-slate-700">Uploaded Compliance Documents</label>
+                  <div className="space-y-1">
+                    {verificationModalVendor.exportProfile.documents.map((doc, dIdx) => (
+                      <div key={dIdx} className="flex items-center justify-between p-2 bg-blue-50/50 border border-blue-100 rounded-lg">
+                        <span className="font-medium text-slate-700 text-[11px]">{doc.title || doc.documentType}</span>
+                        {doc.fileUrl && (
+                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline inline-flex items-center gap-1">
+                            View <ExternalLink size={10} />
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setVerificationModalVendor(null)}
+                  className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingVerification}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-2xs cursor-pointer disabled:opacity-50"
+                >
+                  {submittingVerification ? 'Saving...' : 'Save Audit Decision'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Document Checklist, Customer Notes & Details Modal */}
       {selectedEnquiry && (

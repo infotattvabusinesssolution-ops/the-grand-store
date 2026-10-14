@@ -16,6 +16,7 @@ import CrmSettlementsPage from './pages/CrmSettlementsPage';
 import CrmStaffKpisPage from './pages/CrmStaffKpisPage';
 import CrmSalesPage from './pages/CrmSalesPage';
 import CrmPriceIntelligencePage from './pages/CrmPriceIntelligencePage';
+import CrmCalendarPage from './pages/CrmCalendarPage';
 import CrmLoginPage from './pages/CrmLoginPage';
 import { Agentation } from 'agentation';
 
@@ -33,6 +34,7 @@ export default function App() {
             <Route index element={<CrmDashboardPage />} />
             <Route path="dashboard" element={<CrmDashboardPage />} />
             <Route path="work-queue" element={<CrmDashboardPage />} />
+            <Route path="calendar" element={<CrmCalendarPage />} />
             
             <Route path="customers" element={<CrmCustomersPage />} />
             <Route path="customers/:id" element={<CrmCustomerDetailPage />} />

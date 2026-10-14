@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Building2, ShoppingBag, Globe, 
   MessageSquare, Gavel, Wallet, ShieldCheck, CheckSquare, Menu, X, 
-  Search, ArrowLeft, LogOut, Activity, ChevronRight, Loader2, TrendingUp, Compass 
+  Search, ArrowLeft, LogOut, Activity, ChevronRight, Loader2, TrendingUp, Compass, Calendar 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { crmClient } from '../../services/crmApi';
@@ -86,6 +86,9 @@ export default function CrmLayout() {
         if ('staff sla telemetry performance kpis'.includes(q)) {
           quickNavs.push({ id: 'staff-lane', title: 'Staff SLA Telemetry & Leaderboard', subtitle: 'Response benchmarks & 30d task SLA metrics', type: 'module', link: '/staff-telemetry' });
         }
+        if ('calendar schedule timeline agenda operations dates milestones'.includes(q)) {
+          quickNavs.push({ id: 'calendar-lane', title: 'Operations Master Calendar', subtitle: 'Auctions, VIP deposits, tickets, orders & transit milestones', type: 'module', link: '/calendar' });
+        }
         if ('price competitor intelligence ngf norman goodfellows vs tracking'.includes(q)) {
           quickNavs.push({ id: 'price-lane', title: 'Price Intelligence (NGF vs GS)', subtitle: 'Daily competitor prices, automated sync & monthly drift', type: 'module', link: '/price-intelligence' });
         }
@@ -124,6 +127,7 @@ export default function CrmLayout() {
 
   const navLinks = [
     { to: '/', icon: LayoutDashboard, label: 'Morning Screen', end: true },
+    { to: '/calendar', icon: Calendar, label: 'Operations Calendar' },
     { to: '/sales', icon: TrendingUp, label: 'Sales' },
     { to: '/price-intelligence', icon: Compass, label: 'Price Intelligence' },
     { to: '/customers', icon: Users, label: 'Customer 360°' },

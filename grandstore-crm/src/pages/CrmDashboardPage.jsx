@@ -13,6 +13,7 @@ import {
   ShieldCheck, PhoneCall, ArrowUpRight, Search, Filter, 
   Calendar, ChevronRight, UserCheck, Truck, Sparkles, X 
 } from 'lucide-react';
+import { crmApi } from '../services/crmApi';
 
 export default function CrmDashboardPage() {
   const navigate = useNavigate();
@@ -36,6 +37,36 @@ export default function CrmDashboardPage() {
     isOpen: false,
     mode: 'create', // 'create' or 'complete'
     task: null
+  });
+
+  // 7-Day Operations Master Calendar Telemetry
+  const [calendarEvents, setCalendarEvents] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const now = new Date();
+    const future = new Date(Date.now() + 7 * 86400000);
+    crmApi.getCalendarEvents({
+      startDate: now.toISOString(),
+      endDate: future.toISOString()
+    }).then(res => {
+      if (isMounted && res.data?.events) {
+        setCalendarEvents(res.data.events);
+      }
+    }).catch(err => {
+      console.warn('Dashboard calendar radar error:', err);
+    });
+    return () => { isMounted = false; };
+  }, [lastRefreshed]);
+
+  const next7Days = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    return {
+      iso: d.toISOString().slice(0, 10),
+      label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short' }),
+      dateStr: `${d.getDate()} ${d.toLocaleDateString('en-US', { month: 'short' })}`
+    };
   });
 
   const handleOpenCreateModal = () => {
@@ -495,7 +526,107 @@ export default function CrmDashboardPage() {
         </div>
       </div>
 
-      {/* 4. The Master Daily Work Queue Interactive Table */}
+      {/* 4. Operations & Fulfilment 7-Day Radar */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Calendar size={18} className="text-blue-600" />
+              7-Day Operations & Fulfilment Radar
+            </h2>
+            <p className="text-xs text-slate-500">
+              Upcoming milestones: Auction hammers, VIP approvals, event tickets, orders, dispatches & vendor settlements
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/calendar')}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 rounded-xl text-xs font-bold border border-blue-200 transition-all self-start sm:self-auto cursor-pointer"
+          >
+            <span>Open Master Calendar</span>
+            <ArrowUpRight size={14} />
+          </button>
+        </div>
+
+        {/* 7-Day Quick Strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 pt-1">
+          {next7Days.map((d) => {
+            const dayEvents = calendarEvents.filter(e => e.date?.startsWith(d.iso));
+            const isToday = d.iso === new Date().toISOString().slice(0, 10);
+            return (
+              <div
+                key={d.iso}
+                onClick={() => navigate('/calendar')}
+                className={`p-3 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
+                  isToday
+                    ? 'bg-blue-50/70 border-blue-300 shadow-xs'
+                    : 'bg-slate-50/60 border-slate-200 hover:bg-white hover:border-blue-300 hover:shadow-xs'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between text-[11px] mb-1">
+                    <span className={`font-bold uppercase tracking-wider ${isToday ? 'text-blue-700' : 'text-slate-400'}`}>
+                      {d.label}
+                    </span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      dayEvents.length > 0 
+                        ? (isToday ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700') 
+                        : 'text-slate-300'
+                    }`}>
+                      {dayEvents.length}
+                    </span>
+                  </div>
+                  <p className="text-sm font-black text-slate-800">{d.dateStr}</p>
+                </div>
+
+                <div className="mt-2 pt-2 border-t border-slate-200/60">
+                  {dayEvents.length === 0 ? (
+                    <span className="text-[10px] text-slate-400">Clear desk</span>
+                  ) : (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {dayEvents.slice(0, 4).map((ev, i) => {
+                        const dotColor = 
+                          ev.category === 'auctions' ? 'bg-purple-500' :
+                          ev.category === 'vip_approvals' ? 'bg-amber-500' :
+                          ev.category === 'events' ? 'bg-indigo-500' :
+                          ev.category === 'deliveries' ? 'bg-emerald-500' :
+                          ev.category === 'settlements' ? 'bg-rose-500' : 'bg-blue-500';
+                        return <span key={i} className={`w-2 h-2 rounded-full ${dotColor}`} title={ev.title} />;
+                      })}
+                      {dayEvents.length > 4 && (
+                        <span className="text-[9px] font-bold text-slate-400">+{dayEvents.length - 4}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Highlighted Near-Term Milestones */}
+        {calendarEvents.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-3">
+            {calendarEvents.slice(0, 3).map((ev) => (
+              <div
+                key={ev.id}
+                onClick={() => navigate('/calendar')}
+                className="p-2.5 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-200 transition-all cursor-pointer flex items-center justify-between text-xs group"
+              >
+                <div className="min-w-0 pr-2">
+                  <span className="text-[10px] font-bold text-slate-400 block uppercase">
+                    {ev.date ? new Date(ev.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Upcoming'}
+                  </span>
+                  <p className="font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">{ev.title}</p>
+                  <p className="text-[11px] text-slate-500 truncate">{ev.subtitle}</p>
+                </div>
+                <StatusBadge status={ev.status} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 5. The Master Daily Work Queue Interactive Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-4 p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>

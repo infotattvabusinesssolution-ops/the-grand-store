@@ -299,6 +299,10 @@ const createProduct = async (req, res) => {
       vendorId: canManageInternalProducts(req.user) ? null : req.user._id,
       approvalStatus: 'approved',
       shipping,
+      channelSettings: parseJsonValue(req.body.channelSettings, {
+        retail: { enabled: true, minOrderQuantity: 1, maxOrderQuantity: 24 },
+        trade: { enabled: false, exportApprovalStatus: 'not_applied' }
+      }),
       isSuperCoinEligible,
       maxSuperCoinDiscountPct,
       isReferralEligible,
@@ -416,6 +420,9 @@ const updateProduct = async (req, res) => {
     }
     if (req.body.referralDiscountPct !== undefined && req.body.referralDiscountPct !== '') {
       product.referralDiscountPct = Math.max(0, Math.min(100, Number(req.body.referralDiscountPct) || 0));
+    }
+    if (req.body.channelSettings !== undefined) {
+      product.channelSettings = parseJsonValue(req.body.channelSettings, product.channelSettings);
     }
 
     if (req.body.shipping !== undefined || req.body.weight_kg !== undefined || req.body.length_cm !== undefined || req.body.box_type !== undefined) {

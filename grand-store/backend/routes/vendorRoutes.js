@@ -86,4 +86,13 @@ router.get('/maintenance-fee', vendorController.getMaintenanceFeeStatus);
 router.post('/maintenance-fee/pay', vendorController.payMaintenanceFee);
 router.post('/maintenance-fee/submit-proof', vendorController.submitMaintenanceFeeProof);
 
+// B2B International Trade Export Profile Routes
+router.get('/export-profile', vendorController.getExportProfile);
+router.put('/export-profile', vendorController.updateExportProfile);
+router.post('/export-profile/upload', uploadSingleDocument, vendorController.uploadDocument);
+
+// B2B International Trade RFQs
+router.get('/trade-rfqs', vendorController.getVendorTradeRfqs);
+router.put('/trade-rfqs/:id/quote', vendorController.submitVendorQuote);
+
 module.exports = router;

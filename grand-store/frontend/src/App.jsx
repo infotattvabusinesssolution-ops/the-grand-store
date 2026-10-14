@@ -10,6 +10,7 @@ import TradeExport from './trade/TradeExport'
 import TradeProcedures from './trade/TradeProcedures'
 import TradeContact from './trade/TradeContact'
 import TradePartnerEnquiry from './trade/TradePartnerEnquiry'
+import TradeCatalogue from './trade/TradeCatalogue'
 import './trade/TradeProfessional.css'
 import WineFarmPage from './features/wine-farm/WineFarmPage'
 import Hero from './features/home/components/Hero'
@@ -106,6 +107,8 @@ import VendorBankDetails from './features/vendor/VendorBankDetails'
 import VendorOrders from './features/vendor/VendorOrders'
 import VendorOrderDetail from './features/vendor/VendorOrderDetail'
 import VendorShippingProfile from './features/vendor/VendorShippingProfile'
+import VendorExportProfile from './features/vendor/VendorExportProfile'
+import VendorTradeRfqs from './features/vendor/VendorTradeRfqs'
 import AdminLoginPage from './features/admin/AdminLoginPage'
 import AdminLayout from './features/admin/AdminLayout'
 import AdminDashboard from './features/admin/AdminDashboard'
@@ -539,6 +542,7 @@ function App() {
 
         <Route path="/trade" element={<TradeLayout />}>
           <Route index element={<TradePage />} />
+          <Route path="catalogue" element={<TradeCatalogue />} />
           <Route path="about-us" element={<TradeAbout />} />
           <Route path="trade-export" element={<TradeExport />} />
           <Route path="trade-procedures" element={<TradeProcedures />} />
@@ -877,6 +881,8 @@ function App() {
           <Route path="events/:id/attendees" element={<EventAttendees />} />
           <Route path="event-add" element={<EventAdd />} />
           <Route path="auction-submit" element={<AuctionSubmission onNotify={showToast} />} />
+          <Route path="export-profile" element={<VendorExportProfile onNotify={showToast} />} />
+          <Route path="trade-rfqs" element={<VendorTradeRfqs onNotify={showToast} />} />
         </Route>
 
         {/* Public Host Application Forms */}

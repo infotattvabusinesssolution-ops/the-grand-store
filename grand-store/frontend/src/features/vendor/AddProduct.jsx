@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
-import { Building2, Package, UploadCloud, CheckCircle2, AlertCircle, PlusCircle, User } from 'lucide-react';
+import { Building2, Package, UploadCloud, CheckCircle2, AlertCircle, PlusCircle, User, Truck } from 'lucide-react';
 import { useCategories } from '../../context/CategoryContext';
 import api from '../../api';
 import DynamicIcon from '../../components/DynamicIcon';
@@ -47,6 +47,12 @@ export default function AddProduct({ onNotify }) {
     tradePrice: '',
     minOrderQuantity: '',
     exportReady: false,
+    bottlesPerCase: '6',
+    casesPerPallet: '56',
+    hsCode: '2204.21',
+    palletsPer20ft: '10',
+    palletsPer40ft: '20',
+    leadTimeDays: '14',
     weight_kg: '1.85',
     length_cm: '12',
     width_cm: '12',
@@ -180,6 +186,28 @@ export default function AddProduct({ onNotify }) {
       if (formData.tradePrice) payload.append('tradePrice', formData.tradePrice);
       if (formData.minOrderQuantity) payload.append('minOrderQuantity', formData.minOrderQuantity);
       payload.append('exportReady', formData.exportReady);
+
+      const channelSettings = {
+        retail: {
+          enabled: true,
+          minOrderQuantity: 1,
+          maxOrderQuantity: 120
+        },
+        trade: {
+          enabled: Boolean(formData.exportReady || formData.tradePrice),
+          minimumOrderQuantityBottles: Number(formData.minOrderQuantity) || 60,
+          bottlesPerCase: Number(formData.bottlesPerCase) || 6,
+          casesPerPallet: Number(formData.casesPerPallet) || 56,
+          palletsPer20ftContainer: Number(formData.palletsPer20ft) || 10,
+          palletsPer40ftContainer: Number(formData.palletsPer40ft) || 20,
+          leadTimeDays: Number(formData.leadTimeDays) || 14,
+          hsCode: formData.hsCode || '2204.21',
+          volumePricingTiers: formData.tradePrice ? [
+            { minQuantity: Number(formData.minOrderQuantity) || 60, pricePerBottle: Number(formData.tradePrice), currency: 'ZAR' }
+          ] : []
+        }
+      };
+      payload.append('channelSettings', JSON.stringify(channelSettings));
 
       payload.append('shipping', JSON.stringify({
         weight_kg: Number(formData.weight_kg) || 1.85,
@@ -537,6 +565,102 @@ export default function AddProduct({ onNotify }) {
                     <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#c9a35b]"></div>
                   </label>
                 </div>
+
+                {formData.exportReady && (
+                  <div className="p-5 rounded-xl bg-black/40 border border-[#c9a35b]/30 space-y-4 animate-in fade-in">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-[#e1bd70] uppercase tracking-wider">
+                      <Truck size={16} /> Container Loading & Export Packing Specifications
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-widest text-[#bdb5a6] font-bold mb-1.5">
+                          Bottles Per Case
+                        </label>
+                        <select
+                          name="bottlesPerCase"
+                          value={formData.bottlesPerCase}
+                          onChange={handleChange}
+                          className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                        >
+                          <option value="6">6 bottles / case (Standard)</option>
+                          <option value="12">12 bottles / case (Full Dozen)</option>
+                          <option value="3">3 bottles / case (Magnums/Presents)</option>
+                          <option value="1">1 bottle / case (Single Gift)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-widest text-[#bdb5a6] font-bold mb-1.5">
+                          Cases Per Pallet
+                        </label>
+                        <input
+                          type="number"
+                          name="casesPerPallet"
+                          value={formData.casesPerPallet}
+                          onChange={handleChange}
+                          className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                          placeholder="56"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-widest text-[#bdb5a6] font-bold mb-1.5">
+                          HS Tariff Code
+                        </label>
+                        <input
+                          type="text"
+                          name="hsCode"
+                          value={formData.hsCode}
+                          onChange={handleChange}
+                          className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                          placeholder="2204.21"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-widest text-[#bdb5a6] font-bold mb-1.5">
+                          Pallets per 20ft Container
+                        </label>
+                        <input
+                          type="number"
+                          name="palletsPer20ft"
+                          value={formData.palletsPer20ft}
+                          onChange={handleChange}
+                          className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                          placeholder="10"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-widest text-[#bdb5a6] font-bold mb-1.5">
+                          Pallets per 40ft Container
+                        </label>
+                        <input
+                          type="number"
+                          name="palletsPer40ft"
+                          value={formData.palletsPer40ft}
+                          onChange={handleChange}
+                          className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                          placeholder="20"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-widest text-[#bdb5a6] font-bold mb-1.5">
+                          Dispatch Lead Time (Days)
+                        </label>
+                        <input
+                          type="number"
+                          name="leadTimeDays"
+                          value={formData.leadTimeDays}
+                          onChange={handleChange}
+                          className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                          placeholder="14"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Packaging & Courier Logistics Specs */}

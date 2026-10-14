@@ -139,6 +139,10 @@ export const crmApi = {
   updateExportDocumentation: (id, data) => crmClient.put(`/export/${id}/docs`, data),
   updateExportStage: (id, data) => crmClient.put(`/export/${id}/stage`, data),
   addExportNote: (id, note) => crmClient.post(`/export/${id}/notes`, { note }),
+  getExportVendors: () => crmClient.get('/export/vendors'),
+  updateVendorExportVerification: (vendorId, data) => crmClient.put(`/export/vendors/${vendorId}/verification`, data),
+  matchExportSuppliers: (data) => crmClient.post('/export/match-suppliers', data),
+  updateExportQuoteAndCommission: (id, data) => crmClient.put(`/export/${id}/quote`, data),
 
   // Communications Hub & Phone Logs
   getCommunications: (params) => crmClient.get('/comms', { params }),
@@ -234,5 +238,8 @@ export const crmApi = {
       }
       throw err;
     }
-  }
+  },
+
+  // Operations Master Calendar (Auctions, VIP Deposits, Tickets, Orders, Deliveries)
+  getCalendarEvents: (params) => crmClient.get('/calendar', { params })
 };

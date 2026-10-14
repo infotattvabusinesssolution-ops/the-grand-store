@@ -213,6 +213,7 @@ export default function OnboardingWizard() {
   
   // State for each step
   const [accountInfo, setAccountInfo] = useState({ name: '', email: '', password: '' });
+  const [sellingCapabilities, setSellingCapabilities] = useState('both');
   const [businessInfo, setBusinessInfo] = useState({ legalName: '', tradingName: '', registrationNumber: '', businessType: '', address: '' });
   const [kycInfo, setKycInfo] = useState({ directorName: '', idNumber: '', contactNumber: '', idDocumentUrl: '' });
   const [taxInfo, setTaxInfo] = useState({ taxNumber: '', vatNumber: '', taxClearanceUrl: '' });
@@ -419,6 +420,11 @@ export default function OnboardingWizard() {
     try {
       const payload = {
         vendorType: isLocal ? 'local' : 'international',
+        sellingCapabilities,
+        exportProfile: customsInfo.exportCode ? {
+          customsExportCode: customsInfo.exportCode,
+          approvalStatus: (sellingCapabilities === 'international' || sellingCapabilities === 'both') ? 'pending_approval' : 'not_applied'
+        } : undefined,
         accountInfo, businessInfo, bankingInfo, productCategories, agreements,
         ...(isLocal ? { kycInfo, taxInfo, licenceInfo, customsInfo, deliveryInfo } : { credentialsInfo, marketInfo, logisticsInfo, storyInfo })
       };
@@ -583,6 +589,31 @@ export default function OnboardingWizard() {
                 <div className="mb-6">
                   <label className="block text-[#bdb5a6] text-[10px] font-bold uppercase tracking-widest mb-2">Business Address</label>
                   <LocationInput name="address" value={businessInfo.address} onChange={e => setBusinessInfo({...businessInfo, address: e.target.value})} placeholder="Start typing address..." className="block w-full py-4 border-b border-white/10 bg-transparent text-[#eee8dd] placeholder-white/20 focus:outline-none focus:border-[#c9a35b] sm:text-sm transition-colors rounded-none" />
+                </div>
+                <div className="mb-6">
+                  <label className="block text-[#bdb5a6] text-[10px] font-bold uppercase tracking-widest mb-3">
+                    Selling Capabilities & Sales Channels
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      { id: 'domestic', label: 'Domestic Retail Only', desc: 'Sell bottles directly to SA consumers' },
+                      { id: 'both', label: 'Both Channels (Recommended)', desc: 'Local retail + international bulk export' },
+                      { id: 'international', label: 'B2B Trade Export Only', desc: 'Bulk pallets & container consignments' }
+                    ].map(cap => (
+                      <div
+                        key={cap.id}
+                        onClick={() => setSellingCapabilities(cap.id)}
+                        className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                          sellingCapabilities === cap.id
+                            ? 'bg-[#c9a35b]/15 border-[#c9a35b] text-[#f5e6c8] shadow-[0_0_12px_rgba(201,163,91,0.15)]'
+                            : 'bg-black/30 border-white/10 text-white/50 hover:border-white/20'
+                        }`}
+                      >
+                        <div className="font-semibold text-xs text-[#eee8dd] mb-1">{cap.label}</div>
+                        <div className="text-[10px] text-white/40 leading-relaxed">{cap.desc}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

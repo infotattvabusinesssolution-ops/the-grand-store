@@ -66,7 +66,7 @@ const PRODUCTS_DATA = [
     tastingNotes: ['Wild Strawberry', 'Watermelon', 'Red Currant', 'Pink Grapefruit', 'Dry Finish'],
     flavorProfile: ['Crisp & Fresh', 'Light & Floral'],
     foodPairing: ['Tapas', 'Grilled Fish', 'Charcuterie'],
-    image: 'https://images.unsplash.com/photo-1558001373-4b9344234031?q=80&w=1000&auto=format&fit=crop'
+    image: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1791959732/grandstore-uploads/bruno-andreu-rose-bottle.jpg'
   },
   {
     name: 'Bruno Andreu Merlot 2025',
@@ -159,7 +159,7 @@ const PRODUCTS_DATA = [
     tastingNotes: ['White Peach', 'Crushed Cranberry', 'Sea Salt', 'Citrus Peel', 'Mineral Finish'],
     flavorProfile: ['Crisp & Fresh', 'Light & Floral'],
     foodPairing: ['Oysters', 'Grilled Calamari', 'Summer Salads'],
-    image: 'https://images.unsplash.com/photo-1558001373-4b9344234031?q=80&w=1000&auto=format&fit=crop'
+    image: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1791959732/grandstore-uploads/bruno-andreu-rose-bottle.jpg'
   },
   {
     name: 'Bruno Andreu AOP Picpoul de Pinet 2025',
@@ -214,7 +214,7 @@ const PRODUCTS_DATA = [
     tastingNotes: ['Alpine Strawberry', 'Rose Petal', 'White Nectarine', 'Silky Texture', 'Gastronomic Depth'],
     flavorProfile: ['Light & Floral', 'Rich & Creamy'],
     foodPairing: ['Lobster Thermidor', 'Truffled Risotto', 'Fine Dining Tapas'],
-    image: 'https://images.unsplash.com/photo-1558001373-4b9344234031?q=80&w=1000&auto=format&fit=crop'
+    image: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1791959732/grandstore-uploads/bruno-andreu-rose-bottle.jpg'
   },
   {
     name: 'Bruno Andreu Elixir Rouge 2023/24',
@@ -421,7 +421,7 @@ const PRODUCTS_DATA = [
     tastingNotes: ['Red Berries', 'Crisp Cranberry', 'Pink Floral', 'Invigorating Finish', '0.0% Alcohol'],
     flavorProfile: ['Crisp & Fresh', 'Light & Floral'],
     foodPairing: ['Mediterranean Tapas', 'Sushi', 'Daytime Celebrations'],
-    image: 'https://images.unsplash.com/photo-1558001373-4b9344234031?q=80&w=1000&auto=format&fit=crop'
+    image: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1791959732/grandstore-uploads/bruno-andreu-rose-bottle.jpg'
   },
   {
     name: 'Bruno Andreu VDF Premium Dealcoholized Merlot',
@@ -490,7 +490,7 @@ const PRODUCTS_DATA = [
     tastingNotes: ['Red Berry Burst', 'Light Sparkle', 'Summer Watermelon', 'Crisp Portable Refreshment'],
     flavorProfile: ['Crisp & Fresh', 'Fruity & Spicy'],
     foodPairing: ['Picnics', 'Music Festivals', 'Casual Tapas'],
-    image: 'https://images.unsplash.com/photo-1558001373-4b9344234031?q=80&w=1000&auto=format&fit=crop'
+    image: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1791959732/grandstore-uploads/bruno-andreu-dinky-petanque-rose-can.jpg'
   }
 ];
 
@@ -567,7 +567,40 @@ async function seedBrunoAndreu() {
           country: 'France'
         }
       },
-      productCategories: ['Wine']
+      productCategories: ['Wine'],
+      sellingCapabilities: 'both',
+      exportProfile: {
+        approvalStatus: 'approved',
+        isExportApproved: 'approved',
+        customsExportCode: 'FR-CUSTOMS-34290-EXP',
+        exportExperienceYears: 10,
+        monthlyCapacityCases: 8000,
+        supportedIncoterms: ['FOB', 'EXW', 'CIF'],
+        targetMarkets: ['United Kingdom', 'United States', 'United Arab Emirates', 'Japan', 'Global'],
+        leadTimeDays: 14,
+        containerLoadingSpecs: {
+          casesPerPallet: 56,
+          bottlesPerCase: 6,
+          palletsPer20ft: 11,
+          palletsPer40ft: 24
+        },
+        documents: [
+          {
+            documentType: 'certificate_of_origin',
+            title: "IGP Pays d'Oc & Languedoc AOP Certificate of Origin",
+            fileUrl: 'https://images.unsplash.com/photo-1584916201218-f4242ceb4809?q=80&w=1000&auto=format&fit=crop',
+            status: 'approved',
+            uploadedAt: new Date()
+          },
+          {
+            documentType: 'health_certificate',
+            title: 'EU Viticulture & Biosecurity Export Compliance',
+            fileUrl: 'https://images.unsplash.com/photo-1569919659476-f0852f6834b7?q=80&w=1000&auto=format&fit=crop',
+            status: 'approved',
+            uploadedAt: new Date()
+          }
+        ]
+      }
     };
 
     if (!vendor) {
@@ -575,6 +608,9 @@ async function seedBrunoAndreu() {
       console.log(`✅ Created Vendor profile for Bruno Andreu.`);
     } else {
       Object.assign(vendor, vendorData);
+      vendor.exportProfile = vendorData.exportProfile;
+      vendor.sellingCapabilities = vendorData.sellingCapabilities;
+      vendor.markModified('exportProfile');
       await vendor.save();
       console.log(`✅ Updated Vendor profile for Bruno Andreu.`);
     }
@@ -592,12 +628,12 @@ async function seedBrunoAndreu() {
       isPublished: true,
       seoTitle: 'Maison Bruno Andreu | Iconic French Languedoc Wines & Estate Allocations',
       metaDescription: 'Discover Maison Bruno Andreu from Languedoc, France. Emotion in every glass across Varietal, Authentic, Iconic, Luxury, and Innovation Alcohol-Free collections.',
-      heroImageUrl: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?q=80&w=2070&auto=format&fit=crop',
+      heroImageUrl: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1791959974/grandstore-uploads/bruno-andreu-estate-hero-cover.jpg',
       logoUrl: '/assets/brands/bruno-andreu-logo.png',
       galleryUrls: [
         'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=1000&auto=format&fit=crop',
         'https://images.unsplash.com/photo-1584916201218-f4242ceb4809?q=80&w=1000&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1558001373-4b9344234031?q=80&w=1000&auto=format&fit=crop',
+        'https://res.cloudinary.com/oioqrgj0/image/upload/v1791959732/grandstore-uploads/bruno-andreu-rose-bottle.jpg',
         'https://images.unsplash.com/photo-1569919659476-f0852f6834b7?q=80&w=1000&auto=format&fit=crop'
       ],
       story: {
@@ -743,7 +779,53 @@ async function seedBrunoAndreu() {
         },
         vendorId: user._id,
         approvalStatus: 'approved',
-        catalogManaged: true
+        catalogManaged: true,
+        exportReady: true,
+        tradePrice: Math.round(parseFloat(pData.price) * 0.65),
+        channelSettings: {
+          retail: {
+            enabled: true,
+            allowSingleBottle: true,
+            bottlePrice: parseFloat(pData.price),
+            casePrice: parseFloat(pData.price) * 6 * 0.95,
+            caseSize: 6
+          },
+          trade: {
+            enabled: true,
+            exportReady: true,
+            exportApprovalStatus: 'approved',
+            minimumOrderQuantityBottles: 60,
+            bottlesPerCase: 6,
+            casesPerPallet: 56,
+            containerLoading: {
+              twentyFootContainerCases: 11 * 56,
+              fortyFootContainerCases: 24 * 56
+            },
+            hsTariffCode: '2204.21',
+            supportedIncoterms: ['FOB', 'EXW', 'CIF'],
+            leadTimeDays: 14,
+            volumePricingTiers: [
+              {
+                minCases: 10,
+                maxCases: 49,
+                pricePerBottle: Math.round(parseFloat(pData.price) * 0.70),
+                currency: 'ZAR'
+              },
+              {
+                minCases: 50,
+                maxCases: 199,
+                pricePerBottle: Math.round(parseFloat(pData.price) * 0.65),
+                currency: 'ZAR'
+              },
+              {
+                minCases: 200,
+                maxCases: 9999,
+                pricePerBottle: Math.round(parseFloat(pData.price) * 0.58),
+                currency: 'ZAR'
+              }
+            ]
+          }
+        }
       };
 
       let existing = await Product.findOne({

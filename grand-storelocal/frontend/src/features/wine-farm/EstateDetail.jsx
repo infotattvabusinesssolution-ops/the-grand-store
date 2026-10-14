@@ -9,6 +9,7 @@ import {
   ArrowLeft, ShoppingCart, ChevronRight, CheckCircle,
   ExternalLink, ArrowDown, Play, Download
 } from 'lucide-react';
+import { resolveImageUrl } from '../../utils/imageUtils';
 
 const API = import.meta.env.VITE_API_URL;
 const APP = import.meta.env.VITE_APP_URL || '';
@@ -78,7 +79,7 @@ export default function EstateDetail() {
           type: 'Wine Tasting',
           title: t.name,
           priceStr: t.price ? `R${t.price} / person` : null,
-          image: t.imageUrl || hospitality.tastingsImageUrl || 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+          image: resolveImageUrl(t.imageUrl) || resolveImageUrl(hospitality.tastingsImageUrl) || 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
           desc: t.description,
           duration: t.duration,
           capacity: t.capacity
@@ -158,88 +159,151 @@ export default function EstateDetail() {
         schema={winerySchema}
       />
       
-      <section className="relative w-full h-screen overflow-hidden flex flex-col">
+      <section className="relative w-full min-h-screen overflow-hidden flex flex-col justify-between">
         
         {/* Full background image */}
-        <div className="absolute inset-0 w-full h-full z-0">
+        <div className="absolute inset-0 w-full h-full z-0 overflow-hidden">
            <img 
-             src={estate.heroImageUrl || 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80'} 
+             src={resolveImageUrl(estate.heroImageUrl) || 'https://res.cloudinary.com/oioqrgj0/image/upload/v1791959974/grandstore-uploads/bruno-andreu-estate-hero-cover.jpg'} 
              alt={estate.estateName}
-             className="w-full h-full object-cover object-bottom"
+             className="w-full h-full object-cover object-center"
            />
-           <div className="absolute inset-0 bg-black/30" />
+           {/* Multi-layered luxury vignette & bottom fade */}
+           <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/35 to-black/90" />
+           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-black/20 to-black/60 pointer-events-none" />
         </div>
 
-        {/* Hero Content */}
-        <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-4 w-full pb-16">
-          <p className="text-white/90 uppercase tracking-widest text-[10px] md:text-xs mb-8 font-light drop-shadow-md">
-             {estate.tagline || (story.foundedYear ? `Handcrafting wines since ${story.foundedYear}` : 'Premium Wine Estate')}
+        {/* Top Floating Navigation Bar */}
+        <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
+          <Link 
+            to="/winefarm" 
+            className="inline-flex items-center gap-2 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-white/90 hover:text-[#e1bd70] transition-all duration-300 py-2 px-3.5 sm:px-4 rounded-full bg-black/40 backdrop-blur-md border border-white/15 hover:border-[#e1bd70]/50 shadow-lg group"
+          >
+            <ArrowLeft size={13} className="transform group-hover:-translate-x-1 transition-transform" />
+            <span>Wine Estates</span>
+          </Link>
+
+          <div className="hidden sm:inline-flex items-center gap-2 text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-white/80 font-light px-4 py-2 rounded-full bg-black/30 backdrop-blur-sm border border-white/10">
+            <MapPin size={12} className="text-[#e1bd70]" />
+            <span>{estate.region || 'Languedoc-Roussillon'}, {estate.country || 'France'}</span>
+          </div>
+
+          <Link
+            to="/shop"
+            className="inline-flex items-center gap-2 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-white/90 hover:text-[#e1bd70] transition-all duration-300 py-2 px-3.5 sm:px-4 rounded-full bg-black/40 backdrop-blur-md border border-white/15 hover:border-[#e1bd70]/50 shadow-lg"
+          >
+            <Wine size={13} className="text-[#e1bd70]" />
+            <span>Grand Store</span>
+          </Link>
+        </div>
+
+        {/* Hero Central Content */}
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 w-full max-w-5xl mx-auto my-auto py-12">
+          
+          {/* Eyebrow Tagline */}
+          <p className="text-white/90 uppercase tracking-[0.25em] sm:tracking-[0.35em] text-[10px] md:text-xs mb-6 sm:mb-8 font-light drop-shadow-md">
+            {estate.tagline || (story.foundedYear ? `Handcrafting wines since ${story.foundedYear}` : 'Creator of Iconic French Wines')}
           </p>
           
           {/* Hero Main Brand Presentation */}
           {(estate.slug === 'bruno-andreu' || slug === 'bruno-andreu' || estate.estateName?.toLowerCase().includes('bruno')) ? (
-            <div className="flex flex-col items-center justify-center text-center my-3 max-w-5xl w-full px-4 select-none animate-fadeIn">
-              {/* Emblem Row: Left Rule + BRUNO + Intertwined BA Monogram + ANDREU + Right Rule */}
-              <div className="flex items-center justify-center gap-3 sm:gap-6 md:gap-8 w-full">
-                {/* Left Thin Rule */}
-                <div className="h-[1px] flex-1 max-w-[50px] sm:max-w-[120px] md:max-w-[180px] bg-white/70 shadow-sm" />
+            <div className="flex flex-col items-center justify-center text-center my-2 max-w-5xl w-full px-4 select-none animate-fadeIn">
+              {/* Emblem Row: BRUNO + Intertwined BA Monogram + ANDREU (No side lines, tight closure) */}
+              <div className="flex items-center justify-center gap-1 sm:gap-2 md:gap-2.5">
+                <span className="font-serif font-light text-2xl sm:text-4xl md:text-5xl lg:text-6xl text-white tracking-[0.15em] sm:tracking-[0.18em] drop-shadow-xl">
+                  BRUNO
+                </span>
 
-                {/* Brand Typography & Central Monogram */}
-                <div className="flex items-center gap-2.5 sm:gap-5 md:gap-7">
-                  <span className="font-serif font-light text-2xl sm:text-4xl md:text-5xl lg:text-6xl text-white tracking-[0.2em] sm:tracking-[0.26em] drop-shadow-xl">
-                    BRUNO
+                {/* Intertwined BA Monogram Emblem - tightly framed without excess void */}
+                <div className="relative flex items-center justify-center w-7 sm:w-9 md:w-11 h-12 sm:h-16 md:h-20 select-none shrink-0 mx-0.5 sm:mx-1">
+                  <span className="absolute font-serif text-3xl sm:text-5xl md:text-6xl font-bold text-white leading-none top-0 -translate-x-0.5 sm:-translate-x-1 drop-shadow-2xl">
+                    B
                   </span>
-
-                  {/* Intertwined BA Monogram Emblem */}
-                  <div className="relative flex items-center justify-center w-12 sm:w-16 md:w-20 h-16 sm:h-20 md:h-24 select-none shrink-0 mx-0.5">
-                    <span className="absolute font-serif text-4xl sm:text-6xl md:text-7xl font-bold text-white leading-none top-0 -translate-x-1 drop-shadow-2xl">
-                      B
-                    </span>
-                    <span className="absolute font-serif text-3xl sm:text-5xl md:text-6xl font-light text-white/95 leading-none bottom-0 translate-x-1 drop-shadow-2xl">
-                      A
-                    </span>
-                  </div>
-
-                  <span className="font-serif font-light text-2xl sm:text-4xl md:text-5xl lg:text-6xl text-white tracking-[0.2em] sm:tracking-[0.26em] drop-shadow-xl">
-                    ANDREU
+                  <span className="absolute font-serif text-2xl sm:text-4xl md:text-5xl font-light text-white/95 leading-none bottom-0 translate-x-0.5 sm:translate-x-1 drop-shadow-2xl">
+                    A
                   </span>
                 </div>
 
-                {/* Right Thin Rule */}
-                <div className="h-[1px] flex-1 max-w-[50px] sm:max-w-[120px] md:max-w-[180px] bg-white/70 shadow-sm" />
+                <span className="font-serif font-light text-2xl sm:text-4xl md:text-5xl lg:text-6xl text-white tracking-[0.15em] sm:tracking-[0.18em] drop-shadow-xl">
+                  ANDREU
+                </span>
               </div>
 
               {/* Sub-label: FRANCE */}
               <span className="text-white/95 uppercase tracking-[0.45em] sm:tracking-[0.6em] md:tracking-[0.7em] text-xs sm:text-sm md:text-base font-light mt-3 sm:mt-4 drop-shadow-md">
                 FRANCE
               </span>
+
+              {/* Subtitle / Terroir Description */}
+              <p className="mt-6 text-white/85 text-xs sm:text-sm md:text-base font-light max-w-2xl leading-relaxed drop-shadow-md">
+                Over 8 generations of winemaking heritage in Montblanc, Languedoc. Crafting bespoke allocations, terroir expressions, and pioneering innovations.
+              </p>
+
+              {/* Luxury Estate Metadata Badges */}
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-6">
+                <span className="text-[10px] sm:text-[11px] text-white/90 uppercase tracking-[0.2em] px-3.5 py-1.5 rounded-full bg-black/40 backdrop-blur-sm border border-white/10">
+                  Montblanc, Languedoc
+                </span>
+                <span className="text-[10px] sm:text-[11px] text-[#e1bd70] uppercase tracking-[0.2em] px-3.5 py-1.5 rounded-full bg-black/40 backdrop-blur-sm border border-[#e1bd70]/25">
+                  8 Generations Heritage
+                </span>
+                <span className="text-[10px] sm:text-[11px] text-white/90 uppercase tracking-[0.2em] px-3.5 py-1.5 rounded-full bg-black/40 backdrop-blur-sm border border-white/10">
+                  Direct Estate Allocations
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mt-8">
+                {products.length > 0 && (
+                  <button
+                    onClick={() => document.getElementById('estate-wines')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 rounded-full bg-gradient-to-r from-[#e1bd70] to-[#c9a150] text-black font-semibold text-xs uppercase tracking-[0.2em] shadow-xl hover:brightness-110 transform hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+                  >
+                    <span>Explore Allocations</span>
+                    <ChevronRight size={14} />
+                  </button>
+                )}
+                {(story.history || story.philosophy) && (
+                  <button
+                    onClick={() => document.getElementById('our-story')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 rounded-full bg-black/40 hover:bg-black/60 text-white font-medium text-xs uppercase tracking-[0.2em] border border-white/20 hover:border-white/50 backdrop-blur-md shadow-lg transform hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+                  >
+                    <span>Our Heritage</span>
+                  </button>
+                )}
+              </div>
             </div>
           ) : estate.logoUrl ? (
             <div className="flex flex-col items-center justify-center my-2 max-w-lg w-full px-4">
               <img
                 src={resolveImageUrl(estate.logoUrl)}
                 alt={estate.estateName}
-                className="max-h-28 sm:max-h-36 w-auto object-contain drop-shadow-2xl"
+                className="max-h-24 sm:max-h-32 md:max-h-36 w-auto object-contain filter drop-shadow-[0_12px_28px_rgba(0,0,0,0.85)]"
               />
             </div>
           ) : (
-            <h1 className="font-serif font-light text-[clamp(36px,6vw,64px)] leading-[1.2] text-white uppercase tracking-normal drop-shadow-lg flex flex-col items-center gap-2">
-              <span className="text-[0.5em] tracking-widest opacity-90 mb-2">Discover</span>
-              {estate.estateName?.split(' ').reduce((acc, word, i) => {
-                if (i % 2 === 0) acc.push([word]);
-                else acc[acc.length - 1].push(word);
-                return acc;
-              }, []).map((chunk, i) => (
-                <span key={i}>{chunk.join(' ')}</span>
-              ))}
+            <h1 className="font-serif font-light text-[clamp(32px,5vw,60px)] leading-[1.2] text-white uppercase tracking-normal drop-shadow-xl flex flex-col items-center gap-2">
+              <span className="text-[0.45em] tracking-[0.3em] text-[#e1bd70] mb-1">Discover</span>
+              {estate.estateName}
             </h1>
           )}
         </div>
         
-        {/* Scroll Down */}
-        <div className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white z-20">
-          <span className="uppercase tracking-widest text-[9px] font-bold drop-shadow-sm">Scroll</span>
-          <ArrowDown size={12} className="animate-bounce drop-shadow-sm" />
+        {/* Scroll Indicator */}
+        <div className="relative z-20 pb-6 sm:pb-8 flex flex-col items-center justify-center">
+          <button 
+            onClick={() => {
+              const target = document.getElementById('our-story') || document.getElementById('estate-wines');
+              if (target) target.scrollIntoView({ behavior: 'smooth' });
+              else window.scrollTo({ top: window.innerHeight - 60, behavior: 'smooth' });
+            }}
+            className="flex flex-col items-center gap-2 text-white/80 hover:text-[#e1bd70] transition-colors cursor-pointer group bg-transparent border-0"
+          >
+            <span className="uppercase tracking-[0.3em] text-[9px] font-semibold drop-shadow-sm group-hover:translate-y-0.5 transition-transform">
+              Scroll to Explore
+            </span>
+            <ArrowDown size={14} className="animate-bounce drop-shadow-md text-[#e1bd70]" />
+          </button>
         </div>
       </section>
 
@@ -247,7 +311,7 @@ export default function EstateDetail() {
           OUR STORY (Grid + Centered Text)
       ════════════════════════════════════════════ */}
       {(story.history || story.philosophy || story.winemaker) && (
-        <section className="py-12 md:py-16 bg-white relative overflow-hidden">
+        <section id="our-story" className="py-12 md:py-16 bg-white relative overflow-hidden">
           <div className="max-w-[1400px] mx-auto px-4 flex flex-col lg:flex-row items-stretch gap-8 lg:gap-0">
             
             {/* Left Image Grid */}
@@ -272,7 +336,7 @@ export default function EstateDetail() {
                           key={i} 
                           className={`w-full h-full overflow-hidden ${count === 3 && i === 0 ? "col-span-2 row-span-1" : ""}`}
                         >
-                          <img src={img} alt="Our Story" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                          <img src={resolveImageUrl(img)} alt="Our Story" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
                         </div>
                       ))}
                     </div>
@@ -318,7 +382,7 @@ export default function EstateDetail() {
           SHOP WINES (Card Layout)
       ════════════════════════════════════════════ */}
       {products.length > 0 && (
-        <section className="py-24 bg-[#fcf9f2] relative border-t border-ink/5">
+        <section id="estate-wines" className="py-24 bg-[#fcf9f2] relative border-t border-ink/5">
           <div className="max-w-7xl mx-auto px-4">
             
             {/* Header */}
@@ -339,12 +403,18 @@ export default function EstateDetail() {
                   
                   {/* Top Image Area */}
                   <Link to={`/product/${p.slug || p.id || p._id}`} className="block w-full h-72 relative overflow-hidden bg-ink/5 p-4">
-                    {p.image || p.images?.[0] ? (
-                      <img 
-                        src={`${API}${p.image || p.images[0]}`} 
-                        alt={p.name}
-                        className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105 drop-shadow-md"
-                      />
+                    {p.image || p.gallery?.[0] ? (
+                      (() => {
+                        const imgSrc = p.image || p.gallery[0];
+                        const finalSrc = resolveImageUrl(imgSrc);
+                        return (
+                          <img 
+                            src={finalSrc} 
+                            alt={p.name}
+                            className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105 drop-shadow-md"
+                          />
+                        );
+                      })()
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Wine size={48} className="text-ink/20" />
@@ -482,7 +552,7 @@ export default function EstateDetail() {
                   {/* Top Image Area */}
                   {card.image ? (
                     <div className="w-full h-64 overflow-hidden relative">
-                      <img src={card.image} alt={card.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                      <img src={resolveImageUrl(card.image)} alt={card.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                       <div className="absolute top-4 left-4 bg-ink text-white text-[10px] uppercase tracking-widest px-3 py-1">
                         {card.type}
                       </div>
@@ -551,7 +621,7 @@ export default function EstateDetail() {
             {/* Image Side */}
             <div className="w-full md:w-1/2 relative min-h-[300px] md:min-h-full bg-ink/5">
               {hospitality.restaurant?.imageUrl && (
-                <img src={hospitality.restaurant.imageUrl} alt={hospitality.restaurant.name || 'Restaurant'} className="absolute inset-0 w-full h-full object-cover" />
+                <img src={resolveImageUrl(hospitality.restaurant.imageUrl)} alt={hospitality.restaurant.name || 'Restaurant'} className="absolute inset-0 w-full h-full object-cover" />
               )}
             </div>
             {/* Content Side */}
@@ -594,7 +664,7 @@ export default function EstateDetail() {
             {/* Image Side */}
             <div className="w-full md:w-1/2 relative min-h-[300px] md:min-h-full bg-white/5">
               {hospitality.accommodation?.imageUrl && (
-                <img src={hospitality.accommodation.imageUrl} alt="Accommodation" className="absolute inset-0 w-full h-full object-cover" />
+                <img src={resolveImageUrl(hospitality.accommodation.imageUrl)} alt="Accommodation" className="absolute inset-0 w-full h-full object-cover" />
               )}
             </div>
             {/* Content Side */}

@@ -159,6 +159,10 @@ router.post('/export', crmExportController.createExportEnquiry);
 router.put('/export/:id/docs', crmExportController.updateExportDocumentation);
 router.put('/export/:id/stage', crmExportController.updateExportStage);
 router.post('/export/:id/notes', crmExportController.addExportNote);
+router.get('/export/vendors', crmExportController.getExportVendors);
+router.put('/export/vendors/:vendorId/verification', crmExportController.updateVendorExportVerification);
+router.post('/export/match-suppliers', crmExportController.matchExportSuppliers);
+router.put('/export/:id/quote', crmExportController.updateExportQuoteAndCommission);
 
 // --- Module 7 & 8: Communications Hub & Task Reminders ---
 router.get('/comms', crmCommsController.getCommunications);
@@ -256,6 +260,10 @@ router.get('/staff/kpis', crmStaffController.getStaffKpis);
 // --- Module 13: Sales & Platform Financials (Live Store Admin Parity) ---
 router.get('/sales/dashboard', protect, crmAccess, adminController.getDashboardStats);
 router.get('/sales/finance', protect, crmAccess, financeController.getAdminFinanceOverview);
+
+// --- Module 14: Operations Master Calendar (Auctions, VIP Deposits, Tickets, Orders, Deliveries) ---
+const crmCalendarController = require('../controllers/crm/crmCalendarController');
+router.get('/calendar', crmCalendarController.getCalendarEvents);
 
 module.exports = router;
 

@@ -85,6 +85,49 @@ const productSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // ==========================================
+    // DUAL CHANNEL SETTINGS (Retail vs Trade)
+    // ==========================================
+    channelSettings: {
+      retail: {
+        enabled: { type: Boolean, default: true },
+        minOrderQuantity: { type: Number, default: 1 },
+        maxOrderQuantity: { type: Number, default: 24 }
+      },
+      trade: {
+        enabled: { type: Boolean, default: false },
+        exportApprovalStatus: {
+          type: String,
+          enum: ['not_applied', 'pending', 'approved', 'rejected'],
+          default: 'not_applied'
+        },
+        approvedAt: Date,
+        approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        rejectionReason: String,
+        moqBottles: { type: Number, default: 600 },
+        bottlesPerCase: { type: Number, default: 6 },
+        casesPerPallet: { type: Number, default: 100 },
+        palletsPer20ft: { type: Number, default: 10 },
+        palletsPer40ft: { type: Number, default: 20 },
+        leadTimeDays: { type: Number, default: 14 },
+        hsCode: { type: String, default: '2204.21' },
+        supportedIncoterms: [{
+          type: String,
+          enum: ['EXW', 'FCA', 'FOB', 'CIF', 'DAP']
+        }],
+        eligibleMarkets: [String],
+        restrictedMarkets: [String],
+        pricingCurrency: { type: String, default: 'USD' },
+        volumeTiers: [{
+          minCases: Number,
+          maxCases: Number,
+          pricePerCase: Number,
+          notes: String
+        }],
+        technicalSheetPdfUrl: String,
+        certificateOfAnalysisUrl: String
+      }
+    },
     shipping: {
       box_type: { type: String, default: 'Standard Box' },
       weight_kg: { type: Number, default: 1.5 },

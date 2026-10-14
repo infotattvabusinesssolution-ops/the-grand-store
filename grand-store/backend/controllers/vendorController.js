@@ -13,7 +13,25 @@ const generateToken = (id) => {
 
 exports.registerFullVendor = async (req, res) => {
   try {
-    const { vendorType, accountInfo, businessInfo, kycInfo, taxInfo, licenceInfo, customsInfo, bankingInfo, productCategories, deliveryInfo, agreements, credentialsInfo, marketInfo, logisticsInfo, storyInfo } = req.body;
+    const { 
+      vendorType, 
+      sellingCapabilities,
+      exportProfile,
+      accountInfo, 
+      businessInfo, 
+      kycInfo, 
+      taxInfo, 
+      licenceInfo, 
+      customsInfo, 
+      bankingInfo, 
+      productCategories, 
+      deliveryInfo, 
+      agreements, 
+      credentialsInfo, 
+      marketInfo, 
+      logisticsInfo, 
+      storyInfo 
+    } = req.body;
 
     let user;
 
@@ -78,15 +96,26 @@ exports.registerFullVendor = async (req, res) => {
       await user.save();
     }
 
+    // Determine selling capability
+    const resolvedCapabilities = sellingCapabilities || (vendorType === 'international' ? 'international' : 'domestic');
+
     // Check if vendor application already exists for this user
     let vendor = await Vendor.findOne({ userId: user._id });
     if (vendor) {
       // Overwrite existing application
       vendor.vendorType = vendorType || 'local';
+      vendor.sellingCapabilities = resolvedCapabilities;
       vendor.businessInfo = businessInfo || {};
       vendor.bankingInfo = bankingInfo || {};
       vendor.productCategories = productCategories || [];
       vendor.agreements = { ...agreements, acceptedAt: Date.now() };
+
+      if (exportProfile) {
+        vendor.exportProfile = {
+          ...vendor.exportProfile?.toObject?.() || {},
+          ...exportProfile
+        };
+      }
       
       if (vendorType === 'international') {
         vendor.credentialsInfo = credentialsInfo || {};
@@ -109,6 +138,7 @@ exports.registerFullVendor = async (req, res) => {
       const vendorData = {
         userId: user._id,
         vendorType: vendorType || 'local',
+        sellingCapabilities: resolvedCapabilities,
         businessInfo: businessInfo || {},
         bankingInfo: bankingInfo || {},
         productCategories: productCategories || [],
@@ -116,6 +146,10 @@ exports.registerFullVendor = async (req, res) => {
         status: 'pending_approval',
         onboardingStep: vendorType === 'international' ? 9 : 10
       };
+
+      if (exportProfile) {
+        vendorData.exportProfile = exportProfile;
+      }
       
       if (vendorType === 'international') {
         vendorData.credentialsInfo = credentialsInfo || {};
@@ -922,6 +956,144 @@ exports.updateVendorBanking = async (req, res) => {
   } catch (error) {
     console.error('Update Vendor Banking Error:', error);
     res.status(500).json({ message: 'Failed to update bank details', error: error.message });
+  }
+};
+
+// --- B2B International Trade: Export Capability Profile ---
+exports.getExportProfile = async (req, res) => {
+  try {
+    const vendor = await Vendor.findOne({ userId: req.user._id });
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: 'Vendor account not found' });
+    }
+
+    res.json({
+      success: true,
+      sellingCapabilities: vendor.sellingCapabilities || 'domestic',
+      exportProfile: vendor.exportProfile || {
+        approvalStatus: 'not_applied',
+        businessType: vendor.businessInfo?.businessType || 'winery',
+        exportExperience: 'first_time',
+        supplyCapacity: {},
+        logisticsCapabilities: {},
+        markets: {},
+        tradeTerms: {},
+        documents: []
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching export profile:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch export profile', error: err.message });
+  }
+};
+
+exports.updateExportProfile = async (req, res) => {
+  try {
+    const { sellingCapabilities, exportProfile } = req.body;
+    const vendor = await Vendor.findOne({ userId: req.user._id });
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: 'Vendor account not found' });
+    }
+
+    if (sellingCapabilities) {
+      vendor.sellingCapabilities = sellingCapabilities;
+    }
+
+    if (exportProfile) {
+      const existingStatus = vendor.exportProfile?.approvalStatus || 'not_applied';
+      const newStatus = (sellingCapabilities === 'international' || sellingCapabilities === 'both') && existingStatus === 'not_applied'
+        ? 'pending_approval'
+        : existingStatus;
+
+      vendor.exportProfile = {
+        ...(vendor.exportProfile?.toObject ? vendor.exportProfile.toObject() : vendor.exportProfile || {}),
+        ...exportProfile,
+        approvalStatus: newStatus
+      };
+    }
+
+    await vendor.save();
+
+    res.json({
+      success: true,
+      message: 'Export capability profile saved successfully',
+      sellingCapabilities: vendor.sellingCapabilities,
+      exportProfile: vendor.exportProfile
+    });
+  } catch (err) {
+    console.error('Error updating export profile:', err);
+    res.status(500).json({ success: false, message: 'Failed to update export profile', error: err.message });
+  }
+};
+
+exports.getVendorTradeRfqs = async (req, res) => {
+  try {
+    const vendor = await Vendor.findOne({ userId: req.user._id });
+    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+
+    const Product = require('../models/Product');
+    const ExportEnquiry = require('../models/ExportEnquiry');
+
+    const vendorProducts = await Product.find({ vendorId: vendor._id }).select('_id');
+    const productIds = vendorProducts.map(p => p._id);
+
+    const rfqs = await ExportEnquiry.find({
+      $or: [
+        { vendorId: vendor._id },
+        { 'vendorQuotes.vendorId': vendor._id },
+        { 'itemsRequested.vendorId': vendor._id },
+        { 'itemsRequested.productId': { $in: productIds } }
+      ]
+    }).sort({ createdAt: -1 });
+
+    return res.json({ success: true, rfqs });
+  } catch (err) {
+    console.error('Error fetching vendor trade RFQs:', err);
+    res.status(500).json({ success: false, message: 'Failed to retrieve trade RFQs', error: err.message });
+  }
+};
+
+exports.submitVendorQuote = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { quotedPricePerUnit, currency, leadTimeDays, notes } = req.body;
+
+    const vendor = await Vendor.findOne({ userId: req.user._id });
+    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+
+    const ExportEnquiry = require('../models/ExportEnquiry');
+    const enquiry = await ExportEnquiry.findById(id);
+    if (!enquiry) return res.status(404).json({ success: false, message: 'Export enquiry not found' });
+
+    if (!enquiry.vendorQuotes) enquiry.vendorQuotes = [];
+    
+    const existingQuoteIndex = enquiry.vendorQuotes.findIndex(q => String(q.vendorId) === String(vendor._id));
+    const quoteData = {
+      vendorId: vendor._id,
+      quotedPricePerUnit: Number(quotedPricePerUnit),
+      currency: currency || enquiry.currency || 'USD',
+      leadTimeDays: Number(leadTimeDays) || 14,
+      notes: notes || '',
+      submittedAt: new Date(),
+      status: 'submitted'
+    };
+
+    if (existingQuoteIndex >= 0) {
+      enquiry.vendorQuotes[existingQuoteIndex] = quoteData;
+    } else {
+      enquiry.vendorQuotes.push(quoteData);
+    }
+
+    if (enquiry.stage === 'enquiry_received') {
+      enquiry.stage = 'quote_pending';
+    }
+
+    await enquiry.save();
+
+    return res.json({ success: true, message: 'Quotation submitted successfully to Grand Store Trade Directorate', quote: quoteData });
+  } catch (err) {
+    console.error('Error submitting vendor quote:', err);
+    res.status(500).json({ success: false, message: 'Failed to submit quote', error: err.message });
   }
 };
 
