@@ -1041,7 +1041,17 @@ function App() {
         />
         <Route path="/contact-us" element={<ContactUsPage />} />
         <Route path="/refer-and-earn" element={<ReferEarnPage />} />
-        <Route path="/offers" element={<OffersPage />} />
+        <Route
+          path="/offers"
+          element={
+            <OffersPage
+              onAdd={addToCart}
+              onWish={handleWishlist}
+              onCompare={addToCompare}
+              onNotify={showToast}
+            />
+          }
+        />
         <Route path="/glossary" element={<GlossaryPage />} />
 
         <Route
