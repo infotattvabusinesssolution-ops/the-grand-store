@@ -130,6 +130,7 @@ import AdminMarquees from './features/admin/AdminMarquees'
 import AdminTradeEnquiries from './features/admin/AdminTradeEnquiries'
 import AdminCigarEnquiries from './features/admin/AdminCigarEnquiries'
 import AdminCigarEnquiryDetail from './features/admin/AdminCigarEnquiryDetail'
+import AdminMosiPricing from './features/admin/AdminMosiPricing'
 import AdminWineEnquiries from './features/admin/AdminWineEnquiries'
 import AdminWineEnquiryDetail from './features/admin/AdminWineEnquiryDetail'
 import AdminAttributes from './features/admin/AdminAttributes'
@@ -952,6 +953,7 @@ function App() {
           <Route path="trade-enquiries" element={<AdminTradeEnquiries />} />
           <Route path="cigar-enquiries" element={<AdminCigarEnquiries />} />
           <Route path="cigar-enquiries/:id" element={<AdminCigarEnquiryDetail />} />
+          <Route path="mosi-pricing" element={<AdminMosiPricing onNotify={showToast} />} />
           <Route path="wine-enquiries" element={<AdminWineEnquiries />} />
           <Route path="wine-enquiries/:id" element={<AdminWineEnquiryDetail />} />
           <Route path="financials" element={<AdminFinancials />} />

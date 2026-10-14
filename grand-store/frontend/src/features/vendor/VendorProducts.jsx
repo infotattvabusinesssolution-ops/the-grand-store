@@ -6,9 +6,10 @@ import {
   Package, PlusCircle, Clock, CheckCircle2, XCircle, Eye, Edit, Trash2, 
   Search, X, Filter, Barcode, Copy, Check, LayoutGrid, List, RefreshCw, 
   AlertTriangle, AlertCircle, TrendingUp, DollarSign, Layers, ChevronLeft, 
-  ChevronRight, ArrowUpDown, Sparkles
+  ChevronRight, ArrowUpDown, Sparkles, UploadCloud, Image as ImageIcon
 } from 'lucide-react';
 import Price from '../../components/ui/Price';
+import BarcodeImageModal from '../../components/BarcodeImageModal';
 
 /**
  * Standard GS1 EAN-13 & ITF-14 barcode derivation helper.
@@ -77,6 +78,12 @@ export default function VendorProducts() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [copiedBarcode, setCopiedBarcode] = useState(null);
+  const [selectedBarcodeProduct, setSelectedBarcodeProduct] = useState(null);
+
+  const handleProductBarcodeUpdated = (updated) => {
+    setProducts(prev => prev.map(p => ((p.id === updated.id || p._id === updated._id) ? { ...p, ...updated } : p)));
+    setSelectedBarcodeProduct(updated);
+  };
 
   // Auth Protection & Initial Fetch
   const fetchProducts = useCallback(async (isRefresh = false) => {
@@ -771,6 +778,31 @@ export default function VendorProducts() {
                             </button>
                           </div>
 
+                          {/* Barcode Image & Cloudinary Upload Button */}
+                          <div className="flex items-center gap-2 mt-1">
+                            {product.barcodeImage || product.identity?.barcodeImage ? (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedBarcodeProduct(product)}
+                                className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-semibold hover:bg-emerald-500/20 transition-all"
+                                title="View Cloudinary Barcode Image"
+                              >
+                                <ImageIcon size={11} />
+                                Barcode Image
+                              </button>
+                            ) : null}
+
+                            <button
+                              type="button"
+                              onClick={() => setSelectedBarcodeProduct(product)}
+                              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#c9a35b]/10 border border-[#c9a35b]/20 text-[#e1bd70] text-[10px] font-semibold hover:bg-[#c9a35b] hover:text-black transition-all"
+                              title="Upload Barcode Image to Cloudinary"
+                            >
+                              <UploadCloud size={11} />
+                              {product.barcodeImage || product.identity?.barcodeImage ? 'Update' : 'Upload Cloudinary'}
+                            </button>
+                          </div>
+
                         </div>
                       </td>
 
@@ -892,18 +924,28 @@ export default function VendorProducts() {
                     <Barcode size={14} className="text-[#c9a35b]" />
                     <span className="truncate">{barcodes.single}</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyBarcode(barcodes.single, 'single')}
-                    className="text-stone-500 hover:text-[#c9a35b] p-1"
-                    title="Copy Barcode"
-                  >
-                    {copiedBarcode === barcodes.single ? (
-                      <Check size={12} className="text-emerald-400" />
-                    ) : (
-                      <Copy size={12} />
-                    )}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedBarcodeProduct(product)}
+                      className="text-stone-400 hover:text-[#c9a35b] p-1 transition-colors"
+                      title="Cloudinary Barcode Image"
+                    >
+                      <UploadCloud size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyBarcode(barcodes.single, 'single')}
+                      className="text-stone-500 hover:text-[#c9a35b] p-1"
+                      title="Copy Barcode"
+                    >
+                      {copiedBarcode === barcodes.single ? (
+                        <Check size={12} className="text-emerald-400" />
+                      ) : (
+                        <Copy size={12} />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Card Action Footer */}
@@ -991,6 +1033,13 @@ export default function VendorProducts() {
         </section>
       )}
 
+      {/* Cloudinary Barcode Image Modal */}
+      <BarcodeImageModal
+        product={selectedBarcodeProduct}
+        isOpen={!!selectedBarcodeProduct}
+        onClose={() => setSelectedBarcodeProduct(null)}
+        onUpdated={handleProductBarcodeUpdated}
+      />
     </div>
   );
 }

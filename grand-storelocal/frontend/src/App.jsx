@@ -127,6 +127,7 @@ import AdminMarquees from './features/admin/AdminMarquees'
 import AdminTradeEnquiries from './features/admin/AdminTradeEnquiries'
 import AdminCigarEnquiries from './features/admin/AdminCigarEnquiries'
 import AdminCigarEnquiryDetail from './features/admin/AdminCigarEnquiryDetail'
+import AdminMosiPricing from './features/admin/AdminMosiPricing'
 import AdminWineEnquiries from './features/admin/AdminWineEnquiries'
 import AdminWineEnquiryDetail from './features/admin/AdminWineEnquiryDetail'
 import AdminAttributes from './features/admin/AdminAttributes'
@@ -576,7 +577,15 @@ function App() {
                 onCompare={addToCompare}
                 compareItems={compareItems}
               />
-              <TastingCampaign />
+              {/* Campaign row — Tasting & Auction side by side */}
+              <div className="flex flex-col lg:flex-row w-[calc(100%-32px)] sm:w-[calc(100%-48px)] lg:w-[calc(100%-60px)] max-w-[1500px] mx-auto my-[18px] border border-[#e1bd70]/20">
+                <div className="flex-1 min-h-[330px] sm:min-h-[460px] lg:min-h-[520px] lg:border-r lg:border-[#e1bd70]/20">
+                  <TastingCampaign />
+                </div>
+                <div className="flex-1 min-h-[330px] lg:min-h-[520px]">
+                  <AuctionCampaign />
+                </div>
+              </div>
               <TequilaShowcase
                 onAdd={addToCart}
                 onWish={handleWishlist}
@@ -621,7 +630,7 @@ function App() {
                 onCompare={addToCompare}
                 compareItems={compareItems}
               />
-              <AuctionCampaign />
+
               <CategoryShowcase
                 categoryId="Gin"
                 title="Top Gin"
@@ -938,6 +947,7 @@ function App() {
           <Route path="trade-enquiries" element={<AdminTradeEnquiries />} />
           <Route path="cigar-enquiries" element={<AdminCigarEnquiries />} />
           <Route path="cigar-enquiries/:id" element={<AdminCigarEnquiryDetail />} />
+          <Route path="mosi-pricing" element={<AdminMosiPricing onNotify={showToast} />} />
           <Route path="wine-enquiries" element={<AdminWineEnquiries />} />
           <Route path="wine-enquiries/:id" element={<AdminWineEnquiryDetail />} />
           <Route path="financials" element={<AdminFinancials />} />
