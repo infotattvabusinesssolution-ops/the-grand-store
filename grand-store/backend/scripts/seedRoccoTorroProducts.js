@@ -28,11 +28,11 @@ const roccoTorroProducts = [
     price: "790.00",
     size: "750ml",
     stock: 36,
-    image: "/assets/products/rocco-torro-blanco.jpg",
-    originalImage: "/assets/products/rocco-torro-blanco.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983280/grandstore-uploads/products/rocco-torro-blanco.jpg",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983280/grandstore-uploads/products/rocco-torro-blanco.jpg",
     gallery: [
-      "/assets/products/rocco-torro-blanco.jpg",
-      "/assets/products/rocco-torro-collection.jpg"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983280/grandstore-uploads/products/rocco-torro-blanco.jpg",
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983280/grandstore-uploads/products/rocco-torro-blanco.jpg"
     ],
     description: "Distilled from 100% Karoo Agave at our licensed, single-spirit distillery in Graaff-Reinet in the Great Karoo, crafted entirely on site from field to bottle. After distillation, the spirit rests for two weeks to soften and refine its edges while preserving its natural agave purity. Clean, vibrant and expressive, our Blanco showcases the true character of agave in its most authentic form.",
     tastingNotes: [
@@ -115,11 +115,11 @@ const roccoTorroProducts = [
     price: "790.00",
     size: "750ml",
     stock: 36,
-    image: "/assets/products/rocco-torro-reposado-french-oak.jpg",
-    originalImage: "/assets/products/rocco-torro-reposado-french-oak.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983281/grandstore-uploads/products/rocco-torro-reposado-french-oak.jpg",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983281/grandstore-uploads/products/rocco-torro-reposado-french-oak.jpg",
     gallery: [
-      "/assets/products/rocco-torro-reposado-french-oak.jpg",
-      "/assets/products/rocco-torro-collection.jpg"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983281/grandstore-uploads/products/rocco-torro-reposado-french-oak.jpg",
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983280/grandstore-uploads/products/rocco-torro-blanco.jpg"
     ],
     description: "Distilled from 100% Karoo Agave at our licensed single-spirit distillery in Graaff-Reinet. After distillation, the spirit rests for a minimum of three months in hand-selected French oak barrels, developing deeper spice and subtle fruit complexity. The result is a refined, dry Reposado with layered character and an elegant, lingering finish.",
     tastingNotes: [
@@ -202,11 +202,11 @@ const roccoTorroProducts = [
     price: "790.00",
     size: "750ml",
     stock: 36,
-    image: "/assets/products/rocco-torro-reposado-american-oak.jpg",
-    originalImage: "/assets/products/rocco-torro-reposado-american-oak.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983282/grandstore-uploads/products/rocco-torro-reposado-american-oak.jpg",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983282/grandstore-uploads/products/rocco-torro-reposado-american-oak.jpg",
     gallery: [
-      "/assets/products/rocco-torro-reposado-american-oak.jpg",
-      "/assets/products/rocco-torro-collection.jpg"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983282/grandstore-uploads/products/rocco-torro-reposado-american-oak.jpg",
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983280/grandstore-uploads/products/rocco-torro-blanco.jpg"
     ],
     description: "Matured for a minimum of three months in charred American oak barrels at our Karoo distillery. This Reposado develops classic rich vanilla and golden caramel notes. Smooth, balanced and approachable, it offers a warm, rounded finish with distinctive sweet oak influence.",
     tastingNotes: [
@@ -293,11 +293,11 @@ const roccoTorroProducts = [
     price: "355.00",
     size: "750ml",
     stock: 48,
-    image: "/assets/products/rocco-torro-gold.jpg",
-    originalImage: "/assets/products/rocco-torro-gold.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983283/grandstore-uploads/products/rocco-torro-gold.jpg",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983283/grandstore-uploads/products/rocco-torro-gold.jpg",
     gallery: [
-      "/assets/products/rocco-torro-gold.jpg",
-      "/assets/products/rocco-torro-collection.jpg"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983283/grandstore-uploads/products/rocco-torro-gold.jpg",
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983280/grandstore-uploads/products/rocco-torro-blanco.jpg"
     ],
     description: "Rocco Torro Crafted Blend Gold is an artisanal spirit expertly blended from fine Karoo agave distillate and barrel-aged accents. Smooth, golden, and rich with hints of toasted oak, amber honey, and sweet agave nectar, perfect for classic cocktails, neat sipping, or premium shots.",
     tastingNotes: [
@@ -381,11 +381,11 @@ const roccoTorroProducts = [
     price: "355.00",
     size: "750ml",
     stock: 48,
-    image: "/assets/products/rocco-torro-silver.jpg",
-    originalImage: "/assets/products/rocco-torro-silver.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983284/grandstore-uploads/products/rocco-torro-silver.jpg",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983284/grandstore-uploads/products/rocco-torro-silver.jpg",
     gallery: [
-      "/assets/products/rocco-torro-silver.jpg",
-      "/assets/products/rocco-torro-collection.jpg"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983284/grandstore-uploads/products/rocco-torro-silver.jpg",
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983280/grandstore-uploads/products/rocco-torro-blanco.jpg"
     ],
     description: "Rocco Torro Crafted Blend Silver is a crisp, crystal-clear crafted agave spirit. Energetic and ultra-smooth on the palate with vibrant floral agave notes, clean lime zest, and subtle cracked pepper, making it the supreme choice for refreshing Margaritas, Palomas, and signature craft cocktails.",
     tastingNotes: [
@@ -469,11 +469,11 @@ const roccoTorroProducts = [
     price: "365.00",
     size: "750ml",
     stock: 48,
-    image: "/assets/products/rocco-torro-white-chocolate.jpg",
-    originalImage: "/assets/products/rocco-torro-white-chocolate.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983285/grandstore-uploads/products/rocco-torro-white-chocolate.jpg",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983285/grandstore-uploads/products/rocco-torro-white-chocolate.jpg",
     gallery: [
-      "/assets/products/rocco-torro-white-chocolate.jpg",
-      "/assets/products/rocco-torro-collection.jpg"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983285/grandstore-uploads/products/rocco-torro-white-chocolate.jpg",
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1791983280/grandstore-uploads/products/rocco-torro-blanco.jpg"
     ],
     description: "An indulgent craft spirit creation blending velvety white chocolate cream with the distinctive warmth of Karoo agave. Luxurious, decadent, and delightfully smooth on the palate, it delivers luscious notes of Belgian white chocolate, sweet Bourbon vanilla, and rich cream.",
     tastingNotes: [

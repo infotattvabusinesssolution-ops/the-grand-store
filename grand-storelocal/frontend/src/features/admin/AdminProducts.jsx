@@ -309,7 +309,15 @@ export default function AdminProducts() {
                       <td className="py-5 px-5">
                         <div className="flex items-center gap-4">
                           <div className="w-14 h-14 bg-black/40 rounded-xl flex items-center justify-center p-2 border border-white/[0.05] shadow-inner group-hover:border-white/10 transition-colors shrink-0">
-                            <img src={product.image || '/assets/auction/macallan-25.png'} alt={product.name} className="max-w-full max-h-full object-contain mix-blend-screen" />
+                            <img 
+                              src={product.image || '/assets/auction/macallan-25.png'} 
+                              alt={product.name} 
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = '/assets/auction/macallan-25.png';
+                              }}
+                              className="max-w-full max-h-full object-contain" 
+                            />
                           </div>
                           <div>
                             <p className="text-[var(--color-ivory)] font-medium font-serif text-lg tracking-wide">{product.name}</p>
