@@ -9,6 +9,7 @@ import DynamicIcon from '../../components/DynamicIcon';
 import CatalogHierarchyFields from '../../components/CatalogHierarchyFields';
 import ProductImageManager from '../../components/ProductImageManager';
 import ProductCostingCard from '../../components/ProductCostingCard';
+import BarcodeSection from '../../components/BarcodeSection';
 
 export default function AddProduct({ onNotify }) {
   const { user } = useAuth();
@@ -53,11 +54,15 @@ export default function AddProduct({ onNotify }) {
     height_cm: '34',
     box_type: 'Standard Luxury Bottle Box',
     is_fragile: true,
-    aramexServiceType: 'ONP'
+    aramexServiceType: 'ONP',
+    barcode: '',
+    cartonBarcode: ''
   });
   
   const [imageEntries, setImageEntries] = useState([]);
   const [pdfFile, setPdfFile] = useState(null);
+  const [barcodeFile, setBarcodeFile] = useState(null);
+  const [barcodePreview, setBarcodePreview] = useState('');
   
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -206,6 +211,15 @@ export default function AddProduct({ onNotify }) {
       payload.append('imageOrder', JSON.stringify(imageOrder));
       if (pdfFile) {
         payload.append('factSheetPdf', pdfFile);
+      }
+      if (formData.barcode) {
+        payload.append('barcode', formData.barcode);
+      }
+      if (formData.cartonBarcode) {
+        payload.append('cartonBarcode', formData.cartonBarcode);
+      }
+      if (barcodeFile) {
+        payload.append('barcodeImage', barcodeFile);
       }
 
       const res = await api.post(`/products`, payload, {
@@ -685,6 +699,22 @@ export default function AddProduct({ onNotify }) {
                 </h2>
                 
                 <ProductImageManager entries={imageEntries} onChange={setImageEntries} required />
+
+                <BarcodeSection
+                  barcode={formData.barcode}
+                  cartonBarcode={formData.cartonBarcode}
+                  barcodePreview={barcodePreview}
+                  onBarcodeChange={(val) => setFormData(prev => ({ ...prev, barcode: val }))}
+                  onCartonBarcodeChange={(val) => setFormData(prev => ({ ...prev, cartonBarcode: val }))}
+                  onBarcodeFileSelect={(file) => {
+                    setBarcodeFile(file);
+                    setBarcodePreview(URL.createObjectURL(file));
+                  }}
+                  onRemoveBarcodeImage={() => {
+                    setBarcodeFile(null);
+                    setBarcodePreview('');
+                  }}
+                />
 
                 {formData.type.toLowerCase() === 'wine' && (
                   <div className="border border-[var(--color-gold)]/20 p-8 relative overflow-hidden">

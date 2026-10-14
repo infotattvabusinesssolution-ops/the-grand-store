@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Navigate, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, Gavel, Wallet, Settings, Menu, X, LogOut, ArrowLeft, Star, Package, ShoppingBag, Tv, Mail, Activity, Briefcase, Shield, Gem, Award, MessageSquare, Bot, CalendarCheck, Tag, Layers, Flame, Wine, UserCheck, GraduationCap, Home, Compass, BookOpen, Crown } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Gavel, Wallet, Settings, Menu, X, LogOut, ArrowLeft, Star, Package, ShoppingBag, Tv, Mail, Activity, Briefcase, Shield, Gem, Award, MessageSquare, Bot, CalendarCheck, Tag, Layers, Flame, Wine, UserCheck, GraduationCap, Home, Compass, BookOpen, Crown, Coins } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AdminLayout() {
@@ -193,6 +193,9 @@ export default function AdminLayout() {
                 <button onClick={() => handleNavigate('/admin/products')} className={navItemClass('/admin/products')}>
                   <Package size={16} /> Retail Products
                 </button>
+                <button onClick={() => handleNavigate('/admin/mosi-pricing')} className={navItemClass('/admin/mosi-pricing')}>
+                  <Coins size={16} /> Mosi Dynamic Pricing
+                </button>
                 <button onClick={() => handleNavigate('/admin/luxury-showcase')} className={navItemClass('/admin/luxury-showcase')}>
                   <Crown size={16} /> M Collection Poster
                 </button>
@@ -239,6 +242,9 @@ export default function AdminLayout() {
                 </button>
                 <button onClick={() => handleNavigate('/admin/cigar-enquiries')} className={navItemClass('/admin/cigar-enquiries')}>
                   <Flame size={16} /> Cigar Enquiries
+                </button>
+                <button onClick={() => handleNavigate('/admin/mosi-pricing')} className={navItemClass('/admin/mosi-pricing')}>
+                  <Coins size={16} /> Mosi Dynamic Pricing
                 </button>
                 <button onClick={() => handleNavigate('/admin/wine-enquiries')} className={navItemClass('/admin/wine-enquiries')}>
                   <Wine size={16} /> Wine Enquiries

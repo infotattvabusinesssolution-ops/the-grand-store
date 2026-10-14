@@ -8,6 +8,7 @@ import DynamicIcon from '../../components/DynamicIcon';
 import CatalogHierarchyFields from '../../components/CatalogHierarchyFields';
 import ProductImageManager, { existingImageEntries } from '../../components/ProductImageManager';
 import ProductCostingCard from '../../components/ProductCostingCard';
+import BarcodeSection from '../../components/BarcodeSection';
 
 export default function EditProduct({ onNotify }) {
   const { user } = useAuth();
@@ -57,10 +58,15 @@ export default function EditProduct({ onNotify }) {
     height_cm: '34',
     box_type: 'Standard Luxury Bottle Box',
     is_fragile: true,
-    aramexServiceType: 'ONP'
+    aramexServiceType: 'ONP',
+    barcode: '',
+    cartonBarcode: '',
+    barcodeImage: ''
   });
   
   const [imageEntries, setImageEntries] = useState([]);
+  const [barcodeFile, setBarcodeFile] = useState(null);
+  const [barcodePreview, setBarcodePreview] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -123,8 +129,15 @@ export default function EditProduct({ onNotify }) {
             height_cm: (product.shipping?.height_cm || product.height_cm || '34').toString(),
             box_type: product.shipping?.box_type || product.box_type || 'Standard Luxury Bottle Box',
             is_fragile: product.shipping?.is_fragile !== undefined ? product.shipping.is_fragile : true,
-            aramexServiceType: product.shipping?.aramexServiceType || 'ONP'
+            aramexServiceType: product.shipping?.aramexServiceType || 'ONP',
+            barcode: product.barcode || product.identity?.barcode || '',
+            cartonBarcode: product.cartonBarcode || product.identity?.cartonBarcode || '',
+            barcodeImage: product.barcodeImage || product.identity?.barcodeImage || ''
           });
+          const existingBarcode = product.barcodeImage || product.identity?.barcodeImage;
+          if (existingBarcode) {
+            setBarcodePreview(existingBarcode);
+          }
           if (product.costing) {
             setCostingData(product.costing);
           }
@@ -210,7 +223,10 @@ export default function EditProduct({ onNotify }) {
         production: formData.production,
         origin: formData.origin || formData.country,
         bottleSize: formData.size,
-        abv: formData.abv
+        abv: formData.abv,
+        barcode: formData.barcode,
+        cartonBarcode: formData.cartonBarcode,
+        barcodeImage: barcodeFile ? undefined : formData.barcodeImage
       }));
       payload.append('description', formData.description);
       payload.append('price', formData.price);
@@ -267,6 +283,17 @@ export default function EditProduct({ onNotify }) {
       payload.append('imageOrder', JSON.stringify(imageOrder));
       if (pdfFile) {
         payload.append('factSheetPdf', pdfFile);
+      }
+      if (formData.barcode) {
+        payload.append('barcode', formData.barcode);
+      }
+      if (formData.cartonBarcode) {
+        payload.append('cartonBarcode', formData.cartonBarcode);
+      }
+      if (barcodeFile) {
+        payload.append('barcodeImage', barcodeFile);
+      } else if (formData.barcodeImage) {
+        payload.append('barcodeImage', formData.barcodeImage);
       }
 
       await api.put(`/products/${id}`, payload, {
@@ -817,6 +844,23 @@ export default function EditProduct({ onNotify }) {
                 </h2>
                 
                 <ProductImageManager entries={imageEntries} onChange={setImageEntries} required />
+
+                <BarcodeSection
+                  barcode={formData.barcode}
+                  cartonBarcode={formData.cartonBarcode}
+                  barcodePreview={barcodePreview}
+                  onBarcodeChange={(val) => setFormData(prev => ({ ...prev, barcode: val }))}
+                  onCartonBarcodeChange={(val) => setFormData(prev => ({ ...prev, cartonBarcode: val }))}
+                  onBarcodeFileSelect={(file) => {
+                    setBarcodeFile(file);
+                    setBarcodePreview(URL.createObjectURL(file));
+                  }}
+                  onRemoveBarcodeImage={() => {
+                    setBarcodeFile(null);
+                    setBarcodePreview('');
+                    setFormData(prev => ({ ...prev, barcodeImage: '' }));
+                  }}
+                />
 
                 {formData.type.toLowerCase() === 'wine' && (
                   <div className="border border-[var(--color-gold)]/20 p-8 relative overflow-hidden">

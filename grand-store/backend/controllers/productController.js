@@ -271,6 +271,18 @@ const createProduct = async (req, res) => {
       aramexServiceType: rawShipping.aramexServiceType || req.body.aramexServiceType || 'ONP'
     };
 
+    let barcodeImage = req.body.barcodeImage || req.body.barcodeImageUrl || '';
+    if (req.files && req.files.barcodeImage && req.files.barcodeImage[0]) {
+      barcodeImage = req.files.barcodeImage[0].path;
+    }
+    const barcode = req.body.barcode || (req.body.identity ? parseJsonValue(req.body.identity, {}).barcode : '') || '';
+    const cartonBarcode = req.body.cartonBarcode || (req.body.identity ? parseJsonValue(req.body.identity, {}).cartonBarcode : '') || '';
+
+    const mergedIdentity = mergeIdentity(normalizedProduct.identity, identity);
+    if (barcode) mergedIdentity.barcode = barcode;
+    if (cartonBarcode) mergedIdentity.cartonBarcode = cartonBarcode;
+    if (barcodeImage) mergedIdentity.barcodeImage = barcodeImage;
+
     const newProduct = new Product({
       id: `prod_${Date.now()}`,
       name: normalizedProduct.name,
@@ -280,7 +292,10 @@ const createProduct = async (req, res) => {
       subcategory: normalizedProduct.subcategory,
       brand: normalizedProduct.brand,
       size: normalizedProduct.size,
-      identity: mergeIdentity(normalizedProduct.identity, identity),
+      identity: mergedIdentity,
+      barcode,
+      barcodeImage,
+      cartonBarcode,
       description: normalizedProduct.description,
       price,
       image,
@@ -459,11 +474,88 @@ const updateProduct = async (req, res) => {
     product.image = finalImages[0];
     product.gallery = finalImages.slice(1);
 
+    // Barcodes & Cloudinary Barcode Image
+    if (req.files && req.files.barcodeImage && req.files.barcodeImage[0]) {
+      product.barcodeImage = req.files.barcodeImage[0].path;
+      if (!product.identity) product.identity = {};
+      product.identity.barcodeImage = req.files.barcodeImage[0].path;
+    } else if (req.body.barcodeImage !== undefined) {
+      product.barcodeImage = req.body.barcodeImage;
+      if (!product.identity) product.identity = {};
+      product.identity.barcodeImage = req.body.barcodeImage;
+    }
+    if (req.body.barcode !== undefined) {
+      product.barcode = req.body.barcode;
+      if (!product.identity) product.identity = {};
+      product.identity.barcode = req.body.barcode;
+    }
+    if (req.body.cartonBarcode !== undefined) {
+      product.cartonBarcode = req.body.cartonBarcode;
+      if (!product.identity) product.identity = {};
+      product.identity.cartonBarcode = req.body.cartonBarcode;
+    }
+
     const updatedProduct = await product.save();
     res.json(updatedProduct);
   } catch (error) {
     console.error('Error updating product:', error);
     res.status(500).json({ message: 'Server error updating product' });
+  }
+};
+
+// @desc    Upload barcode image to Cloudinary for a product
+// @route   POST /api/products/:id/barcode-image
+// @access  Private (Vendor or Admin)
+const uploadBarcodeImage = async (req, res) => {
+  try {
+    let product = await Product.findOne({
+      $or: [
+        { id: req.params.id },
+        { slug: req.params.id }
+      ]
+    });
+    if (!product && req.params.id && /^[0-9a-fA-F]{24}$/.test(req.params.id.toString())) {
+      product = await Product.findById(req.params.id);
+    }
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    const ownsVendorProduct = product.vendorId?.toString() === req.user._id.toString();
+    const managesInternalProduct = canManageInternalProducts(req.user) && !product.vendorId;
+    if (!ownsVendorProduct && !managesInternalProduct) {
+      return res.status(403).json({ message: 'Not authorized to edit this product' });
+    }
+
+    const uploadedBarcodeImageUrl = req.file?.path || req.body?.barcodeImage || '';
+    if (!uploadedBarcodeImageUrl) {
+      return res.status(400).json({ message: 'No barcode image file uploaded' });
+    }
+
+    product.barcodeImage = uploadedBarcodeImageUrl;
+    if (!product.identity) product.identity = {};
+    product.identity.barcodeImage = uploadedBarcodeImageUrl;
+
+    if (req.body.barcode) {
+      product.barcode = req.body.barcode;
+      product.identity.barcode = req.body.barcode;
+    }
+    if (req.body.cartonBarcode) {
+      product.cartonBarcode = req.body.cartonBarcode;
+      product.identity.cartonBarcode = req.body.cartonBarcode;
+    }
+
+    await product.save();
+
+    res.json({
+      message: 'Barcode image uploaded successfully to Cloudinary',
+      barcodeImage: product.barcodeImage,
+      product
+    });
+  } catch (error) {
+    console.error('Error uploading barcode image:', error);
+    res.status(500).json({ message: 'Failed to upload barcode image' });
   }
 };
 
@@ -500,6 +592,153 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+// =========================================================================
+// Mosi Oa Tunya Dynamic Pricing System (Admin Control Only)
+// =========================================================================
+const getMosiPricing = async (req, res) => {
+  try {
+    const products = await Product.find({
+      $or: [
+        { brand: { $regex: /Mosi.*Oa.*Tunya/i } },
+        { name: { $regex: /MOT /i } },
+        { category: 'Cigars' }
+      ]
+    }).sort({ name: 1 });
+    res.json(products);
+  } catch (error) {
+    console.error('Error fetching Mosi pricing:', error);
+    res.status(500).json({ message: 'Error fetching Mosi pricing' });
+  }
+};
+
+const updateMosiPricing = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { singlePrice, box10Price, box25Price, tradePrice, dynamicMarginPct, stock, hidePriceOnFrontend } = req.body;
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ message: 'Mosi product not found' });
+    }
+
+    if (!product.cigarPricing) {
+      product.cigarPricing = {};
+    }
+
+    if (singlePrice !== undefined) {
+      product.cigarPricing.singlePrice = Number(singlePrice);
+      product.price = String(singlePrice);
+    }
+    if (box10Price !== undefined) {
+      product.cigarPricing.box10Price = Number(box10Price);
+    }
+    if (box25Price !== undefined) {
+      product.cigarPricing.box25Price = Number(box25Price);
+    }
+    if (tradePrice !== undefined) {
+      product.cigarPricing.tradePrice = Number(tradePrice);
+    }
+    if (dynamicMarginPct !== undefined) {
+      product.cigarPricing.dynamicMarginPct = Number(dynamicMarginPct);
+    }
+    if (stock !== undefined) {
+      product.stock = Number(stock);
+    }
+    if (hidePriceOnFrontend !== undefined) {
+      product.hidePriceOnFrontend = Boolean(hidePriceOnFrontend);
+    }
+    product.cigarPricing.lastDynamicUpdate = new Date();
+
+    await product.save();
+    res.json({ message: 'Mosi pricing updated successfully', product });
+  } catch (error) {
+    console.error('Error updating Mosi pricing:', error);
+    res.status(500).json({ message: 'Error updating Mosi pricing' });
+  }
+};
+
+const bulkUpdateMosiPricing = async (req, res) => {
+  try {
+    const { percentageChange, rounding, items } = req.body;
+
+    if (Array.isArray(items) && items.length > 0) {
+      for (const item of items) {
+        if (!item._id) continue;
+        const updateFields = {};
+        if (item.singlePrice !== undefined) {
+          updateFields['cigarPricing.singlePrice'] = Number(item.singlePrice);
+          updateFields['price'] = String(item.singlePrice);
+        }
+        if (item.box10Price !== undefined) updateFields['cigarPricing.box10Price'] = Number(item.box10Price);
+        if (item.box25Price !== undefined) updateFields['cigarPricing.box25Price'] = Number(item.box25Price);
+        if (item.tradePrice !== undefined) updateFields['cigarPricing.tradePrice'] = Number(item.tradePrice);
+        if (item.dynamicMarginPct !== undefined) updateFields['cigarPricing.dynamicMarginPct'] = Number(item.dynamicMarginPct);
+        if (item.stock !== undefined) updateFields['stock'] = Number(item.stock);
+        if (item.hidePriceOnFrontend !== undefined) updateFields['hidePriceOnFrontend'] = Boolean(item.hidePriceOnFrontend);
+        updateFields['cigarPricing.lastDynamicUpdate'] = new Date();
+
+        await Product.findByIdAndUpdate(item._id, { $set: updateFields });
+      }
+      const updated = await Product.find({
+        $or: [
+          { brand: { $regex: /Mosi.*Oa.*Tunya/i } },
+          { name: { $regex: /MOT /i } }
+        ]
+      }).sort({ name: 1 });
+      return res.json({ message: 'Bulk pricing updated successfully', products: updated });
+    }
+
+    if (percentageChange !== undefined) {
+      const pctMultiplier = 1 + (Number(percentageChange) / 100);
+      const mosiProducts = await Product.find({
+        $or: [
+          { brand: { $regex: /Mosi.*Oa.*Tunya/i } },
+          { name: { $regex: /MOT /i } }
+        ]
+      });
+
+      for (const p of mosiProducts) {
+        const curSingle = p.cigarPricing?.singlePrice || Number(p.price) || 300;
+        const curBox10 = p.cigarPricing?.box10Price || (curSingle * 10 * 0.95);
+        const curBox25 = p.cigarPricing?.box25Price || (curSingle * 25 * 0.90);
+        const curTrade = p.cigarPricing?.tradePrice || (curSingle * 0.70);
+
+        let newSingle = Math.round(curSingle * pctMultiplier);
+        let newBox10 = Math.round(curBox10 * pctMultiplier);
+        let newBox25 = Math.round(curBox25 * pctMultiplier);
+        let newTrade = Math.round(curTrade * pctMultiplier);
+
+        if (rounding === '99') {
+          newSingle = Math.floor(newSingle / 10) * 10 + 9;
+        }
+
+        if (!p.cigarPricing) p.cigarPricing = {};
+        p.cigarPricing.singlePrice = newSingle;
+        p.cigarPricing.box10Price = newBox10;
+        p.cigarPricing.box25Price = newBox25;
+        p.cigarPricing.tradePrice = newTrade;
+        p.cigarPricing.lastDynamicUpdate = new Date();
+        p.price = String(newSingle);
+        p.hidePriceOnFrontend = true; // Always ensure prices stay hidden on cigar store
+        await p.save();
+      }
+
+      const updated = await Product.find({
+        $or: [
+          { brand: { $regex: /Mosi.*Oa.*Tunya/i } },
+          { name: { $regex: /MOT /i } }
+        ]
+      }).sort({ name: 1 });
+      return res.json({ message: `Successfully updated Mosi prices by ${percentageChange}%`, products: updated });
+    }
+
+    res.status(400).json({ message: 'Invalid payload: provide percentageChange or items array' });
+  } catch (error) {
+    console.error('Error in bulk Mosi pricing update:', error);
+    res.status(500).json({ message: 'Error in bulk pricing update' });
+  }
+};
+
 module.exports = {
   getProducts,
   getProductById,
@@ -507,5 +746,9 @@ module.exports = {
   createProduct,
   getVendorProducts,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  uploadBarcodeImage,
+  getMosiPricing,
+  updateMosiPricing,
+  bulkUpdateMosiPricing
 };

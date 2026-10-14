@@ -15,6 +15,7 @@ const buildSpecifications = ({ size, wrapper, origin, flavor, pressed, tip }) =>
 const createMosiProduct = (product) => ({
   ...product,
   brand,
+  hidePrice: true, // Confidential: prices are managed dynamically in Admin and strictly not displayed on cigar store
   detailHeading: `${product.flavor} African character.`,
   description: product.description || `${product.name} is a ${product.flavor.toLowerCase()} hand-rolled cigar featuring a ${product.wrapper} wrapper with Zimbabwean Burley binder and filler.`,
   specifications: buildSpecifications(product),
