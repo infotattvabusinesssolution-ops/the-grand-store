@@ -129,37 +129,38 @@ const SLOT_DEFINITIONS = [
     badge: "ESTATE RELEASE",
     fallback: REAL_SA_SHOWCASE[0],
     match: (p) => {
-      const c = String(p.category || p.type || "").toLowerCase();
+      const b = String(p.brand || "").toLowerCase();
       const n = String(p.name || "").toLowerCase();
-      return c.includes("wine") && (n.includes("red") || n.includes("merlot") || n.includes("pinot") || n.includes("king") || n.includes("tshireletso"));
+      return (
+        b.includes("lucmo") ||
+        b.includes("luc mo") ||
+        n.includes("king moremoholo") ||
+        n.includes("tshireletso red") ||
+        n.includes("makhosonke")
+      );
     },
   },
   {
     badge: "CAPE RESERVE",
     fallback: REAL_SA_SHOWCASE[1],
     match: (p) => {
-      const c = String(p.category || p.type || "").toLowerCase();
+      const b = String(p.brand || "").toLowerCase();
       const n = String(p.name || "").toLowerCase();
-      return c.includes("wine") && (n.includes("white") || n.includes("chardonnay") || n.includes("chenin") || n.includes("queen") || n.includes("sekhothali") || n.includes("ros"));
+      return (
+        n.includes("queen mother") ||
+        n.includes("sekhothali") ||
+        n.includes("tshireletso white") ||
+        ((b.includes("lucmo") || b.includes("luc mo")) && n.includes("sauvignon blanc"))
+      );
     },
   },
   {
-    badge: "CAP CLASSIQUE",
+    badge: "NON-ALCOHOLIC SPARKLING",
     fallback: REAL_SA_SHOWCASE[2],
     match: (p) => {
-      const c = String(p.category || p.type || "").toLowerCase();
+      const b = String(p.brand || "").toLowerCase();
       const n = String(p.name || "").toLowerCase();
-      const sub = String(p.subcategory || "").toLowerCase();
-      return (
-        c.includes("champagne") ||
-        c.includes("sparkling") ||
-        sub.includes("sparkling") ||
-        sub.includes("cap classique") ||
-        n.includes("cap classique") ||
-        n.includes("graham beck") ||
-        n.includes("sparkling") ||
-        n.includes("brut")
-      );
+      return b.includes("pizan") || n.includes("de pizan") || n.includes("sparkling white");
     },
   },
   {
@@ -238,67 +239,32 @@ export default function Arrivals({ onAdd, onWish, onCompare, compareItems }) {
       });
   }, [products]);
 
-  // Map products into 5 category buckets guaranteed to use only real products
+  // Map products into 5 category buckets guaranteed to prioritize authentic showcase products
   const categoryBuckets = useMemo(() => {
     return SLOT_DEFINITIONS.map((def, idx) => {
       const matches = validProducts.filter((p) => def.match(p));
-      if (matches.length > 0) return matches;
+      if (matches.length > 0) {
+        // Guarantee the flagship showcase item sits firmly at index 0 of the slot
+        const sorted = [...matches].sort((a, b) => {
+          const aName = String(a.name || "").toLowerCase();
+          const bName = String(b.name || "").toLowerCase();
+          const target = String(def.fallback?.name || "").toLowerCase();
+          if (aName === target || aName.includes("king moremoholo") || aName.includes("sparkling white")) return -1;
+          if (bName === target || bName.includes("king moremoholo") || bName.includes("sparkling white")) return 1;
+          return 0;
+        });
+        return sorted;
+      }
       if (validProducts[idx]) return [validProducts[idx]];
       if (validProducts.length > 0) return [validProducts[idx % validProducts.length]];
       return [def.fallback];
     });
   }, [validProducts]);
 
-  // IntersectionObserver to only rotate when in viewport (fixes lag)
+  // Keep showcase steady & locked — automatic timer rotation disabled so bottles never flip on their own
   useEffect(() => {
-    const el = sectionRef.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
-      setIsInView(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsInView(entry.isIntersecting);
-      },
-      { rootMargin: "100px 0px" }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
+    setRotationIndex(0);
   }, []);
-
-  // Passive scroll listener: pause rotation timer during scroll to prevent stutter
-  useEffect(() => {
-    let scrollTimeout = null;
-    const handleScroll = () => {
-      setIsScrolling(true);
-      if (scrollTimeout) clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        setIsScrolling(false);
-      }, 300);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      if (scrollTimeout) clearTimeout(scrollTimeout);
-    };
-  }, []);
-
-  // Smooth rotation timer: only ticks when in view, not scrolling, and not hovered
-  useEffect(() => {
-    const hasMultipleInAnyBucket = categoryBuckets.some((b) => b.length > 1);
-    if (!hasMultipleInAnyBucket || !isInView || isScrolling || isHovered || activeCheckoutProduct || quickViewProduct) {
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setRotationIndex((prev) => prev + 1);
-    }, ROTATION_INTERVAL_MS);
-
-    return () => clearInterval(timer);
-  }, [categoryBuckets, isInView, isScrolling, isHovered, activeCheckoutProduct]);
 
   // Compute the current 5 products — 100% authentic, existing items
   const currentSlots = useMemo(() => {

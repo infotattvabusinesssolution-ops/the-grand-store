@@ -341,7 +341,8 @@ video {
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -349,9 +350,112 @@ video {
 }
 
 ::-webkit-scrollbar-thumb {
-  border: 3px solid #0d0c0a;
-  border-radius: 10px;
+  border: 2px solid #0d0c0a;
+  border-radius: 9999px;
   background: #5d4a2d;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Universal sleek scrollbar utility */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201, 163, 91, 0.4) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #c9a35b;
+}
+
+.scrollbar-thin::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Document Canvas Sleek Custom Scrollbar */
+.editor-canvas-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.editor-canvas-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.editor-canvas-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 3px;
+  border-radius: 9999px;
+}
+
+.editor-canvas-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.editor-canvas-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.editor-canvas-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Preview Canvas Sleek Custom Scrollbar */
+.preview-canvas-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201, 163, 91, 0.35) transparent;
+}
+
+.preview-canvas-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.preview-canvas-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 3px;
+  border-radius: 9999px;
+}
+
+.preview-canvas-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.preview-canvas-scroll::-webkit-scrollbar-thumb:hover {
+  background: #c9a35b;
+}
+
+.preview-canvas-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .app {

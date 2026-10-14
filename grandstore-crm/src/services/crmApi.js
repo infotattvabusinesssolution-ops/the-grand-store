@@ -6,7 +6,7 @@ const isLocalhost = typeof window !== 'undefined' && (
   window.location.hostname === '0.0.0.0'
 );
 
-const defaultBaseUrl = isLocalhost ? 'http://localhost:5015' : 'https://api.grandstoreglobal.com';
+const defaultBaseUrl = isLocalhost ? 'http://localhost:5000' : 'https://api.grandstoreglobal.com';
 const apiBaseUrl = import.meta.env.VITE_API_URL || defaultBaseUrl;
 
 export const crmClient = axios.create({
