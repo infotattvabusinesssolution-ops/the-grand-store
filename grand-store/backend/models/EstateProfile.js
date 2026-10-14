@@ -30,6 +30,7 @@ const estateProfileSchema = new mongoose.Schema({
 
   // ── Hero & Media ─────────────────────────────
   heroImageUrl:  { type: String },
+  logoUrl:       { type: String },
   galleryUrls:   [{ type: String }],
 
   // ── Core Info ────────────────────────────────
