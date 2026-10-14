@@ -543,9 +543,9 @@ export default function OffersPage({ onAdd, onWish, onCompare, onNotify }) {
                   <div className="w-2/3 h-4 mx-auto bg-[#c9a35b]/10 rounded-full blur-md" />
                 </Link>
 
-                {/* Product Metadata & Info */}
+                {/* Product Metadata & Info (Concise Minimalist Layout) */}
                 <div className="p-5 pt-0 flex-1 flex flex-col z-10">
-                  <div className="flex items-center justify-between text-[11px] font-mono text-stone-400 mb-2">
+                  <div className="flex items-center justify-between text-[11px] font-mono text-stone-400 mb-1.5">
                     <span className="text-[#c9a35b] uppercase tracking-wider font-semibold">
                       {product.brand}
                     </span>
@@ -554,28 +554,12 @@ export default function OffersPage({ onAdd, onWish, onCompare, onNotify }) {
                     </span>
                   </div>
 
-                  <h3 className="font-serif text-lg text-[#eee8dd] font-medium leading-snug mb-2 group-hover:text-[#c9a35b] transition-colors line-clamp-2">
+                  <h3 className="font-serif text-base sm:text-lg text-[#eee8dd] font-medium leading-snug mb-3 group-hover:text-[#c9a35b] transition-colors line-clamp-1">
                     <Link to={detailUrl}>{product.name}</Link>
                   </h3>
 
-                  <p className="text-xs text-stone-400 leading-relaxed line-clamp-2 mb-4 font-light">
-                    {product.shortDescription}
-                  </p>
-
-                  {/* Tasting Note Pills */}
-                  <div className="flex flex-wrap gap-1.5 mb-5">
-                    {product.tastingNotes.slice(0, 3).map((note, nIdx) => (
-                      <span
-                        key={nIdx}
-                        className="text-[10px] px-2 py-0.5 rounded bg-stone-900 border border-stone-800 text-stone-300 font-mono"
-                      >
-                        {note}
-                      </span>
-                    ))}
-                  </div>
-
                   {/* Pricing Box */}
-                  <div className="mt-auto pt-4 border-t border-stone-800/80 flex items-end justify-between mb-4">
+                  <div className="mt-auto pt-3 border-t border-stone-800/80 flex items-end justify-between mb-4">
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-xs text-stone-400 line-through font-mono">
