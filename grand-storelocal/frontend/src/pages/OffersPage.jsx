@@ -366,7 +366,7 @@ export default function OffersPage({ onAdd, onWish, onCompare, onNotify }) {
         <div className="absolute bottom-[10%] -right-[10%] w-[700px] h-[700px] bg-[#c9a35b]/8 rounded-full blur-[200px]" />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24">
+      <div className="relative z-10 max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[#c9a35b]/80 mb-6 font-mono">
           <Link to="/" className="hover:text-white transition-colors">Home</Link>
@@ -469,8 +469,8 @@ export default function OffersPage({ onAdd, onWish, onCompare, onNotify }) {
           </div>
         </div>
 
-        {/* 6 Products Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-16">
+        {/* 5-Column Products Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-3.5 lg:gap-4 mb-16">
           {filteredProducts.map((product, index) => {
             const isAdded = addedItemIds.has(product.id);
             const wishlisted = isWishlisted(product);
@@ -479,49 +479,49 @@ export default function OffersPage({ onAdd, onWish, onCompare, onNotify }) {
             return (
               <motion.article
                 key={product.id}
-                initial={{ opacity: 0, y: 25 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.08 }}
-                className="group relative bg-gradient-to-b from-[#141414] via-[#0d0d0d] to-[#0a0a0a] rounded-2xl border border-stone-800/80 hover:border-[#c9a35b]/50 transition-all duration-500 overflow-hidden flex flex-col shadow-xl hover:shadow-[0_15px_35px_rgba(0,0,0,0.6)]"
+                transition={{ duration: 0.4, delay: index * 0.05 }}
+                className="group relative bg-gradient-to-b from-[#151413] via-[#0d0d0c] to-[#080808] rounded-xl border border-stone-800/80 hover:border-[#c9a35b]/60 transition-all duration-300 overflow-hidden flex flex-col shadow-md hover:shadow-[0_12px_28px_rgba(201,163,91,0.15)] hover:-translate-y-1"
               >
                 {/* Glow Effect */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#c9a35b]/10 rounded-full blur-3xl pointer-events-none group-hover:bg-[#c9a35b]/20 transition-all duration-700" />
+                <div className="absolute top-0 right-0 w-24 h-24 bg-[#c9a35b]/10 rounded-full blur-2xl pointer-events-none group-hover:bg-[#c9a35b]/20 transition-all duration-500" />
 
                 {/* Card Top Badges */}
-                <div className="p-4 pb-0 flex items-start justify-between z-10">
-                  <div className="flex flex-col gap-1.5 items-start">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#c9a35b] text-black font-bold text-[10px] tracking-widest uppercase shadow-md">
-                      <Percent size={11} strokeWidth={3} />
+                <div className="p-3 pb-0 flex items-start justify-between z-10">
+                  <div className="flex flex-col gap-0.5 items-start">
+                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded bg-[#c9a35b] text-black font-extrabold text-[9px] tracking-wider uppercase shadow-sm">
+                      <Percent size={9} strokeWidth={3} />
                       {product.discountPercent}% OFF
                     </span>
-                    <span className="text-[10px] font-mono text-[#c9a35b] font-medium tracking-wider">
+                    <span className="text-[9px] font-mono text-[#c9a35b]/90 font-medium tracking-wide">
                       SAVE R {product.savings}
                     </span>
                   </div>
 
                   {/* Quick Action Buttons */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => setQuickViewProduct(product)}
-                      className="w-8 h-8 rounded-full bg-black/60 hover:bg-[#c9a35b] text-stone-300 hover:text-black border border-stone-700/60 flex items-center justify-center transition-colors"
+                      className="w-7 h-7 rounded-full bg-black/50 hover:bg-[#c9a35b] text-stone-300 hover:text-black border border-stone-800/80 flex items-center justify-center transition-colors"
                       title="Quick View Details"
                       aria-label={`Quick view ${product.name}`}
                     >
-                      <Eye size={14} />
+                      <Eye size={12} />
                     </button>
                     <button
                       type="button"
                       onClick={() => handleWishlistToggle(product)}
-                      className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${
+                      className={`w-7 h-7 rounded-full border flex items-center justify-center transition-colors ${
                         wishlisted
                           ? "bg-red-500/20 text-red-400 border-red-500/50"
-                          : "bg-black/60 hover:bg-stone-800 text-stone-300 border-stone-700/60"
+                          : "bg-black/50 hover:bg-stone-800 text-stone-300 border-stone-800/80"
                       }`}
                       title={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
                       aria-label="Wishlist toggle"
                     >
-                      <Heart size={14} fill={wishlisted ? "currentColor" : "none"} />
+                      <Heart size={12} fill={wishlisted ? "currentColor" : "none"} />
                     </button>
                   </div>
                 </div>
@@ -529,78 +529,77 @@ export default function OffersPage({ onAdd, onWish, onCompare, onNotify }) {
                 {/* Product Image Stage */}
                 <Link
                   to={detailUrl}
-                  className="relative block w-full pt-4 pb-6 px-8 text-center overflow-hidden z-10"
+                  className="relative block w-full pt-2 pb-3 px-4 text-center overflow-hidden z-10"
                 >
-                  <div className="h-64 sm:h-72 w-full flex items-center justify-center relative">
+                  <div className="h-44 sm:h-48 w-full flex items-center justify-center relative">
                     <img
                       src={resolveImageUrl(product.image)}
                       alt={product.name}
                       loading="lazy"
-                      className="max-h-full max-w-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.8)] group-hover:scale-105 group-hover:rotate-1 transition-transform duration-500 ease-out"
+                      className="max-h-full max-w-full object-contain filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.85)] group-hover:scale-105 group-hover:-translate-y-1 transition-all duration-300 ease-out"
                     />
                   </div>
                   {/* Subtle ground reflection glow */}
-                  <div className="w-2/3 h-4 mx-auto bg-[#c9a35b]/10 rounded-full blur-md" />
+                  <div className="w-1/2 h-1.5 mx-auto bg-[#c9a35b]/15 rounded-full blur-sm mt-1" />
                 </Link>
 
-                {/* Product Metadata & Info (Concise Minimalist Layout) */}
-                <div className="p-5 pt-0 flex-1 flex flex-col z-10">
-                  <div className="flex items-center justify-between text-[11px] font-mono text-stone-400 mb-1.5">
-                    <span className="text-[#c9a35b] uppercase tracking-wider font-semibold">
+                {/* Product Metadata & Info (Compact Minimalist Luxury Layout) */}
+                <div className="p-3 pt-0 flex-1 flex flex-col z-10">
+                  <div className="flex items-center justify-between text-[10px] font-mono text-stone-400 mb-1">
+                    <span className="text-[#c9a35b] uppercase tracking-wider font-semibold truncate max-w-[65%]">
                       {product.brand}
                     </span>
-                    <span>
-                      {product.country} • {product.size}
+                    <span className="text-stone-400 shrink-0">
+                      {product.size}
                     </span>
                   </div>
 
-                  <h3 className="font-serif text-base sm:text-lg text-[#eee8dd] font-medium leading-snug mb-3 group-hover:text-[#c9a35b] transition-colors line-clamp-1">
-                    <Link to={detailUrl}>{product.name}</Link>
+                  <h3 className="font-serif text-[13px] sm:text-sm text-[#eee8dd] font-medium leading-snug mb-2 group-hover:text-[#c9a35b] transition-colors line-clamp-2 min-h-[34px]">
+                    <Link to={detailUrl} title={product.name}>{product.name}</Link>
                   </h3>
 
-                  {/* Pricing Box */}
-                  <div className="mt-auto pt-3 border-t border-stone-800/80 flex items-end justify-between mb-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-xs text-stone-400 line-through font-mono">
-                          <Price amount={product.originalPrice} />
-                        </span>
-                        <span className="text-[10px] text-emerald-400 font-mono font-semibold">
-                          Save R{product.savings}
-                        </span>
-                      </div>
-                      <div className="text-2xl font-serif font-bold text-[#c9a35b]">
-                        <Price amount={product.price} />
-                      </div>
-                    </div>
+                  {/* Origin & ABV pill */}
+                  <div className="flex items-center gap-1.5 text-[9px] font-mono text-stone-400 mb-2.5">
+                    <span className="px-1.5 py-0.5 rounded bg-black/40 border border-stone-800/80 truncate">
+                      {product.country}
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-black/40 border border-stone-800/80 shrink-0">
+                      ABV {product.abv}
+                    </span>
+                  </div>
 
-                    <div className="text-right">
-                      <span className="inline-block text-[10px] font-mono text-stone-400 uppercase tracking-widest bg-stone-900/90 border border-stone-800 px-2 py-1 rounded">
-                        ABV {product.abv}
+                  {/* Pricing Box */}
+                  <div className="mt-auto pt-2 border-t border-stone-800/80 flex items-baseline justify-between mb-2.5">
+                    <div>
+                      <span className="text-[10px] text-stone-400 line-through font-mono mr-1.5">
+                        <Price amount={product.originalPrice} />
+                      </span>
+                      <span className="text-base sm:text-lg font-serif font-bold text-[#c9a35b]">
+                        <Price amount={product.price} />
                       </span>
                     </div>
                   </div>
 
                   {/* Action CTA Buttons */}
-                  <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
                       onClick={() => handleAddToCart(product, false)}
-                      className={`w-full py-2.5 px-3 rounded text-xs font-semibold tracking-wider uppercase flex items-center justify-center gap-1.5 transition-all duration-300 ${
+                      className={`py-1.5 px-1.5 rounded text-[10px] font-semibold tracking-wider uppercase flex items-center justify-center gap-1 transition-all duration-300 ${
                         isAdded
                           ? "bg-emerald-600 text-white"
-                          : "bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700/60"
+                          : "bg-stone-800/90 hover:bg-stone-700 text-stone-200 border border-stone-700/60"
                       }`}
                     >
                       {isAdded ? (
                         <>
-                          <Check size={14} />
-                          <span>Added!</span>
+                          <Check size={11} />
+                          <span>Added</span>
                         </>
                       ) : (
                         <>
-                          <ShoppingBag size={14} />
-                          <span>Add to Bag</span>
+                          <ShoppingBag size={11} />
+                          <span>Add</span>
                         </>
                       )}
                     </button>
@@ -608,10 +607,10 @@ export default function OffersPage({ onAdd, onWish, onCompare, onNotify }) {
                     <button
                       type="button"
                       onClick={() => handleAddToCart(product, true)}
-                      className="w-full py-2.5 px-3 rounded text-xs font-bold tracking-widest uppercase bg-[#c9a35b] hover:bg-[#dfb76c] text-black transition-all duration-300 shadow-[0_0_15px_rgba(201,163,91,0.2)] flex items-center justify-center gap-1"
+                      className="py-1.5 px-1.5 rounded text-[10px] font-bold tracking-wider uppercase bg-[#c9a35b] hover:bg-[#dfb76c] text-black transition-all duration-300 shadow-sm flex items-center justify-center gap-0.5"
                     >
-                      <span>Buy Now</span>
-                      <ArrowRight size={13} />
+                      <span>Buy</span>
+                      <ArrowRight size={10} />
                     </button>
                   </div>
                 </div>
