@@ -40,7 +40,7 @@
   width: min(calc(100% - 48px), 1440px);
 }
 
-.trade-portal .trade-subpage {
+.trade-portal .trade-subpage:not(.trade-catalogue-page) {
   min-height: 100vh;
   padding: 120px 0 62px;
   color: #171512 !important;

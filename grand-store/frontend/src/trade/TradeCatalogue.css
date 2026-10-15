@@ -1,0 +1,133 @@
+/* ============================================================
+   TRADE CATALOGUE & RFQ PORTAL - LUXURY DARK DESIGN SYSTEM
+   ============================================================ */
+
+/* Root portal dark mode override for catalogue */
+.trade-portal.trade-portal--dark,
+.trade-portal:has(.trade-catalogue-page) {
+  background: #080705 !important;
+  background-color: #080705 !important;
+  color: #eee8dd !important;
+}
+
+/* Base catalogue main page container */
+.trade-portal .trade-subpage.trade-catalogue-page,
+.trade-portal main.trade-catalogue-page {
+  min-height: 100vh;
+  background: #080705 !important;
+  background-color: #080705 !important;
+  background-image: 
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(201, 163, 91, 0.18), transparent 70%),
+    radial-gradient(circle at 100% 40%, rgba(201, 163, 91, 0.05), transparent 40%),
+    #080705 !important;
+  color: #eee8dd !important;
+  padding-top: 104px !important;
+  padding-bottom: 96px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Allow background images and subtle gradients inside catalogue */
+.trade-portal .trade-subpage.trade-catalogue-page,
+.trade-portal .trade-subpage.trade-catalogue-page *:not(img) {
+  box-sizing: border-box;
+}
+
+/* Hero Section */
+.trade-portal .trade-catalogue-hero {
+  position: relative;
+  z-index: 10;
+  padding-top: 2.5rem;
+  padding-bottom: 2.5rem;
+}
+
+.trade-portal .trade-catalogue-hero .trade-kicker-gold {
+  color: #e1bd70 !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  letter-spacing: 0.28em;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.trade-portal .trade-catalogue-hero h1 {
+  color: #ffffff !important;
+  font-family: 'Playfair Display', Georgia, serif !important;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.85);
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.trade-portal .trade-catalogue-hero p {
+  color: #d6d0c4 !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.65;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+}
+
+.trade-portal .trade-assurance-tag {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #e2ded5 !important;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: all 0.25s ease;
+}
+
+.trade-portal .trade-assurance-tag:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(201, 163, 91, 0.35) !important;
+  color: #ffffff !important;
+}
+
+/* Controls Bar */
+.trade-portal .trade-catalogue-page .trade-controls-bar {
+  background: #11100e !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65) !important;
+}
+
+/* Inactive Filter Category Buttons */
+.trade-portal .trade-catalogue-page .trade-cat-btn-inactive {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #d6d0c4 !important;
+}
+
+.trade-portal .trade-catalogue-page .trade-cat-btn-inactive:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+}
+
+/* Product Cards */
+.trade-portal .trade-catalogue-page .trade-card {
+  background: #11100e !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5) !important;
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.trade-portal .trade-catalogue-page .trade-card:hover {
+  border-color: rgba(201, 163, 91, 0.5) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(201, 163, 91, 0.12) !important;
+  transform: translateY(-2px);
+}
+
+.trade-portal .trade-catalogue-page .trade-card h3 {
+  color: #ffffff !important;
+}
+
+/* Modal Form Styles */
+.trade-portal .trade-catalogue-page .trade-modal-dialog {
+  background: #12110e !important;
+  border: 1px solid rgba(201, 163, 91, 0.35) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85) !important;
+}
+
+.trade-portal .trade-catalogue-page .trade-modal-dialog label {
+  color: #d6d0c4 !important;
+}

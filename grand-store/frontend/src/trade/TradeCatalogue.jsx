@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../api';
 import './TradePortal.css';
+import './TradeCatalogue.css';
 
 export default function TradeCatalogue() {
   const [products, setProducts] = useState([]);
@@ -140,40 +141,46 @@ export default function TradeCatalogue() {
   const totalCartCases = rfqCart.reduce((sum, it) => sum + it.caseQuantity, 0);
 
   return (
-    <main className="trade-subpage bg-[#080705] text-[#eee8dd] min-h-screen pb-24 font-sans">
+    <main className="trade-subpage trade-catalogue-page min-h-screen pb-24 font-sans">
       {/* Hero Header */}
-      <section className="shell pt-32 pb-12 text-center max-w-4xl mx-auto">
-        <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#c9a35b] block mb-3">
+      <section className="shell trade-catalogue-hero text-center max-w-4xl mx-auto">
+        <span className="trade-kicker-gold block mb-3">
           Grand Store Global · B2B Trade Platform
         </span>
-        <h1 className="text-3xl sm:text-5xl font-serif font-medium text-white tracking-tight mb-4">
+        <h1 className="text-3xl sm:text-5xl font-serif font-medium text-white tracking-tight mb-4 drop-shadow-2xl">
           Export Catalogue & Request For Quotation
         </h1>
-        <p className="text-sm sm:text-base text-white/60 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-sm sm:text-base text-[#d6d0c4] max-w-2xl mx-auto leading-relaxed">
           Source fine wines, spirits, and rare single malts in pallet and container loads directly from verified South African producers and international estates.
         </p>
 
         {/* Global Assurances */}
-        <div className="flex flex-wrap items-center justify-center gap-6 mt-8 text-xs text-white/70">
-          <span className="flex items-center gap-1.5"><ShieldCheck size={16} className="text-[#c9a35b]" /> Verified Export Suppliers</span>
-          <span className="flex items-center gap-1.5"><Truck size={16} className="text-[#c9a35b]" /> FOB, CIF, EXW Shipping</span>
-          <span className="flex items-center gap-1.5"><Globe size={16} className="text-[#c9a35b]" /> Phytosanitary & Customs Clearance</span>
+        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-8 text-xs">
+          <span className="trade-assurance-tag flex items-center gap-2 px-4 py-2 rounded-full">
+            <ShieldCheck size={16} className="text-[#e1bd70]" /> Verified Export Suppliers
+          </span>
+          <span className="trade-assurance-tag flex items-center gap-2 px-4 py-2 rounded-full">
+            <Truck size={16} className="text-[#e1bd70]" /> FOB, CIF, EXW Shipping
+          </span>
+          <span className="trade-assurance-tag flex items-center gap-2 px-4 py-2 rounded-full">
+            <Globe size={16} className="text-[#e1bd70]" /> Phytosanitary & Customs Clearance
+          </span>
         </div>
       </section>
 
       {/* Main Shell */}
       <div className="shell max-w-7xl mx-auto px-4">
         {/* Search, Filter & RFQ Cart Bar */}
-        <div className="bg-[#11100e] border border-white/10 rounded-2xl p-4 sm:p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 sticky top-24 z-30 shadow-2xl backdrop-blur-md">
+        <div className="trade-controls-bar rounded-2xl p-4 sm:p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 sticky top-28 z-30 backdrop-blur-md">
           <div className="flex flex-1 items-center gap-3 w-full md:w-auto">
             <div className="relative flex-1 max-w-md">
-              <Search size={16} className="absolute left-3.5 top-3 text-white/40" />
+              <Search size={16} className="absolute left-3.5 top-3 text-white/50" />
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search winery, estate, variety, HS code..."
-                className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-white/40 focus:outline-none focus:border-[#c9a35b]"
+                className="w-full bg-black/60 border border-white/15 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-stone-400 focus:outline-none focus:border-[#c9a35b]"
               />
             </div>
 
@@ -182,10 +189,10 @@ export default function TradeCatalogue() {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap border ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap border ${
                     selectedCategory === cat
-                      ? 'bg-[#c9a35b] text-black border-[#c9a35b]'
-                      : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
+                      ? 'bg-[#c9a35b] text-black border-[#c9a35b] font-bold shadow-md'
+                      : 'trade-cat-btn-inactive'
                   }`}
                 >
                   {cat}
@@ -197,7 +204,7 @@ export default function TradeCatalogue() {
           {/* RFQ Cart Floating Trigger */}
           <button
             onClick={() => setIsRfqModalOpen(true)}
-            className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-[#c9a35b] hover:bg-[#e1bd70] text-black font-semibold text-xs uppercase tracking-wider transition-all shadow-lg shadow-[#c9a35b]/20 shrink-0 w-full md:w-auto justify-center"
+            className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-[#c9a35b] hover:bg-[#e1bd70] text-black font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-[#c9a35b]/25 shrink-0 w-full md:w-auto justify-center"
           >
             <ShoppingBag size={16} />
             <span>RFQ Cart ({totalCartCases} Cases)</span>
@@ -234,7 +241,7 @@ export default function TradeCatalogue() {
               return (
                 <div 
                   key={product._id}
-                  className="bg-[#11100e] border border-white/10 hover:border-[#c9a35b]/40 rounded-2xl overflow-hidden transition-all flex flex-col justify-between group"
+                  className="trade-card rounded-2xl overflow-hidden flex flex-col justify-between group"
                 >
                   <div>
                     {/* Visual & Badges */}
@@ -269,7 +276,7 @@ export default function TradeCatalogue() {
                     <div className="p-5 space-y-3">
                       <div>
                         {product.brand && (
-                          <div className="text-[10px] uppercase tracking-widest text-[#c9a35b] font-bold">
+                          <div className="text-[10px] uppercase tracking-widest text-[#e1bd70] font-bold">
                             {product.brand}
                           </div>
                         )}
@@ -279,22 +286,22 @@ export default function TradeCatalogue() {
                       </div>
 
                       {/* Export Specs Table */}
-                      <div className="bg-black/40 p-3 rounded-xl border border-white/5 text-[11px] space-y-1.5">
-                        <div className="flex justify-between text-white/60">
+                      <div className="bg-black/50 p-3.5 rounded-xl border border-white/10 text-[11px] space-y-2">
+                        <div className="flex justify-between text-stone-300">
                           <span>Packaging:</span>
                           <span className="text-white font-medium">{bpc} btls / case</span>
                         </div>
-                        <div className="flex justify-between text-white/60">
+                        <div className="flex justify-between text-stone-300">
                           <span>Pallet Load:</span>
                           <span className="text-white font-medium">{casesPerPallet} cases / pallet</span>
                         </div>
-                        <div className="flex justify-between text-white/60">
+                        <div className="flex justify-between text-stone-300">
                           <span>Export MOQ:</span>
-                          <span className="text-[#e1bd70] font-medium">{moq} bottles ({Math.ceil(moq / bpc)} cases)</span>
+                          <span className="text-[#e1bd70] font-semibold">{moq} bottles ({Math.ceil(moq / bpc)} cases)</span>
                         </div>
-                        <div className="flex justify-between text-white/60 pt-1 border-t border-white/5">
+                        <div className="flex justify-between text-stone-300 pt-1.5 border-t border-white/10">
                           <span>Indicative Wholesale:</span>
-                          <span className="text-emerald-400 font-mono font-semibold">R{tradePrice.toLocaleString()} / btl</span>
+                          <span className="text-emerald-400 font-mono font-bold text-xs">R{tradePrice.toLocaleString()} / btl</span>
                         </div>
                       </div>
                     </div>
@@ -304,10 +311,10 @@ export default function TradeCatalogue() {
                   <div className="p-5 pt-0">
                     <button
                       onClick={() => addToRfqCart(product)}
-                      className={`w-full py-2.5 px-4 rounded-xl font-semibold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                      className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm ${
                         inCart
-                          ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
-                          : 'bg-[#c9a35b]/10 hover:bg-[#c9a35b] text-[#e1bd70] hover:text-black border border-[#c9a35b]/30'
+                          ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
+                          : 'bg-[#c9a35b]/20 hover:bg-[#c9a35b] text-[#f2cb7a] hover:text-black border border-[#c9a35b]/50'
                       }`}
                     >
                       {inCart ? (
