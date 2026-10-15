@@ -7,8 +7,10 @@ import {
   Globe, FileText, CheckCircle2, Clock, Plus, 
   ExternalLink, X, MapPin, Building, ShieldCheck, Printer,
   Wine, Package, Layers, Info, MessageSquare, Send, User, Check, FileCheck,
-  Truck, Sparkles, Search, Award, Sliders, RefreshCw, AlertTriangle
+  Truck, Sparkles, Search, Award, Sliders, RefreshCw, AlertTriangle,
+  BarChart3, TrendingUp, Download, Copy, ArrowUpRight, DollarSign, Calendar, FileBadge, CheckSquare
 } from 'lucide-react';
+import { generateProformaPdf } from '../utils/proformaPdfGenerator';
 
 const EXPORT_CHECKLIST_DOCS = [
   { 
@@ -79,13 +81,95 @@ export default function CrmExportTradePage() {
     currency: 'USD'
   });
   const [submitting, setSubmitting] = useState(false);
-  const [activeMainTab, setActiveMainTab] = useState('pipeline'); // 'pipeline' | 'vendors' | 'matcher'
+  const [activeMainTab, setActiveMainTab] = useState('pipeline'); // 'pipeline' | 'vendors' | 'matcher' | 'analytics'
   const [exportVendors, setExportVendors] = useState([]);
   const [loadingVendors, setLoadingVendors] = useState(false);
   const [verificationModalVendor, setVerificationModalVendor] = useState(null);
   const [verificationStatus, setVerificationStatus] = useState('approved');
   const [reviewerNotes, setReviewerNotes] = useState('');
   const [submittingVerification, setSubmittingVerification] = useState(false);
+
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [expiringDocs, setExpiringDocs] = useState([]);
+  const [tradeOrders, setTradeOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [convertingOrderId, setConvertingOrderId] = useState(null);
+
+  const fetchAnalyticsAndOrders = async () => {
+    setLoadingAnalytics(true);
+    setLoadingOrders(true);
+    try {
+      const [anRes, expRes, ordRes] = await Promise.allSettled([
+        crmApi.getTradeAnalytics(),
+        crmApi.getExpiringDocuments(),
+        crmApi.getTradeOrders()
+      ]);
+      if (anRes.status === 'fulfilled' && anRes.value?.data?.success) {
+        setAnalyticsData(anRes.value.data.analytics);
+      }
+      if (expRes.status === 'fulfilled' && expRes.value?.data?.success) {
+        setExpiringDocs(expRes.value.data.expiringDocuments || []);
+      }
+      if (ordRes.status === 'fulfilled' && ordRes.value?.data?.success) {
+        setTradeOrders(ordRes.value.data.orders || []);
+      }
+    } catch (err) {
+      console.error('Failed to load trade analytics:', err);
+    } finally {
+      setLoadingAnalytics(false);
+      setLoadingOrders(false);
+    }
+  };
+
+  const handleConvertToTradeOrder = async (enquiry) => {
+    if (!enquiry) return;
+    const confirmed = window.confirm(`Convert Quotation ${enquiry.enquiryCode} into an Official B2B Commercial Trade Order?\n\nThis will lock and reserve physical cellar inventory and create legal order milestone tracking.`);
+    if (!confirmed) return;
+
+    try {
+      setConvertingOrderId(enquiry._id);
+      const res = await crmApi.convertToTradeOrder(enquiry._id, {
+        paymentTerms: enquiry.financials?.paymentTerms || '30% deposit upon proforma sign-off, 70% against Bill of Lading'
+      });
+      if (res.data?.success) {
+        toast.success(`Trade Order Created: ${res.data.tradeOrder?.orderCode || 'Success'}`);
+        setSelectedEnquiry(prev => ({
+          ...prev,
+          stage: 'confirmed_order',
+          tradeOrderCode: res.data.tradeOrder?.orderCode
+        }));
+        fetchAnalyticsAndOrders();
+      }
+    } catch (err) {
+      console.error('Failed to convert quotation to order:', err);
+      toast.error(err.response?.data?.message || 'Failed to convert to trade order');
+    } finally {
+      setConvertingOrderId(null);
+    }
+  };
+
+  const handleDownloadProforma = (enquiry) => {
+    try {
+      generateProformaPdf(enquiry);
+      toast.success(`Generated official Proforma PDF for ${enquiry.enquiryCode}`);
+    } catch (err) {
+      console.error('Error generating Proforma PDF:', err);
+      toast.error('Could not generate PDF. Please use the Print option.');
+    }
+  };
+
+  const handleCopyBuyerLink = (enquiry) => {
+    const host = window.location.origin.includes(':5181')
+      ? window.location.origin.replace(':5181', ':5173')
+      : window.location.origin;
+    const url = `${host}/trade/quote/${enquiry.enquiryCode}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success(`Buyer Review URL copied: ${enquiry.enquiryCode}`);
+    }).catch(() => {
+      toast.info(`Review URL: ${url}`);
+    });
+  };
 
   const [matcherQuery, setMatcherQuery] = useState({
     category: 'Wine',
@@ -496,6 +580,23 @@ export default function CrmExportTradePage() {
         >
           <Sparkles size={15} />
           <span>Automated Supplier Matcher</span>
+        </button>
+
+        <button
+          onClick={() => { setActiveMainTab('analytics'); fetchAnalyticsAndOrders(); }}
+          className={`flex items-center gap-2 pb-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            activeMainTab === 'analytics'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <BarChart3 size={15} />
+          <span>Trade Analytics & Funnel</span>
+          {tradeOrders.length > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[10px] font-mono text-blue-700 border border-blue-200">
+              {tradeOrders.length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -956,6 +1057,339 @@ export default function CrmExportTradePage() {
         </div>
       )}
 
+      {/* 4th Tab: Trade Analytics, Funnel, Expiring Docs & Confirmed Orders */}
+      {activeMainTab === 'analytics' && (
+        <div className="space-y-6">
+          {/* Executive KPI Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Trade Orders</p>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
+                  {analyticsData?.financials?.totalOrders ?? tradeOrders.length}
+                </h3>
+                <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-1">
+                  <ArrowUpRight size={13} /> Active B2B Consignments
+                </span>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+                <FileBadge size={22} />
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Gross Export GMV</p>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
+                  ${((analyticsData?.financials?.totalGMV || 0)).toLocaleString()}
+                </h3>
+                <span className="text-[11px] text-slate-500 font-medium mt-1 block">
+                  Export Contract Volume
+                </span>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+                <DollarSign size={22} />
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Platform Commission</p>
+                <h3 className="text-2xl font-black text-blue-700 mt-1">
+                  ${((analyticsData?.financials?.totalCommissions || 0)).toLocaleString()}
+                </h3>
+                <span className="text-[10px] text-slate-400 font-mono mt-1 block">
+                  Settled: ${((analyticsData?.financials?.settledCommissions || 0)).toLocaleString()} • Pending: ${((analyticsData?.financials?.pendingCommissions || 0)).toLocaleString()}
+                </span>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">
+                <Award size={22} />
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Reserved / Shipped Cases</p>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
+                  {((analyticsData?.financials?.totalCasesShipped || 0)).toLocaleString()}
+                </h3>
+                <span className="text-[11px] text-blue-600 font-semibold flex items-center gap-1 mt-1">
+                  <Package size={13} /> Cellar Allocated Stock
+                </span>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+                <Truck size={22} />
+              </div>
+            </div>
+          </div>
+
+          {/* Two-Column: Stage Conversion Funnel & Global Buyer Heatmap */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Conversion Funnel */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <TrendingUp size={16} className="text-blue-600" />
+                    B2B Export Conversion Funnel
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Stage progression from enquiry received to customs delivered</p>
+                </div>
+                <button 
+                  onClick={fetchAnalyticsAndOrders}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50 cursor-pointer"
+                  title="Refresh metrics"
+                >
+                  <RefreshCw size={14} className={loadingAnalytics ? 'animate-spin' : ''} />
+                </button>
+              </div>
+
+              {(() => {
+                const f = analyticsData?.funnel || {};
+                const totalIn = Math.max(
+                  (f.enquiry_received || 0) + (f.requirements_verified || 0) + (f.quote_prepared || 0) + (f.confirmed_order || 0) + (f.delivered_cleared || 0),
+                  1
+                );
+                const stages = [
+                  { label: '1. RFQ Enquiries Received', count: f.enquiry_received || 0, color: 'bg-blue-500' },
+                  { label: '2. Specifications Verified', count: f.requirements_verified || 0, color: 'bg-indigo-500' },
+                  { label: '3. Quotation Prepared & Sent', count: f.quote_prepared || 0, color: 'bg-purple-500' },
+                  { label: '4. Commercial Negotiation', count: f.negotiation || 0, color: 'bg-amber-500' },
+                  { label: '5. Confirmed Trade Orders', count: f.confirmed_order || 0, color: 'bg-emerald-500' },
+                  { label: '6. In-Transit Ocean/Air', count: f.in_transit || 0, color: 'bg-cyan-500' },
+                  { label: '7. Delivered & Customs Cleared', count: f.delivered_cleared || 0, color: 'bg-teal-500' },
+                ];
+
+                return (
+                  <div className="space-y-3 pt-1">
+                    {stages.map((st, idx) => {
+                      const pct = Math.min(Math.round((st.count / totalIn) * 100), 100);
+                      return (
+                        <div key={idx} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-slate-700">{st.label}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-900">{st.count}</span>
+                              <span className="text-[10px] text-slate-400 font-mono">({pct}%)</span>
+                            </div>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div 
+                              className={`h-full ${st.color} transition-all duration-500 rounded-full`} 
+                              style={{ width: `${Math.max(pct, st.count > 0 ? 8 : 2)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Global Buyer Demand Heatmap */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <Globe size={16} className="text-blue-600" />
+                    Buyer Demand by Destination Country
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Top international export territories and case commitments</p>
+                </div>
+              </div>
+
+              {(!analyticsData?.demandByCountry || analyticsData.demandByCountry.length === 0) ? (
+                <div className="py-12 text-center text-slate-400">
+                  <Globe size={32} className="mx-auto mb-2 text-slate-300" />
+                  <p className="text-xs">No territory breakdown recorded yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3 pt-1">
+                  {analyticsData.demandByCountry.map((item, idx) => {
+                    const countryName = item._id || 'Unspecified Territory';
+                    const cases = item.totalCases || 0;
+                    return (
+                      <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-mono font-bold text-[10px] flex items-center justify-center">
+                            {idx + 1}
+                          </span>
+                          <div>
+                            <div className="font-bold text-slate-900">{countryName}</div>
+                            <div className="text-[10px] text-slate-400">{item.enquiryCount} Enquiries / Leads</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-extrabold text-blue-700">{cases} Cases</div>
+                          <div className="text-[10px] text-slate-400">Total Demand</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Expiring Compliance Documents Alert Widget */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <AlertTriangle size={16} className="text-amber-500" />
+                  Customs & Vendor Document Expiry Monitor
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">Automated detection of vendor export licenses, excise bonds & health certificates requiring renewal</p>
+              </div>
+              <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+                expiringDocs.length > 0
+                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              }`}>
+                {expiringDocs.length > 0 ? `${expiringDocs.length} Action Needed` : 'All Compliant'}
+              </span>
+            </div>
+
+            {expiringDocs.length === 0 ? (
+              <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200/60 flex items-center gap-3">
+                <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-emerald-900">Zero Impending Expirations Detected</p>
+                  <p className="text-[11px] text-emerald-700 mt-0.5">All registered vendor export certificates, organic accreditations, and excise documents are valid for over 30 days.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100 uppercase">
+                    <tr>
+                      <th className="px-4 py-2.5">Producer</th>
+                      <th className="px-4 py-2.5">Document Type</th>
+                      <th className="px-4 py-2.5">Reference No</th>
+                      <th className="px-4 py-2.5">Expiry Date</th>
+                      <th className="px-4 py-2.5 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {expiringDocs.map((doc, dIdx) => (
+                      <tr key={dIdx} className="hover:bg-slate-50/80">
+                        <td className="px-4 py-3 font-bold text-slate-900">{doc.vendorName}</td>
+                        <td className="px-4 py-3 text-slate-700">{doc.docName}</td>
+                        <td className="px-4 py-3 font-mono text-slate-500">{doc.referenceNumber || '—'}</td>
+                        <td className="px-4 py-3 text-slate-600">{new Date(doc.expiryDate).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 text-right">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
+                            doc.isExpired 
+                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            {doc.isExpired ? 'EXPIRED' : `${doc.daysLeft} days left`}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Confirmed B2B Commercial Trade Orders Register */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <FileCheck size={16} className="text-blue-600" />
+                  Official Commercial Trade Orders Register
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">Legally converted orders with transactional cellar inventory reservations</p>
+              </div>
+              <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+                {tradeOrders.length} Converted
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/80 text-slate-500 uppercase font-semibold border-b border-slate-100">
+                  <tr>
+                    <th className="px-6 py-3.5">Order Code</th>
+                    <th className="px-6 py-3.5">Buyer & Destination</th>
+                    <th className="px-6 py-3.5">Volume & Incoterm</th>
+                    <th className="px-6 py-3.5">Contract Total</th>
+                    <th className="px-6 py-3.5">Inventory Lock</th>
+                    <th className="px-6 py-3.5">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {loadingOrders ? (
+                    <tr>
+                      <td colSpan="6" className="py-12 text-center text-slate-400">Loading trade orders...</td>
+                    </tr>
+                  ) : tradeOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="py-12 text-center text-slate-400">
+                        <Package size={32} className="mx-auto mb-2 text-slate-300" />
+                        <p className="font-semibold text-slate-600">No Commercial Trade Orders Converted Yet</p>
+                        <p className="text-xs text-slate-400 mt-1">Open an accepted enquiry in the pipeline and click "Convert to Trade Order" or have the buyer sign online.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    tradeOrders.map((ord) => (
+                      <tr key={ord._id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-6 py-4">
+                          <span className="font-mono font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                            {ord.orderCode}
+                          </span>
+                          <div className="text-[10px] text-slate-400 mt-1">
+                            {new Date(ord.createdAt).toLocaleDateString()}
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-slate-900">{ord.buyer?.companyName || ord.buyer?.contactPerson}</div>
+                          <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                            <Globe size={11} className="text-blue-500" />
+                            {ord.destination?.country} ({ord.destination?.destinationPort || 'Port TBD'})
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="font-extrabold text-slate-800">{ord.reservedCasesCount || (ord.items || []).reduce((acc, i) => acc + (i.caseQuantity || 0), 0)} Cases</div>
+                          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{ord.incoterms || 'CIF'}</div>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="font-mono font-extrabold text-slate-900">
+                            {ord.currency || 'USD'} {((ord.financials?.grandTotalAmount || 0)).toLocaleString()}
+                          </div>
+                          <div className="text-[10px] text-emerald-600 font-semibold">
+                            Comm: {ord.currency || 'USD'} {((ord.financials?.platformCommissionAmount || 0)).toLocaleString()}
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 size={11} /> Stock Reserved
+                          </span>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
+                            {ord.status?.replace('_', ' ') || 'ACTIVE'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Vendor Export Capability Audit Modal */}
       {verificationModalVendor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
@@ -1348,21 +1782,58 @@ export default function CrmExportTradePage() {
             )}
 
             {/* Modal Bottom Actions */}
-            <div className="pt-3 flex items-center justify-between gap-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => handlePrintProforma(selectedEnquiry)}
-                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm shadow-blue-500/20 cursor-pointer"
-              >
-                <Printer size={14} /> Print / Export Proforma
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedEnquiry(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
-              >
-                Close Dossier
-              </button>
+            <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadProforma(selectedEnquiry)}
+                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm shadow-blue-500/20 cursor-pointer transition-all"
+                  title="Download Official Proforma PDF"
+                >
+                  <Download size={13} /> Proforma PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintProforma(selectedEnquiry)}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition-all"
+                  title="Open Printable Proforma View"
+                >
+                  <Printer size={13} /> Print Sheet
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCopyBuyerLink(selectedEnquiry)}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition-all"
+                  title="Copy buyer acceptance portal link"
+                >
+                  <Copy size={13} /> Copy Buyer Link
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {selectedEnquiry.stage === 'confirmed_order' ? (
+                  <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-xl flex items-center gap-1.5">
+                    <CheckCircle2 size={14} className="text-emerald-600" /> Official Order Active
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={convertingOrderId === selectedEnquiry._id}
+                    onClick={() => handleConvertToTradeOrder(selectedEnquiry)}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm shadow-emerald-500/20 cursor-pointer disabled:opacity-50 transition-all"
+                  >
+                    <CheckSquare size={14} />
+                    {convertingOrderId === selectedEnquiry._id ? 'Reserving Inventory...' : 'Convert to Trade Order'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedEnquiry(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  Close Dossier
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@ const Counter = require('../../models/Counter');
 const CrmTask = require('../../models/CrmTask');
 const Vendor = require('../../models/Vendor');
 const Product = require('../../models/Product');
+const TradeOrder = require('../../models/TradeOrder');
 
 /**
  * Get all international export enquiries.
@@ -541,4 +542,277 @@ exports.updateExportQuoteAndCommission = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to update export quote', error: error.message });
   }
 };
+
+/**
+ * Convert accepted quotation to official TradeOrder with inventory reservation.
+ */
+exports.convertQuotationToTradeOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { paymentTerms } = req.body;
+
+    const enquiry = await ExportEnquiry.findById(id);
+    if (!enquiry) {
+      return res.status(404).json({ success: false, message: 'Export enquiry not found' });
+    }
+
+    // Generate unique Trade Order code TO-YYYY-XXXXX
+    const year = new Date().getFullYear();
+    const counter = await Counter.findOneAndUpdate(
+      { id: `trade_order_${year}` },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    const seqNum = counter ? counter.seq : Math.floor(1000 + Math.random() * 9000);
+    const orderCode = `TO-${year}-${String(seqNum).padStart(5, '0')}`;
+
+    // Calculate item pricing and total
+    let subtotal = 0;
+    let totalCases = 0;
+    const orderItems = (enquiry.itemsRequested || []).map(item => {
+      const bpc = item.bottlesPerCase || 6;
+      const cases = item.caseQuantity || 10;
+      const unitPrice = item.targetPricePerCase || (enquiry.quotation?.vendorQuoteAmount ? enquiry.quotation.vendorQuoteAmount / (enquiry.itemsRequested.length || 1) : 450);
+      const lineTotal = cases * unitPrice;
+      subtotal += lineTotal;
+      totalCases += cases;
+      return {
+        productId: item.productId,
+        productName: item.productName || 'Export Wine/Spirit Allocation',
+        productCode: item.productCode || '',
+        vintage: item.vintage || '',
+        bottlesPerCase: bpc,
+        caseQuantity: cases,
+        unitPrice,
+        pricePerBottle: Math.round(unitPrice / bpc),
+        lineTotal
+      };
+    });
+
+    const freight = enquiry.quotation?.freightAmount || 0;
+    const insurance = enquiry.quotation?.insuranceAmount || 0;
+    const commissionPct = enquiry.quotation?.platformCommissionPct || 10;
+    const commissionAmount = Math.round(subtotal * (commissionPct / 100));
+    const grandTotal = subtotal + freight + insurance;
+
+    // Create TradeOrder
+    const tradeOrder = await TradeOrder.create({
+      orderCode,
+      exportEnquiryId: enquiry._id,
+      vendorId: enquiry.vendorId || req.user?._id,
+      vendorName: enquiry.buyer?.companyName || 'Export Producer',
+      buyer: enquiry.buyer,
+      destination: enquiry.destination,
+      items: orderItems,
+      incoterms: enquiry.incoterms || 'FOB',
+      currency: enquiry.currency || 'USD',
+      financials: {
+        subtotalAmount: subtotal,
+        freightAmount: freight,
+        insuranceAmount: insurance,
+        platformCommissionPct: commissionPct,
+        platformCommissionAmount: commissionAmount,
+        grandTotalAmount: grandTotal
+      },
+      paymentTerms: paymentTerms || enquiry.financials?.paymentTerms || '30% deposit upon proforma sign-off, 70% against Bill of Lading',
+      leadTimeDays: enquiry.quotation?.leadTimeDays || 14,
+      status: 'proforma_issued',
+      inventoryReserved: true,
+      reservedCasesCount: totalCases,
+      milestones: [
+        { title: 'Commercial Quotation Accepted', status: 'completed', completedAt: new Date(), updatedBy: req.user?._id },
+        { title: 'Official Proforma Invoice Generated', status: 'completed', completedAt: new Date(), updatedBy: req.user?._id },
+        { title: 'Deposit Payment Pending', status: 'pending' },
+        { title: 'Export Cellar Packaging & Palletizing', status: 'pending' },
+        { title: 'Port Dispatch & Customs Clearance', status: 'pending' },
+        { title: 'Bill of Lading Issued & Vessel Departure', status: 'pending' }
+      ]
+    });
+
+    // Transactional Inventory Reservation: lock stock for each product
+    for (const item of orderItems) {
+      if (item.productId) {
+        const bottlesToReserve = item.caseQuantity * item.bottlesPerCase;
+        await Product.findByIdAndUpdate(item.productId, {
+          $inc: { reservedTradeStock: bottlesToReserve }
+        });
+      }
+    }
+
+    // Advance enquiry stage to confirmed_order
+    enquiry.stage = 'confirmed_order';
+    if (!enquiry.quotation) enquiry.quotation = {};
+    enquiry.quotation.status = 'accepted';
+    enquiry.internalNotes.push({
+      note: `Converted to Official Commercial Trade Order ${orderCode}. Total: ${enquiry.currency || 'USD'} ${grandTotal.toLocaleString()} (${totalCases} cases committed).`,
+      author: req.user?._id,
+      authorName: req.user?.name || 'Trade Operations Manager'
+    });
+    await enquiry.save();
+
+    return res.status(201).json({
+      success: true,
+      message: `Quotation converted to Official Trade Order ${orderCode}`,
+      tradeOrder,
+      enquiry
+    });
+  } catch (error) {
+    console.error('Error converting quote to trade order:', error);
+    return res.status(500).json({ success: false, message: 'Failed to convert quote to trade order', error: error.message });
+  }
+};
+
+/**
+ * Get all B2B Trade Orders.
+ */
+exports.getTradeOrders = async (req, res) => {
+  try {
+    const orders = await TradeOrder.find()
+      .populate('exportEnquiryId')
+      .populate('vendorId', 'name email')
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ success: true, orders });
+  } catch (error) {
+    console.error('Error fetching trade orders:', error);
+    return res.status(500).json({ success: false, message: 'Failed to retrieve trade orders', error: error.message });
+  }
+};
+
+/**
+ * B2B International Trade Analytics, Conversion Funnel & Commission Dashboard.
+ */
+exports.getTradeAnalytics = async (req, res) => {
+  try {
+    // 1. Funnel counts by stage
+    const stageCounts = await ExportEnquiry.aggregate([
+      { $group: { _id: '$stage', count: { $sum: 1 } } }
+    ]);
+    const funnel = {
+      enquiry_received: 0,
+      requirements_verified: 0,
+      quote_prepared: 0,
+      negotiation: 0,
+      confirmed_order: 0,
+      in_transit: 0,
+      delivered_cleared: 0,
+      closed_lost: 0
+    };
+    stageCounts.forEach(sc => {
+      if (sc._id && funnel[sc._id] !== undefined) {
+        funnel[sc._id] = sc.count;
+      }
+    });
+
+    // 2. Buyer Demand by Destination Country
+    const demandByCountry = await ExportEnquiry.aggregate([
+      { $group: { 
+          _id: '$destination.country', 
+          enquiryCount: { $sum: 1 },
+          totalCases: { $sum: { $sum: '$itemsRequested.caseQuantity' } }
+        }
+      },
+      { $sort: { enquiryCount: -1 } },
+      { $limit: 8 }
+    ]);
+
+    // 3. Trade Orders & Financial Ledger
+    const orders = await TradeOrder.find();
+    const totalOrders = orders.length;
+    let totalGMV = 0;
+    let totalCommissions = 0;
+    let settledCommissions = 0;
+    let totalCasesShipped = 0;
+
+    orders.forEach(o => {
+      totalGMV += (o.financials?.grandTotalAmount || 0);
+      totalCommissions += (o.financials?.platformCommissionAmount || 0);
+      totalCasesShipped += (o.reservedCasesCount || 0);
+      if (o.settlement?.isSettled) {
+        settledCommissions += (o.settlement?.platformRevenue || o.financials?.platformCommissionAmount || 0);
+      }
+    });
+
+    // 4. Vendor Compliance Overview
+    const totalVendors = await Vendor.countDocuments({
+      $or: [
+        { 'exportProfile.isExportApproved': 'approved' },
+        { sellingCapabilities: { $in: ['international', 'both'] } }
+      ]
+    });
+    const approvedVendors = await Vendor.countDocuments({ 'exportProfile.isExportApproved': 'approved' });
+    const pendingVendors = await Vendor.countDocuments({ 'exportProfile.isExportApproved': 'pending_approval' });
+
+    return res.status(200).json({
+      success: true,
+      analytics: {
+        funnel,
+        demandByCountry,
+        financials: {
+          totalOrders,
+          totalGMV,
+          totalCommissions,
+          settledCommissions,
+          pendingCommissions: totalCommissions - settledCommissions,
+          totalCasesShipped
+        },
+        suppliers: {
+          totalVendors,
+          approvedVendors,
+          pendingVendors
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error compiling trade analytics:', error);
+    return res.status(500).json({ success: false, message: 'Failed to compile trade analytics', error: error.message });
+  }
+};
+
+/**
+ * Scan vendor compliance documents for approaching expiry (within 30 days) or expired.
+ */
+exports.checkDocumentExpiries = async (req, res) => {
+  try {
+    const today = new Date();
+    const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    const vendors = await Vendor.find({
+      'documents.0': { $exists: true }
+    }).select('businessInfo exportProfile documents userId').populate('userId', 'name email');
+
+    const expiring = [];
+    vendors.forEach(v => {
+      (v.documents || []).forEach(doc => {
+        if (doc.expiryDate) {
+          const exp = new Date(doc.expiryDate);
+          if (exp <= thirtyDaysFromNow) {
+            const isExpired = exp < today;
+            const daysLeft = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+            expiring.push({
+              vendorId: v._id,
+              vendorName: v.businessInfo?.tradingName || v.businessInfo?.legalName || v.userId?.name || 'Producer',
+              docType: doc.docType,
+              docName: doc.docName || doc.docType,
+              referenceNumber: doc.referenceNumber,
+              expiryDate: doc.expiryDate,
+              isExpired,
+              daysLeft
+            });
+          }
+        }
+      });
+    });
+
+    return res.status(200).json({
+      success: true,
+      totalExpiring: expiring.length,
+      expiringDocuments: expiring
+    });
+  } catch (error) {
+    console.error('Error checking document expiries:', error);
+    return res.status(500).json({ success: false, message: 'Failed to inspect document expiries', error: error.message });
+  }
+};
+
 

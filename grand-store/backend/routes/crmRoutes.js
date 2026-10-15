@@ -163,6 +163,10 @@ router.get('/export/vendors', crmExportController.getExportVendors);
 router.put('/export/vendors/:vendorId/verification', crmExportController.updateVendorExportVerification);
 router.post('/export/match-suppliers', crmExportController.matchExportSuppliers);
 router.put('/export/:id/quote', crmExportController.updateExportQuoteAndCommission);
+router.post('/export/:id/convert-to-order', crmExportController.convertQuotationToTradeOrder);
+router.get('/export/trade-orders', crmExportController.getTradeOrders);
+router.get('/export/analytics', crmExportController.getTradeAnalytics);
+router.get('/export/expiring-documents', crmExportController.checkDocumentExpiries);
 
 // --- Module 7 & 8: Communications Hub & Task Reminders ---
 router.get('/comms', crmCommsController.getCommunications);

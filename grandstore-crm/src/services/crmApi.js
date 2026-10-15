@@ -143,6 +143,10 @@ export const crmApi = {
   updateVendorExportVerification: (vendorId, data) => crmClient.put(`/export/vendors/${vendorId}/verification`, data),
   matchExportSuppliers: (data) => crmClient.post('/export/match-suppliers', data),
   updateExportQuoteAndCommission: (id, data) => crmClient.put(`/export/${id}/quote`, data),
+  convertToTradeOrder: (id, data) => crmClient.post(`/export/${id}/convert-to-order`, data || {}),
+  getTradeOrders: () => crmClient.get('/export/trade-orders'),
+  getTradeAnalytics: () => crmClient.get('/export/analytics'),
+  getExpiringDocuments: () => crmClient.get('/export/expiring-documents'),
 
   // Communications Hub & Phone Logs
   getCommunications: (params) => crmClient.get('/comms', { params }),

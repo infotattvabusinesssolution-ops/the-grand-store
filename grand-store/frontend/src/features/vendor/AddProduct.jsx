@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
-import { Building2, Package, UploadCloud, CheckCircle2, AlertCircle, PlusCircle, User, Truck } from 'lucide-react';
+import { Building2, Package, UploadCloud, CheckCircle2, AlertCircle, PlusCircle, User, Truck, Layers, X } from 'lucide-react';
 import { useCategories } from '../../context/CategoryContext';
 import api from '../../api';
 import DynamicIcon from '../../components/DynamicIcon';
@@ -62,8 +62,46 @@ export default function AddProduct({ onNotify }) {
     is_fragile: true,
     aramexServiceType: 'ONP',
     barcode: '',
-    cartonBarcode: ''
+    cartonBarcode: '',
+    volumeTiers: []
   });
+
+  const handleAddTier = () => {
+    setFormData(prev => ({
+      ...prev,
+      volumeTiers: [
+        ...(prev.volumeTiers || []),
+        { minCases: '', maxCases: '', pricePerCase: '', notes: '' }
+      ]
+    }));
+  };
+
+  const handleRemoveTier = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      volumeTiers: (prev.volumeTiers || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleTierChange = (index, field, value) => {
+    setFormData(prev => {
+      const nextTiers = [...(prev.volumeTiers || [])];
+      nextTiers[index] = { ...nextTiers[index], [field]: value };
+      return { ...prev, volumeTiers: nextTiers };
+    });
+  };
+
+  const handleLoadPresetTiers = () => {
+    const casePrice = Number(formData.tradePrice) || (Number(formData.price) ? Number(formData.price) * (Number(formData.bottlesPerCase) || 6) * 0.75 : 1200);
+    setFormData(prev => ({
+      ...prev,
+      volumeTiers: [
+        { minCases: '10', maxCases: '49', pricePerCase: Math.round(casePrice).toString(), notes: '10-49 Cases Standard Wholesale' },
+        { minCases: '50', maxCases: '99', pricePerCase: Math.round(casePrice * 0.92).toString(), notes: 'Pallet Allocation (8% Volume Rebate)' },
+        { minCases: '100', maxCases: '', pricePerCase: Math.round(casePrice * 0.85).toString(), notes: 'Direct Export FOB / Container Load (15% Bulk Rebate)' }
+      ]
+    }));
+  };
   
   const [imageEntries, setImageEntries] = useState([]);
   const [pdfFile, setPdfFile] = useState(null);
@@ -188,9 +226,14 @@ export default function AddProduct({ onNotify }) {
       
       payload.append('options', JSON.stringify([formData.options]));
 
-      if (formData.tradePrice) payload.append('tradePrice', formData.tradePrice);
-      if (formData.minOrderQuantity) payload.append('minOrderQuantity', formData.minOrderQuantity);
-      payload.append('exportReady', formData.exportReady);
+      const validVolumeTiers = (formData.volumeTiers || [])
+        .filter(t => (t.minCases !== '' && t.minCases !== undefined) && t.pricePerCase)
+        .map(t => ({
+          minCases: Number(t.minCases) || 0,
+          maxCases: t.maxCases !== '' && t.maxCases !== null && t.maxCases !== undefined ? Number(t.maxCases) : null,
+          pricePerCase: Number(t.pricePerCase) || 0,
+          notes: t.notes || ''
+        }));
 
       const channelSettings = {
         retail: {
@@ -199,17 +242,24 @@ export default function AddProduct({ onNotify }) {
           maxOrderQuantity: 120
         },
         trade: {
-          enabled: Boolean(formData.exportReady || formData.tradePrice),
-          minimumOrderQuantityBottles: Number(formData.minOrderQuantity) || 60,
+          enabled: Boolean(formData.exportReady || formData.tradePrice || validVolumeTiers.length > 0),
+          minimumOrderQuantityBottles: Number(formData.minOrderQuantity) || (validVolumeTiers[0]?.minCases ? validVolumeTiers[0].minCases * (Number(formData.bottlesPerCase) || 6) : 60),
           bottlesPerCase: Number(formData.bottlesPerCase) || 6,
           casesPerPallet: Number(formData.casesPerPallet) || 56,
           palletsPer20ftContainer: Number(formData.palletsPer20ft) || 10,
           palletsPer40ftContainer: Number(formData.palletsPer40ft) || 20,
           leadTimeDays: Number(formData.leadTimeDays) || 14,
           hsCode: formData.hsCode || '2204.21',
-          volumePricingTiers: formData.tradePrice ? [
-            { minQuantity: Number(formData.minOrderQuantity) || 60, pricePerBottle: Number(formData.tradePrice), currency: 'ZAR' }
-          ] : []
+          volumeTiers: validVolumeTiers,
+          volumePricingTiers: validVolumeTiers.length > 0
+            ? validVolumeTiers.map(vt => ({
+                minQuantity: vt.minCases * (Number(formData.bottlesPerCase) || 6),
+                pricePerBottle: Math.round(vt.pricePerCase / (Number(formData.bottlesPerCase) || 6)),
+                currency: 'ZAR'
+              }))
+            : (formData.tradePrice ? [
+                { minQuantity: Number(formData.minOrderQuantity) || 60, pricePerBottle: Number(formData.tradePrice), currency: 'ZAR' }
+              ] : [])
         }
       };
       payload.append('channelSettings', JSON.stringify(channelSettings));
@@ -566,6 +616,132 @@ export default function AddProduct({ onNotify }) {
                         Min. Order Quantity (Wholesale)
                       </label>
                     </div>
+                  </div>
+
+                  {/* Multi-Tier Volume Pricing (B2B Bulk Export Tiers) */}
+                  <div className="mt-8 pt-6 border-t border-white/[0.08]">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                      <div>
+                        <h4 className="text-sm font-serif font-bold text-[var(--color-ivory)] flex items-center gap-2">
+                          <Layers size={16} className="text-[#e1bd70]" />
+                          B2B Multi-Tier Volume Pricing (Cases)
+                        </h4>
+                        <p className="text-xs text-[var(--color-ivory-muted)] font-light mt-0.5">
+                          Define tiered case pricing bands for international distributors, importers, and bulk trade buyers.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleLoadPresetTiers}
+                          className="px-3 py-1.5 text-[11px] font-semibold text-[#e1bd70] border border-[#e1bd70]/30 hover:border-[#e1bd70] bg-[#e1bd70]/5 rounded-lg transition-colors cursor-pointer"
+                        >
+                          Load Preset Tiers
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddTier}
+                          className="px-3 py-1.5 text-[11px] font-semibold text-black bg-[#e1bd70] hover:bg-[#d6a03f] rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <PlusCircle size={13} /> Add Tier
+                        </button>
+                      </div>
+                    </div>
+
+                    {(!formData.volumeTiers || formData.volumeTiers.length === 0) ? (
+                      <div className="p-6 border border-dashed border-white/10 rounded-xl text-center bg-white/[0.01]">
+                        <p className="text-xs text-[var(--color-ivory-muted)]">No volume discount tiers specified yet.</p>
+                        <button
+                          type="button"
+                          onClick={handleAddTier}
+                          className="mt-2 text-xs text-[#e1bd70] hover:underline cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <PlusCircle size={12} /> Add your first pricing tier (e.g. 10 - 49 cases)
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-xl border border-white/10 bg-black/30">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-white/[0.04] text-[var(--color-ivory-muted)] uppercase tracking-wider font-semibold border-b border-white/10">
+                            <tr>
+                              <th className="px-4 py-3">Min Cases</th>
+                              <th className="px-4 py-3">Max Cases</th>
+                              <th className="px-4 py-3">Price / Case (ZAR)</th>
+                              <th className="px-4 py-3">Equivalent / Bottle</th>
+                              <th className="px-4 py-3">Notes & Terms</th>
+                              <th className="px-3 py-3 text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {formData.volumeTiers.map((tier, idx) => {
+                              const bpc = Number(formData.bottlesPerCase) || 6;
+                              const price = Number(tier.pricePerCase) || 0;
+                              const perBottle = price > 0 ? (price / bpc).toFixed(2) : '-';
+                              return (
+                                <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                                  <td className="px-4 py-2.5">
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      placeholder="10"
+                                      value={tier.minCases}
+                                      onChange={(e) => handleTierChange(idx, 'minCases', e.target.value)}
+                                      className="w-24 bg-black/50 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#e1bd70]"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-2.5">
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      placeholder="49 (or blank for +)"
+                                      value={tier.maxCases}
+                                      onChange={(e) => handleTierChange(idx, 'maxCases', e.target.value)}
+                                      className="w-28 bg-black/50 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#e1bd70]"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-2.5">
+                                    <div className="relative">
+                                      <span className="absolute left-2.5 top-1.5 text-white/40 text-xs">R</span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="950.00"
+                                        value={tier.pricePerCase}
+                                        onChange={(e) => handleTierChange(idx, 'pricePerCase', e.target.value)}
+                                        className="w-32 bg-black/50 border border-white/15 rounded-lg pl-6 pr-2.5 py-1.5 text-xs text-white font-mono font-bold focus:outline-none focus:border-[#e1bd70]"
+                                      />
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-2.5 font-mono text-[var(--color-ivory-muted)]">
+                                    {price > 0 ? `R ${perBottle}` : '—'}
+                                  </td>
+                                  <td className="px-4 py-2.5">
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Pallet tier / FOB Cape Town"
+                                      value={tier.notes}
+                                      onChange={(e) => handleTierChange(idx, 'notes', e.target.value)}
+                                      className="w-full min-w-[160px] bg-black/50 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#e1bd70]"
+                                    />
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveTier(idx)}
+                                      className="p-1.5 text-red-400/80 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-colors cursor-pointer"
+                                      title="Remove Tier"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </div>
 

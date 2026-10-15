@@ -11,6 +11,7 @@ import TradeProcedures from './trade/TradeProcedures'
 import TradeContact from './trade/TradeContact'
 import TradePartnerEnquiry from './trade/TradePartnerEnquiry'
 import TradeCatalogue from './trade/TradeCatalogue'
+import BuyerQuoteReview from './trade/BuyerQuoteReview'
 import './trade/TradeProfessional.css'
 import WineFarmPage from './features/wine-farm/WineFarmPage'
 import Hero from './features/home/components/Hero'
@@ -544,6 +545,7 @@ function App() {
         <Route path="/trade" element={<TradeLayout />}>
           <Route index element={<TradePage />} />
           <Route path="catalogue" element={<TradeCatalogue />} />
+          <Route path="quote/:code" element={<BuyerQuoteReview />} />
           <Route path="about-us" element={<TradeAbout />} />
           <Route path="trade-export" element={<TradeExport />} />
           <Route path="trade-procedures" element={<TradeProcedures />} />

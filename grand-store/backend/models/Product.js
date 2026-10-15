@@ -103,6 +103,10 @@ const productSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    reservedTradeStock: {
+      type: Number,
+      default: 0, // Stock committed to accepted B2B trade consignments
+    },
     // ==========================================
     // DUAL CHANNEL SETTINGS (Retail vs Trade)
     // ==========================================

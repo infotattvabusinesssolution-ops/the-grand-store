@@ -1,5 +1,7 @@
+const mongoose = require('mongoose');
 const TradeEnquiry = require('../models/TradeEnquiry');
 const ExportEnquiry = require('../models/ExportEnquiry');
+const TradeOrder = require('../models/TradeOrder');
 const Counter = require('../models/Counter');
 const Product = require('../models/Product');
 const Vendor = require('../models/Vendor');
@@ -232,8 +234,169 @@ const updateEnquiryStatus = async (req, res) => {
   }
 };
 
+// @desc    Get buyer quotation review by enquiry code
+// @route   GET /api/trade-enquiries/quote-review/:code
+// @access  Public (Buyer access via link)
+const getBuyerQuotationByCode = async (req, res) => {
+  try {
+    const { code } = req.params;
+    const isObjectId = mongoose.isValidObjectId(code);
+    const enquiry = await ExportEnquiry.findOne({
+      $or: [
+        { enquiryCode: code.toUpperCase() },
+        ...(isObjectId ? [{ _id: code }] : [])
+      ]
+    })
+    .populate('itemsRequested.productId', 'name image category brand price tradePrice channelSettings')
+    .populate('vendorId', 'name email');
+
+    if (!enquiry) {
+      return res.status(404).json({ success: false, message: 'Quotation or export enquiry not found' });
+    }
+
+    const tradeOrder = await TradeOrder.findOne({ exportEnquiryId: enquiry._id });
+
+    res.status(200).json({
+      success: true,
+      enquiry,
+      tradeOrder: tradeOrder || null
+    });
+  } catch (error) {
+    console.error('Error fetching buyer quotation:', error);
+    res.status(500).json({ success: false, message: 'Server error retrieving quotation' });
+  }
+};
+
+// @desc    Buyer online acceptance and proforma confirmation
+// @route   POST /api/trade-enquiries/quote-accept/:code
+// @access  Public
+const acceptBuyerQuotation = async (req, res) => {
+  try {
+    const { code } = req.params;
+    const { buyerName, buyerCompany, signatureNote } = req.body;
+
+    const isObjectId = mongoose.isValidObjectId(code);
+    const enquiry = await ExportEnquiry.findOne({
+      $or: [
+        { enquiryCode: code.toUpperCase() },
+        ...(isObjectId ? [{ _id: code }] : [])
+      ]
+    });
+
+    if (!enquiry) {
+      return res.status(404).json({ success: false, message: 'Quotation not found' });
+    }
+
+    // Advance enquiry stage to confirmed_order
+    enquiry.stage = 'confirmed_order';
+    if (!enquiry.quotation) enquiry.quotation = {};
+    enquiry.quotation.status = 'accepted';
+
+    enquiry.internalNotes.push({
+      note: `Buyer accepted commercial quotation online. Signer: ${buyerName || enquiry.buyer?.contactPerson} (${buyerCompany || enquiry.buyer?.companyName}). Note: ${signatureNote || 'Terms accepted.'}`,
+      authorName: 'International Buyer Portal'
+    });
+    await enquiry.save();
+
+    // Check if TradeOrder already created
+    let tradeOrder = await TradeOrder.findOne({ exportEnquiryId: enquiry._id });
+    if (!tradeOrder) {
+      const year = new Date().getFullYear();
+      const counter = await Counter.findOneAndUpdate(
+        { id: `trade_order_${year}` },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      );
+      const seqNum = counter ? counter.seq : Math.floor(1000 + Math.random() * 9000);
+      const orderCode = `TO-${year}-${String(seqNum).padStart(5, '0')}`;
+
+      let subtotal = 0;
+      let totalCases = 0;
+      const orderItems = (enquiry.itemsRequested || []).map(item => {
+        const bpc = item.bottlesPerCase || 6;
+        const cases = item.caseQuantity || 10;
+        const unitPrice = item.targetPricePerCase || (enquiry.quotation?.vendorQuoteAmount ? enquiry.quotation.vendorQuoteAmount / (enquiry.itemsRequested.length || 1) : 450);
+        const lineTotal = cases * unitPrice;
+        subtotal += lineTotal;
+        totalCases += cases;
+        return {
+          productId: item.productId,
+          productName: item.productName || 'Export Wine Allocation',
+          bottlesPerCase: bpc,
+          caseQuantity: cases,
+          unitPrice,
+          pricePerBottle: Math.round(unitPrice / bpc),
+          lineTotal
+        };
+      });
+
+      const freight = enquiry.quotation?.freightAmount || 0;
+      const insurance = enquiry.quotation?.insuranceAmount || 0;
+      const commissionPct = enquiry.quotation?.platformCommissionPct || 10;
+      const commissionAmount = Math.round(subtotal * (commissionPct / 100));
+      const grandTotal = subtotal + freight + insurance;
+
+      tradeOrder = await TradeOrder.create({
+        orderCode,
+        exportEnquiryId: enquiry._id,
+        vendorId: enquiry.vendorId,
+        vendorName: enquiry.buyer?.companyName || 'Producer',
+        buyer: enquiry.buyer,
+        destination: enquiry.destination,
+        items: orderItems,
+        incoterms: enquiry.incoterms || 'FOB',
+        currency: enquiry.currency || 'USD',
+        financials: {
+          subtotalAmount: subtotal,
+          freightAmount: freight,
+          insuranceAmount: insurance,
+          platformCommissionPct: commissionPct,
+          platformCommissionAmount: commissionAmount,
+          grandTotalAmount: grandTotal
+        },
+        paymentTerms: enquiry.financials?.paymentTerms || '30% deposit upon proforma sign-off, 70% against Bill of Lading',
+        leadTimeDays: enquiry.quotation?.leadTimeDays || 14,
+        status: 'proforma_issued',
+        inventoryReserved: true,
+        reservedCasesCount: totalCases,
+        buyerSignedAt: new Date(),
+        buyerSignatureNote: signatureNote || 'Accepted online via Buyer Portal',
+        milestones: [
+          { title: 'Quotation Accepted by Buyer', status: 'completed', completedAt: new Date() },
+          { title: 'Commercial Proforma Issued', status: 'completed', completedAt: new Date() },
+          { title: 'Deposit Pending', status: 'pending' },
+          { title: 'Cellar Bottling & Palletizing', status: 'pending' },
+          { title: 'Port Dispatch & Customs Health Inspection', status: 'pending' }
+        ]
+      });
+
+      // Reserve inventory for products
+      for (const item of orderItems) {
+        if (item.productId) {
+          const bottlesToReserve = item.caseQuantity * item.bottlesPerCase;
+          await Product.findByIdAndUpdate(item.productId, {
+            $inc: { reservedTradeStock: bottlesToReserve }
+          });
+        }
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Quotation accepted and confirmed successfully! Official commercial trade order created.',
+      tradeOrder,
+      enquiry
+    });
+  } catch (error) {
+    console.error('Error accepting quotation:', error);
+    res.status(500).json({ success: false, message: 'Server error accepting quotation' });
+  }
+};
+
 module.exports = {
   createEnquiry,
   getAdminEnquiries,
-  updateEnquiryStatus
+  updateEnquiryStatus,
+  getBuyerQuotationByCode,
+  acceptBuyerQuotation
 };
