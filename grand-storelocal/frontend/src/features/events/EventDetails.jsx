@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import SEO from '../../components/SEO';
 import api from '../../api';
-import { Calendar, MapPin, Clock, Users, Tag, Check, ArrowLeft, ShoppingBag, ChevronRight, CreditCard, ShieldCheck } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Tag, Check, ArrowLeft, ShoppingBag, ChevronRight, CreditCard, ShieldCheck, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import PaymentForm from '../checkout/PaymentForm';
 import SecurePaymentBadges from '../../components/checkout/SecurePaymentBadges';
@@ -206,16 +206,23 @@ export default function EventDetails({ onNotify, onAdd }) {
         schema={eventSchema}
       />
       {/* Hero Section */}
-      <div className="relative h-[60vh] w-full">
+      <div className="relative min-h-[55vh] md:min-h-[62vh] w-full overflow-hidden flex items-end">
         {event.image ? (
-          <img src={resolveEventImage(event.image)} alt={event.title} className="w-full h-full object-cover" />
+          <>
+            <img
+              src={resolveEventImage(event.image)}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-cover blur-md scale-105 opacity-30 brightness-75 pointer-events-none"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0907] via-[#0a0907]/80 to-black/60"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0a0907] via-[#0a0907]/70 to-transparent"></div>
+          </>
         ) : (
           <div className="w-full h-full bg-[#11100d]"></div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0907] via-[#0a0907]/80 to-transparent"></div>
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0a0907] to-transparent"></div>
         
-        <div className="absolute bottom-0 left-0 w-full p-8 md:p-16 max-w-7xl mx-auto">
+        <div className="relative z-10 w-full p-8 md:p-16 max-w-7xl mx-auto">
           <button onClick={() => navigate('/events')} className="flex items-center gap-2 text-[#918a7f] hover:text-white transition-colors uppercase tracking-widest text-[10px] font-bold mb-6">
             <ArrowLeft size={14} /> Back to Events
           </button>
@@ -243,11 +250,38 @@ export default function EventDetails({ onNotify, onAdd }) {
       </div>
 
       <main className="max-w-6xl mx-auto px-5 md:px-10 lg:px-12 pt-12 md:pt-16 space-y-16 md:space-y-20">
-          <section>
-            <h2 className="text-2xl font-serif text-white mb-6">About the Experience</h2>
-            <div className="text-[#918a7f] leading-relaxed space-y-4 whitespace-pre-wrap">
-              {event.description}
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+            <div className={event.image ? 'lg:col-span-7' : 'lg:col-span-12'}>
+              <h2 className="text-2xl font-serif text-white mb-6">About the Experience</h2>
+              <div className="text-[#918a7f] leading-relaxed space-y-4 whitespace-pre-wrap text-base">
+                {event.description}
+              </div>
             </div>
+            {event.image && (
+              <div className="lg:col-span-5">
+                <div className="relative group overflow-hidden rounded-2xl border border-[#c9a35b]/30 bg-[#12110e] p-3.5 shadow-[0_24px_60px_rgba(0,0,0,0.6)] transition-all duration-300 hover:border-[#c9a35b]/60">
+                  <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[#171512]">
+                    <img
+                      src={resolveEventImage(event.image)}
+                      alt={event.title}
+                      className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.02]"
+                    />
+                  </div>
+                  <div className="mt-3 flex items-center justify-between px-2 text-xs text-[#a59d91]">
+                    <span className="font-semibold uppercase tracking-wider text-[#d8b76d]">Official Event Poster</span>
+                    <a
+                      href={resolveEventImage(event.image)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 font-medium hover:text-white transition-colors"
+                    >
+                      <span>View Full Poster</span>
+                      <ExternalLink size={13} />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Tasting Journey */}
