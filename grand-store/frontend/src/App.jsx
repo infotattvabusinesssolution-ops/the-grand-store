@@ -1002,7 +1002,7 @@ function App() {
         />
         <Route
           path="/estate/:slug"
-          element={<EstateDetail onNotify={showToast} />}
+          element={<EstateDetail onNotify={showToast} onAdd={addToCart} />}
         />
         <Route
           path="/bookatasting"

@@ -68,7 +68,10 @@ app.use(
       // allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
 
+      const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
       if (
+        isLocal ||
         allowedOrigins.indexOf(origin) !== -1 ||
         allowedOrigins.includes("*") ||
         process.env.NODE_ENV !== "production"
@@ -79,6 +82,8 @@ app.use(
       }
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
   }),
 );
 app.use(express.json({ limit: "50mb" }));

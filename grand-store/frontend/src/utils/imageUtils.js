@@ -15,19 +15,29 @@ export const resolveImageUrl = (src) => {
     normalizedSrc.startsWith("http://") ||
     normalizedSrc.startsWith("https://")
   ) {
-    // Grand Store uploads use a large transparent canvas. Cloudinary's trim
-    // effect removes that canvas at delivery time, so the real bottle bounds
-    // can be centered and scaled consistently in every product card.
+    // Grand Store Cloudinary uploads optimization:
     if (
       normalizedSrc.includes("res.cloudinary.com") &&
       normalizedSrc.includes("/grandstore-uploads/") &&
-      normalizedSrc.includes("/image/upload/") &&
-      !normalizedSrc.includes("/e_trim")
+      normalizedSrc.includes("/image/upload/")
     ) {
-      return normalizedSrc.replace(
-        "/image/upload/",
-        "/image/upload/e_trim:10/",
-      );
+      // Products: trim transparent whitespace and optimize format/quality
+      if (normalizedSrc.includes("/grandstore-uploads/products/")) {
+        if (!normalizedSrc.includes("/e_trim") && !normalizedSrc.includes("/f_auto")) {
+          return normalizedSrc.replace(
+            "/image/upload/",
+            "/image/upload/f_auto,q_auto,e_trim:10/",
+          );
+        }
+      } else {
+        // Scenery, hero, estate, lifestyle: optimize format & quality only (DO NOT trim landscape edges!)
+        if (!normalizedSrc.includes("/f_auto")) {
+          return normalizedSrc.replace(
+            "/image/upload/",
+            "/image/upload/f_auto,q_auto/",
+          );
+        }
+      }
     }
 
     return normalizedSrc;
