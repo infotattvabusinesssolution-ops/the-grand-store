@@ -56,24 +56,48 @@ const journeySteps = [
 // Fallback estates shown when no vendors have published profiles yet
 const FALLBACK_FARMS = [
   {
+    name: 'Dogliotti 1870',
+    vendor: 'Dogliotti 1870 (Erik, Ivan & Matteo Dogliotti)',
+    slug: 'dogliotti-1870',
+    region: 'Langhe & Monferrato, Piedmont, Italy',
+    image: '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg',
+    copy: 'Founded in 1870 in Castagnole delle Lanze, Piedmont, Dogliotti 1870 represents five generations of passionate winemaking between Langhe and Monferrato. World-renowned for Moscato d’Asti Docg, Barolo Bussia, old-vine Barbera, and botanical Vermouth di Torino crafted with 51 Alpine herbs.',
+  },
+  {
+    name: 'Maison Bruno Andreu',
+    vendor: 'Bruno Andreu',
+    slug: 'bruno-andreu',
+    region: 'Montblanc, Languedoc, France',
+    image: '/assets/estate/bruno-andreu/domaine_villa_hero.png',
+    copy: 'Creator of iconic Mediterranean cuvées in Montblanc, Languedoc. Handcrafted authentic wines that bring emotion in every glass, spanning AOP Languedoc, aged oak cuvées, and premium alcohol-free expressions.',
+  },
+  {
+    name: 'Cantina del Conte',
+    vendor: 'Daniela Pelissero (Azienda Pelissero)',
+    slug: 'cantina-del-conte',
+    region: 'Grinzane Cavour, Langhe, Piedmont, Italy',
+    image: '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg',
+    copy: 'Passionate winemakers since 1921 in Grinzane Cavour, rooted in the historic vineyard estates of Count Camillo Benso di Cavour. Renowned for Barolo Riserva, Barolo Gabutti Cru, Barbaresco, old-vine Barbera, Roero Arneis, and aged single-variety artisanal Grappe.',
+  },
+  {
     name: 'Tesselaarsdal Wines',
     vendor: 'Ms. BERENE SAULS',
     image: '/assets/farm-tesselaarsdal.png',
-    copy: 'Tesselaarsdal was founded in 2015 by long-standing Hamilton Russell Vineyards employee, Berene Sauls. This wine is named after the historic Overberg farming hamlet of Tesselaarsdal, not far from the Hemel-en-Aarde Ridge appellation, in which Berene was born - a descendant of the freed slaves who bequeathed the land by formaer East India Company settler, Johannes Tesselaar in 1810. Extreme care is takento ensure this small-production, clasically styled Pinot noir and Chardonnay express the personality of the cool, maritime Hemel-en-Aarde Ridge from un-irrigated vines and its elevated, stony, clay and iron-rich soils.',
+    copy: 'Tesselaarsdal was founded in 2015 by long-standing Hamilton Russell Vineyards employee, Berene Sauls. Clasically styled small-production Pinot noir and Chardonnay expressing the cool, maritime Hemel-en-Aarde Ridge.',
   },
   {
     name: 'Original Wines',
     vendor: 'Mr. Grand Store',
     image: '/assets/farm-original.jpg',
-    copy: 'Guilty Brand Wine is a celebration of bold flavors and refined craftsmanship. This full-bodied red wine offers a complex bouquet of dark fruits, chocolate, and spice, balanced by firm tannins and a long, smooth finish. Perfect for special occasions, it pairs beautifully with hearty dishes and aged cheeses. Produced using sustainable practices, it reflects a commitment to quality and environmental stewardship.Guilty Brand Wine is a celebration of bold flavors and refined craftsmanship.',
+    copy: 'Guilty Brand Wine is a celebration of bold flavors and refined craftsmanship. Full-bodied red wine offering complex dark fruits, chocolate, and spice, balanced by firm tannins and a smooth finish.',
   },
 ]
 
 const categories = [
-  { name: 'Red Wine', image: '/assets/category-red.webp', href: '/shop?category=Wine&style=Red' },
-  { name: 'White Wine', image: '/assets/category-white.webp', href: '/shop?category=Wine&style=White' },
-  { name: 'Sparkling Wine', image: '/assets/category-sparkling.webp', href: '/shop?category=Wine&style=Sparkling' },
-  { name: 'Rose Wine', image: '/assets/category-rose.webp', href: '/shop?category=Wine&style=Rose' },
+  { name: 'Red Wine', image: '/assets/category-red.webp', href: '/shop?category=Wine&subcategory=Red Wine' },
+  { name: 'White Wine', image: '/assets/category-white.webp', href: '/shop?category=Wine&subcategory=White Wine' },
+  { name: 'Sparkling Wine', image: '/assets/category-sparkling.webp', href: '/shop?category=Wine&subcategory=Sparkling Wine' },
+  { name: 'Rose Wine', image: '/assets/category-rose.webp', href: '/shop?category=Wine&subcategory=Rose Wine' },
 ]
 
 const videos = [
@@ -331,7 +355,7 @@ function About() {
         <blockquote>“Every bottle carries the landscape that raised it.”</blockquote>
       </div>
       <div className="about-copy">
-        <SectionHeading kicker="About us" title={<>Welcome to South African<br /><em>Wine Farms Estate</em></>} />
+        <SectionHeading kicker="About us" title={<>Welcome to<br /><em>Wine Farm Estate</em></>} />
         <p>We've crafted a unique platform tailored specifically for wine farmers from South Africa and beyond. Our mission is to provide a seamless way for vineyards to showcase their products and reach a global audience. Whether you're a small family-run vineyard or a larger estate, our portal is designed to help you expand your market presence and connect with wine lovers and businesses around the world.</p>
         <p>By joining our platform, wine farmers can easily register as vendors and create detailed profiles that highlight their farm’s story, unique offerings, and the rich heritage behind their wines. This not only allows you to tell your vineyard’s story but also provides potential customers and retailers with an in-depth look at what makes your wines special.</p>
         <p>You can list your entire range of products with detailed descriptions, pricing, and high-quality images, making it easy for consumers to find and purchase your wines directly from the comfort of their homes.</p>
@@ -420,13 +444,17 @@ function Farms() {
             <article className="farm-card" key={farm.name}>
               <div className="farm-image">
                 <img src={farm.image} alt={farm.name} />
-                <span>{String(index + 1).padStart(2, '0')} / Featured estate</span>
+                <span>{String(index + 1).padStart(2, '0')} / {farm.region || 'Featured estate'}</span>
               </div>
               <div className="farm-copy">
                 <p className="farm-vendor">Vendor : {farm.vendor}</p>
                 <h3>{farm.name}</h3>
                 <p>{farm.copy}</p>
-                <a className="text-link" href="#farms">Read More <span>↗</span></a>
+                {farm.slug ? (
+                  <Link className="text-link" to={`/estate/${farm.slug}`}>Explore <span>↗</span></Link>
+                ) : (
+                  <a className="text-link" href="#farms">Read More <span>↗</span></a>
+                )}
               </div>
             </article>
           ))}
@@ -474,16 +502,16 @@ function Categories() {
     <section className="categories section-pad" id="categories">
       <div className="categories-copy">
         <SectionHeading kicker="Shop the cellar" title={<>Explore Top <em>Categories</em></>} />
-        <p>Discover South Africa's finest wines, selected from celebrated regions and expressive vineyards.</p>
+        <p>Discover our finest wines, selected from celebrated regions and expressive vineyards.</p>
       </div>
       <div className="category-wheel">
         {categories.map((category, index) => (
-          <a href={category.href} className="category-card" key={category.name}>
+          <Link to={category.href} className="category-card" key={category.name}>
             <span className="category-index">0{index + 1}</span>
             <div className="category-bottle"><img src={category.image} alt="" /></div>
-            <div><h3>{category.name}</h3><p>Discover South Africa's finest {category.name.toLowerCase()}s.</p></div>
+            <div><h3>{category.name}</h3><p>Discover the finest {category.name.toLowerCase()}s.</p></div>
             <span className="category-arrow">↗</span>
-          </a>
+          </Link>
         ))}
       </div>
     </section>
@@ -654,7 +682,7 @@ function AboutPage() {
       <section className="about-page-hero">
         <div className="about-page-hero-copy">
           <div className="kicker"><LeafMark /> The Grand Store - Wine Farm</div>
-          <h1>Welcome to South African<br /><em>Wine Farms Estate</em></h1>
+          <h1>Welcome to<br /><em>Wine Farm Estate</em></h1>
           <p>A platform made for the people, places and stories behind every bottle.</p>
           <a className="button button-light" href="#our-story">Our Story <span>↓</span></a>
         </div>

@@ -1,5 +1,6 @@
 const EstateProfile = require('../models/EstateProfile');
 const Product = require('../models/Product');
+const User = require('../models/User');
 const mongoose = require('mongoose');
 
 const { getCache, setCache } = require('../utils/cache');
@@ -46,14 +47,9 @@ exports.getEstate = async (req, res) => {
       .lean();
     if (!estate) return res.status(404).json({ message: 'Estate not found' });
 
-    // Also return this vendor's wine products from the shop
-    // Note: Vendor added products use the 'type' field, while seeded products might use 'category'
+    // Return all active products from this estate vendor (wines, grappe, spirits, etc.)
     const products = await Product.find({ 
-      vendorId: estate.vendorId._id,
-      $or: [
-        { category: 'Wine' },
-        { type: { $regex: /^wine$/i } }
-      ]
+      vendorId: estate.vendorId._id
     }).lean();
 
     res.json({ estate, products });

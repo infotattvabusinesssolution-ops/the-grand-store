@@ -540,6 +540,14 @@ function App() {
           path="/wine-farm/*"
           element={<Navigate to="/winefarm" replace />}
         />
+        <Route
+          path="/join-wine-farm"
+          element={<Navigate to="/winefarm" replace />}
+        />
+        <Route
+          path="/joinwinefarm"
+          element={<Navigate to="/winefarm" replace />}
+        />
         <Route path="/vendor-portal" element={<VendorPortalPage />} />
 
         <Route path="/trade" element={<TradeLayout />}>

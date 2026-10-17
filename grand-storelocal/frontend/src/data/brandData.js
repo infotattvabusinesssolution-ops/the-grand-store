@@ -218,5 +218,71 @@ export const brandData = {
     signatureStyles: ['KWV 10 Year Old Potstill', 'KWV 15 Year Old Alambic', 'Cathedral Cellar Range', 'The Mentors Collection'],
     seoTitle: 'Buy KWV Brandies & Wines Online — The Grand Store',
     metaDescription: 'Shop world-acclaimed KWV potstill brandies and Cathedral Cellar wines. Over 100 years of South African craftsmanship at The Grand Store.'
+  },
+  'dogliotti-1870': {
+    slug: 'dogliotti-1870',
+    brandName: 'Dogliotti 1870',
+    category: 'Italian Fine Wine & Vermouth',
+    country: 'Italy',
+    region: 'Piedmont (Langhe & Monferrato)',
+    foundedYear: 1870,
+    heroImage: '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg',
+    tagline: 'Tradition, Atmosphere and Hospitality — Since 1870 in Piedmont',
+    heritageStory: [
+      'Founded in 1870 in Castagnole delle Lanze in the heart of Piedmont, Dogliotti 1870 has championed indigenous Langhe and Monferrato viticulture across five generations. The estate was reborn and elevated into the modern era by cousins Erik, Ivan, and Matteo Dogliotti, blending ancestral wisdom with state-of-the-art enology.',
+      'From old-vine Barbera d’Asti and single-vineyard Barolo Bussia to world-renowned Moscato d’Asti and artisanal Vermouth di Torino crafted with 51 Alpine herbs, Dogliotti 1870 bottles capture the uncompromised soul of Piedmont terroir.'
+    ],
+    tastingProfile: {
+      nose: 'White wisteria, dark violet, wild alpine herbs, marasca cherry, and delicate toasted hazelnut.',
+      palate: 'Silky nebbiolo tannins, luminous acidity, dried fig, warm spice, and refined mineral depth.',
+      finish: 'Persistent, aristocratic, and enveloping with classic Piedmont elegance.'
+    },
+    signatureStyles: ['Moscato d’Asti Docg', 'Barolo Bussia Docg', 'Barbera d’Asti Superiore', 'Alta Langa Metodo Classico', 'Vermouth 18/70'],
+    seoTitle: 'Buy Dogliotti 1870 Piedmont Wines Online — The Grand Store',
+    metaDescription: 'Shop Dogliotti 1870 Barolo, Moscato d’Asti, and Vermouth di Torino directly from Castagnole delle Lanze, Piedmont. Cellar-direct provenance at The Grand Store.'
+  },
+  'bruno-andreu': {
+    slug: 'bruno-andreu',
+    brandName: 'Maison Bruno Andreu',
+    category: 'French Estate Wine',
+    country: 'France',
+    region: 'Languedoc-Roussillon',
+    foundedYear: 2005,
+    heroImage: '/assets/estate/bruno-andreu/domaine_villa_hero.png',
+    tagline: 'Creator of Iconic Wines — Emotion in Every Glass',
+    heritageStory: [
+      'Born from a deep Mediterranean family heritage spanning generations, Bruno Andreu established Domaine BA in Montblanc to express the vibrant spirit of southern France. His wines combine ancestral craftsmanship with bold contemporary styling.',
+      'From organic AOP Languedoc blends to prestigious single-parcel cuvées aged in French oak, Maison Bruno Andreu is recognized internationally for its pure fruit expression, elegance, and gastronomic allure.'
+    ],
+    tastingProfile: {
+      nose: 'Blackberry compote, garrigue rosemary, violet blossoms, and delicate vanilla oak.',
+      palate: 'Ripe Mediterranean fruits, velvety cocoa tannins, and refreshing coastal minerality.',
+      finish: 'Long, structured, and warm with an authentic touch of Languedoc terroir.'
+    },
+    signatureStyles: ['Cuvée Elixir', 'Aromatique Series', 'Pure Terroir Collection', 'Alcohol-Free 0.0%'],
+    seoTitle: 'Buy Maison Bruno Andreu French Wines Online — The Grand Store',
+    metaDescription: 'Discover Bruno Andreu signature Languedoc wines, AOP cuvées, and premium 0.0% alcohol-free bottles with guaranteed provenance at The Grand Store.'
+  },
+  'cantina-del-conte': {
+    slug: 'cantina-del-conte',
+    brandName: 'Cantina del Conte',
+    category: 'Italian Estate Wine & Artisanal Grappe',
+    country: 'Italy',
+    region: 'Grinzane Cavour (Langhe & Roero, Piedmont)',
+    foundedYear: 1921,
+    heroImage: '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg',
+    tagline: 'Passionate Winemakers in Grinzane Cavour Since 1921 — Heirs to Count Cavour’s Historic Vineyards',
+    heritageStory: [
+      'In 1921, Francesco Pelissero founded the estate in Grinzane Cavour, purchasing the farmhouse and hillside vineyards directly from Marchesa Alfieri, heir to Count Camillo Benso di Cavour. In the 1960s and 70s, his son Sergio expanded the family\'s holdings and opened the historic Cantina del Conte.',
+      'Today, Daniela and Sergio Pelissero continue this centenary legacy across Grinzane Cavour, Castiglione Falletto, Serralunga d\'Alba, Barbaresco, and Roero, crafting monumental Barolo Riserva, Barolo Gabutti Cru, Barbaresco, old-vine Barbera, and rare single-variety artisanal Grappe.'
+    ],
+    tastingProfile: {
+      nose: 'Delicate berry jam, ethereal balsamic violet, dried rose petals, liquorice, and warm forest floor.',
+      palate: 'Austere and generous structure, velvety sweet tannins, dark cherry compote, and savory limestone minerality.',
+      finish: 'Monumentally long, complex, and noble with harmonious warmth and timeless longevity.'
+    },
+    signatureStyles: ['Barolo Riserva D.O.C.G.', 'Barolo Gabutti D.O.C.G.', 'Barbaresco D.O.C.G.', 'Langhe Nebbiolo D.O.C.', 'Grappa Barolo Riserva Francesco 12 Anni'],
+    seoTitle: 'Buy Cantina del Conte Barolo, Barbaresco & Piedmont Wines Online — The Grand Store',
+    metaDescription: 'Shop Cantina del Conte (Azienda Pelissero) Barolo Riserva, Barolo Gabutti Cru, Barbaresco, and artisanal Grappe directly from Grinzane Cavour, Piedmont, at The Grand Store.'
   }
 };

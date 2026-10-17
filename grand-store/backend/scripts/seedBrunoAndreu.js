@@ -1409,7 +1409,7 @@ async function seedBrunoAndreu() {
                 tierName: 'Picking / Sample Order',
                 exwEur: pData.exwPickingEur,
                 minBottles: 1,
-                currency: 'EUR'
+                currency: 'EUR'   
               },
               {
                 tierName: '1 Pallet Wholesale',

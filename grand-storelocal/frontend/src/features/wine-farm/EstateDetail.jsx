@@ -7,7 +7,7 @@ import axios from 'axios';
 import {
   MapPin, Phone, Mail, Globe, Heart,
   Wine, Utensils, Bed, Star, Users, Clock,
-  ArrowLeft, ShoppingCart, ChevronRight, CheckCircle,
+  ArrowLeft, ArrowRight, ShoppingCart, ChevronRight, CheckCircle,
   ExternalLink, ArrowDown, Play, Download, Sparkles
 } from 'lucide-react';
 import { resolveImageUrl } from '../../utils/imageUtils';
@@ -126,8 +126,10 @@ export default function EstateDetail() {
   const { estate, products = [] } = data;
   const { story = {}, vineyard = {}, hospitality = {}, contact = {} } = estate;
 
-  // Determine whether this is Bruno Andreu or another estate (like Giuliani Vini)
+  // Determine whether this is Bruno Andreu, Dogliotti 1870, Cantina del Conte, or another estate (like Giuliani Vini)
   const isBrunoAndreu = estate.slug === 'bruno-andreu' || slug === 'bruno-andreu' || estate.estateName?.toLowerCase().includes('bruno');
+  const isDogliotti = estate.slug === 'dogliotti-1870' || slug === 'dogliotti-1870' || estate.estateName?.toLowerCase().includes('dogliotti');
+  const isCantinaDelConte = estate.slug === 'cantina-del-conte' || slug === 'cantina-del-conte' || estate.estateName?.toLowerCase().includes('conte') || estate.estateName?.toLowerCase().includes('cantina');
 
   // Authentic PDF Page 1 tasting images for Bruno Andreu fallback
   const authenticPdfTastings = [
@@ -136,17 +138,41 @@ export default function EstateDetail() {
     '/assets/estate/bruno-andreu/ba_wine_thief_pour.png'
   ];
 
+  // Authentic tasting images for Dogliotti 1870 fallback
+  const dogliottiPdfTastings = [
+    '/assets/estate/dogliotti-1870/dogliotti_historic_tasting_cellar.jpg',
+    '/assets/estate/dogliotti-1870/dogliotti_brick_vault_cellar.jpg',
+    '/assets/estate/dogliotti-1870/dogliotti_cask_barrel_hall.jpg',
+    '/assets/estate/dogliotti-1870/dogliotti_winery_courtyard.jpg'
+  ];
+
+  // Authentic tasting images for Cantina del Conte fallback
+  const cantinaPdfTastings = [
+    '/assets/estate/cantina-del-conte/cantina_vineyards_hills.jpg',
+    '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg',
+    '/assets/estate/cantina-del-conte/cantina_historic_family_1921.jpg',
+    '/assets/estate/cantina-del-conte/cantina_grappe_artisan.jpg'
+  ];
+
   const hCards = [];
   if (hospitality.hasTastings && hospitality.tastings) {
     hospitality.tastings.forEach((t, idx) => {
       if (t.name) {
+        const fallbackImg = isCantinaDelConte
+          ? cantinaPdfTastings[idx % cantinaPdfTastings.length]
+          : isDogliotti
+            ? dogliottiPdfTastings[idx % dogliottiPdfTastings.length]
+            : isBrunoAndreu 
+              ? authenticPdfTastings[idx % authenticPdfTastings.length] 
+              : resolveImageUrl(hospitality.tastingsImageUrl) || 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
+
         hCards.push({
           type: 'Wine Tasting',
           title: t.name,
           subtitle: t.subtitle,
-          priceStr: isBrunoAndreu ? null : (t.price ? `R${t.price} / person` : null),
-          image: resolveImageUrl(t.imageUrl) || (isBrunoAndreu ? authenticPdfTastings[idx % authenticPdfTastings.length] : resolveImageUrl(hospitality.tastingsImageUrl) || 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'),
-          fallbackImage: isBrunoAndreu ? authenticPdfTastings[idx % authenticPdfTastings.length] : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+          priceStr: t.price ? `R${t.price} / person` : null,
+          image: resolveImageUrl(t.imageUrl) || fallbackImg,
+          fallbackImage: fallbackImg,
           desc: t.description,
           duration: t.duration,
           capacity: t.capacity,
@@ -166,7 +192,7 @@ export default function EstateDetail() {
         '@id': `${estateCanonicalUrl}#winery`,
         name: estate.estateName,
         description: estate.tagline || story.headline || `Discover luxury wines and tastings at ${estate.estateName}, ${estate.region || estate.country || 'our estate'}.`,
-        image: estate.heroImageUrl || (isBrunoAndreu ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80'),
+        image: estate.heroImageUrl || (isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80'),
         url: estateCanonicalUrl,
         ...(contact.phone ? { telephone: contact.phone } : {}),
         ...(contact.email ? { email: contact.email } : {}),
@@ -175,7 +201,7 @@ export default function EstateDetail() {
           '@type': 'PostalAddress',
           streetAddress: contact.address || estate.region || 'Estate Location',
           addressRegion: estate.region || 'Wine Region',
-          addressCountry: estate.country || (isBrunoAndreu ? 'FR' : 'IT')
+          addressCountry: estate.country || (isDogliotti || isCantinaDelConte ? 'IT' : isBrunoAndreu ? 'FR' : 'IT')
         },
         makesOffer: products.map(p => ({
           '@type': 'Offer',
@@ -220,12 +246,16 @@ export default function EstateDetail() {
   return (
     <div className="min-h-screen font-sans bg-white selection:bg-[#c9a35b]/30">
       <SEO
-        title={isBrunoAndreu 
-          ? `${estate.estateName} — ${estate.region || 'Languedoc-Roussillon'}, France | The Grand Store`
-          : `${estate.estateName} — ${estate.region || 'Wine Estate'}, ${estate.country || 'Italy'} | The Grand Store`
+        title={isCantinaDelConte
+          ? `${estate.estateName} — Grinzane Cavour, Langhe, Piedmont, Italy | The Grand Store`
+          : isDogliotti
+            ? `${estate.estateName} — Castagnole delle Lanze, Piedmont, Italy | The Grand Store`
+            : isBrunoAndreu 
+              ? `${estate.estateName} — ${estate.region || 'Languedoc-Roussillon'}, France | The Grand Store`
+              : `${estate.estateName} — ${estate.region || 'Wine Estate'}, ${estate.country || 'Italy'} | The Grand Store`
         }
         description={estate.tagline || story.headline || `Explore ${estate.estateName} in ${estate.region || estate.country || 'our wine estate'}. Browse award-winning wines, book cellar tastings, and order directly.`}
-        image={estate.heroImageUrl || (isBrunoAndreu ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')}
+        image={estate.heroImageUrl || (isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')}
         url={`/estate/${estate.slug || slug}`}
         type="business.business"
         schema={winerySchema}
@@ -233,28 +263,32 @@ export default function EstateDetail() {
       
       {/* ════════════════════════════════════════════
           HERO SECTION
-          (Bruno Andreu custom design vs. Original Estate Design)
+          (Bruno Andreu / Dogliotti 1870 / Cantina del Conte custom design vs. Original Estate Design)
       ════════════════════════════════════════════ */}
       <section className="relative w-full min-h-[92vh] sm:min-h-screen overflow-hidden flex flex-col justify-between">
         
         {/* Full Hero Background Image */}
         <div className="absolute inset-0 w-full h-full z-0 overflow-hidden">
           <img 
-            src={resolveImageUrl(estate.heroImageUrl) || (isBrunoAndreu ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')} 
+            src={resolveImageUrl(estate.heroImageUrl) || (isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')} 
             alt={estate.estateName}
             onError={(e) => {
               e.currentTarget.onerror = null;
-              e.currentTarget.src = isBrunoAndreu 
-                ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' 
-                : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
+              e.currentTarget.src = isCantinaDelConte
+                ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg'
+                : isDogliotti 
+                  ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg'
+                  : isBrunoAndreu 
+                    ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' 
+                    : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
             }}
             className="w-full h-full object-cover object-center scale-100"
           />
-          {isBrunoAndreu ? (
+          {isBrunoAndreu || isDogliotti || isCantinaDelConte ? (
             <>
-              {/* Subtle warm luxury vignette for Bruno Andreu to preserve sunlit villa architecture */}
-              <div className="absolute inset-0 bg-black/35" />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/60 pointer-events-none" />
+              {/* Subtle warm luxury vignette to preserve scenery & cellar architecture */}
+              <div className="absolute inset-0 bg-black/40" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-black/65 pointer-events-none" />
             </>
           ) : (
             <>
@@ -272,21 +306,91 @@ export default function EstateDetail() {
             className="inline-flex items-center gap-2 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-white/90 hover:text-[#e1bd70] transition-all duration-300 py-2 px-3.5 sm:px-4 rounded-full bg-black/50 backdrop-blur-md border border-white/15 hover:border-[#e1bd70]/50 shadow-lg group"
           >
             <ArrowLeft size={13} className="transform group-hover:-translate-x-1 transition-transform" />
-            <span>Wine Estates</span>
+            <span>Join Wine Farm</span>
           </Link>
 
-          <Link
-            to="/shop"
-            className="inline-flex items-center gap-2 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-white/90 hover:text-[#e1bd70] transition-all duration-300 py-2 px-3.5 sm:px-4 rounded-full bg-black/50 backdrop-blur-md border border-white/15 hover:border-[#e1bd70]/50 shadow-lg"
-          >
-            <Wine size={13} className="text-[#e1bd70]" />
-            <span>The Grand Store</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/winefarm#farms"
+              className="inline-flex items-center gap-2 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-white/90 hover:text-[#e1bd70] transition-all duration-300 py-2 px-3.5 sm:px-4 rounded-full bg-black/50 backdrop-blur-md border border-white/15 hover:border-[#e1bd70]/50 shadow-lg"
+            >
+              <Wine size={13} className="text-[#e1bd70]" />
+              <span>All Wine Estates</span>
+            </Link>
+            <Link
+              to="/shop"
+              className="hidden sm:inline-flex items-center gap-2 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-white/90 hover:text-[#e1bd70] transition-all duration-300 py-2 px-3.5 sm:px-4 rounded-full bg-black/50 backdrop-blur-md border border-white/15 hover:border-[#e1bd70]/50 shadow-lg"
+            >
+              <span>Grand Store Catalog</span>
+            </Link>
+          </div>
         </div>
 
         {/* Hero Central Brand Presentation */}
         <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 w-full max-w-5xl mx-auto my-auto py-12">
-          {isBrunoAndreu ? (
+          {isCantinaDelConte ? (
+            /* Cantina del Conte Specific Italian Piedmont & Grinzane Cavour Hero */
+            <>
+              <div className="flex items-center gap-2 mb-3 select-none">
+                <div className="h-[1px] w-6 sm:w-12 bg-[#e1bd70]" />
+                <span className="font-sans font-bold uppercase tracking-[0.25em] sm:tracking-[0.35em] text-[#e1bd70] text-[10px] sm:text-xs drop-shadow-md">
+                  SINCE 1921 • AZIENDA PELISSERO
+                </span>
+                <div className="h-[1px] w-6 sm:w-12 bg-[#e1bd70]" />
+              </div>
+
+              <div className="flex flex-col items-center justify-center my-2 max-w-xl w-full px-4 select-none">
+                <img
+                  src={resolveImageUrl(estate.logoUrl) || '/assets/estate/cantina-del-conte/cantina_logo_transparent.png'}
+                  alt="Cantina del Conte Crest"
+                  className="max-h-24 sm:max-h-36 md:max-h-44 w-auto object-contain filter drop-shadow-[0_12px_28px_rgba(0,0,0,0.95)]"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/assets/estate/cantina-del-conte/cantina_logo_transparent.png';
+                  }}
+                />
+              </div>
+
+              <span className="text-white/95 uppercase tracking-[0.45em] sm:tracking-[0.6em] text-xs sm:text-sm font-light mt-2 drop-shadow-md select-none">
+                GRINZANE CAVOUR • ROYAL BAROLO & BARBARESCO
+              </span>
+
+              <p className="font-serif italic text-white text-base sm:text-2xl md:text-3xl mt-5 sm:mt-8 tracking-wide drop-shadow-[0_3px_12px_rgba(0,0,0,0.9)] select-none">
+                "Passionate Winemakers on Count Cavour's Historic Lands"
+              </p>
+            </>
+          ) : isDogliotti ? (
+            /* Dogliotti 1870 Specific Italian Piedmont Hero */
+            <>
+              <div className="flex items-center gap-2 mb-3 select-none">
+                <div className="h-[1px] w-6 sm:w-12 bg-[#e1bd70]" />
+                <span className="font-sans font-bold uppercase tracking-[0.25em] sm:tracking-[0.35em] text-[#e1bd70] text-[10px] sm:text-xs drop-shadow-md">
+                  SINCE 1870 • PIEDMONT'S FINE WINES
+                </span>
+                <div className="h-[1px] w-6 sm:w-12 bg-[#e1bd70]" />
+              </div>
+
+              <div className="flex flex-col items-center justify-center my-2 max-w-xl w-full px-4 select-none">
+                <img
+                  src={resolveImageUrl(estate.logoUrl) || '/assets/estate/dogliotti-1870/dogliotti_logo_transparent.png'}
+                  alt="Dogliotti 1870 Crest"
+                  className="max-h-24 sm:max-h-36 md:max-h-44 w-auto object-contain filter drop-shadow-[0_12px_28px_rgba(0,0,0,0.95)]"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/assets/estate/dogliotti-1870/dogliotti_logo_transparent.png';
+                  }}
+                />
+              </div>
+
+              <span className="text-white/95 uppercase tracking-[0.45em] sm:tracking-[0.6em] text-xs sm:text-sm font-light mt-2 drop-shadow-md select-none">
+                TRA LANGHE E MONFERRATO • UNESCO HERITAGE
+              </span>
+
+              <p className="font-serif italic text-white text-base sm:text-2xl md:text-3xl mt-5 sm:mt-8 tracking-wide drop-shadow-[0_3px_12px_rgba(0,0,0,0.9)] select-none">
+                "Tradition, Atmosphere and Hospitality"
+              </p>
+            </>
+          ) : isBrunoAndreu ? (
             /* Bruno Andreu Specific Hero: Creator of Iconic Wines + BA Emblem + Emotion in Every Glass */
             <>
               <h2 className="font-sans font-bold uppercase tracking-[0.22em] sm:tracking-[0.32em] text-white text-xs sm:text-base md:text-xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)] mb-4 sm:mb-6 select-none">
@@ -373,7 +477,163 @@ export default function EstateDetail() {
       ════════════════════════════════════════════ */}
       {(story.history || story.philosophy || story.winemaker || story.images?.length > 0) && (
         <section id="our-story" className="py-16 md:py-24 bg-white relative overflow-hidden border-b border-gray-100">
-          {isBrunoAndreu ? (
+          {isCantinaDelConte ? (
+            /* Cantina del Conte Specific 4-Photo Heritage Story Layout */
+            <div className="max-w-[1300px] mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-center gap-10 lg:gap-14">
+              <div className="flex-1 w-full max-w-xl">
+                <div className="grid grid-cols-2 gap-3 p-3 bg-[#fcf9f2] border border-gray-200/80 rounded-sm shadow-sm">
+                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100">
+                    <img 
+                      src={resolveImageUrl(story.images?.[0]) || '/assets/estate/cantina-del-conte/cantina_historic_family_1921.jpg'} 
+                      alt="Francesco Pelissero 1921" 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/cantina-del-conte/cantina_historic_family_1921.jpg'; }}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2 py-0.5 backdrop-blur-sm">
+                      Francesco Pelissero • 1921
+                    </span>
+                  </div>
+                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100">
+                    <img 
+                      src={resolveImageUrl(story.images?.[1]) || '/assets/estate/cantina-del-conte/cantina_vineyards_hills.jpg'} 
+                      alt="Grinzane Cavour Vineyards" 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/cantina-del-conte/cantina_vineyards_hills.jpg'; }}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2 py-0.5 backdrop-blur-sm">
+                      Grinzane Cavour Hills
+                    </span>
+                  </div>
+                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100">
+                    <img 
+                      src={resolveImageUrl(story.images?.[2]) || '/assets/estate/cantina-del-conte/cantina_terroir_vineyard_map.jpg'} 
+                      alt="Langhe & Roero Terroir" 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/cantina-del-conte/cantina_terroir_vineyard_map.jpg'; }}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2 py-0.5 backdrop-blur-sm">
+                      Langhe & Roero Terroir
+                    </span>
+                  </div>
+                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100">
+                    <img 
+                      src={resolveImageUrl(story.images?.[3]) || '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg'} 
+                      alt="Castello di Grinzane Cavour" 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg'; }}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2 py-0.5 backdrop-blur-sm">
+                      Historic Winery & Castle
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 w-full flex flex-col items-start text-left p-2 sm:p-4">
+                <span className="text-[11px] uppercase tracking-[0.25em] text-[#c9a35b] font-semibold mb-2 flex items-center gap-1.5">
+                  <Sparkles size={13} />
+                  Piedmont Heritage Since 1921
+                </span>
+                <h2 className="font-serif text-[30px] sm:text-[38px] lg:text-[44px] text-ink font-normal leading-[1.15] mb-5 tracking-wide">
+                  A Century of Winemaking Nobility in Grinzane Cavour
+                </h2>
+                <div className="w-16 h-[2px] bg-[#c9a35b] mb-5" />
+                <div className="text-gray-600 text-sm sm:text-base leading-[1.8] font-light space-y-3.5 max-w-xl">
+                  {story.history && <p>{story.history}</p>}
+                  {story.philosophy && (
+                    <blockquote className="border-l-2 border-[#c9a35b] pl-3.5 italic text-ink/80 text-sm sm:text-base my-2">
+                      "{story.philosophy}"
+                    </blockquote>
+                  )}
+                  {story.winemaker && (
+                    <div className="pt-2">
+                      <span className="font-serif text-lg text-ink font-medium block">{story.winemaker}</span>
+                      <span className="text-xs uppercase tracking-wider text-[#c9a35b] block mb-1">Winemakers & Estate Custodians</span>
+                      {story.winemakerBio && <p className="text-xs text-gray-500 leading-relaxed font-light">{story.winemakerBio}</p>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : isDogliotti ? (
+            /* Dogliotti 1870 Specific 4-Photo Heritage Story Layout */
+            <div className="max-w-[1300px] mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-center gap-10 lg:gap-14">
+              <div className="flex-1 w-full max-w-xl">
+                <div className="grid grid-cols-2 gap-3 p-3 bg-[#fcf9f2] border border-gray-200/80 rounded-sm shadow-sm">
+                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100">
+                    <img 
+                      src={resolveImageUrl(story.images?.[0]) || '/assets/estate/dogliotti-1870/erik_dogliotti.jpg'} 
+                      alt="Erik Dogliotti Winemaker" 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/dogliotti-1870/erik_dogliotti.jpg'; }}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2 py-0.5 backdrop-blur-sm">
+                      Erik Dogliotti • Winemaker
+                    </span>
+                  </div>
+                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100">
+                    <img 
+                      src={resolveImageUrl(story.images?.[1]) || '/assets/estate/dogliotti-1870/ivan_dogliotti.jpg'} 
+                      alt="Ivan Dogliotti" 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/dogliotti-1870/ivan_dogliotti.jpg'; }}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2 py-0.5 backdrop-blur-sm">
+                      Ivan Dogliotti • 5th Generation
+                    </span>
+                  </div>
+                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100">
+                    <img 
+                      src={resolveImageUrl(story.images?.[2]) || '/assets/estate/dogliotti-1870/matteo_dogliotti.jpg'} 
+                      alt="Matteo Dogliotti" 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/dogliotti-1870/matteo_dogliotti.jpg'; }}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2 py-0.5 backdrop-blur-sm">
+                      Matteo Dogliotti • 5th Generation
+                    </span>
+                  </div>
+                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100">
+                    <img 
+                      src={resolveImageUrl(story.images?.[3]) || '/assets/estate/dogliotti-1870/dogliotti_cask_barrel_hall.jpg'} 
+                      alt="Dogliotti Cask Barrel Hall" 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/dogliotti-1870/dogliotti_cask_barrel_hall.jpg'; }}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2 py-0.5 backdrop-blur-sm">
+                      Oak Cask Aging Cellars
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 w-full flex flex-col items-start text-left p-2 sm:p-4">
+                <span className="text-[11px] uppercase tracking-[0.25em] text-[#c9a35b] font-semibold mb-2 flex items-center gap-1.5">
+                  <Sparkles size={13} />
+                  Piedmont Heritage Since 1870
+                </span>
+                <h2 className="font-serif text-[30px] sm:text-[38px] lg:text-[44px] text-ink font-normal leading-[1.15] mb-5 tracking-wide">
+                  Fifth Generation Viticulture in Langhe & Monferrato
+                </h2>
+                <div className="w-16 h-[2px] bg-[#c9a35b] mb-5" />
+                <div className="text-gray-600 text-sm sm:text-base leading-[1.8] font-light space-y-3.5 max-w-xl">
+                  {story.history && <p>{story.history}</p>}
+                  {story.philosophy && (
+                    <blockquote className="border-l-2 border-[#c9a35b] pl-3.5 italic text-ink/80 text-sm sm:text-base my-2">
+                      "{story.philosophy}"
+                    </blockquote>
+                  )}
+                  {story.winemaker && (
+                    <div className="pt-2">
+                      <span className="font-serif text-lg text-ink font-medium block">{story.winemaker}</span>
+                      <span className="text-xs uppercase tracking-wider text-[#c9a35b] block mb-1">Cellar Master & Enologist</span>
+                      {story.winemakerBio && <p className="text-xs text-gray-500 leading-relaxed font-light">{story.winemakerBio}</p>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : isBrunoAndreu ? (
             /* Bruno Andreu Specific 4-Photo Story Layout */
             <div className="max-w-[1300px] mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-center gap-10 lg:gap-14">
               <div className="flex-1 w-full max-w-xl">
@@ -532,26 +792,45 @@ export default function EstateDetail() {
             {/* Section Header */}
             <div className="text-center mb-12 sm:mb-16 max-w-3xl mx-auto">
               <span className="text-xs font-bold uppercase tracking-widest text-ink/40 mb-3 block">
-                {isBrunoAndreu ? 'The Estate Cellar' : 'From the Cellar'}
+                {isCantinaDelConte 
+                  ? 'Grinzane Cavour Barolo, Barbaresco & Grappe Portfolio' 
+                  : isDogliotti 
+                    ? 'Piedmont Fine Wine & Vermouth Portfolio' 
+                    : isBrunoAndreu 
+                      ? 'The Estate Cellar' 
+                      : 'From the Cellar'}
               </span>
               <h2 className="font-serif text-[34px] sm:text-[44px] text-ink font-normal leading-[1.15] mb-3">
-                {isBrunoAndreu ? 'Shop The Wine Collections' : 'Shop Our Wines'}
+                {isCantinaDelConte 
+                  ? 'The Cantina del Conte Cellar' 
+                  : isDogliotti 
+                    ? 'The Dogliotti 1870 Cellar' 
+                    : isBrunoAndreu 
+                      ? 'Shop The Wine Collections' 
+                      : 'Shop Our Wines'}
               </h2>
               <p className="text-ink/60 text-base sm:text-lg">
-                {isBrunoAndreu 
-                  ? 'Discover 35 authentic cuvées from Maison Bruno Andreu. Each bottle reflects Mediterranean terroir and craft.' 
-                  : 'Discover our exceptional selection of handcrafted wines.'
+                {isCantinaDelConte
+                  ? 'Discover 12 exceptional artisan wines and grappe from Azienda Pelissero in Grinzane Cavour, rooted in Count Cavour’s historic vineyards. Monumental Barolo Riserva, Barolo Gabutti, Barbaresco, Roero Arneis, and aged single-variety grappe.'
+                  : isDogliotti
+                    ? 'Explore 28 signature vintages, Moscato d’Asti, Barolo DOCG, Barbera d’Asti, and botanical Vermouth di Torino crafted across five generations in Langhe & Monferrato.'
+                    : isBrunoAndreu 
+                      ? 'Discover 35 authentic cuvées from Maison Bruno Andreu. Each bottle reflects Mediterranean terroir and craft.' 
+                      : 'Discover our exceptional selection of handcrafted wines.'
                 }
               </p>
             </div>
 
             {/* Product Grid */}
-            {isBrunoAndreu ? (
-              /* Bruno Andreu: Clean Studio Showcase without marked pricing/filter clutter */
+            {isBrunoAndreu || isDogliotti || isCantinaDelConte ? (
+              /* Studio Showcase for Dogliotti 1870, Bruno Andreu and Cantina del Conte */
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
                 {products.map(p => {
                   const prodSlug = p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
                   const isAlcoholFree = getWineCategory(p) === 'dealcoholized';
+                  const supplierEur = p.supplierPrice || p.costing?.supplierPrice || p.specifications?.exwEur;
+                  const vintageStr = p.vintage || p.name?.match(/\b(19\d{2}|20\d{2}|NV)\b/)?.[0];
+                  const packagingStr = p.packaging || (p.channelSettings?.trade?.bottlesPerCase ? `Case of ${p.channelSettings.trade.bottlesPerCase} x 75cl` : null);
 
                   return (
                     <div 
@@ -578,14 +857,20 @@ export default function EstateDetail() {
                           }}
                         />
 
-                        {/* Top Left Badge (Clean, without top-right badge) */}
+                        {/* Top Left Badge */}
                         <div className="absolute top-3.5 left-3.5 z-20 pointer-events-none">
                           <span className={`text-[9px] uppercase tracking-[0.16em] font-semibold px-2.5 py-1 rounded-xs shadow-xs ${
                             isAlcoholFree 
                               ? 'bg-[#1b4332] text-white border border-[#2d6a4f]'
-                              : 'bg-white/95 text-stone-800 border border-stone-200'
+                              : (isDogliotti || isCantinaDelConte)
+                                ? 'bg-[#1a1815] text-[#e1bd70] border border-[#e1bd70]/40'
+                                : 'bg-white/95 text-stone-800 border border-stone-200'
                           }`}>
-                            {isAlcoholFree ? '0.0% Alcohol Free' : (p.subcategory || p.range || 'Languedoc')}
+                            {isCantinaDelConte
+                              ? (p.subcategory || p.range || 'Grinzane Cavour DOCG')
+                              : isDogliotti 
+                                ? (p.subcategory || p.range || 'Piedmont DOCG') 
+                                : (isAlcoholFree ? '0.0% Alcohol Free' : (p.subcategory || p.range || 'Languedoc'))}
                           </span>
                         </div>
 
@@ -596,7 +881,11 @@ export default function EstateDetail() {
                             alt={p.name}
                             onError={(e) => {
                               e.currentTarget.onerror = null;
-                              e.currentTarget.src = `/assets/products/bruno-andreu/${prodSlug}.png`;
+                              e.currentTarget.src = isCantinaDelConte
+                                ? `/assets/products/cantina-del-conte/${prodSlug}.png`
+                                : isDogliotti 
+                                  ? `/assets/products/dogliotti-1870/${prodSlug}.png` 
+                                  : `/assets/products/bruno-andreu/${prodSlug}.png`;
                             }}
                             className="h-[88%] w-auto max-w-[82%] object-contain transition-all duration-300 ease-out transform group-hover:-translate-y-2 group-hover:scale-105"
                             style={{
@@ -608,23 +897,50 @@ export default function EstateDetail() {
                       
                       {/* Content Area */}
                       <div className="p-6 flex flex-col flex-1 border-t border-stone-100">
-                        <Link to={`/product/${prodSlug}`} className="block mb-3 min-h-[50px] sm:min-h-[56px] flex items-start">
+                        <Link to={`/product/${prodSlug}`} className="block mb-2 min-h-[50px] sm:min-h-[56px] flex items-start">
                           <h3 className="font-serif text-[19px] sm:text-[21px] text-[#0f0f0f] font-medium leading-[1.3] hover:text-[#8a2232] transition-colors line-clamp-2">
                             {p.name}
                           </h3>
                         </Link>
                         
-                        <p className="text-[13.5px] text-[#222222] font-normal leading-[1.65] mb-6 line-clamp-3 flex-1">
-                          {p.description || "Refined expression of Mediterranean terroir handcrafted by Bruno Andreu."}
+                        <p className="text-[13px] text-[#444444] font-normal leading-[1.65] mb-4 line-clamp-2 flex-1">
+                          {p.description || "Refined expression of estate terroir handcrafted with passion and tradition."}
                         </p>
+
+                        {/* Elegant Price & Vintage Details */}
+                        <div className="flex items-baseline justify-between mb-4 pt-3 border-t border-stone-100">
+                          <div>
+                            <span className="text-[10px] text-stone-400 uppercase tracking-widest font-semibold block">Estate Allocation</span>
+                            <span className="font-serif text-lg font-bold text-ink">
+                              <Price amount={p.price} />
+                            </span>
+                            {supplierEur && (
+                              <span className="text-[11px] text-stone-500 font-mono ml-2 font-medium">
+                                (€{Number(supplierEur).toFixed(2)} EXW)
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            {vintageStr && (
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-stone-100 text-stone-700 rounded block mb-0.5">
+                                {vintageStr}
+                              </span>
+                            )}
+                            {packagingStr && (
+                              <span className="text-[10px] text-stone-400 block font-light">
+                                {packagingStr}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                         
                         {/* Elegant Action Link */}
-                        <div className="mt-auto pt-4 border-t border-stone-200/80 flex items-center justify-between">
+                        <div className="mt-auto pt-3 border-t border-stone-200/80 flex items-center justify-between">
                           <Link
                             to={`/product/${prodSlug}`}
                             className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] font-bold text-black hover:text-[#8a2232] transition-colors group-hover:translate-x-1 duration-200"
                           >
-                            <span>Explore Cuvée</span>
+                            <span>{isDogliotti ? 'Explore Vintage' : 'Explore Cuvée'}</span>
                             <span>→</span>
                           </Link>
 
@@ -761,14 +1077,20 @@ export default function EstateDetail() {
             </div>
             
             {/* Right Vineyard Photo */}
-            {(vineyard.imageUrl || isBrunoAndreu) && (
+            {(vineyard.imageUrl || isBrunoAndreu || isDogliotti || isCantinaDelConte) && (
               <div className="flex-1 w-full max-w-lg">
                 <div className="w-full aspect-[4/3] overflow-hidden shadow-lg border border-gray-200 relative group bg-gray-100">
                   <img 
-                    src={resolveImageUrl(vineyard.imageUrl) || (isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_pure_barrels.png' : '')} 
+                    src={resolveImageUrl(vineyard.imageUrl) || (isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_terroir_vineyard_map.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_vineyard_panorama.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_pure_barrels.png' : '')} 
                     alt="Terroir and Vineyard" 
                     onError={(e) => {
-                      if (isBrunoAndreu) {
+                      if (isCantinaDelConte) {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = '/assets/estate/cantina-del-conte/cantina_terroir_vineyard_map.jpg';
+                      } else if (isDogliotti) {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = '/assets/estate/dogliotti-1870/dogliotti_vineyard_panorama.jpg';
+                      } else if (isBrunoAndreu) {
                         e.currentTarget.onerror = null;
                         e.currentTarget.src = '/assets/estate/bruno-andreu/ba_pure_barrels.png';
                       }
@@ -1017,6 +1339,39 @@ export default function EstateDetail() {
       )}
 
       {/* ════════════════════════════════════════════
+          JOIN WINE FARM CALL TO ACTION
+      ════════════════════════════════════════════ */}
+      <section className="py-14 sm:py-20 bg-gradient-to-r from-[#171615] via-[#211f1c] to-[#171615] text-white border-t border-[#c9a35b]/30 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#c9a35b]/10 via-transparent to-transparent pointer-events-none" />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 relative z-10 text-center">
+          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.3em] text-[#e1bd70] font-semibold mb-3 block">
+            The Grand Store Wine Farm Collective
+          </span>
+          <h2 className="font-serif text-2xl sm:text-4xl text-white font-normal mb-4">
+            Discover Handcrafted Artisan Estates Worldwide
+          </h2>
+          <p className="text-white/70 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed mb-8 font-light">
+            Experience certified vineyards, family traditions, and rare allocations from Italy’s Piedmont to France’s Languedoc. Join our global wine farm collective or explore all featured estates.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              to="/winefarm"
+              className="inline-flex items-center gap-2.5 px-8 py-3.5 bg-[#e1bd70] text-[#141312] hover:bg-white transition-all duration-300 text-xs uppercase tracking-[0.2em] font-bold shadow-xl rounded-full group cursor-pointer"
+            >
+              <span>Join Wine Farm</span>
+              <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link
+              to="/winefarm#farms"
+              className="inline-flex items-center gap-2 px-8 py-3.5 bg-white/10 hover:bg-white/20 text-white transition-all duration-300 text-xs uppercase tracking-[0.2em] font-medium border border-white/20 rounded-full cursor-pointer"
+            >
+              <span>Browse All Estates</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════
           CONTACT & FOOTER
       ════════════════════════════════════════════ */}
       <footer className="bg-[#141312] text-white">
@@ -1024,18 +1379,22 @@ export default function EstateDetail() {
         {/* Top Banner for Contact/Visit */}
         <div className="relative h-[240px] sm:h-[280px] flex items-center justify-center overflow-hidden">
           <img 
-            src={resolveImageUrl(estate.heroImageUrl) || (isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_cellar_barrels.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')}
+            src={resolveImageUrl(estate.heroImageUrl) || (isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_cellar_barrels.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')}
             alt={estate.estateName}
             onError={(e) => {
               e.currentTarget.onerror = null;
-              e.currentTarget.src = 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
+              e.currentTarget.src = isCantinaDelConte
+                ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg'
+                : isDogliotti 
+                  ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' 
+                  : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
             }}
             className="absolute inset-0 w-full h-full object-cover object-center"
           />
           <div className="absolute inset-0 bg-black/70" />
           <div className="relative z-10 flex flex-col items-center gap-3 text-center px-4">
             <span className="text-[10px] uppercase tracking-[0.3em] text-[#e1bd70]">
-              {isBrunoAndreu ? 'Private Cellar Allocations' : 'Estate Allocations'}
+              {isCantinaDelConte || isDogliotti ? 'Direct Cellar & Export Allocations' : isBrunoAndreu ? 'Private Cellar Allocations' : 'Estate Allocations'}
             </span>
             <h2 className="font-serif text-3xl sm:text-4xl text-white">Experience The Wines</h2>
             {contact.phone && (
@@ -1083,16 +1442,16 @@ export default function EstateDetail() {
             <div className="flex-1 bg-[#24211f] p-6 sm:p-8 border border-white/5">
               <h4 className="text-[10px] uppercase tracking-[0.25em] text-[#e1bd70] mb-4 font-semibold">Visit Us</h4>
               <p className="text-xs text-white/80 leading-relaxed mb-4 font-light whitespace-pre-line">
-                {hospitality.restaurant?.openingHours || (isBrunoAndreu ? 'Monday – Friday: 9:00 – 18:00\nSaturday: By sommelier appointment' : 'Contact us for opening hours')}
+                {hospitality.restaurant?.openingHours || (isCantinaDelConte ? 'Monday – Saturday: 9:00 – 19:00\nCellar tours & tastings by appointment' : isDogliotti ? 'Monday – Saturday: 9:00 – 18:30\nCellar tours & tastings by appointment' : isBrunoAndreu ? 'Monday – Friday: 9:00 – 18:00\nSaturday: By sommelier appointment' : 'Contact us for opening hours')}
               </p>
               {contact.address && (
                 <p className="text-xs text-white/50 mb-5 leading-relaxed font-light">
                   {contact.address}
                 </p>
               )}
-              {(contact.mapLink || isBrunoAndreu) && (
+              {(contact.mapLink || isBrunoAndreu || isDogliotti || isCantinaDelConte) && (
                 <a 
-                  href={contact.mapLink || 'https://maps.google.com/?q=Montblanc,Languedoc,France'} 
+                  href={contact.mapLink || (isCantinaDelConte ? 'https://maps.google.com/?q=Via+Castello+13,+12060+Grinzane+Cavour+CN,+Italy' : isDogliotti ? 'https://maps.google.com/?q=Castagnole+delle+Lanze,Asti,Piedmont,Italy' : isBrunoAndreu ? 'https://maps.google.com/?q=Montblanc,Languedoc,France' : '')} 
                   target="_blank" 
                   rel="noreferrer" 
                   className="inline-block px-5 py-2 border border-[#e1bd70]/60 text-[10px] uppercase tracking-[0.2em] text-[#e1bd70] hover:bg-[#e1bd70] hover:text-black transition-colors"
@@ -1106,11 +1465,15 @@ export default function EstateDetail() {
           {/* Right Side Follow Estate */}
           <div className="flex-1 relative overflow-hidden p-8 flex items-center justify-center text-center border border-white/10 min-h-[260px]">
             <img 
-              src={isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_bruno_elixir_magnum.png' : (resolveImageUrl(estate.heroImageUrl) || 'https://images.unsplash.com/photo-1565922336365-1d44eb37a06a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80')}
+              src={isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_cask_barrel_hall.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_bruno_elixir_magnum.png' : (resolveImageUrl(estate.heroImageUrl) || 'https://images.unsplash.com/photo-1565922336365-1d44eb37a06a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80')}
               alt={estate.estateName}
               onError={(e) => {
                 e.currentTarget.onerror = null;
-                e.currentTarget.src = 'https://images.unsplash.com/photo-1565922336365-1d44eb37a06a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
+                e.currentTarget.src = isCantinaDelConte
+                  ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg'
+                  : isDogliotti 
+                    ? '/assets/estate/dogliotti-1870/dogliotti_cask_barrel_hall.jpg'
+                    : 'https://images.unsplash.com/photo-1565922336365-1d44eb37a06a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
               }}
               className="absolute inset-0 w-full h-full object-cover"
             />
