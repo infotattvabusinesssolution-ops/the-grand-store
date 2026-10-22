@@ -366,11 +366,16 @@ export const normalizeProductForDisplay = (product = {}) => {
       ? text.replace(/\bWhisky\b/gi, "Whiskey")
       : text;
   };
+  const identity = getProductIdentity(product);
+  const displayCategory = (category === "Spirits" && ((product.subcategory || "").toLowerCase() === "baijiu" || (product.name || "").toLowerCase().includes("moutai")))
+    ? "Baijiu"
+    : (category === "Baijiu & Sake" ? ((product.name || "").toLowerCase().includes("sake") ? "Sake" : "Baijiu") : category);
+
   const normalized = {
     ...product,
     name: regionalizeWhiskey(normalizeProductName(product.name)),
-    type: category,
-    category,
+    type: identity.type || displayCategory,
+    category: displayCategory,
     country,
     brand: normalizeBrand(product.brand || product.storeName),
     subcategory: regionalizeWhiskey(normalizeSubcategory(product.subcategory, category, product)),

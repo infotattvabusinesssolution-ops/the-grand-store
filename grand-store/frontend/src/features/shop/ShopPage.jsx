@@ -21,7 +21,27 @@ const getFilterOptions = (products, key) => [
   ),
 ];
 
-const getProductCategory = (p) => p.category || p.type || "Wine & spirits";
+const getProductCategory = (p) => {
+  const cat = p.category || p.type || "Wine & spirits";
+  const sub = (p.subcategory || "").toLowerCase();
+  const name = (p.name || "").toLowerCase();
+  if (
+    sub === "baijiu" ||
+    sub.includes("baijiu") ||
+    name.includes("baijiu") ||
+    (cat.toLowerCase() === "spirits" && name.includes("moutai"))
+  ) {
+    return "Baijiu";
+  }
+  if (cat.toLowerCase() === "baijiu & sake") {
+    if (sub.includes("sake") || name.includes("sake")) return "Sake";
+    return "Baijiu";
+  }
+  if (cat.toLowerCase() === "whiskey") {
+    return "Whisky";
+  }
+  return cat;
+};
 
 export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
   const { products } = useProducts();
@@ -78,54 +98,75 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
   const selectedSizes = searchParams
     .getAll("size")
     .filter(isVisibleFilterValue);
-  const shopProducts = products.filter(
-    (product) => product.type !== "accessory",
-  );
+  const shopProducts = useMemo(() => {
+    const seen = new Set();
+    return products.filter((product) => {
+      if (!product || product.type === "accessory") return false;
+      const key = (product.slug || product.name || product.id || product._id || "").toLowerCase().trim();
+      if (!key) return true;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [products]);
 
-  const categoryOptions = [
+  const categoryOptions = useMemo(() => [
     ...new Set(
       shopProducts
         .map(getProductCategory)
         .filter(isVisibleFilterValue)
         .map((v) => v.trim()),
     ),
-  ];
+  ].sort(), [shopProducts]);
 
-  const productsForCountries =
-    selectedCategories.length > 0
-      ? shopProducts.filter((p) =>
-          selectedCategories.includes(getProductCategory(p)),
-        )
-      : shopProducts;
+  const scopedProducts = useMemo(() => {
+    if (!selectedCategories.length) return shopProducts;
+    return shopProducts.filter((p) =>
+      selectedCategories.some((c) => {
+        const cat = c.trim().toLowerCase();
+        const pCat = getProductCategory(p).trim().toLowerCase();
+        if (cat === "whisky" || cat === "whiskey") {
+          return pCat === "whisky" || pCat === "whiskey";
+        }
+        return cat === pCat;
+      }),
+    );
+  }, [shopProducts, selectedCategories]);
 
-  const countryOptions = getFilterOptions(productsForCountries, "country");
+  const countryOptions = useMemo(() => {
+    const opts = getFilterOptions(scopedProducts, "country");
+    return opts.sort((a, b) => {
+      if (a.toLowerCase() === "south africa") return -1;
+      if (b.toLowerCase() === "south africa") return 1;
+      return a.localeCompare(b);
+    });
+  }, [scopedProducts]);
 
-  const productsForSubcategories =
-    selectedCountries.length > 0
-      ? productsForCountries.filter((p) =>
-          selectedCountries.includes(p.country),
-        )
-      : productsForCountries;
+  const subcategoryOptions = useMemo(
+    () => getFilterOptions(scopedProducts, "subcategory"),
+    [scopedProducts],
+  );
 
-  const subcategoryOptions = getFilterOptions(productsForSubcategories, "subcategory");
+  const brandOptions = useMemo(
+    () => getFilterOptions(scopedProducts, "brand"),
+    [scopedProducts],
+  );
 
-  const productsForBrands =
-    selectedSubcategories.length > 0
-      ? productsForSubcategories.filter((p) =>
-          selectedSubcategories.includes(p.subcategory),
-        )
-      : productsForSubcategories;
-
-  const brandOptions = getFilterOptions(productsForBrands, "brand");
-
-  const sizeOptions = getFilterOptions(shopProducts, "size");
+  const sizeOptions = useMemo(
+    () => getFilterOptions(shopProducts, "size"),
+    [shopProducts],
+  );
 
   const toggleFilter = (key, value) => {
     const nextParams = new URLSearchParams(searchParams);
     const values = nextParams.getAll(key);
     nextParams.delete(key);
-    const nextValues = values.includes(value)
-      ? values.filter((item) => item !== value)
+    const normalizedVal = value.trim().toLowerCase();
+    const isAlreadySelected = values.some(
+      (item) => item.trim().toLowerCase() === normalizedVal,
+    );
+    const nextValues = isAlreadySelected
+      ? values.filter((item) => item.trim().toLowerCase() !== normalizedVal)
       : [...values, value];
     nextValues.forEach((item) => nextParams.append(key, item));
     setSearchParams(nextParams);
@@ -185,12 +226,19 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
     return (
       matchesSearch &&
       (!selectedCategories.length ||
-        selectedCategories.some(c => c.toLowerCase() === getProductCategory(product).toLowerCase())) &&
+        selectedCategories.some((c) => {
+          const cat = c.trim().toLowerCase();
+          const pCat = getProductCategory(product).trim().toLowerCase();
+          if (cat === "whisky" || cat === "whiskey") {
+            return pCat === "whisky" || pCat === "whiskey";
+          }
+          return cat === pCat;
+        })) &&
       matchesStyle &&
-      (!selectedSubcategories.length || selectedSubcategories.some(sc => sc.toLowerCase() === (product.subcategory || '').toLowerCase())) &&
-      (!selectedBrands.length || selectedBrands.some(b => b.toLowerCase() === (product.brand || '').toLowerCase())) &&
-      (!selectedCountries.length || selectedCountries.some(c => c.toLowerCase() === (product.country || '').toLowerCase())) &&
-      (!selectedSizes.length || selectedSizes.some(s => s.toLowerCase() === (product.size || '').toLowerCase())) &&
+      (!selectedSubcategories.length || selectedSubcategories.some(sc => sc.trim().toLowerCase() === (product.subcategory || '').trim().toLowerCase())) &&
+      (!selectedBrands.length || selectedBrands.some(b => b.trim().toLowerCase() === (product.brand || '').trim().toLowerCase())) &&
+      (!selectedCountries.length || selectedCountries.some(c => c.trim().toLowerCase() === (product.country || '').trim().toLowerCase())) &&
+      (!selectedSizes.length || selectedSizes.some(s => s.trim().toLowerCase() === (product.size || '').trim().toLowerCase())) &&
       priceValue(product) >= minP &&
       priceValue(product) <= maxP
     );
@@ -264,22 +312,15 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
             </div>
 
             <div className="space-y-8 pb-16">
-              <FilterGroup
-                title="Category"
-                options={categoryOptions}
-                selectedValues={selectedCategories}
-                onToggle={(value) => toggleFilter("category", value)}
-              />
-              {selectedCategories.length > 0 && (
+              {categoryOptions.length > 0 && (
                 <FilterGroup
-                  title="Country"
-                  options={countryOptions}
-                  selectedValues={selectedCountries}
-                  onToggle={(value) => toggleFilter("country", value)}
-                  formatLabel={(country) => getCountryDisplayName(country, selectedCategories[0])}
+                  title="Category"
+                  options={categoryOptions}
+                  selectedValues={selectedCategories}
+                  onToggle={(value) => toggleFilter("category", value)}
                 />
               )}
-              {selectedCountries.length > 0 && (
+              {subcategoryOptions.length > 0 && (
                 <FilterGroup
                   title="Subcategory"
                   options={subcategoryOptions}
@@ -287,7 +328,7 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
                   onToggle={(value) => toggleFilter("subcategory", value)}
                 />
               )}
-              {selectedSubcategories.length > 0 && (
+              {brandOptions.length > 0 && (
                 <FilterGroup
                   title="Brand"
                   options={brandOptions}
@@ -295,12 +336,23 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
                   onToggle={(value) => toggleFilter("brand", value)}
                 />
               )}
-              <FilterGroup
-                title="Bottle size"
-                options={sizeOptions}
-                selectedValues={selectedSizes}
-                onToggle={(value) => toggleFilter("size", value)}
-              />
+              {countryOptions.length > 0 && (
+                <FilterGroup
+                  title="Country"
+                  options={countryOptions}
+                  selectedValues={selectedCountries}
+                  onToggle={(value) => toggleFilter("country", value)}
+                  formatLabel={(country) => getCountryDisplayName(country, selectedCategories[0] || "Wine")}
+                />
+              )}
+              {sizeOptions.length > 0 && (
+                <FilterGroup
+                  title="Bottle size"
+                  options={sizeOptions}
+                  selectedValues={selectedSizes}
+                  onToggle={(value) => toggleFilter("size", value)}
+                />
+              )}
 
               <div className="pt-2">
                 <h3 className="text-white text-sm font-bold tracking-[0.15em] uppercase mb-4">

@@ -21,7 +21,6 @@ export default function AuctionCampaign() {
         poster="https://res.cloudinary.com/oioqrgj0/image/upload/v1788172078/grand-store/assets/cu4jebfyyjt80fbqjzk0.jpg"
         autoPlay 
         muted 
-        defaultMuted
         loop 
         playsInline 
         aria-hidden="true"

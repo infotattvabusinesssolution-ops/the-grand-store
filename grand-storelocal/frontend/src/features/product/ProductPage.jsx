@@ -55,6 +55,26 @@ const resolveImageUrl = (src) => {
   return normalizedSrc;
 };
 
+const getProductCategory = (p) => {
+  if (!p) return "Collection";
+  const cat = p.category || p.type || "Wine & spirits";
+  const sub = (p.subcategory || "").toLowerCase();
+  const name = (p.name || "").toLowerCase();
+  if (
+    sub === "baijiu" ||
+    sub.includes("baijiu") ||
+    name.includes("baijiu") ||
+    (cat.toLowerCase() === "spirits" && name.includes("moutai"))
+  ) {
+    return "Baijiu";
+  }
+  if (cat.toLowerCase() === "baijiu & sake") {
+    if (sub.includes("sake") || name.includes("sake")) return "Sake";
+    return "Baijiu";
+  }
+  return cat;
+};
+
 export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   const navigate = useNavigate();
   const { products, loading: productsLoading } = useProducts();
@@ -232,7 +252,7 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
     ...(pkgLength && pkgWidth && pkgHeight ? [{ label: "Package Dims", value: `${pkgLength} × ${pkgWidth} × ${pkgHeight} cm` }] : []),
     ...(pkgBox ? [{ label: "Packaging", value: pkgBox }] : []),
   ];
-  const categoryLabel = product.category || product.type || "Collection";
+  const categoryLabel = getProductCategory(product);
   const hasDistinctStyle = identity.style &&
     identity.style.trim().toLowerCase() !== categoryLabel.trim().toLowerCase();
   const taxonomySecondary = hasDistinctStyle
@@ -384,30 +404,33 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
         schema={productSchema}
       />
       {/* Top Breadcrumbs */}
-      <section className="mx-auto mb-4 flex max-w-7xl items-center gap-3 overflow-x-auto whitespace-nowrap pb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#918a7f] sm:mb-3 sm:text-sm">
-        <Link to="/" className="hover:text-gold-gradient transition-colors">
+      <nav aria-label="Breadcrumb" className="mx-auto mb-4 flex max-w-7xl items-center gap-3 overflow-x-auto whitespace-nowrap pb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#918a7f] sm:mb-3 sm:text-sm">
+        <Link to="/" className="hover:text-gold-gradient transition-colors cursor-pointer shrink-0">
           Home
         </Link>
-        <span>/</span>
+        <span className="shrink-0 text-white/30">/</span>
         <Link
-          to={`/shop?category=${encodeURIComponent(product.category || product.type || "")}`}
-          className="max-w-[34vw] truncate hover:text-gold-gradient transition-colors sm:max-w-none"
+          to={`/shop?category=${encodeURIComponent(categoryLabel)}`}
+          className="max-w-[34vw] truncate hover:text-gold-gradient transition-colors cursor-pointer sm:max-w-none shrink-0"
         >
-          {product.category || product.type || "Shop"}
+          {categoryLabel}
         </Link>
         {product.brand && (
-          <span className="hidden sm:contents">
-            <span>/</span>
-            <span className="hover:text-gold-gradient cursor-pointer transition-colors">
+          <>
+            <span className="shrink-0 text-white/30">/</span>
+            <Link
+              to={`/shop?brand=${encodeURIComponent(product.brand)}`}
+              className="max-w-[34vw] truncate hover:text-gold-gradient transition-colors cursor-pointer sm:max-w-none shrink-0"
+            >
               {product.brand}
-            </span>
-          </span>
+            </Link>
+          </>
         )}
-        <span>/</span>
+        <span className="shrink-0 text-white/30">/</span>
         <span className="inline-block max-w-[42vw] truncate align-middle font-bold text-[#eee8dd] sm:max-w-[30vw]">
           {product.name}
         </span>
-      </section>
+      </nav>
 
       {/* Main Detail Section (Split Layout) */}
       <section className="mx-auto mb-12 grid max-w-7xl grid-cols-1 gap-6 sm:gap-8 lg:mb-16 lg:grid-cols-2 lg:gap-12">
@@ -498,15 +521,21 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
           />
 
           <div className="mb-4 flex flex-wrap gap-2" aria-label="Product classification">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-2 text-xs uppercase tracking-[0.1em] text-[#918a7f]">
+            <Link
+              to={`/shop?category=${encodeURIComponent(categoryLabel)}`}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-2 text-xs uppercase tracking-[0.1em] text-[#918a7f] transition-all hover:border-[#c9a35b]/40 hover:text-[#eee8dd]"
+            >
               Category
               <strong className="font-semibold text-[#eee8dd]">{categoryLabel}</strong>
-            </span>
+            </Link>
             {taxonomySecondary.value && (
-              <span className="inline-flex items-center gap-2 rounded-full border border-[#c9a35b]/25 bg-[#c9a35b]/[0.06] px-3 py-2 text-xs uppercase tracking-[0.1em] text-[#918a7f]">
+              <Link
+                to={`/shop?subcategory=${encodeURIComponent(taxonomySecondary.value)}`}
+                className="inline-flex items-center gap-2 rounded-full border border-[#c9a35b]/25 bg-[#c9a35b]/[0.06] px-3 py-2 text-xs uppercase tracking-[0.1em] text-[#918a7f] transition-all hover:border-[#c9a35b]/60 hover:text-[#e1bd70]"
+              >
                 {taxonomySecondary.label}
                 <strong className="font-semibold text-[#e1bd70]">{taxonomySecondary.value}</strong>
-              </span>
+              </Link>
             )}
           </div>
 

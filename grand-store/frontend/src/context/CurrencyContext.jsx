@@ -96,11 +96,11 @@ export function getCurrencySymbol(currencyCode) {
 }
 
 const formatCurrencyAmount = (amount, currencyCode) => {
-  const isZeroDec = ZERO_DECIMAL_CURRENCIES.has(currencyCode);
+  const rounded = Math.round(Number(amount) || 0);
   const formatted = new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: isZeroDec ? 0 : 2,
-    maximumFractionDigits: isZeroDec ? 0 : 2
-  }).format(amount);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(rounded);
 
   const symbol = CURRENCY_SYMBOLS[currencyCode] || currencyCode;
   // Use non-breaking space (\u00A0) so the symbol and digits can never break across lines

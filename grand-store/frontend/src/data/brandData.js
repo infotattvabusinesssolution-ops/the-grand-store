@@ -243,7 +243,7 @@ export const brandData = {
   },
   'bruno-andreu': {
     slug: 'bruno-andreu',
-    brandName: 'Maison Bruno Andreu',
+    brandName: 'Bruno Andreu',
     category: 'French Estate Wine',
     country: 'France',
     region: 'Languedoc-Roussillon',
@@ -252,7 +252,7 @@ export const brandData = {
     tagline: 'Creator of Iconic Wines — Emotion in Every Glass',
     heritageStory: [
       'Born from a deep Mediterranean family heritage spanning generations, Bruno Andreu established Domaine BA in Montblanc to express the vibrant spirit of southern France. His wines combine ancestral craftsmanship with bold contemporary styling.',
-      'From organic AOP Languedoc blends to prestigious single-parcel cuvées aged in French oak, Maison Bruno Andreu is recognized internationally for its pure fruit expression, elegance, and gastronomic allure.'
+      'From organic AOP Languedoc blends to prestigious single-parcel cuvées aged in French oak, Bruno Andreu is recognized internationally for its pure fruit expression, elegance, and gastronomic allure.'
     ],
     tastingProfile: {
       nose: 'Blackberry compote, garrigue rosemary, violet blossoms, and delicate vanilla oak.',
@@ -260,7 +260,7 @@ export const brandData = {
       finish: 'Long, structured, and warm with an authentic touch of Languedoc terroir.'
     },
     signatureStyles: ['Cuvée Elixir', 'Aromatique Series', 'Pure Terroir Collection', 'Alcohol-Free 0.0%'],
-    seoTitle: 'Buy Maison Bruno Andreu French Wines Online — The Grand Store',
+    seoTitle: 'Buy Bruno Andreu French Wines Online — The Grand Store',
     metaDescription: 'Discover Bruno Andreu signature Languedoc wines, AOP cuvées, and premium 0.0% alcohol-free bottles with guaranteed provenance at The Grand Store.'
   },
   'cantina-del-conte': {

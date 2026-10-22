@@ -196,20 +196,20 @@ const retailProducts = [
   // =========================================================================
   {
     id: "ws-guizhou-xijiu-blue",
-    slug: "guizhou-xijiu-friends-series-season-baijiu-blue-bottle",
-    name: "Guizhou XIJIU Friends Series – Season Baijiu (Blue Bottle) 500ml",
+    slug: "guizhou-xijiu-friends-series-baijiu-blue-bottle-500ml",
+    name: "Guizhou XIJIU Friends Series Baijiu (Blue Bottle) 500ml",
     brand: "Guizhou XIJIU",
-    category: "Baijiu & Sake",
-    subcategory: "Sauce Aroma Baijiu (Jiangxiang)",
-    type: "Baijiu & Sake",
+    category: "Baijiu",
+    subcategory: "Sauce-Aroma (Jiangxiang) Baijiu",
+    type: "Baijiu",
     country: "China",
     price: "890",
     size: "500ml",
     stock: 30,
-    image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80",
-    originalImage: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565188/grandstore-uploads/products/baijiu/guizhou-xijiu-friends-series-blue-bottle.jpg",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565188/grandstore-uploads/products/baijiu/guizhou-xijiu-friends-series-blue-bottle.jpg",
     gallery: [
-      "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565188/grandstore-uploads/products/baijiu/guizhou-xijiu-friends-series-blue-bottle.jpg"
     ],
     description: "Hailing from the Chishui River valley in Guizhou Province, this prestigious Chinese Baijiu is produced via authentic solid-state sorghum fermentation. Packaged in a stunning cobalt-blue ceramic flagon, it exudes the classic Jiangxiang (Sauce Aroma) character—savory roasted grains, soy umami, dried Chinese dates, and an astonishingly long, fragrant palate.",
     tastingNotes: [
@@ -254,20 +254,20 @@ const retailProducts = [
   },
   {
     id: "ws-fenjiu-blue-flower-20",
-    slug: "fenjiu-qinghua-blue-flower-20-years-old-baijiu-500ml",
-    name: "Fenjiu Qinghua Blue Flower 20 Years Old Baijiu 500ml",
+    slug: "fenjiu-qinghua-20-year-old-baijiu-500ml",
+    name: "Fenjiu Qinghua 20 Year Old Baijiu 500ml",
     brand: "Fenjiu",
-    category: "Baijiu & Sake",
-    subcategory: "Light Aroma Baijiu (Qingxiang)",
-    type: "Baijiu & Sake",
+    category: "Baijiu",
+    subcategory: "Light-Aroma (Qingxiang) Baijiu",
+    type: "Baijiu",
     country: "China",
     price: "2450",
     size: "500ml",
     stock: 18,
-    image: "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80",
-    originalImage: "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565190/grandstore-uploads/products/baijiu/fenjiu-qinghua-20-year-old.jpg",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565190/grandstore-uploads/products/baijiu/fenjiu-qinghua-20-year-old.jpg",
     gallery: [
-      "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565190/grandstore-uploads/products/baijiu/fenjiu-qinghua-20-year-old.jpg"
     ],
     description: "The crown jewel of Light Aroma Baijiu from Xinghuacun, Shanxi Province with over 6,000 years of brewing lineage. Aged 20 years in earthen ceramic vessels, Fenjiu Qinghua presents a clean, crystal-clear purity, with delicate aromas of green pear, white blossom, and sweet barley sweetness.",
     tastingNotes: [
@@ -312,20 +312,20 @@ const retailProducts = [
   },
   {
     id: "ws-fenjiu-red-label",
-    slug: "fen-jiu-red-label-light-aroma-baijiu-500ml",
-    name: "Fen Jiu Red Label Light Aroma Baijiu 500ml",
+    slug: "fen-jiu-red-label-fen-chiew-baijiu-500ml",
+    name: "Fen Jiu Red Label (Fen Chiew) Baijiu 500ml",
     brand: "Fenjiu",
-    category: "Baijiu & Sake",
+    category: "Baijiu",
     subcategory: "Light Aroma Baijiu (Qingxiang)",
-    type: "Baijiu & Sake",
+    type: "Baijiu",
     country: "China",
     price: "650",
     size: "500ml",
     stock: 35,
-    image: "https://images.unsplash.com/photo-1563227812-0ea4c22e6cc8?auto=format&fit=crop&w=800&q=80",
-    originalImage: "https://images.unsplash.com/photo-1563227812-0ea4c22e6cc8?auto=format&fit=crop&w=800&q=80",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565191/grandstore-uploads/products/baijiu/fen-jiu-red-label-fen-chiew.jpg",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565191/grandstore-uploads/products/baijiu/fen-jiu-red-label-fen-chiew.jpg",
     gallery: [
-      "https://images.unsplash.com/photo-1563227812-0ea4c22e6cc8?auto=format&fit=crop&w=800&q=80"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565191/grandstore-uploads/products/baijiu/fen-jiu-red-label-fen-chiew.jpg"
     ],
     description: "The iconic everyday staple of Northern China. Distilled from fermented whole sorghum grains with indigenous barley-and-pea qu starter. Vibrant, refreshing, and full-bodied with notes of ripe honeydew melon, star anise, and crisp grain.",
     tastingNotes: [
@@ -370,22 +370,22 @@ const retailProducts = [
   },
   {
     id: "ws-gekkeikan-gold-sake",
-    slug: "gold-gekkeikan-traditional-junmai-shu-sake-720ml",
-    name: "Gold Gekkeikan Traditional Junmai-shu Sake 720ml",
+    slug: "gekkeikan-traditional-junmai-shu-sake-720ml",
+    name: "Gekkeikan Traditional Junmai-shu Sake 720ml",
     brand: "Gekkeikan",
-    category: "Baijiu & Sake",
+    category: "Sake",
     subcategory: "Junmai Sake",
-    type: "Baijiu & Sake",
+    type: "Sake",
     country: "Japan",
     price: "480",
     size: "720ml",
     stock: 45,
-    image: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=800&q=80",
-    originalImage: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=800&q=80",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570279/grandstore-uploads/products/sake/gekkeikan-traditional-junmai-sake-720ml.jpg",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570279/grandstore-uploads/products/sake/gekkeikan-traditional-junmai-sake-720ml.jpg",
     gallery: [
-      "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=800&q=80"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570279/grandstore-uploads/products/sake/gekkeikan-traditional-junmai-sake-720ml.jpg"
     ],
-    description: "Brewed in Fushimi, Kyoto—the historic capital of Japanese sake brewing—using centuries-old yeast strains and pristine natural spring water. Herbaceous with gentle grapefruit acidity, subtle steamed rice notes, and a balanced dry finish. Delicious served chilled, room temperature, or gently warmed.",
+    description: "Brewed in Fushimi, Kyoto—the historic capital of Japanese sake brewing with over 380 years of craftsmanship. Made using centuries-old yeast strains and pristine natural spring water. Herbaceous with gentle grapefruit acidity, subtle steamed rice notes, and a balanced dry finish. Delicious served chilled, room temperature, or gently warmed.",
     tastingNotes: [
       "Steamed Koji Rice",
       "Fresh Grapefruit Peel",
@@ -431,19 +431,19 @@ const retailProducts = [
     slug: "dassai-45-junmai-daiginjo-sake-720ml",
     name: "Dassai 45 Junmai Daiginjo Sake 720ml",
     brand: "Dassai",
-    category: "Baijiu & Sake",
+    category: "Sake",
     subcategory: "Junmai Daiginjo Sake",
-    type: "Baijiu & Sake",
+    type: "Sake",
     country: "Japan",
-    price: "820",
+    price: "850",
     size: "720ml",
     stock: 25,
-    image: "https://images.unsplash.com/photo-1608039829572-78524f79c4c7?auto=format&fit=crop&w=800&q=80",
-    originalImage: "https://images.unsplash.com/photo-1608039829572-78524f79c4c7?auto=format&fit=crop&w=800&q=80",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570282/grandstore-uploads/products/sake/dassai-45-junmai-daiginjo-sake-720ml.jpg",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570282/grandstore-uploads/products/sake/dassai-45-junmai-daiginjo-sake-720ml.jpg",
     gallery: [
-      "https://images.unsplash.com/photo-1608039829572-78524f79c4c7?auto=format&fit=crop&w=800&q=80"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570282/grandstore-uploads/products/sake/dassai-45-junmai-daiginjo-sake-720ml.jpg"
     ],
-    description: "Crafted exclusively from King of Sake Rice (Yamada Nishiki), polished until only 45% of the grain heart remains. Dassai 45 offers a delicate bouquet of white peach, honeydew melon, and muscat grapes, balanced by a silky, refined mouthfeel.",
+    description: "Crafted exclusively from King of Sake Rice (Yamada Nishiki), polished down meticulously until only 45% of the grain heart remains. Dassai 45 offers a delicate bouquet of white peach, honeydew melon, and muscat grapes, balanced by a silky, refined mouthfeel.",
     tastingNotes: [
       "Ripe Muscat Grape",
       "Honeydew Melon",

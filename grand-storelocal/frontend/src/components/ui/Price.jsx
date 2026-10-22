@@ -16,10 +16,17 @@ const parsePriceDisplay = (strVal) => {
   // Prefix symbol pattern: e.g. "₹ 443,156.25", "R 95,000.00", "$1,250.00"
   const prefixMatch = clean.match(/^([^\d\-+]+)\s*([\d,.]+)$/);
   if (prefixMatch) {
+    let numStr = prefixMatch[2].trim();
+    if (numStr.includes('.')) {
+      const parts = numStr.split('.');
+      const intVal = parseInt(parts[0].replace(/,/g, ''), 10) || 0;
+      const decVal = parseFloat(`0.${parts[1]}`) || 0;
+      numStr = (decVal >= 0.5 ? intVal + 1 : intVal).toLocaleString('en-US');
+    }
     return {
       isNegative,
       symbol: prefixMatch[1].trim(),
-      num: prefixMatch[2].trim(),
+      num: numStr,
       position: 'prefix'
     };
   }
@@ -27,15 +34,30 @@ const parsePriceDisplay = (strVal) => {
   // Suffix symbol pattern: e.g. "100.00 EUR"
   const suffixMatch = clean.match(/^([\d,.]+)\s*([^\d\-+]+)$/);
   if (suffixMatch) {
+    let numStr = suffixMatch[1].trim();
+    if (numStr.includes('.')) {
+      const parts = numStr.split('.');
+      const intVal = parseInt(parts[0].replace(/,/g, ''), 10) || 0;
+      const decVal = parseFloat(`0.${parts[1]}`) || 0;
+      numStr = (decVal >= 0.5 ? intVal + 1 : intVal).toLocaleString('en-US');
+    }
     return {
       isNegative,
       symbol: suffixMatch[2].trim(),
-      num: suffixMatch[1].trim(),
+      num: numStr,
       position: 'suffix'
     };
   }
 
-  return { isNegative, symbol: '', num: clean, position: 'none' };
+  let finalClean = clean;
+  if (finalClean.includes('.')) {
+    const parts = finalClean.split('.');
+    const intVal = parseInt(parts[0].replace(/,/g, ''), 10) || 0;
+    const decVal = parseFloat(`0.${parts[1]}`) || 0;
+    finalClean = (decVal >= 0.5 ? intVal + 1 : intVal).toLocaleString('en-US');
+  }
+
+  return { isNegative, symbol: '', num: finalClean, position: 'none' };
 };
 
 const Price = ({ amount, className = "", forceZAR = false, presentation = "default" }) => {
@@ -49,7 +71,7 @@ const Price = ({ amount, className = "", forceZAR = false, presentation = "defau
     const formatted = parseFloat(cleanStr);
     displayValue = isNaN(formatted)
       ? amount 
-      : `R\u00A0${formatted.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+      : `R\u00A0${Math.round(formatted).toLocaleString('en-US')}`;
   } else {
     displayValue = formatPrice(amount);
   }
@@ -58,19 +80,24 @@ const Price = ({ amount, className = "", forceZAR = false, presentation = "defau
 
   return (
     <span
-      className={`inline-flex items-baseline whitespace-nowrap tabular-nums leading-none ${className}`}
-      style={{ whiteSpace: 'nowrap', display: 'inline-flex', verticalAlign: 'baseline' }}
+      className={`inline-flex items-baseline whitespace-nowrap font-sans font-bold tabular-nums leading-none ${className}`}
+      style={{
+        whiteSpace: 'nowrap',
+        display: 'inline-flex',
+        verticalAlign: 'baseline',
+        fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      }}
       aria-label={String(displayValue)}
     >
       {isNegative && <span className="shrink-0 mr-[0.1em]">-</span>}
       {position === 'prefix' && symbol && (
-        <span className="shrink-0 mr-[0.18em] select-none font-sans font-normal opacity-95">
+        <span className="shrink-0 mr-[0.18em] select-none opacity-95">
           {symbol}
         </span>
       )}
       <span className="shrink-0">{num}</span>
       {position === 'suffix' && symbol && (
-        <span className="shrink-0 ml-[0.18em] select-none font-sans font-normal opacity-95">
+        <span className="shrink-0 ml-[0.18em] select-none opacity-95">
           {symbol}
         </span>
       )}

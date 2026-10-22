@@ -101,12 +101,29 @@ const matchesCountry = (productCountry = '', targetCountryKey = '') => {
   return pNorm === targetNorm;
 };
 
+// Deterministic pseudo-random shuffle to stably interleave bottles across varieties & producers
+const deterministicShuffle = (array, seedStr = 'global-wine-collection') => {
+  const arr = [...array];
+  let seed = 0;
+  for (let i = 0; i < seedStr.length; i++) {
+    seed = (seed * 31 + seedStr.charCodeAt(i)) >>> 0;
+  }
+  const nextRandom = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(nextRandom() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
+
 export default function CountryPavilionPage({ onAdd, onWish, onCompare, compareItems = [] }) {
   const { country } = useParams();
   const { products } = useProducts();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSubcategory, setSelectedSubcategory] = useState('all');
   const [showSearch, setShowSearch] = useState(false);
 
   const cleanCountryKey = normalizeCountryKey(country || '');
@@ -116,41 +133,24 @@ export default function CountryPavilionPage({ onAdd, onWish, onCompare, compareI
     image: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?q=80&w=2070&auto=format&fit=crop'
   };
 
-  // Strictly filter: ONLY WINE AND ONLY THE SPECIFIED COUNTRY
+  // Strictly filter: ONLY WINE AND ONLY THE SPECIFIED COUNTRY, mixed up across producers and varietals
   const countryWines = useMemo(() => {
-    return products.filter((p) => isStrictlyWine(p) && matchesCountry(p.country, country));
-  }, [products, country]);
+    const filtered = products.filter((p) => isStrictlyWine(p) && matchesCountry(p.country, country));
+    return deterministicShuffle(filtered, `country-${cleanCountryKey}`);
+  }, [products, country, cleanCountryKey]);
 
-  // Extract unique subcategories/varietals for the filter tabs
-  const subcategories = useMemo(() => {
-    const subs = new Set();
-    countryWines.forEach((p) => {
-      if (p.subcategory && p.subcategory.trim()) {
-        subs.add(p.subcategory.trim());
-      }
-    });
-    return Array.from(subs);
-  }, [countryWines]);
-
-  // Apply optional search query and subcategory filter
+  // Apply optional search query
   const displayedWines = useMemo(() => {
+    if (!searchQuery.trim()) return countryWines;
+    const query = searchQuery.trim().toLowerCase();
     return countryWines.filter((p) => {
-      // Subcategory filter
-      if (selectedSubcategory !== 'all' && p.subcategory !== selectedSubcategory) {
-        return false;
-      }
-      // Search query
-      if (searchQuery.trim()) {
-        const query = searchQuery.trim().toLowerCase();
-        const matchName = (p.name || '').toLowerCase().includes(query);
-        const matchBrand = (p.brand || '').toLowerCase().includes(query);
-        const matchSub = (p.subcategory || '').toLowerCase().includes(query);
-        const matchDesc = (p.description || '').toLowerCase().includes(query);
-        return matchName || matchBrand || matchSub || matchDesc;
-      }
-      return true;
+      const matchName = (p.name || '').toLowerCase().includes(query);
+      const matchBrand = (p.brand || '').toLowerCase().includes(query);
+      const matchSub = (p.subcategory || '').toLowerCase().includes(query);
+      const matchDesc = (p.description || '').toLowerCase().includes(query);
+      return matchName || matchBrand || matchSub || matchDesc;
     });
-  }, [countryWines, selectedSubcategory, searchQuery]);
+  }, [countryWines, searchQuery]);
 
   useEffect(() => {
     // Auto-scroll directly to products after rendering
@@ -319,37 +319,12 @@ export default function CountryPavilionPage({ onAdd, onWish, onCompare, compareI
           )}
         </AnimatePresence>
 
-        {/* Subcategory / Varietal Filter Pills */}
-        {subcategories.length > 1 && (
-          <div className="flex flex-wrap gap-2 mb-8">
-            <button
-              onClick={() => setSelectedSubcategory('all')}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all ${
-                selectedSubcategory === 'all'
-                  ? 'bg-[#c9a35b] text-black shadow-[0_0_15px_rgba(201,163,91,0.4)]'
-                  : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white border border-white/10'
-              }`}
-            >
-              All Styles ({countryWines.length})
-            </button>
-            {subcategories.map((sub) => {
-              const count = countryWines.filter((w) => w.subcategory === sub).length;
-              return (
-                <button
-                  key={sub}
-                  onClick={() => setSelectedSubcategory(sub)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all ${
-                    selectedSubcategory === sub
-                      ? 'bg-[#c9a35b] text-black shadow-[0_0_15px_rgba(201,163,91,0.4)]'
-                      : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white border border-white/10'
-                  }`}
-                >
-                  {sub} ({count})
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {/* All Styles Active Pill */}
+        <div className="flex items-center gap-2 mb-8">
+          <span className="px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider bg-[#c9a35b] text-black shadow-[0_0_15px_rgba(201,163,91,0.35)] cursor-default">
+            All Styles ({countryWines.length})
+          </span>
+        </div>
 
         {/* Wine Grid */}
         {displayedWines.length > 0 ? (

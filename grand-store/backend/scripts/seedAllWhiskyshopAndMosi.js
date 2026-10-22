@@ -181,7 +181,7 @@ const whiskyshopProducts = [
     barcode: "5000299211304",
     cartonBarcode: "15000299211301",
     barcodeImage: "https://barcodeapi.org/api/128/5000299211304",
-    image: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792583112/grandstore-uploads/products/whisky/ballantines-finest-blended-scotch-whisky-3l-with-cradle.jpg",
     shipping: {
       box_type: "Extra Large Wooden Crate",
       weight_kg: 5.8,
@@ -227,7 +227,7 @@ const whiskyshopProducts = [
     barcode: "5000299211458",
     cartonBarcode: "15000299211455",
     barcodeImage: "https://barcodeapi.org/api/128/5000299211458",
-    image: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792583112/grandstore-uploads/products/whisky/ballantines-finest-blended-scotch-whisky-3l-with-cradle.jpg",
     shipping: {
       box_type: "Heavyweight Reinforced Crate",
       weight_kg: 8.5,
@@ -319,7 +319,7 @@ const whiskyshopProducts = [
     barcode: "5000299230015",
     cartonBarcode: "15000299230012",
     barcodeImage: "https://barcodeapi.org/api/128/5000299230015",
-    image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792585870/grandstore-uploads/products/whisky/ballantines-30-year-old-very-rare-blended-scotch-whisky-750ml.jpg",
     shipping: {
       box_type: "Handcrafted Luxury Timber Presentation Case",
       weight_kg: 2.8,
@@ -369,7 +369,7 @@ const whiskyshopProducts = [
     barcode: "6901382103567",
     cartonBarcode: "16901382103564",
     barcodeImage: "https://barcodeapi.org/api/128/6901382103567",
-    image: "https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565188/grandstore-uploads/products/baijiu/guizhou-xijiu-friends-series-blue-bottle.jpg",
     shipping: {
       box_type: "Traditional Ceramic Bottle Gift Box",
       weight_kg: 1.65,
@@ -415,7 +415,7 @@ const whiskyshopProducts = [
     barcode: "6901168102341",
     cartonBarcode: "16901168102348",
     barcodeImage: "https://barcodeapi.org/api/128/6901168102341",
-    image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565190/grandstore-uploads/products/baijiu/fenjiu-qinghua-20-year-old.jpg",
     shipping: {
       box_type: "Porcelain Decanter Luxury Gift Box",
       weight_kg: 1.75,
@@ -461,7 +461,7 @@ const whiskyshopProducts = [
     barcode: "6901168101016",
     cartonBarcode: "16901168101013",
     barcodeImage: "https://barcodeapi.org/api/128/6901168101016",
-    image: "https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565191/grandstore-uploads/products/baijiu/fen-jiu-red-label-fen-chiew.jpg",
     shipping: {
       box_type: "Standard Bottle Box",
       weight_kg: 1.45,
@@ -482,16 +482,16 @@ const whiskyshopProducts = [
     subcategory: "Junmai Sake",
     country: "Japan",
     size: "720ml",
-    price: "480",
+    price: "750",
     stock: 25,
-    description: "Gold Gekkeikan is an auspicious celebratory Junmai Sake brewed in Fushimi, Kyoto, famous for its pure, soft subterranean spring water (Miyamizu). Imbued with shimmering flakes of edible pure gold leaf, it delivers a harmonious, rounded umami profile that honors Japanese hospitality and tradition.",
+    description: "Gold Gekkeikan is an auspicious celebratory Junmai Sake brewed in Fushimi, Kyoto, famous for its pure, soft subterranean spring water (Miyamizu). Imbued with shimmering flakes of edible pure 24-karat gold leaf, it delivers a harmonious, rounded umami profile that honors Japanese hospitality and tradition.",
     tastingNotes: [
       "Nose: Subtle green apple, crisp melon, steamed rice, and gentle floral minerality.",
-      "Palate: Medium-bodied, balanced acidity, rich rice umami with velvety texture.",
-      "Finish: Crisp, refreshing, and pristine."
+      "Palate: Medium-bodied, balanced acidity, rich rice umami with velvety texture and glittering gold leaf flakes.",
+      "Finish: Crisp, refreshing, and pristine celebratory finish."
     ],
     flavorProfile: ["Melon", "Steamed Rice", "Soft Mineral Water", "Delicate Umami"],
-    foodPairing: ["Sashimi Platter", "Tempura Prawns", "Grilled Black Cod Miso", "Yakitori"],
+    foodPairing: ["Celebration Sashimi Platter", "Tempura Prawns", "Grilled Black Cod Miso", "Wagyu Beef Tataki"],
     identity: {
       type: "Sake",
       style: "Junmai Sake with Edible Gold Leaf",
@@ -507,7 +507,7 @@ const whiskyshopProducts = [
     barcode: "4901030112023",
     cartonBarcode: "14901030112020",
     barcodeImage: "https://barcodeapi.org/api/128/4901030112023",
-    image: "https://images.unsplash.com/photo-1582819509237-d5b75f20ff7a?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570281/grandstore-uploads/products/sake/gold-gekkeikan-junmai-sake-with-gold-leaf-720ml.jpg",
     shipping: {
       box_type: "Japanese Ceremonial Sake Box",
       weight_kg: 1.6,
@@ -515,7 +515,7 @@ const whiskyshopProducts = [
       width_cm: 11,
       height_cm: 32,
       is_fragile: true,
-      parcel_value: 480,
+      parcel_value: 750,
       hs_code: "2206.00",
       aramexServiceType: "ONP"
     }
@@ -528,16 +528,16 @@ const whiskyshopProducts = [
     subcategory: "Junmai Daiginjo Sake",
     country: "Japan",
     size: "720ml",
-    price: "820",
+    price: "850",
     stock: 18,
-    description: "Dassai 45 is crafted by Asahi Shuzo in Yamaguchi Prefecture using the king of sake rice, Yamada Nishiki, polished down meticulously to 45% of its original grain size. This yields an exquisite, world-acclaimed sake boasting delicate aromas of white peach, honeydew melon, and a silky, refined finish.",
+    description: "Dassai 45 is crafted by Asahi Shuzo in Yamaguchi Prefecture using the king of sake rice, Yamada Nishiki, polished down meticulously until only 45% of the grain heart remains. This yields an exquisite, world-acclaimed sake boasting delicate aromas of white peach, honeydew melon, and a silky, refined finish.",
     tastingNotes: [
-      "Nose: Ethereal white peach, honeydew melon, and fresh mountain wildflowers.",
+      "Nose: Ethereal white peach, honeydew melon, muscat grape, and fresh mountain wildflowers.",
       "Palate: Luscious, silky elegance, gentle fruity sweetness, and balanced vibrant acidity.",
       "Finish: Incredibly clean, crisp, and sophisticated."
     ],
     flavorProfile: ["White Peach", "Honeydew Melon", "Wildflowers", "Silky Sweetness"],
-    foodPairing: ["Yellowtail Sashimi", "Steamed Scallops", "King Oyster Mushroom Carpaccio"],
+    foodPairing: ["Yellowtail Hamachi Crudo", "Hokkaido Scallops", "Fresh Oysters", "Light Soba"],
     identity: {
       type: "Sake",
       style: "Junmai Daiginjo",
@@ -553,7 +553,7 @@ const whiskyshopProducts = [
     barcode: "4935819140450",
     cartonBarcode: "14935819140457",
     barcodeImage: "https://barcodeapi.org/api/128/4935819140450",
-    image: "https://images.unsplash.com/photo-1582819509237-d5b75f20ff7a?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570282/grandstore-uploads/products/sake/dassai-45-junmai-daiginjo-sake-720ml.jpg",
     shipping: {
       box_type: "Standard Sake Presentation Box",
       weight_kg: 1.6,
@@ -561,7 +561,7 @@ const whiskyshopProducts = [
       width_cm: 11,
       height_cm: 32,
       is_fragile: true,
-      parcel_value: 820,
+      parcel_value: 850,
       hs_code: "2206.00",
       aramexServiceType: "ONP"
     }
@@ -599,7 +599,7 @@ const whiskyshopProducts = [
     barcode: "4904339120721",
     cartonBarcode: "14904339120728",
     barcodeImage: "https://barcodeapi.org/api/128/4904339120721",
-    image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570282/grandstore-uploads/products/sake/super-kinokuni-junmai-sake-720ml.jpg",
     shipping: {
       box_type: "Standard Sake Box",
       weight_kg: 1.55,
@@ -622,14 +622,14 @@ const whiskyshopProducts = [
     size: "720ml",
     price: "2890",
     stock: 6,
-    description: "Dassai 23 represents the absolute summit of modern rice polishing technology. Each grain of Yamada Nishiki rice is gently polished down over 168 continuous hours to a breathtaking 23% kernel remnant. The resulting sake is incomparably delicate, offering velvet floral aromas and a hauntingly pure finish.",
+    description: "Dassai 23 represents the absolute summit of modern rice polishing technology. Each grain of Yamada Nishiki rice is gently polished down over 168 continuous hours to a breathtaking 23% kernel remnant. Presented in an authentic paulownia wooden presentation box with gold mizuhiki cord, it offers velvet floral aromas and a hauntingly pure finish.",
     tastingNotes: [
       "Nose: Fragrant bouquet of wild strawberries, blooming lilies, and ripe Bartlett pear.",
       "Palate: Astonishingly velvety and seamless, sweet rain water, melon drops, and refined minerality.",
       "Finish: Long, crystalline, and gossamer-smooth."
     ],
     flavorProfile: ["Wild Strawberry", "Lily Flower", "Bartlett Pear", "Crystalline Purity"],
-    foodPairing: ["Otoro Tuna Sashimi", "Uni Sea Urchin", "Fresh Oysters with Ponzu"],
+    foodPairing: ["Otoro Tuna Sashimi", "Uni Sea Urchin", "Fresh Belon Oysters with Ponzu", "Kobe Beef"],
     identity: {
       type: "Sake",
       style: "Ultra-Premium Junmai Daiginjo",
@@ -645,7 +645,7 @@ const whiskyshopProducts = [
     barcode: "4935819120230",
     cartonBarcode: "14935819120237",
     barcodeImage: "https://barcodeapi.org/api/128/4935819120230",
-    image: "https://images.unsplash.com/photo-1582819509237-d5b75f20ff7a?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570283/grandstore-uploads/products/sake/dassai-23-junmai-daiginjo-super-premium-sake-720ml.jpg",
     shipping: {
       box_type: "Handcrafted Paulownia Wood Box",
       weight_kg: 1.85,
@@ -741,7 +741,7 @@ const whiskyshopProducts = [
     barcode: "5099873082531",
     cartonBarcode: "15099873082538",
     barcodeImage: "https://barcodeapi.org/api/128/5099873082531",
-    image: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792585356/grandstore-uploads/products/whisky/jack-daniels-master-distiller-series-no-5-1l.jpg",
     shipping: {
       box_type: "Collector Cylinder Presentation Tin",
       weight_kg: 2.3,
@@ -1113,7 +1113,7 @@ const whiskyshopProducts = [
     barcode: "5000267030036",
     cartonBarcode: "15000267030033",
     barcodeImage: "https://barcodeapi.org/api/128/5000267030036",
-    image: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792581441/grandstore-uploads/products/whisky/dimple-3l-1970-rare-heritage-collector-limited-edition.jpg",
     shipping: {
       box_type: "Custom Foam-Lined Timber Vault Crate",
       weight_kg: 6.2,

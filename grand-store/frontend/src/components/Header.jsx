@@ -219,43 +219,68 @@ export default function Header({
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
   }, []);
 
-  // Build category→brands, subcategories, and countries map from live products
-  const getProductCategory = (p) => p.category || p.type || "";
-  const categoryBrandsMap = {};
-  const categorySubcategoriesMap = {};
-  const categoryCountriesMap = {};
-  
-  for (const p of products) {
-    const cat = getProductCategory(p);
-    if (!cat) continue;
-    
-    if (!categoryBrandsMap[cat]) categoryBrandsMap[cat] = new Set();
-    if (p.brand) categoryBrandsMap[cat].add(p.brand);
-    
-    if (!categorySubcategoriesMap[cat]) categorySubcategoriesMap[cat] = new Set();
-    if (p.subcategory) categorySubcategoriesMap[cat].add(p.subcategory);
-    
-    if (!categoryCountriesMap[cat]) categoryCountriesMap[cat] = new Set();
-    if (p.country) categoryCountriesMap[cat].add(p.country);
-  }
-  
-  const liveCategories = Object.keys(categoryBrandsMap).sort();
+  // Unified taxonomy category resolver matching ShopPage
+  const getProductCategory = useCallback((p) => {
+    if (!p) return "";
+    const cat = p.category || p.type || "Wine & spirits";
+    const sub = (p.subcategory || "").toLowerCase();
+    const name = (p.name || "").toLowerCase();
+    if (
+      sub === "baijiu" ||
+      sub.includes("baijiu") ||
+      name.includes("baijiu") ||
+      (cat.toLowerCase() === "spirits" && name.includes("moutai"))
+    ) {
+      return "Baijiu";
+    }
+    if (cat.toLowerCase() === "baijiu & sake") {
+      if (sub.includes("sake") || name.includes("sake")) return "Sake";
+      return "Baijiu";
+    }
+    if (cat.toLowerCase() === "whiskey") {
+      return "Whisky";
+    }
+    return cat;
+  }, []);
 
-  const dynamicMenuCategories = liveCategories.map(cat => {
-    const subcats = Array.from(categorySubcategoriesMap[cat] || []).sort();
-    const brands = Array.from(categoryBrandsMap[cat] || []).sort();
-    const countries = Array.from(categoryCountriesMap[cat] || []).sort();
-    
-    return {
-      name: cat,
-      description: `Explore our collection of ${cat}`,
-      groups: [
-        ...(countries.length > 0 ? [{ title: 'Countries', items: countries }] : []),
-        ...(subcats.length > 0 ? [{ title: 'Subcategories', items: subcats }] : []),
-        ...(brands.length > 0 ? [{ title: 'Brands', items: brands }] : [])
-      ]
-    };
-  });
+  const dynamicMenuCategories = useMemo(() => {
+    const categoryBrandsMap = {};
+    const categorySubcategoriesMap = {};
+    const categoryCountriesMap = {};
+
+    for (const p of products) {
+      if (!p || p.type === "accessory") continue;
+      const cat = getProductCategory(p);
+      if (!cat) continue;
+
+      if (!categoryBrandsMap[cat]) categoryBrandsMap[cat] = new Set();
+      if (p.brand) categoryBrandsMap[cat].add(p.brand);
+
+      if (!categorySubcategoriesMap[cat]) categorySubcategoriesMap[cat] = new Set();
+      if (p.subcategory) categorySubcategoriesMap[cat].add(p.subcategory);
+
+      if (!categoryCountriesMap[cat]) categoryCountriesMap[cat] = new Set();
+      if (p.country) categoryCountriesMap[cat].add(p.country);
+    }
+
+    const liveCategories = Object.keys(categoryBrandsMap).sort();
+
+    return liveCategories.map((cat) => {
+      const subcats = Array.from(categorySubcategoriesMap[cat] || []).sort();
+      const brands = Array.from(categoryBrandsMap[cat] || []).sort();
+      const countries = Array.from(categoryCountriesMap[cat] || []).sort();
+
+      return {
+        name: cat,
+        description: `Explore our prestigious collection of ${cat}`,
+        groups: [
+          ...(subcats.length > 0 ? [{ title: "Subcategories", items: subcats }] : []),
+          ...(brands.length > 0 ? [{ title: "Brands", items: brands }] : []),
+          ...(countries.length > 0 ? [{ title: "Countries", items: countries }] : []),
+        ],
+      };
+    });
+  }, [products, getProductCategory]);
 
   const dynamicAccessoryCategories = useMemo(() => {
     const accProducts = products.filter(p => p.type === 'accessory' || Object.keys(accessoryCategories).includes(p.category || p.type));
@@ -295,9 +320,6 @@ export default function Header({
     }).filter(c => c.groups.length > 0);
   }, [products]);
 
-  // Keep a ref so openMega can read latest map without being in its dep array
-  const categoryBrandsMapRef = useRef(categoryBrandsMap);
-  categoryBrandsMapRef.current = categoryBrandsMap;
 
   const openMega = useCallback(
     (trigger) => {
@@ -310,18 +332,24 @@ export default function Header({
       setHoveredItem(null);
       // Auto-select the relevant live category so panels are never hardcoded.
       if (trigger === "shop") {
-        setMegaActiveCategory(dynamicMenuCategories[0]);
+        const urlCat = new URLSearchParams(location.search).get("category");
+        const matched = urlCat
+          ? dynamicMenuCategories.find((c) => c.name.toLowerCase() === urlCat.toLowerCase())
+          : null;
+        setMegaActiveCategory(matched || dynamicMenuCategories[0] || null);
       } else if (trigger === "wine") {
-        setMegaActiveCategory(dynamicMenuCategories.find((category) => category.name.toLowerCase() === 'wine') || null);
+        setMegaActiveCategory(
+          dynamicMenuCategories.find((category) => category.name.toLowerCase() === "wine") || null,
+        );
       } else if (trigger === "accessories") {
-        setMegaActiveCategory(dynamicAccessoryCategories[0]);
+        setMegaActiveCategory(dynamicAccessoryCategories[0] || null);
       } else {
         setActiveCategory(null);
         setMegaActiveCategory(null);
         setHoveredItem(null);
       }
     },
-    [cancelClose, dynamicMenuCategories, dynamicAccessoryCategories],
+    [cancelClose, dynamicMenuCategories, dynamicAccessoryCategories, location.search],
   );
 
   return (
@@ -730,154 +758,166 @@ export default function Header({
                     {megaActiveCategory && (
                       <>
                         {(() => {
-                          const categoryProducts = products.filter(p => getProductCategory(p) === megaActiveCategory.name);
-                          const countries = Array.from(new Set(categoryProducts.map(p => p.country).filter(Boolean))).sort();
+                          const categoryProducts = products.filter(
+                            (p) =>
+                              p.type !== "accessory" &&
+                              getProductCategory(p).toLowerCase() ===
+                                megaActiveCategory.name.toLowerCase(),
+                          );
+                          const countries = Array.from(
+                            new Set(categoryProducts.map((p) => p.country).filter(Boolean)),
+                          ).sort();
+                          const subcategories = Array.from(
+                            new Set(categoryProducts.map((p) => p.subcategory).filter(Boolean)),
+                          ).sort();
+                          const brands = Array.from(
+                            new Set(categoryProducts.map((p) => p.brand).filter(Boolean)),
+                          ).sort();
 
-                          const countryProducts = activeCountry ? categoryProducts.filter(p => p.country === activeCountry) : [];
-                          const subcategories = Array.from(new Set(countryProducts.map(p => p.subcategory).filter(Boolean))).sort();
-                          
-                          const subcatProducts = activeSubcategory ? countryProducts.filter(p => p.subcategory === activeSubcategory) : [];
-                          const brands = Array.from(new Set(subcatProducts.map(p => p.brand).filter(Boolean))).sort();
-                          
-                          const brandProducts = activeBrand ? subcatProducts.filter(p => p.brand === activeBrand) : [];
-                          const finalProducts = activeBrand ? brandProducts.slice(0, 8) : [];
-                          
+                          const featuredProducts = categoryProducts.slice(0, 4);
+
                           return (
-                            <div className="flex-1 py-10 px-12 h-full flex flex-col">
-                              <div className="mb-10">
-                                <h2 className="text-3xl font-serif text-white mb-2">{megaActiveCategory.name}</h2>
-                                <p className="text-[#888] text-[15px] max-w-lg">{megaActiveCategory.description}</p>
-                              </div>
-                              
-                              <div className="flex gap-12">
-                                {/* Countries Column */}
-                                {countries.length > 0 && (
-                                  <div className="flex-1 min-w-[180px] max-w-[240px]">
-                                    <h4 className="text-white text-[13px] font-bold tracking-[0.05em] mb-5 pb-4 border-b border-white/10 uppercase">
-                                      Countries
+                            <div className="flex-1 py-8 px-10 h-full flex flex-col justify-between">
+                              <div>
+                                <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
+                                  <div>
+                                    <h2 className="text-2xl font-serif text-white tracking-wide">
+                                      {megaActiveCategory.name}
+                                    </h2>
+                                    <p className="text-[#888] text-xs mt-1">
+                                      {categoryProducts.length} Exclusive Cellar Selections
+                                    </p>
+                                  </div>
+                                  <Link
+                                    to={`/shop?category=${encodeURIComponent(megaActiveCategory.name)}`}
+                                    onClick={closeMenus}
+                                    className="inline-flex items-center gap-1.5 text-[#c9a35b] text-xs font-bold tracking-[0.15em] uppercase hover:text-white transition-colors"
+                                  >
+                                    View All {megaActiveCategory.name} <ArrowRight size={13} />
+                                  </Link>
+                                </div>
+
+                                <div className="grid grid-cols-4 gap-8">
+                                  {/* Subcategories Column */}
+                                  <div className="min-w-0">
+                                    <h4 className="text-[#d4af37] text-xs font-bold tracking-[0.1em] mb-3 pb-2 border-b border-white/5 uppercase">
+                                      Styles & Subcategories
                                     </h4>
-                                    <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                      <ul className="flex flex-col gap-3.5">
-                                        {countries.map(item => (
+                                    {subcategories.length > 0 ? (
+                                      <ul className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {subcategories.map((item) => (
                                           <li key={item}>
-                                            <Link 
+                                            <Link
+                                              to={`/shop?category=${encodeURIComponent(megaActiveCategory.name)}&subcategory=${encodeURIComponent(item)}`}
+                                              onClick={closeMenus}
+                                              className="text-xs text-[#aaa] hover:text-[#e1bd70] transition-colors truncate block"
+                                            >
+                                              {item}
+                                            </Link>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <p className="text-xs text-white/30 italic">Pure Single Category</p>
+                                    )}
+                                  </div>
+
+                                  {/* Brands Column */}
+                                  <div className="min-w-0">
+                                    <h4 className="text-[#d4af37] text-xs font-bold tracking-[0.1em] mb-3 pb-2 border-b border-white/5 uppercase">
+                                      Distilleries & Houses
+                                    </h4>
+                                    {brands.length > 0 ? (
+                                      <ul className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {brands.map((item) => (
+                                          <li key={item}>
+                                            <Link
+                                              to={`/shop?category=${encodeURIComponent(megaActiveCategory.name)}&brand=${encodeURIComponent(item)}`}
+                                              onClick={closeMenus}
+                                              className="text-xs text-[#aaa] hover:text-[#e1bd70] transition-colors truncate block"
+                                            >
+                                              {item}
+                                            </Link>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <p className="text-xs text-white/30 italic">Artisanal Producers</p>
+                                    )}
+                                  </div>
+
+                                  {/* Countries Column */}
+                                  <div className="min-w-0">
+                                    <h4 className="text-[#d4af37] text-xs font-bold tracking-[0.1em] mb-3 pb-2 border-b border-white/5 uppercase">
+                                      Origin Terroirs
+                                    </h4>
+                                    {countries.length > 0 ? (
+                                      <ul className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {countries.map((item) => (
+                                          <li key={item}>
+                                            <Link
                                               to={`/shop?category=${encodeURIComponent(megaActiveCategory.name)}&country=${encodeURIComponent(item)}`}
                                               onClick={closeMenus}
-                                              onMouseEnter={() => {
-                                                setActiveCountry(item);
-                                                setActiveSubcategory(null);
-                                                setActiveBrand(null);
-                                              }}
-                                              className={`text-[13px] transition-colors block ${activeCountry === item ? 'text-[#c9a35b]' : 'text-[#999] hover:text-[#c9a35b]'}`}
+                                              className="text-xs text-[#aaa] hover:text-[#e1bd70] transition-colors truncate block"
                                             >
                                               {getCountryDisplayName(item, megaActiveCategory.name)}
                                             </Link>
                                           </li>
                                         ))}
                                       </ul>
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {/* Subcategories Column */}
-                                {activeCountry && subcategories.length > 0 && (
-                                  <div className="flex-1 min-w-[180px] max-w-[240px] animate-in fade-in slide-in-from-left-4 duration-200">
-                                    <h4 className="text-white text-[13px] font-bold tracking-[0.05em] mb-5 pb-4 border-b border-white/10 uppercase">
-                                      Subcategories
-                                    </h4>
-                                    <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                      <ul className="flex flex-col gap-3.5">
-                                        {subcategories.map(item => (
-                                          <li key={item}>
-                                            <Link 
-                                              to={`/shop?category=${encodeURIComponent(megaActiveCategory.name)}&country=${encodeURIComponent(activeCountry)}&subcategory=${encodeURIComponent(item)}`}
-                                              onClick={closeMenus}
-                                              onMouseEnter={() => {
-                                                setActiveSubcategory(item);
-                                                setActiveBrand(null);
-                                              }}
-                                              className={`text-[13px] transition-colors block ${activeSubcategory === item ? 'text-[#c9a35b]' : 'text-[#999] hover:text-[#c9a35b]'}`}
-                                            >
-                                              {item}
-                                            </Link>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Brands Column */}
-                                {activeSubcategory && brands.length > 0 && (
-                                  <div className="flex-1 min-w-[180px] max-w-[240px] animate-in fade-in slide-in-from-left-4 duration-200">
-                                    <h4 className="text-white text-[13px] font-bold tracking-[0.05em] mb-5 pb-4 border-b border-white/10 uppercase">
-                                      Brands
-                                    </h4>
-                                    <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                      <ul className="flex flex-col gap-3.5">
-                                        {brands.map(item => (
-                                          <li key={item}>
-                                            <Link 
-                                              to={`/shop?category=${encodeURIComponent(megaActiveCategory.name)}&country=${encodeURIComponent(activeCountry)}&subcategory=${encodeURIComponent(activeSubcategory)}&brand=${encodeURIComponent(item)}`}
-                                              onClick={closeMenus}
-                                              onMouseEnter={() => setActiveBrand(item)}
-                                              className={`text-[13px] transition-colors block ${activeBrand === item ? 'text-[#c9a35b]' : 'text-[#999] hover:text-[#c9a35b]'}`}
-                                            >
-                                              {item}
-                                            </Link>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Final Products Column */}
-                                {activeBrand && finalProducts.length > 0 && (
-                                  <div className="flex-1 min-w-[200px] max-w-[280px] animate-in fade-in slide-in-from-left-4 duration-200">
-                                    <h4 className="text-[#c9a35b] text-[13px] font-bold tracking-[0.05em] mb-5 pb-4 border-b border-white/10 uppercase">
-                                      Products
-                                    </h4>
-                                    <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                      <ul className="flex flex-col gap-4">
-                                        {finalProducts.map(p => (
-                                          <li key={p.id || p._id} className="break-inside-avoid">
-                                            <Link 
-                                              to={`/product/${p.slug || p.id || p._id}`}
-                                              onClick={closeMenus}
-                                              className="flex flex-col gap-1 group"
-                                            >
-                                              <span className="text-[13px] text-[#eee] group-hover:text-[#c9a35b] transition-colors block line-clamp-2 leading-tight">
-                                                {p.name}
-                                              </span>
-                                            </Link>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                    {brandProducts.length > 8 && (
-                                      <div className="mt-4 pt-4 border-t border-white/5">
-                                        <Link
-                                          to={`/shop?category=${encodeURIComponent(megaActiveCategory.name)}&country=${encodeURIComponent(activeCountry)}&subcategory=${encodeURIComponent(activeSubcategory)}&brand=${encodeURIComponent(activeBrand)}`}
-                                          onClick={closeMenus}
-                                          className="inline-flex items-center gap-1.5 text-[#c9a35b] text-[11px] font-bold tracking-[0.1em] uppercase hover:text-white transition-colors"
-                                        >
-                                          View more <ArrowRight size={12} />
-                                        </Link>
-                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-white/30 italic">Global Allocations</p>
                                     )}
                                   </div>
-                                )}
+
+                                  {/* Featured Bottles Column */}
+                                  <div className="min-w-0">
+                                    <h4 className="text-[#d4af37] text-xs font-bold tracking-[0.1em] mb-3 pb-2 border-b border-white/5 uppercase">
+                                      Featured Bottles
+                                    </h4>
+                                    {featuredProducts.length > 0 ? (
+                                      <div className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {featuredProducts.map((p) => (
+                                          <Link
+                                            key={p.slug || p._id || p.id}
+                                            to={`/product/${p.slug || p._id || p.id}`}
+                                            onClick={closeMenus}
+                                            className="group flex items-center gap-3 p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                                          >
+                                            {p.image && (
+                                              <img
+                                                src={resolveImageUrl(p.image)}
+                                                alt={p.name}
+                                                className="w-8 h-10 object-contain shrink-0"
+                                              />
+                                            )}
+                                            <div className="min-w-0">
+                                              <p className="text-xs text-[#ddd] group-hover:text-[#e1bd70] transition-colors truncate font-medium">
+                                                {p.name}
+                                              </p>
+                                              <p className="text-[10px] text-[#888] truncate">
+                                                {p.brand || megaActiveCategory.name}
+                                              </p>
+                                            </div>
+                                          </Link>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-white/30 italic">Curated Collection</p>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
 
-                              {/* View All Button */}
-                              <div className="mt-auto pt-8">
-                                <Link 
+                              {/* Footer Action */}
+                              <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-[#777]">
+                                <span>Cellar-direct guaranteed provenance & allocation pricing</span>
+                                <Link
                                   to={`/shop?category=${encodeURIComponent(megaActiveCategory.name)}`}
                                   onClick={closeMenus}
-                                  className="inline-flex items-center gap-2 text-[#c9a35b] text-[12px] font-bold tracking-[0.15em] uppercase hover:text-white transition-colors"
+                                  className="text-[#c9a35b] hover:text-white transition-colors font-semibold"
                                 >
-                                  Shop All {megaActiveCategory.name} <ArrowRight size={14} />
+                                  Shop All {megaActiveCategory.name} ({categoryProducts.length}) →
                                 </Link>
                               </div>
                             </div>

@@ -49,7 +49,7 @@ const SEEDED_OFFER_PRODUCTS = [
     offerTag: "PRESTIGE SCOTCH",
     barcode: "5000299223017",
     barcodeImage: "https://barcodeapi.org/api/128/5000299223017",
-    image: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792576615/grandstore-uploads/products/offers/ballantines-21-year-old-blended-scotch-whisky-750ml.jpg",
     shortDescription: "Aged for a minimum of 21 years in hand-selected European and American oak casks. Velvety smooth, opulent texture, and timeless complexity crafted by Master Blender Sandy Hyslop.",
     tastingNotes: ["Wild Heather Honey", "Ripe Orchard Apples", "Liquorice", "Subtle Oak Smoke", "Vanilla Cream"],
     flavorProfile: ["Honeyed", "Orchard Fruits", "Liquorice", "Subtle Oak Spice"],
@@ -78,7 +78,7 @@ const SEEDED_OFFER_PRODUCTS = [
     offerTag: "LIMITED RYE",
     barcode: "082184002610",
     barcodeImage: "https://barcodeapi.org/api/128/082184002610",
-    image: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=800&q=80",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792576616/grandstore-uploads/products/offers/jack-daniels-single-barrel-rye-green-label-750ml.jpg",
     shortDescription: "Drawn from individual hand-selected barrels rested in the highest lofts of the Lynchburg barrelhouses. Crafted from a 70% rye grain bill with charcoal-mellowed warmth.",
     tastingNotes: ["Bold Rye Pepper", "Ripe Dried Peach", "Toasted Oak Spice", "Caramel Maple", "Warm Vanilla"],
     flavorProfile: ["Rye Spice", "Caramelized Sugar", "Oak Depth"],
@@ -107,7 +107,7 @@ const SEEDED_OFFER_PRODUCTS = [
     offerTag: "15 YEAR AGED",
     barcode: "5000267014203",
     barcodeImage: "https://barcodeapi.org/api/128/5000267014203",
-    image: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792576617/grandstore-uploads/products/offers/dimple-15-year-old-de-luxe-scotch-whisky-750ml.jpg",
     shortDescription: "From the historic House of Haig, bottled in the world-famous wire-pinched decanter. A 15-year maturation marrying Glenkinchie malt with rich low-land grains.",
     tastingNotes: ["Warm Butter Toffee", "Heather Honey Malt", "Gentle Peat Smoke", "Dried Apricot", "Mellow Oak"],
     flavorProfile: ["Mellow & Complex", "Honey & Peat", "Toffee"],
@@ -117,7 +117,7 @@ const SEEDED_OFFER_PRODUCTS = [
   },
   {
     id: "ws-dassai-45-sake",
-    _id: "6acf704eeea6503535645cda",
+    _id: "6acf69df415867e1d2b89cd2",
     slug: "dassai-45-junmai-daiginjo-sake-720ml",
     name: "Dassai 45 Junmai Daiginjo Sake 720ml",
     brand: "Dassai",
@@ -134,9 +134,9 @@ const SEEDED_OFFER_PRODUCTS = [
     stock: 15,
     badge: "JAPANESE CRAFT • 16% OFF",
     offerTag: "DAIGINJO MASTERPIECE",
-    barcode: "4935819120230",
-    barcodeImage: "https://barcodeapi.org/api/128/4935819120230",
-    image: "https://images.unsplash.com/photo-1582819509237-d5b75f20ff7a?q=80&w=1000&auto=format&fit=crop",
+    barcode: "4935819140450",
+    barcodeImage: "https://barcodeapi.org/api/128/4935819140450",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570282/grandstore-uploads/products/sake/dassai-45-junmai-daiginjo-sake-720ml.jpg",
     shortDescription: "Yamada Nishiki rice polished down to 45%. Delivers an ethereal melon and white peach bouquet with a velvety delicacy and refreshing silky mineral finish.",
     tastingNotes: ["White Peach", "Lush Honeydew", "Delicate Jasmine", "Steamed Polished Rice", "Clean Spring Mineral"],
     flavorProfile: ["Floral & Fruity", "Silky Smooth", "Refreshing Finish"],
@@ -165,7 +165,7 @@ const SEEDED_OFFER_PRODUCTS = [
     offerTag: "1-LITRE VALUE",
     barcode: "5000299607145",
     barcodeImage: "https://barcodeapi.org/api/128/5000299607145",
-    image: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792576618/grandstore-uploads/products/offers/ballantines-hard-fired-blended-scotch-whisky-1l.jpg",
     shortDescription: "Finished in bespoke double-charred hard-fired American oak casks. Unlocks rich toasted wood sugars, creamy custard vanilla, and a veil of aromatic sweet smoke.",
     tastingNotes: ["Charred American Oak", "Vanilla Toffee", "Sweet Campfire Smoke", "Caramelized Pear", "Toasted Coconut"],
     flavorProfile: ["Charred Oak", "Vanilla Toffee", "Sweet Smoke"],
@@ -194,7 +194,7 @@ const SEEDED_OFFER_PRODUCTS = [
     offerTag: "PREMIUM MELLOW",
     barcode: "082184038749",
     barcodeImage: "https://barcodeapi.org/api/128/082184038749",
-    image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792576619/grandstore-uploads/products/offers/gentleman-jack-rare-double-mellowed-tennessee-whiskey-750ml.jpg",
     shortDescription: "The only whiskey in the world charcoal-mellowed twice: once before entering the barrel and again after maturation, delivering an exceptionally smooth, refined finish.",
     tastingNotes: ["Caramelized Sugar", "Maple Syrup", "Warm Silk Vanilla", "Crisp Red Apple", "Soft Oak Spice"],
     flavorProfile: ["Exceptionally Smooth", "Honeyed Vanilla", "Maple Finish"],
@@ -256,8 +256,7 @@ export default function OffersPage({ onAdd, onWish, onCompare, onNotify }) {
                 (p) =>
                   p.slug === offer.slug ||
                   p.id === offer.id ||
-                  (p.barcode && p.barcode === offer.barcode) ||
-                  (p.name && p.name.toLowerCase().includes(offer.brand.toLowerCase()) && p.name.toLowerCase().includes(offer.size.toLowerCase()))
+                  (p.barcode && p.barcode === offer.barcode)
               );
               if (liveMatch) {
                 return {
@@ -570,11 +569,11 @@ export default function OffersPage({ onAdd, onWish, onCompare, onNotify }) {
 
                   {/* Pricing Box */}
                   <div className="mt-auto pt-2 border-t border-stone-800/80 flex items-baseline justify-between mb-2.5">
-                    <div>
-                      <span className="text-[10px] text-stone-400 line-through font-mono mr-1.5">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[11px] text-stone-400 line-through font-sans opacity-70">
                         <Price amount={product.originalPrice} />
                       </span>
-                      <span className="text-base sm:text-lg font-serif font-bold text-[#c9a35b]">
+                      <span className="text-lg sm:text-xl font-sans font-bold text-[#c9a35b] tracking-tight">
                         <Price amount={product.price} />
                       </span>
                     </div>
@@ -743,13 +742,13 @@ export default function OffersPage({ onAdd, onWish, onCompare, onNotify }) {
 
                   {/* Pricing Box */}
                   <div className="flex items-baseline gap-3 p-3 bg-stone-900/60 rounded-lg border border-stone-800 mb-4">
-                    <span className="text-2xl font-serif font-bold text-[#c9a35b]">
+                    <span className="text-2xl font-sans font-bold text-[#c9a35b] tracking-tight">
                       <Price amount={quickViewProduct.price} />
                     </span>
-                    <span className="text-sm text-stone-400 line-through font-mono">
+                    <span className="text-sm text-stone-400 line-through font-sans opacity-70">
                       <Price amount={quickViewProduct.originalPrice} />
                     </span>
-                    <span className="text-xs text-emerald-400 font-mono font-semibold ml-auto">
+                    <span className="text-xs text-emerald-400 font-sans font-semibold ml-auto">
                       Save R{quickViewProduct.savings}
                     </span>
                   </div>

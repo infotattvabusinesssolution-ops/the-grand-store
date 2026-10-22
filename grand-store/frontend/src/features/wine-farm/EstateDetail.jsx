@@ -815,7 +815,7 @@ export default function EstateDetail() {
                   : isDogliotti
                     ? 'Explore 28 signature vintages, Moscato d’Asti, Barolo DOCG, Barbera d’Asti, and botanical Vermouth di Torino crafted across five generations in Langhe & Monferrato.'
                     : isBrunoAndreu 
-                      ? 'Discover 35 authentic cuvées from Maison Bruno Andreu. Each bottle reflects Mediterranean terroir and craft.' 
+                      ? 'Discover 35 authentic cuvées from Bruno Andreu. Each bottle reflects Mediterranean terroir and craft.' 
                       : 'Discover our exceptional selection of handcrafted wines.'
                 }
               </p>
@@ -828,9 +828,6 @@ export default function EstateDetail() {
                 {products.map(p => {
                   const prodSlug = p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
                   const isAlcoholFree = getWineCategory(p) === 'dealcoholized';
-                  const supplierEur = p.supplierPrice || p.costing?.supplierPrice || p.specifications?.exwEur;
-                  const vintageStr = p.vintage || p.name?.match(/\b(19\d{2}|20\d{2}|NV)\b/)?.[0];
-                  const packagingStr = p.packaging || (p.channelSettings?.trade?.bottlesPerCase ? `Case of ${p.channelSettings.trade.bottlesPerCase} x 75cl` : null);
 
                   return (
                     <div 
@@ -903,39 +900,12 @@ export default function EstateDetail() {
                           </h3>
                         </Link>
                         
-                        <p className="text-[13px] text-[#444444] font-normal leading-[1.65] mb-4 line-clamp-2 flex-1">
+                        <p className="text-[13px] text-[#444444] font-normal leading-[1.65] mb-5 line-clamp-3 flex-1">
                           {p.description || "Refined expression of estate terroir handcrafted with passion and tradition."}
                         </p>
-
-                        {/* Elegant Price & Vintage Details */}
-                        <div className="flex items-baseline justify-between mb-4 pt-3 border-t border-stone-100">
-                          <div>
-                            <span className="text-[10px] text-stone-400 uppercase tracking-widest font-semibold block">Estate Allocation</span>
-                            <span className="font-serif text-lg font-bold text-ink">
-                              <Price amount={p.price} />
-                            </span>
-                            {supplierEur && (
-                              <span className="text-[11px] text-stone-500 font-mono ml-2 font-medium">
-                                (€{Number(supplierEur).toFixed(2)} EXW)
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            {vintageStr && (
-                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-stone-100 text-stone-700 rounded block mb-0.5">
-                                {vintageStr}
-                              </span>
-                            )}
-                            {packagingStr && (
-                              <span className="text-[10px] text-stone-400 block font-light">
-                                {packagingStr}
-                              </span>
-                            )}
-                          </div>
-                        </div>
                         
                         {/* Elegant Action Link */}
-                        <div className="mt-auto pt-3 border-t border-stone-200/80 flex items-center justify-between">
+                        <div className="mt-auto pt-4 border-t border-stone-200/80 flex items-center justify-between">
                           <Link
                             to={`/product/${prodSlug}`}
                             className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] font-bold text-black hover:text-[#8a2232] transition-colors group-hover:translate-x-1 duration-200"
@@ -1170,7 +1140,7 @@ export default function EstateDetail() {
                           <p className="text-xs text-ink font-medium">{card.capacity} guests</p>
                         </div>
                       )}
-                      {!isBrunoAndreu && card.priceStr && (
+                      {!isBrunoAndreu && !isDogliotti && !isCantinaDelConte && card.priceStr && (
                         <div className="col-span-2 pt-2 border-t border-gray-50 flex items-center justify-between">
                           <p className="text-[9px] uppercase tracking-widest text-gray-400 font-medium">Price</p>
                           <p className="text-sm font-semibold text-[#8a2232]">{card.priceStr}</p>

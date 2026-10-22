@@ -64,7 +64,7 @@ const FALLBACK_FARMS = [
     copy: 'Founded in 1870 in Castagnole delle Lanze, Piedmont, Dogliotti 1870 represents five generations of passionate winemaking between Langhe and Monferrato. World-renowned for Moscato d’Asti Docg, Barolo Bussia, old-vine Barbera, and botanical Vermouth di Torino crafted with 51 Alpine herbs.',
   },
   {
-    name: 'Maison Bruno Andreu',
+    name: 'Bruno Andreu',
     vendor: 'Bruno Andreu',
     slug: 'bruno-andreu',
     region: 'Montblanc, Languedoc, France',
@@ -355,7 +355,7 @@ function About() {
         <blockquote>“Every bottle carries the landscape that raised it.”</blockquote>
       </div>
       <div className="about-copy">
-        <SectionHeading kicker="About us" title={<>Welcome to<br /><em>Wine Farm Estate</em></>} />
+        <SectionHeading kicker="About us" title={<>Welcome to<br /><em>Wine Farm Estates</em></>} />
         <p>We've crafted a unique platform tailored specifically for wine farmers from South Africa and beyond. Our mission is to provide a seamless way for vineyards to showcase their products and reach a global audience. Whether you're a small family-run vineyard or a larger estate, our portal is designed to help you expand your market presence and connect with wine lovers and businesses around the world.</p>
         <p>By joining our platform, wine farmers can easily register as vendors and create detailed profiles that highlight their farm’s story, unique offerings, and the rich heritage behind their wines. This not only allows you to tell your vineyard’s story but also provides potential customers and retailers with an in-depth look at what makes your wines special.</p>
         <p>You can list your entire range of products with detailed descriptions, pricing, and high-quality images, making it easy for consumers to find and purchase your wines directly from the comfort of their homes.</p>
@@ -682,7 +682,7 @@ function AboutPage() {
       <section className="about-page-hero">
         <div className="about-page-hero-copy">
           <div className="kicker"><LeafMark /> The Grand Store - Wine Farm</div>
-          <h1>Welcome to<br /><em>Wine Farm Estate</em></h1>
+          <h1>Welcome to<br /><em>Wine Farm Estates</em></h1>
           <p>A platform made for the people, places and stories behind every bottle.</p>
           <a className="button button-light" href="#our-story">Our Story <span>↓</span></a>
         </div>

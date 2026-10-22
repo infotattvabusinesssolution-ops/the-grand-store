@@ -183,7 +183,6 @@ export default function HeroDesktop() {
             className="hero-video"
             src={activeFilm.src}
             muted
-            defaultMuted
             autoPlay
             playsInline
             preload="auto"

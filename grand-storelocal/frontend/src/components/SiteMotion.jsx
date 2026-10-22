@@ -45,7 +45,7 @@ export default function SiteMotion() {
 
       const hashTarget = location.hash && document.getElementById(location.hash.slice(1))
       if (hashTarget) hashTarget.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
-      else if (location.pathname !== '/') window.scrollTo({ top: 0, behavior: 'auto' })
+      else window.scrollTo({ top: 0, behavior: 'auto' })
     })
 
     return () => {

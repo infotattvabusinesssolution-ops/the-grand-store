@@ -58,12 +58,16 @@ export default function Arrivals({ onAdd, onWish, onCompare, compareItems }) {
   const sectionRef = useRef(null);
   const gridRef = useRef(null);
 
-  // Filter approved non-accessories products, sorted newest first
+  // Filter approved non-accessories products, excluding equipment/keg rentals, sorted newest first
   const validProducts = useMemo(() => {
     if (!products || products.length === 0) return [];
     return [...products]
       .filter((p) => !p.vendorId || p.approvalStatus === "approved")
       .filter((p) => String(p.category || p.type || "").toLowerCase() !== "accessories")
+      .filter((p) => {
+        const name = String(p.name || "").toLowerCase();
+        return !name.includes("keg") && !name.includes("draught machine");
+      })
       .sort((a, b) => {
         const first = new Date(a.createdAt || a.updatedAt || 0).getTime() || 0;
         const second = new Date(b.createdAt || b.updatedAt || 0).getTime() || 0;

@@ -22,7 +22,9 @@ export default function FilterGroup({
       </div>
       <div className="space-y-3.5 max-h-60 overflow-y-auto pr-3 custom-scrollbar">
         {options.map((option, index) => {
-          const isSelected = selectedValues.includes(option);
+          const isSelected = selectedValues.some(
+            (v) => String(v || "").trim().toLowerCase() === String(option || "").trim().toLowerCase()
+          );
           return (
             <label
               key={option || index}
