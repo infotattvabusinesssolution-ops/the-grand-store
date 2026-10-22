@@ -1178,7 +1178,7 @@ export default function CheckoutPage({
                               <p className="text-xs text-white truncate font-medium" title={item.fullName || item.name}>
                                 {item.fullName || item.name}
                               </p>
-                              <div className="flex items-center gap-2 mt-0.5">
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                 <span className="text-[11px] text-[var(--color-gold)] font-serif">
                                   <Price amount={unitPrice} />
                                 </span>
@@ -1187,6 +1187,33 @@ export default function CheckoutPage({
                                     · {item.option}
                                   </span>
                                 )}
+                                <span className={`inline-flex items-center gap-1 text-[9.5px] font-medium px-1.5 py-0.5 rounded border ${
+                                  destinationMode === 'international_aramex' || destinationMode === 'international_dhl'
+                                    ? 'bg-red-500/15 text-red-300 border-red-500/30'
+                                    : deliveryPreference === 'pudo'
+                                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                    : deliveryPreference === 'postnet'
+                                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                    : 'bg-white/5 text-[var(--color-gold)] border-white/10'
+                                }`}>
+                                  {destinationMode === 'international_aramex' || destinationMode === 'international_dhl' ? (
+                                    <>
+                                      <Globe size={10} className="shrink-0 text-red-400" /> Aramex Delivery
+                                    </>
+                                  ) : deliveryPreference === 'pudo' ? (
+                                    <>
+                                      <Package size={10} className="shrink-0 text-emerald-400" /> PUDO Locker
+                                    </>
+                                  ) : deliveryPreference === 'postnet' ? (
+                                    <>
+                                      <Store size={10} className="shrink-0 text-[var(--color-gold)]" /> PostNet
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Truck size={10} className="shrink-0 text-[var(--color-gold)]" /> The Courier Guy
+                                    </>
+                                  )}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -1310,12 +1337,24 @@ export default function CheckoutPage({
 
                   <div className="flex justify-between text-[var(--color-ivory-muted)]">
                     <span className="flex items-center gap-1.5">
-                      <Truck size={13} className="text-[var(--color-gold)]" />
-                      {deliveryPreference === 'postnet'
-                        ? 'PostNet Collection'
-                        : deliveryPreference === 'pudo'
-                        ? 'PUDO Locker Collection'
-                        : 'The Courier Guy Delivery'}
+                      {destinationMode === 'international_aramex' || destinationMode === 'international_dhl' ? (
+                        <Globe size={13} className="text-red-400 shrink-0" />
+                      ) : deliveryPreference === 'pudo' ? (
+                        <Package size={13} className="text-emerald-400 shrink-0" />
+                      ) : deliveryPreference === 'postnet' ? (
+                        <Store size={13} className="text-[var(--color-gold)] shrink-0" />
+                      ) : (
+                        <Truck size={13} className="text-[var(--color-gold)] shrink-0" />
+                      )}
+                      <span className={destinationMode === 'international_aramex' || destinationMode === 'international_dhl' ? 'text-red-300 font-medium' : ''}>
+                        {destinationMode === 'international_aramex' || destinationMode === 'international_dhl'
+                          ? 'Aramex Delivery'
+                          : deliveryPreference === 'postnet'
+                          ? 'PostNet Collection'
+                          : deliveryPreference === 'pudo'
+                          ? 'PUDO Locker Collection'
+                          : 'The Courier Guy Delivery'}
+                      </span>
                     </span>
                     <span className="text-white font-mono">
                       {quote ? (
@@ -1617,9 +1656,13 @@ export default function CheckoutPage({
                   <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] font-medium">Delivery Address Details</h3>
-                      {isDomestic && (
+                      {isDomestic ? (
                         <span className="text-[10px] text-[var(--color-gold)] font-mono flex items-center gap-1 bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 px-2 py-0.5 rounded-full">
                           🇿🇦 The Courier Guy Domestic Delivery
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-red-300 font-mono flex items-center gap-1 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full">
+                          ✈️ Aramex Global Express Delivery
                         </span>
                       )}
                     </div>
@@ -2660,11 +2703,25 @@ export default function CheckoutPage({
                 <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2 rounded-xl bg-white/5 border border-white/10 text-[var(--color-gold)] shrink-0">
-                      {deliveryPreference === 'pudo' ? <Package size={18} className="text-emerald-400" /> : deliveryPreference === 'postnet' ? <Store size={18} /> : <Truck size={18} />}
+                      {destinationMode === 'international_aramex' || destinationMode === 'international_dhl' ? (
+                        <Globe size={18} className="text-red-400" />
+                      ) : deliveryPreference === 'pudo' ? (
+                        <Package size={18} className="text-emerald-400" />
+                      ) : deliveryPreference === 'postnet' ? (
+                        <Store size={18} />
+                      ) : (
+                        <Truck size={18} />
+                      )}
                     </div>
                     <div className="min-w-0">
                       <p className="text-[10px] uppercase tracking-widest text-[var(--color-gold)] font-semibold">
-                        {deliveryPreference === 'pudo' ? 'PUDO Smart Locker Collection' : deliveryPreference === 'postnet' ? 'PostNet Collection Point' : 'Delivery Destination'}
+                        {destinationMode === 'international_aramex' || destinationMode === 'international_dhl'
+                          ? 'Aramex Global Express Delivery'
+                          : deliveryPreference === 'pudo'
+                          ? 'PUDO Smart Locker Collection'
+                          : deliveryPreference === 'postnet'
+                          ? 'PostNet Collection Point'
+                          : 'Delivery Destination'}
                       </p>
                       <p className="text-xs text-white font-medium truncate">
                         {deliveryPreference === 'pudo' && preferredLocker
