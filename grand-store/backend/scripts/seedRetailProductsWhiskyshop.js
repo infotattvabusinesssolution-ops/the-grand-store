@@ -28,10 +28,10 @@ const retailProducts = [
     price: "3990",
     size: "750ml",
     stock: 24,
-    image: "https://whiskyshop.co.za/wp-content/uploads/2026/09/Ballantines-21.jpg",
-    originalImage: "https://whiskyshop.co.za/wp-content/uploads/2026/09/Ballantines-21.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675134/grand-store/catalog-originals/whisky/ballantines/ballantines-21-year-old-blended-scotch-whisky-750ml.png",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675134/grand-store/catalog-originals/whisky/ballantines/ballantines-21-year-old-blended-scotch-whisky-750ml.png",
     gallery: [
-      "https://whiskyshop.co.za/wp-content/uploads/2026/09/Ballantines-21.jpg"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675134/grand-store/catalog-originals/whisky/ballantines/ballantines-21-year-old-blended-scotch-whisky-750ml.png"
     ],
     description: "A rich, luxurious blended Scotch whisky aged for a minimum of 21 years. Crafted with a high proportion of rare single malts from Speyside and the Highlands, it displays extraordinary balance, velvety texture, and a long, warming finish with honeyed oak and sweet heather smoke.",
     tastingNotes: [
@@ -86,10 +86,10 @@ const retailProducts = [
     price: "490",
     size: "1000ml",
     stock: 40,
-    image: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=800&q=80",
-    originalImage: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=800&q=80",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675133/grand-store/catalog-originals/whisky/ballantines/ballantines-hard-fired-blended-scotch-whisky-1l.png",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675133/grand-store/catalog-originals/whisky/ballantines/ballantines-hard-fired-blended-scotch-whisky-1l.png",
     gallery: [
-      "https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=800&q=80"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675133/grand-store/catalog-originals/whisky/ballantines/ballantines-hard-fired-blended-scotch-whisky-1l.png"
     ],
     description: "Ballantine's Hard Fired undergoes a bespoke double-charring process in bespoke American white oak casks. The intense heat unlocks deep vanilla sweetness, crisp orchard green apples, and delicate campfire smoke.",
     tastingNotes: [
@@ -144,10 +144,10 @@ const retailProducts = [
     price: "340",
     size: "750ml",
     stock: 60,
-    image: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?auto=format&fit=crop&w=800&q=80",
-    originalImage: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?auto=format&fit=crop&w=800&q=80",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675131/grand-store/catalog-originals/whisky/ballantines/ballantines-finest-blended-scotch-whisky-750ml.png",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675131/grand-store/catalog-originals/whisky/ballantines/ballantines-finest-blended-scotch-whisky-750ml.png",
     gallery: [
-      "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?auto=format&fit=crop&w=800&q=80"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675131/grand-store/catalog-originals/whisky/ballantines/ballantines-finest-blended-scotch-whisky-750ml.png"
     ],
     description: "The world-famous flagship blend created in 1910. Composed of over 40 distinct single malts and grain whiskies, delivering an unmistakably smooth, rounded, and subtle character celebrated across generations.",
     tastingNotes: [
@@ -206,10 +206,10 @@ const retailProducts = [
     price: "890",
     size: "500ml",
     stock: 30,
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565188/grandstore-uploads/products/baijiu/guizhou-xijiu-friends-series-blue-bottle.jpg",
-    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565188/grandstore-uploads/products/baijiu/guizhou-xijiu-friends-series-blue-bottle.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658967/grand-store/catalog-originals/baijiu/guizhou-xijiu-friends-series-blue-bottle.png",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658967/grand-store/catalog-originals/baijiu/guizhou-xijiu-friends-series-blue-bottle.png",
     gallery: [
-      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565188/grandstore-uploads/products/baijiu/guizhou-xijiu-friends-series-blue-bottle.jpg"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658967/grand-store/catalog-originals/baijiu/guizhou-xijiu-friends-series-blue-bottle.png"
     ],
     description: "Hailing from the Chishui River valley in Guizhou Province, this prestigious Chinese Baijiu is produced via authentic solid-state sorghum fermentation. Packaged in a stunning cobalt-blue ceramic flagon, it exudes the classic Jiangxiang (Sauce Aroma) character—savory roasted grains, soy umami, dried Chinese dates, and an astonishingly long, fragrant palate.",
     tastingNotes: [
@@ -264,10 +264,10 @@ const retailProducts = [
     price: "2450",
     size: "500ml",
     stock: 18,
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565190/grandstore-uploads/products/baijiu/fenjiu-qinghua-20-year-old.jpg",
-    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565190/grandstore-uploads/products/baijiu/fenjiu-qinghua-20-year-old.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658955/grand-store/catalog-originals/baijiu/fenjiu-qinghua-20-year-old.png",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658955/grand-store/catalog-originals/baijiu/fenjiu-qinghua-20-year-old.png",
     gallery: [
-      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565190/grandstore-uploads/products/baijiu/fenjiu-qinghua-20-year-old.jpg"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658955/grand-store/catalog-originals/baijiu/fenjiu-qinghua-20-year-old.png"
     ],
     description: "The crown jewel of Light Aroma Baijiu from Xinghuacun, Shanxi Province with over 6,000 years of brewing lineage. Aged 20 years in earthen ceramic vessels, Fenjiu Qinghua presents a clean, crystal-clear purity, with delicate aromas of green pear, white blossom, and sweet barley sweetness.",
     tastingNotes: [
@@ -322,10 +322,10 @@ const retailProducts = [
     price: "650",
     size: "500ml",
     stock: 35,
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565191/grandstore-uploads/products/baijiu/fen-jiu-red-label-fen-chiew.jpg",
-    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565191/grandstore-uploads/products/baijiu/fen-jiu-red-label-fen-chiew.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658959/grand-store/catalog-originals/baijiu/fen-jiu-red-label-fen-chiew.png",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658959/grand-store/catalog-originals/baijiu/fen-jiu-red-label-fen-chiew.png",
     gallery: [
-      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565191/grandstore-uploads/products/baijiu/fen-jiu-red-label-fen-chiew.jpg"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658959/grand-store/catalog-originals/baijiu/fen-jiu-red-label-fen-chiew.png"
     ],
     description: "The iconic everyday staple of Northern China. Distilled from fermented whole sorghum grains with indigenous barley-and-pea qu starter. Vibrant, refreshing, and full-bodied with notes of ripe honeydew melon, star anise, and crisp grain.",
     tastingNotes: [
@@ -380,10 +380,10 @@ const retailProducts = [
     price: "480",
     size: "720ml",
     stock: 45,
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570279/grandstore-uploads/products/sake/gekkeikan-traditional-junmai-sake-720ml.jpg",
-    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570279/grandstore-uploads/products/sake/gekkeikan-traditional-junmai-sake-720ml.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658970/grand-store/catalog-originals/sake/gekkeikan-traditional-junmai-sake-720ml.png",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658970/grand-store/catalog-originals/sake/gekkeikan-traditional-junmai-sake-720ml.png",
     gallery: [
-      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570279/grandstore-uploads/products/sake/gekkeikan-traditional-junmai-sake-720ml.jpg"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658970/grand-store/catalog-originals/sake/gekkeikan-traditional-junmai-sake-720ml.png"
     ],
     description: "Brewed in Fushimi, Kyoto—the historic capital of Japanese sake brewing with over 380 years of craftsmanship. Made using centuries-old yeast strains and pristine natural spring water. Herbaceous with gentle grapefruit acidity, subtle steamed rice notes, and a balanced dry finish. Delicious served chilled, room temperature, or gently warmed.",
     tastingNotes: [
@@ -438,10 +438,10 @@ const retailProducts = [
     price: "850",
     size: "720ml",
     stock: 25,
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570282/grandstore-uploads/products/sake/dassai-45-junmai-daiginjo-sake-720ml.jpg",
-    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570282/grandstore-uploads/products/sake/dassai-45-junmai-daiginjo-sake-720ml.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658974/grand-store/catalog-originals/sake/dassai-45-junmai-daiginjo-sake-720ml.png",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658974/grand-store/catalog-originals/sake/dassai-45-junmai-daiginjo-sake-720ml.png",
     gallery: [
-      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570282/grandstore-uploads/products/sake/dassai-45-junmai-daiginjo-sake-720ml.jpg"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658974/grand-store/catalog-originals/sake/dassai-45-junmai-daiginjo-sake-720ml.png"
     ],
     description: "Crafted exclusively from King of Sake Rice (Yamada Nishiki), polished down meticulously until only 45% of the grain heart remains. Dassai 45 offers a delicate bouquet of white peach, honeydew melon, and muscat grapes, balanced by a silky, refined mouthfeel.",
     tastingNotes: [
@@ -500,7 +500,7 @@ const retailProducts = [
     price: "2890",
     size: "700ml",
     stock: 20,
-    image: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=800&q=80",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792735201/grand-store/catalog-originals/whisky/jack-daniels/jack-daniels-single-barrel-rye-green-label-700ml.png",
     originalImage: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=800&q=80",
     gallery: [
       "https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=800&q=80"
@@ -558,7 +558,7 @@ const retailProducts = [
     price: "1450",
     size: "750ml",
     stock: 22,
-    image: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?auto=format&fit=crop&w=800&q=80",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792735202/grand-store/catalog-originals/whisky/jack-daniels/jack-daniels-master-distiller-no-5-tennessee-whiskey-750ml.png",
     originalImage: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?auto=format&fit=crop&w=800&q=80",
     gallery: [
       "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?auto=format&fit=crop&w=800&q=80"
@@ -616,7 +616,7 @@ const retailProducts = [
     price: "580",
     size: "750ml",
     stock: 50,
-    image: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=800&q=80",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792735203/grand-store/catalog-originals/whisky/jack-daniels/gentleman-jack-rare-tennessee-whiskey-750ml.png",
     originalImage: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=800&q=80",
     gallery: [
       "https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=800&q=80"
@@ -678,10 +678,10 @@ const retailProducts = [
     price: "950",
     size: "750ml",
     stock: 28,
-    image: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?auto=format&fit=crop&w=800&q=80",
-    originalImage: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?auto=format&fit=crop&w=800&q=80",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792671660/grand-store/catalog-originals/whisky/dimple/dimple-15-year-old-blended-scotch-whisky-750ml.png",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792671660/grand-store/catalog-originals/whisky/dimple/dimple-15-year-old-blended-scotch-whisky-750ml.png",
     gallery: [
-      "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?auto=format&fit=crop&w=800&q=80"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792671660/grand-store/catalog-originals/whisky/dimple/dimple-15-year-old-blended-scotch-whisky-750ml.png"
     ],
     description: "Crafted by the historic House of Haig—Scotland's oldest whisky dynasty dating back to 1627. Bottled in its world-famous three-sided dimpled decanter wrapped in gold wire. Aged a minimum of 15 years with a high content of Glenkinchie malt for mellow honey, toffee, and gentle highland peat warmth.",
     tastingNotes: [
@@ -736,10 +736,10 @@ const retailProducts = [
     price: "1590",
     size: "750ml",
     stock: 15,
-    image: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=800&q=80",
-    originalImage: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=800&q=80",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792671669/grand-store/catalog-originals/whisky/dimple/dimple-haig-15-year-old-presentation-tin-scotch-whisky-750ml.png",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792671669/grand-store/catalog-originals/whisky/dimple/dimple-haig-15-year-old-presentation-tin-scotch-whisky-750ml.png",
     gallery: [
-      "https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=800&q=80"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792671669/grand-store/catalog-originals/whisky/dimple/dimple-haig-15-year-old-presentation-tin-scotch-whisky-750ml.png"
     ],
     description: "The rare collector's edition Dimple Haig 15 Year Old encased in an embossed presentation tin. Iconic gold-netted pinched flagon celebrating Master Blender John Haig's centuries-old legacy.",
     tastingNotes: [
@@ -794,10 +794,10 @@ const retailProducts = [
     price: "820",
     size: "700ml",
     stock: 32,
-    image: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?auto=format&fit=crop&w=800&q=80",
-    originalImage: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?auto=format&fit=crop&w=800&q=80",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792671666/grand-store/catalog-originals/whisky/dimple/dimple-golden-selection-blended-scotch-whisky-700ml.png",
+    originalImage: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792671666/grand-store/catalog-originals/whisky/dimple/dimple-golden-selection-blended-scotch-whisky-700ml.png",
     gallery: [
-      "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?auto=format&fit=crop&w=800&q=80"
+      "https://res.cloudinary.com/oioqrgj0/image/upload/v1792671666/grand-store/catalog-originals/whisky/dimple/dimple-golden-selection-blended-scotch-whisky-700ml.png"
     ],
     description: "An expressive modern creation from the Master of Malt at Dimple. Selected whiskies at the peak of their maturation are blended for vibrant aromas of ripe mango, toasted hazelnut, and rich mocha chocolate.",
     tastingNotes: [

@@ -14,9 +14,9 @@ cloudinary.config({
 
 const sakeSpecs = [
   {
-    localFile: 'C:/Users/HP/.gemini/antigravity-ide/brain/ab795a1c-8e59-4bfd-8db6-40f3b1262d01/gekkeikan_traditional_junmai_1792570142564.jpg',
+    localFile: 'C:/Users/HP/.gemini/antigravity-ide/brain/c29b23bd-fc3d-45b3-aa5e-2b723af6e4d8/scratch/gekkeikan-traditional-junmai-sake-720ml.png',
     publicId: 'gekkeikan-traditional-junmai-sake-720ml',
-    filename: 'gekkeikan-traditional-junmai-sake-720ml.jpg',
+    filename: 'gekkeikan-traditional-junmai-sake-720ml.png',
     targetId: 'ws-gekkeikan-gold-sake',
     name: 'Gekkeikan Traditional Junmai-shu Sake 720ml',
     slug: 'gekkeikan-traditional-junmai-shu-sake-720ml',
@@ -38,9 +38,9 @@ const sakeSpecs = [
     foodPairing: ['Salmon & Tuna Sashimi', 'Crispy Prawn Tempura', 'Yakitori Skewers', 'Miso Black Cod']
   },
   {
-    localFile: 'C:/Users/HP/.gemini/antigravity-ide/brain/ab795a1c-8e59-4bfd-8db6-40f3b1262d01/gold_gekkeikan_gold_leaf_1792570161448.jpg',
+    localFile: 'C:/Users/HP/.gemini/antigravity-ide/brain/c29b23bd-fc3d-45b3-aa5e-2b723af6e4d8/scratch/gold-gekkeikan-junmai-sake-with-gold-leaf-720ml.png',
     publicId: 'gold-gekkeikan-junmai-sake-with-gold-leaf-720ml',
-    filename: 'gold-gekkeikan-junmai-sake-with-gold-leaf-720ml.jpg',
+    filename: 'gold-gekkeikan-junmai-sake-with-gold-leaf-720ml.png',
     targetId: 'ws_1791979597879_57',
     name: 'Gold Gekkeikan Junmai-shu Sake with Gold Leaf 720ml',
     slug: 'gold-gekkeikan-junmai-shu-sake-with-gold-leaf-720ml',
@@ -62,9 +62,9 @@ const sakeSpecs = [
     foodPairing: ['Celebration Sashimi Platter', 'Tempura Prawns', 'Grilled Black Cod Miso', 'Wagyu Beef Tataki']
   },
   {
-    localFile: 'C:/Users/HP/.gemini/antigravity-ide/brain/ab795a1c-8e59-4bfd-8db6-40f3b1262d01/super_kinokuni_junmai_1792570186589.jpg',
+    localFile: 'C:/Users/HP/.gemini/antigravity-ide/brain/c29b23bd-fc3d-45b3-aa5e-2b723af6e4d8/scratch/super-kinokuni-junmai-sake-720ml.png',
     publicId: 'super-kinokuni-junmai-sake-720ml',
-    filename: 'super-kinokuni-junmai-sake-720ml.jpg',
+    filename: 'super-kinokuni-junmai-sake-720ml.png',
     targetId: 'ws_1791979598070_213',
     name: 'Super Kinokuni Junmai Sake 720ml',
     slug: 'super-kinokuni-junmai-sake-720ml',
@@ -86,9 +86,9 @@ const sakeSpecs = [
     foodPairing: ['Grilled Unagi Eel', 'Tonkatsu', 'Gyoza', 'Ramen']
   },
   {
-    localFile: 'C:/Users/HP/.gemini/antigravity-ide/brain/ab795a1c-8e59-4bfd-8db6-40f3b1262d01/dassai_45_junmai_daiginjo_1792570208789.jpg',
+    localFile: 'C:/Users/HP/.gemini/antigravity-ide/brain/c29b23bd-fc3d-45b3-aa5e-2b723af6e4d8/scratch/dassai-45-junmai-daiginjo-sake-720ml.png',
     publicId: 'dassai-45-junmai-daiginjo-sake-720ml',
-    filename: 'dassai-45-junmai-daiginjo-sake-720ml.jpg',
+    filename: 'dassai-45-junmai-daiginjo-sake-720ml.png',
     targetId: 'ws-dassai-45-sake',
     name: 'Dassai 45 Junmai Daiginjo Sake 720ml',
     slug: 'dassai-45-junmai-daiginjo-sake-720ml',
@@ -110,9 +110,9 @@ const sakeSpecs = [
     foodPairing: ['Yellowtail Hamachi Crudo', 'Hokkaido Scallops', 'Fresh Oysters', 'Light Soba']
   },
   {
-    localFile: 'C:/Users/HP/.gemini/antigravity-ide/brain/ab795a1c-8e59-4bfd-8db6-40f3b1262d01/dassai_23_super_premium_1792570230468.jpg',
+    localFile: 'C:/Users/HP/.gemini/antigravity-ide/brain/c29b23bd-fc3d-45b3-aa5e-2b723af6e4d8/scratch/dassai-23-junmai-daiginjo-super-premium-sake-720ml.png',
     publicId: 'dassai-23-junmai-daiginjo-super-premium-sake-720ml',
-    filename: 'dassai-23-junmai-daiginjo-super-premium-sake-720ml.jpg',
+    filename: 'dassai-23-junmai-daiginjo-super-premium-sake-720ml.png',
     targetId: 'ws_1791979598166_99',
     name: 'Dassai 23 Junmai Daiginjo Super Premium Sake 720ml',
     slug: 'dassai-23-junmai-daiginjo-super-premium-sake-720ml',

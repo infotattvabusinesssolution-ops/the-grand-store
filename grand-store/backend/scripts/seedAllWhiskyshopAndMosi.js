@@ -43,7 +43,7 @@ const whiskyshopProducts = [
     barcode: "5000299223017",
     cartonBarcode: "15000299223014",
     barcodeImage: "https://barcodeapi.org/api/128/5000299223017",
-    image: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675134/grand-store/catalog-originals/whisky/ballantines/ballantines-21-year-old-blended-scotch-whisky-750ml.png",
     shipping: {
       box_type: "Standard Luxury Bottle Box",
       weight_kg: 1.85,
@@ -89,7 +89,7 @@ const whiskyshopProducts = [
     barcode: "5000299607145",
     cartonBarcode: "15000299607142",
     barcodeImage: "https://barcodeapi.org/api/128/5000299607145",
-    image: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675133/grand-store/catalog-originals/whisky/ballantines/ballantines-hard-fired-blended-scotch-whisky-1l.png",
     shipping: {
       box_type: "Standard Luxury Bottle Box",
       weight_kg: 2.25,
@@ -135,7 +135,7 @@ const whiskyshopProducts = [
     barcode: "5000299211014",
     cartonBarcode: "15000299211011",
     barcodeImage: "https://barcodeapi.org/api/128/5000299211014",
-    image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675131/grand-store/catalog-originals/whisky/ballantines/ballantines-finest-blended-scotch-whisky-750ml.png",
     shipping: {
       box_type: "Standard Luxury Bottle Box",
       weight_kg: 1.85,
@@ -181,7 +181,7 @@ const whiskyshopProducts = [
     barcode: "5000299211304",
     cartonBarcode: "15000299211301",
     barcodeImage: "https://barcodeapi.org/api/128/5000299211304",
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792583112/grandstore-uploads/products/whisky/ballantines-finest-blended-scotch-whisky-3l-with-cradle.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675129/grand-store/catalog-originals/whisky/ballantines/ballantines-finest-blended-scotch-whisky-3l-with-cradle.png",
     shipping: {
       box_type: "Extra Large Wooden Crate",
       weight_kg: 5.8,
@@ -227,7 +227,7 @@ const whiskyshopProducts = [
     barcode: "5000299211458",
     cartonBarcode: "15000299211455",
     barcodeImage: "https://barcodeapi.org/api/128/5000299211458",
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792583112/grandstore-uploads/products/whisky/ballantines-finest-blended-scotch-whisky-3l-with-cradle.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675127/grand-store/catalog-originals/whisky/ballantines/ballantines-original-extra-large-45l-gallon-cradle.png",
     shipping: {
       box_type: "Heavyweight Reinforced Crate",
       weight_kg: 8.5,
@@ -273,7 +273,7 @@ const whiskyshopProducts = [
     barcode: "5000299217016",
     cartonBarcode: "15000299217013",
     barcodeImage: "https://barcodeapi.org/api/128/5000299217016",
-    image: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675123/grand-store/catalog-originals/whisky/ballantines/ballantines-17-year-old-blended-scotch-whisky-750ml.png",
     shipping: {
       box_type: "Standard Luxury Bottle Box",
       weight_kg: 1.85,
@@ -319,7 +319,7 @@ const whiskyshopProducts = [
     barcode: "5000299230015",
     cartonBarcode: "15000299230012",
     barcodeImage: "https://barcodeapi.org/api/128/5000299230015",
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792585870/grandstore-uploads/products/whisky/ballantines-30-year-old-very-rare-blended-scotch-whisky-750ml.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792675119/grand-store/catalog-originals/whisky/ballantines/ballantines-30-year-old-very-rare-blended-scotch-whisky-750ml.png",
     shipping: {
       box_type: "Handcrafted Luxury Timber Presentation Case",
       weight_kg: 2.8,
@@ -369,7 +369,7 @@ const whiskyshopProducts = [
     barcode: "6901382103567",
     cartonBarcode: "16901382103564",
     barcodeImage: "https://barcodeapi.org/api/128/6901382103567",
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565188/grandstore-uploads/products/baijiu/guizhou-xijiu-friends-series-blue-bottle.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658967/grand-store/catalog-originals/baijiu/guizhou-xijiu-friends-series-blue-bottle.png",
     shipping: {
       box_type: "Traditional Ceramic Bottle Gift Box",
       weight_kg: 1.65,
@@ -415,7 +415,7 @@ const whiskyshopProducts = [
     barcode: "6901168102341",
     cartonBarcode: "16901168102348",
     barcodeImage: "https://barcodeapi.org/api/128/6901168102341",
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565190/grandstore-uploads/products/baijiu/fenjiu-qinghua-20-year-old.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658955/grand-store/catalog-originals/baijiu/fenjiu-qinghua-20-year-old.png",
     shipping: {
       box_type: "Porcelain Decanter Luxury Gift Box",
       weight_kg: 1.75,
@@ -461,7 +461,7 @@ const whiskyshopProducts = [
     barcode: "6901168101016",
     cartonBarcode: "16901168101013",
     barcodeImage: "https://barcodeapi.org/api/128/6901168101016",
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792565191/grandstore-uploads/products/baijiu/fen-jiu-red-label-fen-chiew.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658959/grand-store/catalog-originals/baijiu/fen-jiu-red-label-fen-chiew.png",
     shipping: {
       box_type: "Standard Bottle Box",
       weight_kg: 1.45,
@@ -507,7 +507,7 @@ const whiskyshopProducts = [
     barcode: "4901030112023",
     cartonBarcode: "14901030112020",
     barcodeImage: "https://barcodeapi.org/api/128/4901030112023",
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570281/grandstore-uploads/products/sake/gold-gekkeikan-junmai-sake-with-gold-leaf-720ml.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658977/grand-store/catalog-originals/sake/gold-gekkeikan-junmai-sake-with-gold-leaf-720ml.png",
     shipping: {
       box_type: "Japanese Ceremonial Sake Box",
       weight_kg: 1.6,
@@ -553,7 +553,7 @@ const whiskyshopProducts = [
     barcode: "4935819140450",
     cartonBarcode: "14935819140457",
     barcodeImage: "https://barcodeapi.org/api/128/4935819140450",
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570282/grandstore-uploads/products/sake/dassai-45-junmai-daiginjo-sake-720ml.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658974/grand-store/catalog-originals/sake/dassai-45-junmai-daiginjo-sake-720ml.png",
     shipping: {
       box_type: "Standard Sake Presentation Box",
       weight_kg: 1.6,
@@ -599,7 +599,7 @@ const whiskyshopProducts = [
     barcode: "4904339120721",
     cartonBarcode: "14904339120728",
     barcodeImage: "https://barcodeapi.org/api/128/4904339120721",
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570282/grandstore-uploads/products/sake/super-kinokuni-junmai-sake-720ml.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658980/grand-store/catalog-originals/sake/super-kinokuni-junmai-sake-720ml.png",
     shipping: {
       box_type: "Standard Sake Box",
       weight_kg: 1.55,
@@ -645,7 +645,7 @@ const whiskyshopProducts = [
     barcode: "4935819120230",
     cartonBarcode: "14935819120237",
     barcodeImage: "https://barcodeapi.org/api/128/4935819120230",
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792570283/grandstore-uploads/products/sake/dassai-23-junmai-daiginjo-super-premium-sake-720ml.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/e_background_removal/c_limit,h_1600,w_1200/v1792658983/grand-store/catalog-originals/sake/dassai-23-junmai-daiginjo-super-premium-sake-720ml.png",
     shipping: {
       box_type: "Handcrafted Paulownia Wood Box",
       weight_kg: 1.85,
@@ -695,7 +695,7 @@ const whiskyshopProducts = [
     barcode: "082184002610",
     cartonBarcode: "10082184002617",
     barcodeImage: "https://barcodeapi.org/api/128/082184002610",
-    image: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792735204/grand-store/catalog-originals/whisky/jack-daniels/jack-daniels-single-barrel-rye-green-label-750ml.png",
     shipping: {
       box_type: "Decanter Heavyweight Luxury Box",
       weight_kg: 1.95,
@@ -741,7 +741,7 @@ const whiskyshopProducts = [
     barcode: "5099873082531",
     cartonBarcode: "15099873082538",
     barcodeImage: "https://barcodeapi.org/api/128/5099873082531",
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792585356/grandstore-uploads/products/whisky/jack-daniels-master-distiller-series-no-5-1l.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792735205/grand-store/catalog-originals/whisky/jack-daniels/jack-daniels-master-distiller-series-no-5-1l.png",
     shipping: {
       box_type: "Collector Cylinder Presentation Tin",
       weight_kg: 2.3,
@@ -787,7 +787,7 @@ const whiskyshopProducts = [
     barcode: "082184038749",
     cartonBarcode: "10082184038746",
     barcodeImage: "https://barcodeapi.org/api/128/082184038749",
-    image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792735206/grand-store/catalog-originals/whisky/jack-daniels/gentleman-jack-rare-double-mellowed-tennessee-whiskey-750ml.png",
     shipping: {
       box_type: "Standard Luxury Bottle Box",
       weight_kg: 1.85,
@@ -833,7 +833,7 @@ const whiskyshopProducts = [
     barcode: "082184090464",
     cartonBarcode: "10082184090461",
     barcodeImage: "https://barcodeapi.org/api/128/082184090464",
-    image: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792735207/grand-store/catalog-originals/whisky/jack-daniels/jack-daniels-old-no-7-tennessee-whiskey-750ml.png",
     shipping: {
       box_type: "Standard Bottle Box",
       weight_kg: 1.85,
@@ -879,7 +879,7 @@ const whiskyshopProducts = [
     barcode: "082184090488",
     cartonBarcode: "10082184090485",
     barcodeImage: "https://barcodeapi.org/api/128/082184090488",
-    image: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792735208/grand-store/catalog-originals/whisky/jack-daniels/jack-daniels-old-no-7-tennessee-whiskey-15l-magnum.png",
     shipping: {
       box_type: "Extra Large Bottle Box",
       weight_kg: 3.1,
@@ -925,7 +925,7 @@ const whiskyshopProducts = [
     barcode: "082184000470",
     cartonBarcode: "10082184000477",
     barcodeImage: "https://barcodeapi.org/api/128/082184000470",
-    image: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792735209/grand-store/catalog-originals/whisky/jack-daniels/jack-daniels-sinatra-select-bold-handcrafted-decanter-1l.png",
     shipping: {
       box_type: "Sinatra Signature Presentation Box with Book",
       weight_kg: 2.8,
@@ -975,7 +975,7 @@ const whiskyshopProducts = [
     barcode: "5000267014203",
     cartonBarcode: "15000267014200",
     barcodeImage: "https://barcodeapi.org/api/128/5000267014203",
-    image: "https://images.unsplash.com/photo-1527281400683-1aae777175f8?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792671663/grand-store/catalog-originals/whisky/dimple/dimple-15-year-old-de-luxe-scotch-whisky-750ml.png",
     shipping: {
       box_type: "Iconic Triangular Bottle Luxury Box",
       weight_kg: 1.85,
@@ -1021,7 +1021,7 @@ const whiskyshopProducts = [
     barcode: "5000267020051",
     cartonBarcode: "15000267020058",
     barcodeImage: "https://barcodeapi.org/api/128/5000267020051",
-    image: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792671673/grand-store/catalog-originals/whisky/dimple/dimple-haig-15-year-old-presentation-tin-collector-edition-750ml.png",
     shipping: {
       box_type: "Embossed Collector Presentation Tin",
       weight_kg: 2.1,
@@ -1067,7 +1067,7 @@ const whiskyshopProducts = [
     barcode: "5000267160306",
     cartonBarcode: "15000267160303",
     barcodeImage: "https://barcodeapi.org/api/128/5000267160306",
-    image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=1000&auto=format&fit=crop",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792671666/grand-store/catalog-originals/whisky/dimple/dimple-golden-selection-blended-scotch-whisky-700ml.png",
     shipping: {
       box_type: "Standard Triangular Bottle Box",
       weight_kg: 1.75,
@@ -1113,7 +1113,7 @@ const whiskyshopProducts = [
     barcode: "5000267030036",
     cartonBarcode: "15000267030033",
     barcodeImage: "https://barcodeapi.org/api/128/5000267030036",
-    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792581441/grandstore-uploads/products/whisky/dimple-3l-1970-rare-heritage-collector-limited-edition.jpg",
+    image: "https://res.cloudinary.com/oioqrgj0/image/upload/v1792671676/grand-store/catalog-originals/whisky/dimple/dimple-3l-1970-rare-heritage-collector-limited-edition.png",
     shipping: {
       box_type: "Custom Foam-Lined Timber Vault Crate",
       weight_kg: 6.2,
