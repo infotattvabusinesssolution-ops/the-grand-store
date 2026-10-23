@@ -7,6 +7,7 @@ import { ProductProvider } from './context/ProductContext.jsx'
 import { HelmetProvider } from 'react-helmet-async'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { LocationProvider } from './context/LocationContext.jsx'
+import { LanguageProvider } from './context/LanguageContext.jsx'
 import { CurrencyProvider } from './context/CurrencyContext.jsx'
 import { CategoryProvider } from './context/CategoryContext.jsx'
 import { GoogleOAuthProvider } from '@react-oauth/google'
@@ -17,19 +18,21 @@ createRoot(document.getElementById('root')).render(
     <HelmetProvider>
       <BrowserRouter>
         <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-          <LocationProvider>
-            <AuthProvider>
-              <CurrencyProvider>
-                <CategoryProvider>
-                  <ProductProvider>
-                    <WishlistProvider>
-                      <App />
-                    </WishlistProvider>
-                  </ProductProvider>
-                </CategoryProvider>
-              </CurrencyProvider>
-            </AuthProvider>
-          </LocationProvider>
+          <LanguageProvider>
+            <LocationProvider>
+              <AuthProvider>
+                <CurrencyProvider>
+                  <CategoryProvider>
+                    <ProductProvider>
+                      <WishlistProvider>
+                        <App />
+                      </WishlistProvider>
+                    </ProductProvider>
+                  </CategoryProvider>
+                </CurrencyProvider>
+              </AuthProvider>
+            </LocationProvider>
+          </LanguageProvider>
         </GoogleOAuthProvider>
       </BrowserRouter>
     </HelmetProvider>

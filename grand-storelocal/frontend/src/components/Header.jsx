@@ -25,6 +25,7 @@ import { useAuth } from "../context/AuthContext";
 import { useProducts } from "../context/ProductContext";
 import { useGeoLocation } from "../context/LocationContext";
 import { useCurrency, getCountryForCurrency } from "../context/CurrencyContext";
+import { useLanguage } from "../context/LanguageContext";
 import LocaleSelector, { LocaleIcon } from "./LocaleSelector";
 import NotificationBell from "./NotificationBell";
 import api from "../api";
@@ -180,6 +181,7 @@ export default function Header({
   const { products } = useProducts();
   const { country_code, countries, changeCountry, isLoading: geoLoading } = useGeoLocation();
   const { currency, availableCurrencies, changeCurrency, loading: currencyLoading } = useCurrency();
+  const { language, changeLanguage, languages } = useLanguage();
 
   const countryOptions = useMemo(() => countries.map((country) => ({
     value: country.code,
@@ -193,6 +195,19 @@ export default function Header({
     flagCode: currencyFlagCountries[currencyCode] || getCountryForCurrency(currencyCode),
     icon: '¤'
   })), [availableCurrencies]);
+
+  const languageOptions = useMemo(() => languages.map((lang) => ({
+    value: lang.code,
+    langCode: lang.value,
+    label: lang.label,
+    flagCode: lang.flagCode,
+    keywords: `${lang.nativeName} ${lang.label} ${lang.code} ${lang.value}`
+  })), [languages]);
+
+  const selectedLanguageOption = languageOptions.find(
+    (option) => option.langCode.toLowerCase() === (language || "en").toLowerCase() ||
+                option.value.toLowerCase() === (language || "en").toLowerCase()
+  ) || languageOptions[0];
 
   const selectedCountryOption = countryOptions.find(
     (option) => option.value === (country_code || "ZA"),
@@ -510,6 +525,18 @@ export default function Header({
               onChange={changeCurrency}
               searchPlaceholder="Search currencies..."
               disabled={currencyLoading || geoLoading}
+              compact
+            />
+            <span className="top-rule bg-[#caa458]/30 mx-2" />
+            <LocaleSelector
+              ariaLabel="Display language"
+              value={selectedLanguageOption.value}
+              options={languageOptions}
+              onChange={(code) => {
+                const opt = languageOptions.find(o => o.value === code);
+                changeLanguage(opt ? opt.langCode : code);
+              }}
+              searchPlaceholder="Search languages..."
               compact
             />
           </div>
@@ -1497,6 +1524,20 @@ export default function Header({
                           onChange={changeCurrency}
                           searchPlaceholder="Search currencies..."
                           disabled={currencyLoading || geoLoading}
+                          embedded
+                        />
+                      </div>
+                      <div className="drawer-locale-field">
+                        <span className="drawer-locale-label">Language</span>
+                        <LocaleSelector
+                          ariaLabel="Display language"
+                          value={selectedLanguageOption.value}
+                          options={languageOptions}
+                          onChange={(code) => {
+                            const opt = languageOptions.find(o => o.value === code);
+                            changeLanguage(opt ? opt.langCode : code);
+                          }}
+                          searchPlaceholder="Search languages..."
                           embedded
                         />
                       </div>
