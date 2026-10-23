@@ -1294,7 +1294,7 @@ export default function Header({
                       >
                         🌍 Global Wines
                       </Link>
-                      <Link to="/customer/wishlist" onClick={closeMenus}>
+                      <Link to="/wishlist" onClick={closeMenus}>
                         Wishlist
                       </Link>
                     </div>

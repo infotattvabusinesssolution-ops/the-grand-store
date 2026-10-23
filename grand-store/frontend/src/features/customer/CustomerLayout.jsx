@@ -28,6 +28,23 @@ export default function CustomerLayout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const getRoleLabel = () => {
+    if (!user) return "Private Client";
+    if (["admin", "super_admin"].includes(user.role)) return "System Administrator";
+    if (user.role === "accountant") return "Accountant";
+    if (user.role === "product_manager") return "Product Manager";
+    if (user.role === "auction_host") return "Auction Host";
+    if (user.role === "event_host") return "Event Host";
+    if (user.role?.startsWith("vendor")) return "Business Partner";
+    return "Private Client";
+  };
+
+  const getPortalTitle = () => {
+    if (["admin", "super_admin", "accountant", "product_manager"].includes(user?.role)) return "Admin Portal";
+    if (user?.role?.startsWith("vendor")) return "Vendor Portal";
+    return "Client Portal";
+  };
+
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -213,7 +230,7 @@ export default function CustomerLayout() {
             </div>
             <div className="h-4 w-px bg-white/20 mx-1 md:mx-2 hidden sm:block"></div>
             <div className="text-[10px] md:text-sm tracking-widest text-gold-gradient font-medium uppercase hidden sm:block">
-              Client Portal
+              {getPortalTitle()}
             </div>
           </div>
         </div>
@@ -241,7 +258,7 @@ export default function CustomerLayout() {
                 {user?.name}
               </div>
               <div className="text-xs text-gold-gradient tracking-widest uppercase">
-                Private Client
+                {getRoleLabel()}
               </div>
             </div>
             <div 
@@ -311,7 +328,7 @@ export default function CustomerLayout() {
                 <div className="p-6 border-b border-white/5 md:hidden">
                   <div className="text-sm font-serif mb-1">{user?.name}</div>
                   <div className="text-xs text-gold-gradient tracking-widest uppercase">
-                    Private Client
+                    {getRoleLabel()}
                   </div>
                 </div>
                 <nav className="flex flex-col flex-1 p-6 gap-2">

@@ -14,7 +14,7 @@ const countryDetails = {
   },
   italy: {
     name: 'Italy',
-    desc: 'A tapestry of ancient terroirs and indigenous grapes, producing some of the world’s most food-friendly, prestigious, and diverse wines.',
+    desc: "Italy is home to some of the world's most loved wines. From rich Tuscan reds to crisp whites and sparkling Prosecco, every bottle is made to enjoy with good food.",
     image: 'https://i.pinimg.com/1200x/40/1d/84/401d84d477523012fa2eec4b0ca1b7b2.jpg'
   },
   spain: {

@@ -527,7 +527,7 @@ function App() {
             wishlistCount={wishlistCount}
             onBagClick={() => navigate("/customer/cart")}
             onCompareClick={() => navigate("/customer/compare")}
-            onWishlistClick={() => navigate("/customer/wishlist")}
+            onWishlistClick={() => navigate("/wishlist")}
           />
         )}
       <Routes>
@@ -801,7 +801,13 @@ function App() {
         />
         <Route
           path="/wishlist"
-          element={<Navigate to="/customer/wishlist" replace />}
+          element={
+            <WishlistPage
+              onAdd={addToCart}
+              onCompare={addToCompare}
+              compareItems={compareItems}
+            />
+          }
         />
 
         {/* Customer Profile & Related */}

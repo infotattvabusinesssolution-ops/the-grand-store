@@ -1488,7 +1488,7 @@ export default function Header({
                         <ProteaEmblem className="w-4 h-4 text-[#caa458]" />
                         <span>Global Wines</span>
                       </Link>
-                      <Link to="/customer/wishlist" onClick={closeMenus}>
+                      <Link to="/wishlist" onClick={closeMenus}>
                         Wishlist
                       </Link>
                     </div>

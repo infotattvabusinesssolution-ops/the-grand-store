@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FacebookIcon,
   TwitterIcon,
@@ -18,6 +18,92 @@ export default function Footer({
   onOpenAppModal,
 }) {
   const [newsletterStatus, setNewsletterStatus] = useState('');
+
+  // Dynamic Visitor Counter (starting baseline: 538,113)
+  const BASE_VISITORS = 538113;
+  const [visitorCount, setVisitorCount] = useState(() => {
+    try {
+      const stored = localStorage.getItem('tgs_total_visitors');
+      if (stored) {
+        const parsed = parseInt(stored, 10);
+        if (!isNaN(parsed) && parsed >= BASE_VISITORS) return parsed;
+      }
+    } catch {}
+    return BASE_VISITORS;
+  });
+  const [displayCount, setDisplayCount] = useState(visitorCount);
+  const [isBumping, setIsBumping] = useState(false);
+
+  // Smooth roll-up on mount
+  useEffect(() => {
+    const startValue = Math.max(BASE_VISITORS, visitorCount - 15);
+    const endValue = visitorCount;
+    const duration = 900;
+    const startTime = performance.now();
+
+    let animationFrameId;
+    const updateCounter = (currentTime) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      const current = Math.floor(startValue + (endValue - startValue) * ease);
+      setDisplayCount(current);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(updateCounter);
+      } else {
+        setDisplayCount(endValue);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(updateCounter);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
+
+  // Increment once per browser session
+  useEffect(() => {
+    try {
+      const hasCounted = sessionStorage.getItem('tgs_session_counted');
+      if (!hasCounted) {
+        sessionStorage.setItem('tgs_session_counted', 'true');
+        setVisitorCount((prev) => {
+          const next = prev + 1;
+          try {
+            localStorage.setItem('tgs_total_visitors', String(next));
+          } catch {}
+          return next;
+        });
+      }
+    } catch {}
+  }, []);
+
+  // Periodically increment dynamically
+  useEffect(() => {
+    let timerId;
+    const scheduleNext = () => {
+      const randomDelay = Math.floor(Math.random() * 4000) + 4500;
+      timerId = setTimeout(() => {
+        setVisitorCount((prev) => {
+          const increment = Math.random() < 0.2 ? 2 : 1;
+          const next = prev + increment;
+          try {
+            localStorage.setItem('tgs_total_visitors', String(next));
+          } catch {}
+          return next;
+        });
+        setIsBumping(true);
+        setTimeout(() => setIsBumping(false), 500);
+        scheduleNext();
+      }, randomDelay);
+    };
+
+    scheduleNext();
+    return () => clearTimeout(timerId);
+  }, []);
+
+  useEffect(() => {
+    setDisplayCount(visitorCount);
+  }, [visitorCount]);
 
   const handleNewsletterSignup = async (event) => {
     event.preventDefault();
@@ -223,43 +309,43 @@ export default function Footer({
         {/* Column 3: Wines & Tools */}
         <div className="footer-col">
           <h3 className="footer-heading">Wines &amp; Tools</h3>
-          <a className="footer-nav-link" href={`${STORE}/shop?category=Wine&style=Sparkling`} target="_blank" rel="noopener noreferrer">
+          <a className="footer-nav-link" href={`${STORE}/shop?category=Wine&style=Sparkling`}>
             Sparkling wines
           </a>
-          <a className="footer-nav-link" href={`${STORE}/shop?category=Wine&style=Red`} target="_blank" rel="noopener noreferrer">
+          <a className="footer-nav-link" href={`${STORE}/shop?category=Wine&style=Red`}>
             Red wine
           </a>
-          <a className="footer-nav-link" href={`${STORE}/shop?category=Wine&style=White`} target="_blank" rel="noopener noreferrer">
+          <a className="footer-nav-link" href={`${STORE}/shop?category=Wine&style=White`}>
             White wine
           </a>
-          <a className="footer-nav-link" href={`${STORE}/shop?category=Wine&style=Rose`} target="_blank" rel="noopener noreferrer">
+          <a className="footer-nav-link" href={`${STORE}/shop?category=Wine&style=Rose`}>
             Rosé wine
           </a>
-          <a className="footer-nav-link" href={`${STORE}/tools/wine-pairing`} target="_blank" rel="noopener noreferrer">
+          <a className="footer-nav-link" href={`${STORE}/tools/wine-pairing`}>
             Wine Pairing Tool
           </a>
-          <a className="footer-nav-link" href={`${STORE}/tools/whisky-finder`} target="_blank" rel="noopener noreferrer">
+          <a className="footer-nav-link" href={`${STORE}/tools/whisky-finder`}>
             Whisky Finder
           </a>
-          <a className="footer-nav-link" href={`${STORE}/collections/best-wines-under-500`} target="_blank" rel="noopener noreferrer">
+          <a className="footer-nav-link" href={`${STORE}/collections/best-wines-under-500`}>
             Best Wines Under R500
           </a>
-          <a className="footer-nav-link" href={`${STORE}/collections/best-whisky-under-1000`} target="_blank" rel="noopener noreferrer">
+          <a className="footer-nav-link" href={`${STORE}/collections/best-whisky-under-1000`}>
             Best Whisky Under R1,000
           </a>
-          <a className="footer-nav-link" href={`${STORE}/brand/glenfiddich`} target="_blank" rel="noopener noreferrer">
+          <a className="footer-nav-link" href={`${STORE}/brand/glenfiddich`}>
             Glenfiddich Whisky
           </a>
-          <a className="footer-nav-link" href={`${STORE}/brand/kanonkop`} target="_blank" rel="noopener noreferrer">
+          <a className="footer-nav-link" href={`${STORE}/brand/kanonkop`}>
             Kanonkop Wine Estate
           </a>
-          <a className="footer-nav-link" href={`${STORE}/brand/hennessy`} target="_blank" rel="noopener noreferrer">
+          <a className="footer-nav-link" href={`${STORE}/brand/hennessy`}>
             Hennessy Cognac
           </a>
           <a className="footer-nav-link" href={`${STORE}/winefarm`} target="_blank" rel="noopener noreferrer">
             Join Wine Farm
           </a>
-          <a className="footer-nav-link" href={`${STORE}/glossary`} target="_blank" rel="noopener noreferrer">
+          <a className="footer-nav-link" href={`${STORE}/glossary`}>
             Glossary
           </a>
         </div>
@@ -289,7 +375,23 @@ export default function Footer({
             </p>
           )}
           <strong className="footer-visitor-counter">
-            Total Visitors <span className="visitor-colon">:</span> 538113
+            Total Visitors <span className="visitor-colon">:</span>
+            <span 
+              style={{
+                fontFamily: "'Manrope Variable', 'Inter', sans-serif",
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                color: isBumping ? '#fff4b8' : '#ffd700',
+                textShadow: isBumping ? '0 0 14px rgba(255,215,0,0.8)' : '0 2px 8px rgba(212,175,55,0.35)',
+                display: 'inline-block',
+                marginLeft: '4px',
+                transition: 'all 0.3s ease',
+                fontVariantNumeric: 'tabular-nums',
+                transform: isBumping ? 'scale(1.05)' : 'scale(1)',
+              }}
+            >
+              {displayCount.toLocaleString()}
+            </span>
           </strong>
           <div className="footer-app-links" aria-label="Download The Grand Store mobile app">
             <a
