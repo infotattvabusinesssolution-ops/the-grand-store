@@ -95,9 +95,6 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
   const selectedCountries = searchParams
     .getAll("country")
     .filter(isVisibleFilterValue);
-  const selectedSizes = searchParams
-    .getAll("size")
-    .filter(isVisibleFilterValue);
   const shopProducts = useMemo(() => {
     const seen = new Set();
     return products.filter((product) => {
@@ -150,11 +147,6 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
   const brandOptions = useMemo(
     () => getFilterOptions(scopedProducts, "brand"),
     [scopedProducts],
-  );
-
-  const sizeOptions = useMemo(
-    () => getFilterOptions(shopProducts, "size"),
-    [shopProducts],
   );
 
   const toggleFilter = (key, value) => {
@@ -238,7 +230,6 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
       (!selectedSubcategories.length || selectedSubcategories.some(sc => sc.trim().toLowerCase() === (product.subcategory || '').trim().toLowerCase())) &&
       (!selectedBrands.length || selectedBrands.some(b => b.trim().toLowerCase() === (product.brand || '').trim().toLowerCase())) &&
       (!selectedCountries.length || selectedCountries.some(c => c.trim().toLowerCase() === (product.country || '').trim().toLowerCase())) &&
-      (!selectedSizes.length || selectedSizes.some(s => s.trim().toLowerCase() === (product.size || '').trim().toLowerCase())) &&
       priceValue(product) >= minP &&
       priceValue(product) <= maxP
     );
@@ -264,7 +255,6 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
     selectedSubcategories.length +
     selectedBrands.length +
     selectedCountries.length +
-    selectedSizes.length +
     (isPriceFiltered ? 1 : 0);
 
   return (
@@ -343,14 +333,6 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
                   selectedValues={selectedCountries}
                   onToggle={(value) => toggleFilter("country", value)}
                   formatLabel={(country) => getCountryDisplayName(country, selectedCategories[0] || "Wine")}
-                />
-              )}
-              {sizeOptions.length > 0 && (
-                <FilterGroup
-                  title="Bottle size"
-                  options={sizeOptions}
-                  selectedValues={selectedSizes}
-                  onToggle={(value) => toggleFilter("size", value)}
                 />
               )}
 
