@@ -6,7 +6,6 @@ import ProductCard from "../../components/ProductCard";
 import FilterGroup from "./FilterGroup";
 import Price from "../../components/ui/Price";
 import { getCountryDisplayName } from "../../utils/countryHelpers";
-import { isSouthAfricanProduct } from "../../utils/productTaxonomy";
 
 const isVisibleFilterValue = (value) =>
   typeof value === "string" &&
@@ -162,6 +161,16 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
       ? values.filter((item) => item.trim().toLowerCase() !== normalizedVal)
       : [...values, value];
     nextValues.forEach((item) => nextParams.append(key, item));
+
+    // When modifying categories, clear orphaned filters (subcategory, brand, style, country)
+    // so the newly selected category displays cleanly without conflicting filter rules
+    if (key === "category") {
+      nextParams.delete("subcategory");
+      nextParams.delete("style");
+      nextParams.delete("brand");
+      nextParams.delete("country");
+    }
+
     setSearchParams(nextParams);
   };
 
@@ -197,7 +206,12 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
       .toLowerCase();
 
   let filteredProducts = shopProducts.filter((product) => {
-    const matchesStyle = selectedStyles.length === 0 || selectedStyles.some(style => WINE_STYLES[style]?.includes(product.subcategory));
+    const isWineCategory = selectedCategories.length === 0 || selectedCategories.some(c => c.trim().toLowerCase() === 'wine');
+    const matchesStyle = !isWineCategory || selectedStyles.length === 0 || selectedStyles.some(style => {
+      const allowedSubcategories = WINE_STYLES[style] || [];
+      const prodSub = (product.subcategory || '').toLowerCase();
+      return allowedSubcategories.some(s => s.toLowerCase() === prodSub);
+    });
 
     let matchesSearch = true;
     if (searchTerm) {
@@ -233,12 +247,6 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
   });
 
   filteredProducts = [...filteredProducts].sort((a, b) => {
-    // ALWAYS prioritize South African products first
-    const saA = isSouthAfricanProduct(a);
-    const saB = isSouthAfricanProduct(b);
-    if (saA && !saB) return -1;
-    if (!saA && saB) return 1;
-
     if (sortBy === "price-low") return priceValue(a) - priceValue(b);
     if (sortBy === "price-high") return priceValue(b) - priceValue(a);
     if (sortBy === "name") return a.name.localeCompare(b.name);
@@ -533,7 +541,8 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
                   more exceptional spirits.
                 </p>
                 <button
-                  className="px-8 py-3 bg-white text-black text-[10px] font-bold tracking-[0.2em] uppercase"
+                  className="px-8 py-3 bg-[#D4AF37] hover:bg-[#FFD700] text-ink text-[11px] font-bold tracking-[0.1em] uppercase transition-colors duration-180 cursor-pointer"
+                  style={{ color: '#000000' }}
                   type="button"
                   onClick={resetFilters}
                 >

@@ -82,11 +82,12 @@ export default function TequilaShowcase({ onAdd, onWish, onCompare, compareItems
               </p>
             </div>
             <aside className="hidden lg:flex shrink-0 flex-col items-end gap-3 mt-1 md:mt-0">
-              <button
-                type="button"
-                onClick={() => document.getElementById('partners')?.scrollIntoView({ behavior: 'smooth' })}
-                className="cigar-conversation group relative h-[140px] w-[380px] flex items-start justify-end overflow-visible border-0 bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#e1bd70]"
-                aria-label="Explore our private cigar collection"
+              <a
+                href="https://cigarconnoisseurclub.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="cigar-conversation group relative h-[140px] w-[380px] flex items-start justify-end overflow-visible border-0 bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#e1bd70] no-underline cursor-pointer"
+                aria-label="Explore our private cigar collection on Cigar Connoisseur Club (opens in a new tab)"
               >
                 <span className="relative z-10 mt-2 flex w-[260px] flex-col rounded-[18px_18px_4px_18px] bg-[#171512] px-4 py-3.5 border border-white/10">
                   <span className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#c9a35b]">Private Collection</span>
@@ -105,7 +106,7 @@ export default function TequilaShowcase({ onAdd, onWish, onCompare, compareItems
                     className="absolute left-1/2 top-0 h-auto w-[220px] max-w-none -translate-x-1/2"
                   />
                 </span>
-              </button>
+              </a>
             </aside>
           </div>
 

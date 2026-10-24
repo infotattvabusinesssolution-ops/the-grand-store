@@ -131,7 +131,7 @@ exports.getAuctionOperationsSummary = async (req, res) => {
           winner: seedCustomer._id,
           highBidder: seedCustomer._id,
           reminderSent: false,
-          images: ['https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?w=800&auto=format&fit=crop&q=80']
+          images: ['https://res.cloudinary.com/oioqrgj0/image/upload/v1792820851/grandstore-auctions/chateau-lafite-rothschild-1982.jpg']
         });
       }
     } catch (seedErr) {

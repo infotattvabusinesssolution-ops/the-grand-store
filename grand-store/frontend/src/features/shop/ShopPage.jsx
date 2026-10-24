@@ -161,6 +161,16 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
       ? values.filter((item) => item.trim().toLowerCase() !== normalizedVal)
       : [...values, value];
     nextValues.forEach((item) => nextParams.append(key, item));
+
+    // When modifying categories, clear orphaned filters (subcategory, brand, style, country)
+    // so the newly selected category displays cleanly without conflicting filter rules
+    if (key === "category") {
+      nextParams.delete("subcategory");
+      nextParams.delete("style");
+      nextParams.delete("brand");
+      nextParams.delete("country");
+    }
+
     setSearchParams(nextParams);
   };
 
@@ -196,7 +206,8 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
       .toLowerCase();
 
   let filteredProducts = shopProducts.filter((product) => {
-    const matchesStyle = selectedStyles.length === 0 || selectedStyles.some(style => {
+    const isWineCategory = selectedCategories.length === 0 || selectedCategories.some(c => c.trim().toLowerCase() === 'wine');
+    const matchesStyle = !isWineCategory || selectedStyles.length === 0 || selectedStyles.some(style => {
       const allowedSubcategories = WINE_STYLES[style] || [];
       const prodSub = (product.subcategory || '').toLowerCase();
       return allowedSubcategories.some(s => s.toLowerCase() === prodSub);

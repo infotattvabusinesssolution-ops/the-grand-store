@@ -6,10 +6,7 @@ import { useProducts } from '../../../context/ProductContext'
 import { useCategories } from '../../../context/CategoryContext'
 import ProductCard from '../../../components/ProductCard'
 import ProductQuickView from '../../../components/ProductQuickView'
-import ProteaEmblem from './ProteaEmblem'
-import ArrivalsMandala from './ArrivalsMandala'
 import { tequilaBrands } from '../../../data'
-import { isSouthAfricanProduct } from '../../../utils/productTaxonomy'
 
 export default function TequilaShowcase({ onAdd, onWish, onCompare, compareItems }) {
   const { products } = useProducts()
@@ -32,10 +29,6 @@ export default function TequilaShowcase({ onAdd, onWish, onCompare, compareItems
       return category === 'tequila'
     })
     .sort((a, b) => {
-      const saA = isSouthAfricanProduct(a)
-      const saB = isSouthAfricanProduct(b)
-      if (saA && !saB) return -1
-      if (!saA && saB) return 1
       const orderA = productOrder[a.id || a._id] || 0
       const orderB = productOrder[b.id || b._id] || 0
       return orderA - orderB
@@ -78,45 +71,23 @@ export default function TequilaShowcase({ onAdd, onWish, onCompare, compareItems
 
   return (
     <>
-      <section className="arrivals-section showcase-section relative w-full bg-[#0a0c0e] text-white pt-4 pb-6 md:pt-6 md:pb-8 overflow-hidden select-none" id="tequila" ref={sectionRef}>
-        {/* Sacred African Sun / Chakra Background Engraving */}
-        <ArrivalsMandala gradientId="mandala-tequila" position="top-right" />
-
-        <div className="shell relative z-10 max-w-[1520px] mx-auto px-4 sm:px-6 md:px-10">
-          <div className="flex flex-col items-start gap-4 mb-5 md:mb-7 text-left md:flex-row md:items-start md:justify-between md:gap-8">
-            <div className="flex w-full flex-col items-start md:min-w-0 md:flex-1 max-w-xl">
-              <div className="inline-flex items-center gap-2 mb-2">
-                <span className="text-[11px] font-semibold tracking-[0.22em] uppercase text-[#caa458]">
-                  FROM THE HEART OF AGAVE COUNTRY
-                </span>
-                <ProteaEmblem className="w-3.5 h-3.5 text-[#caa458]" />
-              </div>
-
-              <h2 
-                className="text-4xl sm:text-5xl lg:text-[54px] font-normal tracking-[-0.02em] leading-tight m-0 text-white font-serif"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-              >
-                Top Tequila
-              </h2>
-
-              <p className="text-[14px] sm:text-[15px] leading-relaxed text-[#a0a4a8] mt-3.5 mb-5 max-w-md font-sans">
+      <section className="section tequila-showcase home-product-editorial" id="tequila" ref={sectionRef}>
+        <div className="shell relative">
+          <div className="section-heading flex flex-col items-start gap-3 text-left md:flex-row md:items-start md:justify-between md:gap-8">
+            <div className="flex w-full flex-col items-start md:min-w-0 md:flex-1">
+              <p className="eyebrow hidden md:block">From the heart of agave country</p>
+              <h2>Top Tequila</h2>
+              <p className="section-intro hidden md:block">
                 Reposado warmth, crystalline clarity and rare extra añejo—selected for the modern cabinet.
               </p>
-
-              <Link 
-                to="/shop?category=Tequila" 
-                className="inline-flex items-center gap-2 text-[11px] font-semibold tracking-[0.18em] uppercase text-[#caa458] hover:text-[#f7e1a0] transition-colors group mb-2"
-              >
-                <span>VIEW ALL TEQUILA</span>
-                <span className="text-[14px] group-hover:translate-x-1 transition-transform">→</span>
-              </Link>
             </div>
             <aside className="hidden lg:flex shrink-0 flex-col items-end gap-3 mt-1 md:mt-0">
-              <button
-                type="button"
-                onClick={() => document.getElementById('partners')?.scrollIntoView({ behavior: 'smooth' })}
-                className="cigar-conversation group relative h-[140px] w-[380px] flex items-start justify-end overflow-visible border-0 bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#e1bd70]"
-                aria-label="Explore our private cigar collection"
+              <a
+                href="https://cigarconnoisseurclub.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="cigar-conversation group relative h-[140px] w-[380px] flex items-start justify-end overflow-visible border-0 bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#e1bd70] no-underline cursor-pointer"
+                aria-label="Explore our private cigar collection on Cigar Connoisseur Club (opens in a new tab)"
               >
                 <span className="relative z-10 mt-2 flex w-[260px] flex-col rounded-[18px_18px_4px_18px] bg-[#171512] px-4 py-3.5 border border-white/10">
                   <span className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#c9a35b]">Private Collection</span>
@@ -135,7 +106,7 @@ export default function TequilaShowcase({ onAdd, onWish, onCompare, compareItems
                     className="absolute left-1/2 top-0 h-auto w-[220px] max-w-none -translate-x-1/2"
                   />
                 </span>
-              </button>
+              </a>
             </aside>
           </div>
 
@@ -153,9 +124,7 @@ export default function TequilaShowcase({ onAdd, onWish, onCompare, compareItems
               />
             ))}
           </div>
-          <p className="flex md:hidden items-center justify-center gap-2 text-[11px] text-white/50 tracking-wider uppercase mt-6">
-            <ArrowRight size={13} /> Swipe to explore collection
-          </p>
+          <p className="swipe-hint"><ArrowRight size={15} /> Swipe to explore</p>
         </div>
       </section>
 

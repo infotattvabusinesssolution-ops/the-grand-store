@@ -56,9 +56,7 @@ async function seedDummyAuctions() {
         provenanceHistory: "Bottle #12 remained in the private estate collection of an Edinburgh family from 1986 until 2024. Physical inspection and liquid analysis verified by Grand Store vaulted specialists.",
         description: "One of the most legendary and iconic single malt whiskies ever bottled in human history. Distilled in 1926 and matured in sherry-seasoned oak cask #263 for six decades. Features the iconic limited artwork label by Italian pop artist Valerio Adami. Accompanied by the original bespoke brass and oak lockable presentation case, numbered certificate of authenticity, and formal provenance dossier.",
         images: [
-          "https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&q=80&w=1200",
-          "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?auto=format&fit=crop&q=80&w=1200",
-          "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=1200"
+          "https://res.cloudinary.com/oioqrgj0/image/upload/v1792820849/grandstore-auctions/macallan-1926-valerio-adami.jpg"
         ],
         documentationImages: [
           "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=800"

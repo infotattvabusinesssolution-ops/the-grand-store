@@ -367,6 +367,25 @@ export default function Header({
     [cancelClose, dynamicMenuCategories, dynamicAccessoryCategories, location.search],
   );
 
+  useEffect(() => {
+    if (megaOpen && dynamicMenuCategories.length > 0) {
+      if (megaTrigger === "wine") {
+        const wineCat = dynamicMenuCategories.find((c) => c.name.toLowerCase() === "wine");
+        if (wineCat && megaActiveCategory?.name?.toLowerCase() !== "wine") {
+          setMegaActiveCategory(wineCat);
+        }
+      } else if (megaTrigger === "shop") {
+        if (!megaActiveCategory) {
+          const urlCat = new URLSearchParams(location.search).get("category");
+          const matched = urlCat
+            ? dynamicMenuCategories.find((c) => c.name.toLowerCase() === urlCat.toLowerCase())
+            : null;
+          setMegaActiveCategory(matched || dynamicMenuCategories[0]);
+        }
+      }
+    }
+  }, [megaOpen, megaTrigger, dynamicMenuCategories, location.search, megaActiveCategory]);
+
   return (
     <div
       className={`sticky top-0 left-0 right-0 bg-[#0a0a0a] ${mobileOpen ? "z-[10000] transform-none" : `z-[100] transition-transform duration-300 ease-in-out ${isVisible ? "translate-y-0" : "-translate-y-full"}`}`}
@@ -478,7 +497,7 @@ export default function Header({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -5 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute top-full left-0 w-full bg-[#1e1e1e] border border-white/20 shadow-2xl z-50 overflow-hidden"
+                    className="absolute top-full left-0 w-full bg-black/95 backdrop-blur-md border border-white/20 shadow-2xl z-50 overflow-hidden"
                   >
                     {searchResults.map((product) => (
                       <Link
@@ -491,7 +510,7 @@ export default function Header({
                         }}
                       >
                         <div className="flex items-center gap-4 min-w-0">
-                          <div className="w-8 h-10 flex items-center justify-center rounded border border-white/10 overflow-hidden shrink-0 bg-white/5">
+                          <div className="w-8 h-10 flex items-center justify-center rounded border border-white/10 overflow-hidden shrink-0 bg-transparent">
                             {product.image ? (
                               <img
                                 src={product.image}
@@ -771,7 +790,7 @@ export default function Header({
                             closeMenus();
                             navigate(`/shop?category=${encodeURIComponent(cat.name)}`);
                           }}
-                          className={`w-full break-inside-avoid mb-1.5 text-left text-[14px] px-4 py-2.5 rounded-sm transition-all duration-300 font-serif ${megaActiveCategory?.name === cat.name ? 'bg-[#c9a35b]/10 text-[#c9a35b]' : 'text-[#ccc] hover:text-white hover:bg-white/5'}`}
+                          className={`w-full break-inside-avoid mb-1.5 text-left text-[14px] px-4 py-2.5 rounded-sm transition-all duration-300 font-serif ${megaActiveCategory?.name?.toLowerCase() === cat.name.toLowerCase() ? 'bg-[#c9a35b]/15 text-[#c9a35b] font-semibold' : 'text-[#ccc] hover:text-white hover:bg-white/5'}`}
                         >
                           {cat.name}
                         </button>
@@ -824,14 +843,14 @@ export default function Header({
                                   </Link>
                                 </div>
 
-                                <div className="grid grid-cols-4 gap-8">
+                                <div className="grid grid-cols-3 gap-8">
                                   {/* Subcategories Column */}
                                   <div className="min-w-0">
                                     <h4 className="text-[#d4af37] text-xs font-bold tracking-[0.1em] mb-3 pb-2 border-b border-white/5 uppercase">
                                       Styles & Subcategories
                                     </h4>
                                     {subcategories.length > 0 ? (
-                                      <ul className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                                      <ul className="flex flex-col gap-2.5 max-h-[240px] overflow-y-auto pr-2 custom-scrollbar">
                                         {subcategories.map((item) => (
                                           <li key={item}>
                                             <Link
@@ -852,10 +871,16 @@ export default function Header({
                                   {/* Brands Column */}
                                   <div className="min-w-0">
                                     <h4 className="text-[#d4af37] text-xs font-bold tracking-[0.1em] mb-3 pb-2 border-b border-white/5 uppercase">
-                                      Distilleries & Houses
+                                      {megaActiveCategory.name?.toLowerCase() === "wine"
+                                        ? "Wineries & Estates"
+                                        : megaActiveCategory.name?.toLowerCase() === "beer"
+                                        ? "Breweries & Brands"
+                                        : ["whisky", "whiskey", "scotch", "cognac", "brandy", "tequila", "gin", "vodka", "rum", "spirits"].includes(megaActiveCategory.name?.toLowerCase())
+                                        ? "Distilleries & Houses"
+                                        : "Producers & Brands"}
                                     </h4>
                                     {brands.length > 0 ? (
-                                      <ul className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                                      <ul className="flex flex-col gap-2.5 max-h-[240px] overflow-y-auto pr-2 custom-scrollbar">
                                         {brands.map((item) => (
                                           <li key={item}>
                                             <Link
@@ -876,10 +901,10 @@ export default function Header({
                                   {/* Countries Column */}
                                   <div className="min-w-0">
                                     <h4 className="text-[#d4af37] text-xs font-bold tracking-[0.1em] mb-3 pb-2 border-b border-white/5 uppercase">
-                                      Origin Terroirs
+                                      {megaActiveCategory.name?.toLowerCase() === "wine" ? "Origin Terroirs" : "Origin & Regions"}
                                     </h4>
                                     {countries.length > 0 ? (
-                                      <ul className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                                      <ul className="flex flex-col gap-2.5 max-h-[240px] overflow-y-auto pr-2 custom-scrollbar">
                                         {countries.map((item) => (
                                           <li key={item}>
                                             <Link
@@ -894,43 +919,6 @@ export default function Header({
                                       </ul>
                                     ) : (
                                       <p className="text-xs text-white/30 italic">Global Allocations</p>
-                                    )}
-                                  </div>
-
-                                  {/* Featured Bottles Column */}
-                                  <div className="min-w-0">
-                                    <h4 className="text-[#d4af37] text-xs font-bold tracking-[0.1em] mb-3 pb-2 border-b border-white/5 uppercase">
-                                      Featured Bottles
-                                    </h4>
-                                    {featuredProducts.length > 0 ? (
-                                      <div className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
-                                        {featuredProducts.map((p) => (
-                                          <Link
-                                            key={p.slug || p._id || p.id}
-                                            to={`/product/${p.slug || p._id || p.id}`}
-                                            onClick={closeMenus}
-                                            className="group flex items-center gap-3 p-1.5 rounded-lg hover:bg-white/5 transition-colors"
-                                          >
-                                            {p.image && (
-                                              <img
-                                                src={resolveImageUrl(p.image)}
-                                                alt={p.name}
-                                                className="w-8 h-10 object-contain shrink-0"
-                                              />
-                                            )}
-                                            <div className="min-w-0">
-                                              <p className="text-xs text-[#ddd] group-hover:text-[#e1bd70] transition-colors truncate font-medium">
-                                                {p.name}
-                                              </p>
-                                              <p className="text-[10px] text-[#888] truncate">
-                                                {p.brand || megaActiveCategory.name}
-                                              </p>
-                                            </div>
-                                          </Link>
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <p className="text-xs text-white/30 italic">Curated Collection</p>
                                     )}
                                   </div>
                                 </div>
