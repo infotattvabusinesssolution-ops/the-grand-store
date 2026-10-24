@@ -95,6 +95,9 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
   const selectedCountries = searchParams
     .getAll("country")
     .filter(isVisibleFilterValue);
+  const isOnlyCigars =
+    selectedCategories.length === 1 &&
+    selectedCategories[0].trim().toLowerCase() === "cigars";
   const shopProducts = useMemo(() => {
     const seen = new Set();
     return products.filter((product) => {
@@ -241,14 +244,13 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
       (!selectedSubcategories.length || selectedSubcategories.some(sc => sc.trim().toLowerCase() === (product.subcategory || '').trim().toLowerCase())) &&
       (!selectedBrands.length || selectedBrands.some(b => b.trim().toLowerCase() === (product.brand || '').trim().toLowerCase())) &&
       (!selectedCountries.length || selectedCountries.some(c => c.trim().toLowerCase() === (product.country || '').trim().toLowerCase())) &&
-      priceValue(product) >= minP &&
-      priceValue(product) <= maxP
+      (isOnlyCigars || (priceValue(product) >= minP && priceValue(product) <= maxP))
     );
   });
 
   filteredProducts = [...filteredProducts].sort((a, b) => {
-    if (sortBy === "price-low") return priceValue(a) - priceValue(b);
-    if (sortBy === "price-high") return priceValue(b) - priceValue(a);
+    if (!isOnlyCigars && sortBy === "price-low") return priceValue(a) - priceValue(b);
+    if (!isOnlyCigars && sortBy === "price-high") return priceValue(b) - priceValue(a);
     if (sortBy === "name") return a.name.localeCompare(b.name);
     // Default featured sort uses the randomized order
     const orderA = productOrder[a.id || a._id] || 0;
@@ -259,8 +261,9 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
   const displayedProducts = filteredProducts.slice(0, visibleCount);
 
   const isPriceFiltered =
-    (minPrice !== "" && Number(minPrice) > 0) ||
-    (maxPriceInput !== "" && Number(maxPriceInput) < maxPrice);
+    !isOnlyCigars &&
+    ((minPrice !== "" && Number(minPrice) > 0) ||
+      (maxPriceInput !== "" && Number(maxPriceInput) < maxPrice));
   const activeFilterCount =
     selectedCategories.length +
     selectedSubcategories.length +
@@ -347,102 +350,104 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
                 />
               )}
 
-              <div className="pt-2">
-                <h3 className="text-white text-sm font-bold tracking-[0.15em] uppercase mb-4">
-                  Price range (ZAR)
-                </h3>
-                <div className="relative w-full h-1.5 mt-8 mb-8 bg-[#111] rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)] border border-white/5">
-                  <div
-                    className="absolute h-full bg-linear-to-r from-[#a07c33] to-[#d4af37] rounded-full shadow-[0_0_8px_rgba(212,175,55,0.5)]"
-                    style={{
-                      left: `${(minP / maxPrice) * 100}%`,
-                      right: `${100 - (maxP / maxPrice) * 100}%`,
-                    }}
-                  ></div>
-                  <input
-                    type="range"
-                    min="0"
-                    max={Math.ceil(maxPrice / 100) * 100}
-                    step="100"
-                    value={minP}
-                    onChange={(e) => {
-                      const val = Math.min(Number(e.target.value), maxP);
-                      setMinPrice(val.toString());
-                    }}
-                    className="absolute w-full top-1/2 -translate-y-1/2 h-6 appearance-none bg-transparent pointer-events-none custom-range-slider m-0 p-0"
-                  />
-                  <input
-                    type="range"
-                    min="0"
-                    max={Math.ceil(maxPrice / 100) * 100}
-                    step="100"
-                    value={maxP}
-                    onChange={(e) => {
-                      const val = Math.max(Number(e.target.value), minP);
-                      setMaxPriceInput(val.toString());
-                    }}
-                    className="absolute w-full top-1/2 -translate-y-1/2 h-6 appearance-none bg-transparent pointer-events-none custom-range-slider m-0 p-0"
-                  />
-                </div>
-                <style>{`
-                  .custom-range-slider::-webkit-slider-thumb {
-                    pointer-events: auto;
-                    appearance: none;
-                    width: 20px;
-                    height: 20px;
-                    border-radius: 50%;
-                    background: radial-gradient(circle at 35% 35%, #fff1c5, #d4af37 50%, #8a6a2a);
-                    border: 1px solid rgba(255,255,255,0.9);
-                    cursor: pointer;
-                    box-shadow: 0 4px 8px rgba(0,0,0,0.8), inset 0 -2px 4px rgba(0,0,0,0.5), 0 0 10px rgba(212,175,55,0.4);
-                  }
-                  .custom-range-slider::-moz-range-thumb {
-                    pointer-events: auto;
-                    width: 20px;
-                    height: 20px;
-                    border-radius: 50%;
-                    background: radial-gradient(circle at 35% 35%, #fff1c5, #d4af37 50%, #8a6a2a);
-                    border: 1px solid rgba(255,255,255,0.9);
-                    cursor: pointer;
-                    box-shadow: 0 4px 8px rgba(0,0,0,0.8), inset 0 -2px 4px rgba(0,0,0,0.5), 0 0 10px rgba(212,175,55,0.4);
-                  }
-                  .no-spin-buttons::-webkit-outer-spin-button,
-                  .no-spin-buttons::-webkit-inner-spin-button {
-                    -webkit-appearance: none;
-                    margin: 0;
-                  }
-                  .no-spin-buttons {
-                    -moz-appearance: textfield;
-                  }
-                `}</style>
-                <div className="flex gap-4 items-center mt-2">
-                  <div className="relative w-full">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm font-medium">
-                      R
-                    </span>
+              {!isOnlyCigars && (
+                <div className="pt-2">
+                  <h3 className="text-white text-sm font-bold tracking-[0.15em] uppercase mb-4">
+                    Price range (ZAR)
+                  </h3>
+                  <div className="relative w-full h-1.5 mt-8 mb-8 bg-[#111] rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)] border border-white/5">
+                    <div
+                      className="absolute h-full bg-linear-to-r from-[#a07c33] to-[#d4af37] rounded-full shadow-[0_0_8px_rgba(212,175,55,0.5)]"
+                      style={{
+                        left: `${(minP / maxPrice) * 100}%`,
+                        right: `${100 - (maxP / maxPrice) * 100}%`,
+                      }}
+                    ></div>
                     <input
-                      type="number"
-                      placeholder="Min"
-                      value={minPrice}
-                      onChange={(e) => setMinPrice(e.target.value)}
-                      className="w-full bg-[#111] border border-white/10 rounded-lg pl-8 pr-3 py-2.5 text-sm font-medium text-white placeholder-white/30 focus:outline-none focus:border-[#b58b38] focus:ring-1 focus:ring-[#b58b38] transition-all no-spin-buttons shadow-inner"
+                      type="range"
+                      min="0"
+                      max={Math.ceil(maxPrice / 100) * 100}
+                      step="100"
+                      value={minP}
+                      onChange={(e) => {
+                        const val = Math.min(Number(e.target.value), maxP);
+                        setMinPrice(val.toString());
+                      }}
+                      className="absolute w-full top-1/2 -translate-y-1/2 h-6 appearance-none bg-transparent pointer-events-none custom-range-slider m-0 p-0"
+                    />
+                    <input
+                      type="range"
+                      min="0"
+                      max={Math.ceil(maxPrice / 100) * 100}
+                      step="100"
+                      value={maxP}
+                      onChange={(e) => {
+                        const val = Math.max(Number(e.target.value), minP);
+                        setMaxPriceInput(val.toString());
+                      }}
+                      className="absolute w-full top-1/2 -translate-y-1/2 h-6 appearance-none bg-transparent pointer-events-none custom-range-slider m-0 p-0"
                     />
                   </div>
-                  <span className="text-white/30 font-light">-</span>
-                  <div className="relative w-full">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm font-medium">
-                      R
-                    </span>
-                    <input
-                      type="number"
-                      placeholder="Max"
-                      value={maxPriceInput}
-                      onChange={(e) => setMaxPriceInput(e.target.value)}
-                      className="w-full bg-[#111] border border-white/10 rounded-lg pl-8 pr-3 py-2.5 text-sm font-medium text-white placeholder-white/30 focus:outline-none focus:border-[#b58b38] focus:ring-1 focus:ring-[#b58b38] transition-all no-spin-buttons shadow-inner"
-                    />
+                  <style>{`
+                    .custom-range-slider::-webkit-slider-thumb {
+                      pointer-events: auto;
+                      appearance: none;
+                      width: 20px;
+                      height: 20px;
+                      border-radius: 50%;
+                      background: radial-gradient(circle at 35% 35%, #fff1c5, #d4af37 50%, #8a6a2a);
+                      border: 1px solid rgba(255,255,255,0.9);
+                      cursor: pointer;
+                      box-shadow: 0 4px 8px rgba(0,0,0,0.8), inset 0 -2px 4px rgba(0,0,0,0.5), 0 0 10px rgba(212,175,55,0.4);
+                    }
+                    .custom-range-slider::-moz-range-thumb {
+                      pointer-events: auto;
+                      width: 20px;
+                      height: 20px;
+                      border-radius: 50%;
+                      background: radial-gradient(circle at 35% 35%, #fff1c5, #d4af37 50%, #8a6a2a);
+                      border: 1px solid rgba(255,255,255,0.9);
+                      cursor: pointer;
+                      box-shadow: 0 4px 8px rgba(0,0,0,0.8), inset 0 -2px 4px rgba(0,0,0,0.5), 0 0 10px rgba(212,175,55,0.4);
+                    }
+                    .no-spin-buttons::-webkit-outer-spin-button,
+                    .no-spin-buttons::-webkit-inner-spin-button {
+                      -webkit-appearance: none;
+                      margin: 0;
+                    }
+                    .no-spin-buttons {
+                      -moz-appearance: textfield;
+                    }
+                  `}</style>
+                  <div className="flex gap-4 items-center mt-2">
+                    <div className="relative w-full">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm font-medium">
+                        R
+                      </span>
+                      <input
+                        type="number"
+                        placeholder="Min"
+                        value={minPrice}
+                        onChange={(e) => setMinPrice(e.target.value)}
+                        className="w-full bg-[#111] border border-white/10 rounded-lg pl-8 pr-3 py-2.5 text-sm font-medium text-white placeholder-white/30 focus:outline-none focus:border-[#b58b38] focus:ring-1 focus:ring-[#b58b38] transition-all no-spin-buttons shadow-inner"
+                      />
+                    </div>
+                    <span className="text-white/30 font-light">-</span>
+                    <div className="relative w-full">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm font-medium">
+                        R
+                      </span>
+                      <input
+                        type="number"
+                        placeholder="Max"
+                        value={maxPriceInput}
+                        onChange={(e) => setMaxPriceInput(e.target.value)}
+                        className="w-full bg-[#111] border border-white/10 rounded-lg pl-8 pr-3 py-2.5 text-sm font-medium text-white placeholder-white/30 focus:outline-none focus:border-[#b58b38] focus:ring-1 focus:ring-[#b58b38] transition-all no-spin-buttons shadow-inner"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </aside>
 
@@ -452,7 +457,7 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
               <div className="flex items-center gap-3 text-[#888]">
                 <Grid3X3 size={16} className="text-[#b58b38]" />
                 <strong className="text-white font-medium text-sm tracking-wide">
-                  {filteredProducts.length} bottles
+                  {filteredProducts.length} {isOnlyCigars ? (filteredProducts.length === 1 ? 'cigar' : 'cigars') : 'bottles'}
                 </strong>
                 <span className="hidden md:inline text-xs">
                   Curated and ready to discover
@@ -485,12 +490,16 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
                       <option value="featured" className="bg-[#111] text-white">
                         Featured
                       </option>
-                      <option value="price-low" className="bg-[#111] text-white">
-                        Price: Low to High
-                      </option>
-                      <option value="price-high" className="bg-[#111] text-white">
-                        Price: High to Low
-                      </option>
+                      {!isOnlyCigars && (
+                        <>
+                          <option value="price-low" className="bg-[#111] text-white">
+                            Price: Low to High
+                          </option>
+                          <option value="price-high" className="bg-[#111] text-white">
+                            Price: High to Low
+                          </option>
+                        </>
+                      )}
                       <option value="name" className="bg-[#111] text-white">
                         Name
                       </option>
@@ -534,7 +543,7 @@ export default function ShopPage({ onAdd, onWish, onCompare, compareItems }) {
             ) : (
               <div className="flex flex-col items-center justify-center py-32 text-center border border-white/5 bg-white/[0.02]">
                 <h2 className="font-serif text-3xl text-white mb-4 tracking-wide">
-                  No bottles match these filters.
+                  No {isOnlyCigars ? 'cigars' : 'bottles'} match these filters.
                 </h2>
                 <p className="text-[#888] mb-8 max-w-md">
                   Clear a filter to return to the wider collection and discover

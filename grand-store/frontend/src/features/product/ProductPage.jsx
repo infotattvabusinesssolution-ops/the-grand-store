@@ -17,6 +17,7 @@ import {
   Clock,
   Globe,
   Sparkles,
+  Mail,
 } from "lucide-react";
 import { useWishlist } from "../../wishlistContext";
 import { useGeoLocation } from "../../context/LocationContext";
@@ -27,6 +28,7 @@ import ProductQnA from "../../components/social/ProductQnA";
 import ExpertReviewCard from "../../components/social/ExpertReviewCard";
 import Price from "../../components/ui/Price";
 import { getProductIdentity } from "../../utils/productTaxonomy";
+import { isCigarProduct, getCigarQuotationMailto } from "../../utils/cigarUtils";
 import api from "../../api";
 import ConfirmCheckoutModal from "../../components/modals/ConfirmCheckoutModal";
 
@@ -278,9 +280,7 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   const isSpirits = /whisky|whiskey|cognac|brandy|vodka|gin|rum|tequila/i.test(
     `${product.category || ''} ${product.type || ''} ${product.name || ''}`
   );
-  const isCigar = /cigar/i.test(
-    `${product.category || ''} ${product.type || ''} ${product.name || ''}`
-  );
+  const isCigar = isCigarProduct(product);
 
   const packagingNote = isWineOrChampagne
     ? "Climate-stable thermal packaging with shock-proof bottle protection."
@@ -549,35 +549,62 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
 
           <div className="mb-7 overflow-hidden border-y border-[#c9a35b]/25 bg-gradient-to-r from-[#14120e] to-[#0d0c0a] sm:mb-8 lg:grid lg:grid-cols-[minmax(0,1fr)_230px]">
             <div className="min-w-0 px-5 py-5 sm:px-6 sm:py-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="m-0 flex items-center gap-2.5 text-xs font-bold uppercase tracking-[0.14em] text-[#aaa195]">
-                  <span className="h-4 w-0.5 bg-[#c9a35b]" aria-hidden="true" />
-                  Price
-                </p>
-                <span
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.09em] ${
-                    product.stock > 0 || product.stock === undefined
-                      ? "border-emerald-400/25 bg-emerald-400/[0.07] text-emerald-400"
-                      : "border-red-400/25 bg-red-400/[0.07] text-red-400"
-                  }`}
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
-                  {product.stock > 0 || product.stock === undefined ? "In stock" : "Out of stock"}
-                </span>
-              </div>
+              {isCigar ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="m-0 flex items-center gap-2.5 text-xs font-bold uppercase tracking-[0.14em] text-[#aaa195]">
+                      <span className="h-4 w-0.5 bg-[#c9a35b]" aria-hidden="true" />
+                      Pricing & Availability
+                    </p>
+                    <span className="inline-flex items-center gap-2 rounded-full border border-[#c9a35b]/40 bg-[#c9a35b]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.09em] text-[#e1bd70]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#e1bd70]" aria-hidden="true" />
+                      Official Quotation
+                    </span>
+                  </div>
 
-              <div className="mt-4 min-w-0 flex flex-wrap items-baseline gap-3">
-                <div className="text-[clamp(2rem,10vw,3rem)] font-semibold leading-none text-[#e1bd70]">
-                  <Price amount={product.price * quantity} presentation="product" />
-                </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-2.5 py-1 text-xs font-mono text-[var(--color-gold)] font-medium">
-                  Incl. 15% VAT
-                </span>
-              </div>
+                  <div className="mt-4 min-w-0">
+                    <div className="font-serif text-[clamp(1.5rem,5vw,2.2rem)] font-semibold leading-tight text-[#e1bd70]">
+                      Price Available on Quotation
+                    </div>
+                  </div>
 
-              <p className="mt-4 border-t border-white/[0.08] pt-3 text-xs leading-relaxed text-[#837b70]">
-                15% South African VAT Included <span className="mx-2 text-[#c9a35b]/60">•</span> Delivery calculated at checkout
-              </p>
+                  <p className="mt-4 border-t border-white/[0.08] pt-3 text-xs leading-relaxed text-[#837b70]">
+                    Direct humidor allocation <span className="mx-2 text-[#c9a35b]/60">•</span> Request official pricing and packaging options below
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="m-0 flex items-center gap-2.5 text-xs font-bold uppercase tracking-[0.14em] text-[#aaa195]">
+                      <span className="h-4 w-0.5 bg-[#c9a35b]" aria-hidden="true" />
+                      Price
+                    </p>
+                    <span
+                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.09em] ${
+                        product.stock > 0 || product.stock === undefined
+                          ? "border-emerald-400/25 bg-emerald-400/[0.07] text-emerald-400"
+                          : "border-red-400/25 bg-red-400/[0.07] text-red-400"
+                      }`}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
+                      {product.stock > 0 || product.stock === undefined ? "In stock" : "Out of stock"}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 min-w-0 flex flex-wrap items-baseline gap-3">
+                    <div className="text-[clamp(2rem,10vw,3rem)] font-semibold leading-none text-[#e1bd70]">
+                      <Price amount={product.price * quantity} presentation="product" />
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-2.5 py-1 text-xs font-mono text-[var(--color-gold)] font-medium">
+                      Incl. 15% VAT
+                    </span>
+                  </div>
+
+                  <p className="mt-4 border-t border-white/[0.08] pt-3 text-xs leading-relaxed text-[#837b70]">
+                    15% South African VAT Included <span className="mx-2 text-[#c9a35b]/60">•</span> Delivery calculated at checkout
+                  </p>
+                </>
+              )}
             </div>
 
             <button
@@ -615,7 +642,7 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#918a7f]">
                   At a glance
                 </p>
-                <h2 className="mt-2 font-serif text-xl text-[#eee8dd]">Bottle identity</h2>
+                <h2 className="mt-2 font-serif text-xl text-[#eee8dd]">{isCigar ? "Cigar identity" : "Bottle identity"}</h2>
               </div>
               <span className="rounded-full border border-[#c9a35b]/35 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.1em] text-[#e1bd70]">
                 {product.brand || "The Grand Store"}
@@ -656,61 +683,85 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
           )}
 
           {/* Action Row */}
-          <div className="mb-6 grid grid-cols-[minmax(0,1fr)_52px] items-stretch gap-3 sm:flex sm:flex-wrap sm:gap-4">
-            {/* Quantity Selector */}
-            <div className={`order-1 flex h-[52px] w-full items-center border border-white/20 sm:w-auto ${product.stock === 0 ? 'opacity-50 pointer-events-none' : ''}`}>
+          {isCigar ? (
+            <div className="mb-6 flex flex-col sm:flex-row items-stretch gap-3">
               <button
+                className="flex-1 min-h-[54px] px-8 flex items-center justify-center gap-3 border border-[#c9a35b] bg-[#c9a35b] text-[#0b0a08] text-xs font-bold uppercase tracking-[0.14em] transition-all duration-200 hover:bg-[#dfbd72] hover:shadow-[0_0_20px_rgba(201,163,91,0.4)] cursor-pointer"
                 type="button"
-                className="w-12 h-full flex items-center justify-center text-[#918a7f] hover:text-gold-gradient transition-colors"
-                onClick={() => setQuantity((value) => Math.max(1, value - 1))}
-                disabled={product.stock === 0}
+                onClick={() => {
+                  window.location.href = getCigarQuotationMailto(product);
+                }}
               >
-                <Minus size={14} />
+                <Mail size={18} />
+                <span>Send a Quotation</span>
               </button>
-              <span className="min-w-8 flex-1 text-center text-sm font-semibold sm:w-8 sm:flex-none">
-                {quantity}
-              </span>
+
               <button
+                className={`flex h-[54px] w-[54px] shrink-0 items-center justify-center border transition-colors ${wishlisted ? "border-[#c9a35b] text-gold-gradient" : "border-white/20 text-[#918a7f] hover:border-white/50 hover:text-white"}`}
                 type="button"
-                className="w-12 h-full flex items-center justify-center text-[#918a7f] hover:text-gold-gradient transition-colors"
-                onClick={() => setQuantity((value) => value + 1)}
-                disabled={product.stock === 0 || quantity >= product.stock}
+                onClick={() => onWish && onWish(product)}
+                title="Add to wishlist"
               >
-                <Plus size={14} />
+                <Heart size={18} fill={wishlisted ? "currentColor" : "none"} />
               </button>
             </div>
+          ) : (
+            <div className="mb-6 grid grid-cols-[minmax(0,1fr)_52px] items-stretch gap-3 sm:flex sm:flex-wrap sm:gap-4">
+              {/* Quantity Selector */}
+              <div className={`order-1 flex h-[52px] w-full items-center border border-white/20 sm:w-auto ${product.stock === 0 ? 'opacity-50 pointer-events-none' : ''}`}>
+                <button
+                  type="button"
+                  className="w-12 h-full flex items-center justify-center text-[#918a7f] hover:text-gold-gradient transition-colors"
+                  onClick={() => setQuantity((value) => Math.max(1, value - 1))}
+                  disabled={product.stock === 0}
+                >
+                  <Minus size={14} />
+                </button>
+                <span className="min-w-8 flex-1 text-center text-sm font-semibold sm:w-8 sm:flex-none">
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  className="w-12 h-full flex items-center justify-center text-[#918a7f] hover:text-gold-gradient transition-colors"
+                  onClick={() => setQuantity((value) => value + 1)}
+                  disabled={product.stock === 0 || quantity >= product.stock}
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
 
-            <button
-              className={`order-3 col-span-2 h-[52px] w-full min-w-0 border border-[#eee8dd] bg-transparent text-xs font-bold uppercase tracking-[0.12em] text-[#eee8dd] sm:order-2 sm:flex-1 sm:min-w-[140px] ${product.stock === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-white/5 transition-colors'}`}
-              type="button"
-              onClick={() => product.stock !== 0 && onAdd && onAdd(product, quantity, selectedOption)}
-              disabled={product.stock === 0}
-            >
-              {product.stock === 0 ? 'Out of Stock' : 'Add To Cart'}
-            </button>
+              <button
+                className={`order-3 col-span-2 h-[52px] w-full min-w-0 border border-[#eee8dd] bg-transparent text-xs font-bold uppercase tracking-[0.12em] text-[#eee8dd] sm:order-2 sm:flex-1 sm:min-w-[140px] ${product.stock === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-white/5 transition-colors'}`}
+                type="button"
+                onClick={() => product.stock !== 0 && onAdd && onAdd(product, quantity, selectedOption)}
+                disabled={product.stock === 0}
+              >
+                {product.stock === 0 ? 'Out of Stock' : 'Add To Cart'}
+              </button>
 
-            <button
-              className={`order-4 col-span-2 h-[52px] w-full min-w-0 border border-[#222] bg-[#222] text-xs font-bold uppercase tracking-[0.12em] text-[#eee8dd] sm:order-3 sm:flex-1 sm:min-w-[140px] ${product.stock === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-[#333] transition-colors'}`}
-              type="button"
-              onClick={() => {
-                if (product.stock !== 0 && onAdd) {
-                  onAdd(product, quantity, selectedOption, false);
-                  navigate("/customer/checkout");
-                }
-              }}
-              disabled={product.stock === 0}
-            >
-              Buy Now
-            </button>
+              <button
+                className={`order-4 col-span-2 h-[52px] w-full min-w-0 border border-[#222] bg-[#222] text-xs font-bold uppercase tracking-[0.12em] text-[#eee8dd] sm:order-3 sm:flex-1 sm:min-w-[140px] ${product.stock === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-[#333] transition-colors'}`}
+                type="button"
+                onClick={() => {
+                  if (product.stock !== 0 && onAdd) {
+                    onAdd(product, quantity, selectedOption, false);
+                    navigate("/customer/checkout");
+                  }
+                }}
+                disabled={product.stock === 0}
+              >
+                Buy Now
+              </button>
 
-            <button
-              className={`order-2 flex h-[52px] w-[52px] items-center justify-center border transition-colors sm:order-4 ${wishlisted ? "border-[#c9a35b] text-gold-gradient" : "border-white/20 text-[#918a7f] hover:border-white/50 hover:text-white"}`}
-              type="button"
-              onClick={() => onWish && onWish(product)}
-            >
-              <Heart size={18} fill={wishlisted ? "currentColor" : "none"} />
-            </button>
-          </div>
+              <button
+                className={`order-2 flex h-[52px] w-[52px] items-center justify-center border transition-colors sm:order-4 ${wishlisted ? "border-[#c9a35b] text-gold-gradient" : "border-white/20 text-[#918a7f] hover:border-white/50 hover:text-white"}`}
+                type="button"
+                onClick={() => onWish && onWish(product)}
+              >
+                <Heart size={18} fill={wishlisted ? "currentColor" : "none"} />
+              </button>
+            </div>
+          )}
 
           {/* South Africa Legal Drinking Warning Banner */}
           <div className="w-full bg-[#0a0a0a] border border-white/10 p-3 sm:p-4 flex flex-col xl:flex-row items-center justify-center gap-4 xl:gap-6 mb-8 rounded">

@@ -11,10 +11,12 @@ import {
   Store,
   CreditCard,
   Wine,
+  Mail,
 } from "lucide-react";
 import IconButton from "./IconButton";
 import { useWishlist } from "../wishlistContext";
 import Price from "./ui/Price";
+import { isCigarProduct, getCigarQuotationMailto } from "../utils/cigarUtils";
 
 const fallbackBadges = [
   "Just in",
@@ -236,6 +238,7 @@ export default function ProductCard({
   const productName = product.name || product.fullName || "Cellar selection";
   const category = product.category || product.type || "Wine & spirits";
   const badge = product.badge || fallbackBadges[index % fallbackBadges.length];
+  const isCigar = isCigarProduct(product);
 
   return (
     <>
@@ -330,89 +333,139 @@ export default function ProductCard({
           )}
 
           <div className="product-buy-section" style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: 'auto' }}>
-            <strong style={{ fontSize: '1.25rem', color: '#fff', letterSpacing: '0.05em' }}>
-              <Price amount={product.price} />
-            </strong>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', width: '100%' }}>
-              {onAdd && (
+            {isCigar ? (
+              <div style={{ width: '100%', marginTop: 'auto' }}>
                 <button
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    onAdd(product);
+                    window.location.href = getCigarQuotationMailto(product);
                   }}
-                  aria-label={`Add ${productName} to bag`}
+                  aria-label={`Send quotation request for ${productName}`}
                   style={{ 
-                    flex: '1 1 80px', 
+                    width: '100%', 
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center', 
-                    gap: '6px', 
-                    padding: '10px 4px', 
-                    backgroundColor: 'rgba(255,255,255,0.05)', 
-                    color: '#fff', 
-                    border: '1px solid rgba(255,255,255,0.1)', 
+                    gap: '8px', 
+                    padding: '12px 10px', 
+                    backgroundColor: 'rgba(212, 175, 55, 0.12)', 
+                    color: '#e1bd70', 
+                    border: '1px solid rgba(212, 175, 55, 0.5)', 
                     borderRadius: '2px', 
-                    fontSize: '10px', 
+                    fontSize: '11px', 
+                    fontWeight: '700',
                     textTransform: 'uppercase', 
-                    letterSpacing: '0.1em', 
+                    letterSpacing: '0.12em', 
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease',
+                    transition: 'all 0.25s ease',
                     boxSizing: 'border-box'
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
+                    e.currentTarget.style.backgroundColor = '#e1bd70';
+                    e.currentTarget.style.color = '#0b0a08';
+                    e.currentTarget.style.borderColor = '#e1bd70';
+                    e.currentTarget.style.boxShadow = '0 0 16px rgba(225, 189, 112, 0.35)';
                   }}
                   onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                    e.currentTarget.style.backgroundColor = 'rgba(212, 175, 55, 0.12)';
+                    e.currentTarget.style.color = '#e1bd70';
+                    e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.5)';
+                    e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
-                  <ShoppingBag size={14} style={{ display: 'block' }} /> 
-                  <span style={{ lineHeight: 1, paddingTop: '1px' }}>Add</span>
+                  <Mail size={15} style={{ display: 'block' }} /> 
+                  <span style={{ lineHeight: 1, paddingTop: '1px' }}>Send a Quotation</span>
                 </button>
-              )}
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsCheckoutModalOpen(true);
-                }}
-                style={{ 
-                  flex: '1 1 80px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: '6px', 
-                  padding: '10px 4px', 
-                  backgroundColor: 'var(--gold-bright)', 
-                  color: '#000', 
-                  border: '1px solid var(--gold-bright)', 
-                  borderRadius: '2px', 
-                  fontSize: '10px', 
-                  textTransform: 'uppercase', 
-                  letterSpacing: '0.1em', 
-                  cursor: 'pointer', 
-                  textDecoration: 'none', 
-                  fontWeight: 'bold',
-                  transition: 'all 0.2s ease',
-                  boxSizing: 'border-box'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--gold)';
-                  e.currentTarget.style.borderColor = 'var(--gold)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--gold-bright)';
-                  e.currentTarget.style.borderColor = 'var(--gold-bright)';
-                }}
-              >
-                <CreditCard size={14} style={{ display: 'block' }} /> 
-                <span style={{ lineHeight: 1, paddingTop: '1px' }}>Checkout</span>
-              </button>
-            </div>
+              </div>
+            ) : (
+              <>
+                <strong style={{ fontSize: '1.25rem', color: '#fff', letterSpacing: '0.05em' }}>
+                  <Price amount={product.price} />
+                </strong>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', width: '100%' }}>
+                  {onAdd && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onAdd(product);
+                      }}
+                      aria-label={`Add ${productName} to bag`}
+                      style={{ 
+                        flex: '1 1 80px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        gap: '6px', 
+                        padding: '10px 4px', 
+                        backgroundColor: 'rgba(255,255,255,0.05)', 
+                        color: '#fff', 
+                        border: '1px solid rgba(255,255,255,0.1)', 
+                        borderRadius: '2px', 
+                        fontSize: '10px', 
+                        textTransform: 'uppercase', 
+                        letterSpacing: '0.1em', 
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        boxSizing: 'border-box'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                      }}
+                    >
+                      <ShoppingBag size={14} style={{ display: 'block' }} /> 
+                      <span style={{ lineHeight: 1, paddingTop: '1px' }}>Add</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsCheckoutModalOpen(true);
+                    }}
+                    style={{ 
+                      flex: '1 1 80px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      gap: '6px', 
+                      padding: '10px 4px', 
+                      backgroundColor: 'var(--gold-bright)', 
+                      color: '#000', 
+                      border: '1px solid var(--gold-bright)', 
+                      borderRadius: '2px', 
+                      fontSize: '10px', 
+                      textTransform: 'uppercase', 
+                      letterSpacing: '0.1em', 
+                      cursor: 'pointer', 
+                      textDecoration: 'none', 
+                      fontWeight: 'bold',
+                      transition: 'all 0.2s ease',
+                      boxSizing: 'border-box'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--gold)';
+                      e.currentTarget.style.borderColor = 'var(--gold)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--gold-bright)';
+                      e.currentTarget.style.borderColor = 'var(--gold-bright)';
+                    }}
+                  >
+                    <CreditCard size={14} style={{ display: 'block' }} /> 
+                    <span style={{ lineHeight: 1, paddingTop: '1px' }}>Checkout</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
         <ConfirmCheckoutModal 

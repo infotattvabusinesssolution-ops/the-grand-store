@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, ShoppingBag, Wine, X } from 'lucide-react'
+import { ArrowRight, Mail, ShoppingBag, Wine, X } from 'lucide-react'
 import Price from './ui/Price'
 import { getProductIdentity } from '../utils/productTaxonomy'
+import { isCigarProduct, getCigarQuotationMailto } from '../utils/cigarUtils'
 
 export default function ProductQuickView({ product, onClose, onAdd }) {
   const [imageError, setImageError] = useState(false)
@@ -24,6 +25,7 @@ export default function ProductQuickView({ product, onClose, onAdd }) {
 
   if (!product) return null
   const identity = getProductIdentity(product)
+  const isCigar = isCigarProduct(product)
 
   return (
     <div 
@@ -69,9 +71,15 @@ export default function ProductQuickView({ product, onClose, onAdd }) {
           <h2 id="quick-view-title" className="m-[0_0_20px] font-serif text-[36px] md:text-[clamp(38px,4vw,58px)] font-medium tracking-[-0.035em] leading-[0.98] text-[#eee8dd]">
             {product.fullName || product.name}
           </h2>
-          <strong className="text-[#e1bd70] font-serif text-[32px] font-medium">
-            <Price amount={product.price} />
-          </strong>
+          {isCigar ? (
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#e1bd70]/40 bg-[#e1bd70]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#e1bd70]">
+              <Mail size={14} /> Price Available on Quotation
+            </div>
+          ) : (
+            <strong className="text-[#e1bd70] font-serif text-[32px] font-medium">
+              <Price amount={product.price} />
+            </strong>
+          )}
           <p className="m-[22px_0] text-[#a9a195] font-serif text-[17px] leading-[1.6]">
             {product.description}
           </p>
@@ -90,13 +98,22 @@ export default function ProductQuickView({ product, onClose, onAdd }) {
             </div>
           </dl>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            <button 
-              className="inline-flex items-center justify-center min-h-[49px] px-6 gap-[14px] border border-transparent text-[#0b0a08] bg-[#e1bd70] text-[13px] font-semibold tracking-[0.12em] uppercase transition-all duration-180 hover:bg-[#f2dbac] hover:-translate-y-0.5 cursor-pointer w-full" 
-              type="button" 
-              onClick={() => onAdd(product)}
-            >
-              Add to bag <ShoppingBag size={17} />
-            </button>
+            {isCigar ? (
+              <a
+                href={getCigarQuotationMailto(product)}
+                className="inline-flex items-center justify-center min-h-[49px] px-6 gap-[12px] border border-[#e1bd70] text-[#0b0a08] bg-[#e1bd70] text-[13px] font-bold tracking-[0.12em] uppercase transition-all duration-180 hover:bg-[#f2dbac] hover:-translate-y-0.5 cursor-pointer w-full shadow-[0_4px_16px_rgba(225,189,112,0.25)] no-underline"
+              >
+                Send a Quotation <Mail size={16} />
+              </a>
+            ) : (
+              <button 
+                className="inline-flex items-center justify-center min-h-[49px] px-6 gap-[14px] border border-transparent text-[#0b0a08] bg-[#e1bd70] text-[13px] font-semibold tracking-[0.12em] uppercase transition-all duration-180 hover:bg-[#f2dbac] hover:-translate-y-0.5 cursor-pointer w-full" 
+                type="button" 
+                onClick={() => onAdd(product)}
+              >
+                Add to bag <ShoppingBag size={17} />
+              </button>
+            )}
             <Link 
               className="inline-flex items-center justify-center min-h-[49px] px-6 gap-[14px] border border-white/20 text-[#eee8dd] bg-transparent text-xs font-semibold tracking-[0.12em] uppercase transition-all duration-180 hover:bg-white hover:text-black hover:border-white hover:-translate-y-0.5 w-full" 
               to={`/product/${product.slug || product.id || product._id}`} 

@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
-import { ArrowRight, GitCompareArrows, Heart, ShoppingBag, Trash2 } from 'lucide-react'
+import { ArrowRight, GitCompareArrows, Heart, Mail, ShoppingBag, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useWishlist } from './wishlistContext'
+import { isCigarProduct, getCigarQuotationMailto } from './utils/cigarUtils'
 
 function WishlistPage({ onAdd, onCompare, compareItems }) {
   const { wishlistItems, wishlistCount, removeFromWishlist, clearWishlist } = useWishlist()
@@ -47,6 +48,7 @@ function WishlistPage({ onAdd, onCompare, compareItems }) {
               {wishlistItems.map((product) => {
                 const compared = compareItems.some((item) => item.id === product.id)
                 const productPath = `/product/${product.slug || product.id || product._id}`
+                const isCigar = isCigarProduct(product)
                 return (
                   <article className="wishlist-card" key={product.id || product._id}>
                     <div className="wishlist-card-visual">
@@ -56,9 +58,25 @@ function WishlistPage({ onAdd, onCompare, compareItems }) {
                     <div className="wishlist-card-body">
                       <p>{[product.brand, product.origin].filter(Boolean).join(' · ') || product.category}</p>
                       <h2><Link to={productPath}>{product.fullName || product.name}</Link></h2>
-                      <strong>{product.price}</strong>
+                      {isCigar ? (
+                        <div className="inline-flex items-center gap-1.5 text-xs text-[#d4af37] font-semibold uppercase tracking-wider py-1">
+                          <Mail size={13} /> Price on Quotation
+                        </div>
+                      ) : (
+                        <strong>{product.price}</strong>
+                      )}
                       <div className="wishlist-actions">
-                        <button type="button" onClick={() => onAdd(product)} className="wishlist-add">Add to bag <ShoppingBag size={15} /></button>
+                        {isCigar ? (
+                          <a
+                            href={getCigarQuotationMailto(product)}
+                            className="wishlist-add flex items-center justify-center gap-2 no-underline"
+                            style={{ background: '#d4af37', color: '#000', fontWeight: 'bold' }}
+                          >
+                            Send Quotation <Mail size={14} />
+                          </a>
+                        ) : (
+                          <button type="button" onClick={() => onAdd(product)} className="wishlist-add">Add to bag <ShoppingBag size={15} /></button>
+                        )}
                         <button className={`wishlist-compare ${compared ? 'is-active' : ''}`} type="button" onClick={() => onCompare(product)} aria-label={compared ? `View ${product.name} in comparison` : `Compare ${product.name}`}><GitCompareArrows size={16} /></button>
                       </div>
                     </div>
