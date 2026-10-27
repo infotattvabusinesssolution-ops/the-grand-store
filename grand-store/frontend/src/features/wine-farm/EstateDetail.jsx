@@ -549,25 +549,25 @@ export default function EstateDetail() {
                       Hemel-en-Aarde Ridge
                     </span>
                   </div>
-                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100">
+                  <div className="relative aspect-[4/3] overflow-hidden group bg-[#0a0a0c] flex items-center justify-center p-1.5 shadow-sm">
                     <img 
-                      src={resolveImageUrl(story.images?.[2]) || '/assets/products/tesselaarsdal/tesselaarsdal-pinot-noir-2024-black.jpg'} 
-                      alt="10th Vintage Pinot Noir" 
+                      src={'/assets/products/tesselaarsdal/tesselaarsdal-pinot-noir-2024-story.jpg'} 
+                      alt="Tesselaarsdal Pinot Noir 2024" 
                       onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/products/tesselaarsdal/tesselaarsdal-pinot-noir-2024-black.jpg'; }}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
                     />
-                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2 py-0.5 backdrop-blur-sm">
+                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/70 px-2 py-0.5 backdrop-blur-sm z-10">
                       Pinot Noir 2024
                     </span>
                   </div>
-                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100">
+                  <div className="relative aspect-[4/3] overflow-hidden group bg-[#0a0a0c] flex items-center justify-center p-1.5 shadow-sm">
                     <img 
-                      src={resolveImageUrl(story.images?.[3]) || '/assets/products/tesselaarsdal/tesselaarsdal-chardonnay-2024-black.jpg'} 
-                      alt="Clay Amphorae Chardonnay" 
+                      src={'/assets/products/tesselaarsdal/tesselaarsdal-chardonnay-2024-story.jpg'} 
+                      alt="Tesselaarsdal Chardonnay 2024" 
                       onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/products/tesselaarsdal/tesselaarsdal-chardonnay-2024-black.jpg'; }}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
                     />
-                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2 py-0.5 backdrop-blur-sm">
+                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/70 px-2 py-0.5 backdrop-blur-sm z-10">
                       Chardonnay 2024
                     </span>
                   </div>
