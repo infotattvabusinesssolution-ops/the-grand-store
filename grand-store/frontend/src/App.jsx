@@ -1019,6 +1019,10 @@ function App() {
           element={<EstateDetail onNotify={showToast} onAdd={addToCart} />}
         />
         <Route
+          path="/estates/:slug"
+          element={<EstateDetail onNotify={showToast} onAdd={addToCart} />}
+        />
+        <Route
           path="/bookatasting"
           element={<TastingPage onNotify={showToast} />}
         />

@@ -81,9 +81,11 @@ const FALLBACK_FARMS = [
   },
   {
     name: 'Tesselaarsdal Wines',
-    vendor: 'Ms. BERENE SAULS',
-    image: '/assets/farm-tesselaarsdal.png',
-    copy: 'Tesselaarsdal was founded in 2015 by long-standing Hamilton Russell Vineyards employee, Berene Sauls. Clasically styled small-production Pinot noir and Chardonnay expressing the cool, maritime Hemel-en-Aarde Ridge.',
+    vendor: 'Berene Sauls',
+    slug: 'tesselaarsdal-wines',
+    region: 'Hemel-en-Aarde Ridge, Overberg, South Africa',
+    image: '/assets/estate/tesselaarsdal/vineyard_hero.jpg',
+    copy: 'Founded in 2015 by long-standing Hamilton Russell Vineyards employee Berene Sauls. Classically styled small-production Pinot Noir and Chardonnay crafted in clay amphorae and neutral oak, expressing the cool, maritime Hemel-en-Aarde Ridge.',
   },
   {
     name: 'Original Wines',

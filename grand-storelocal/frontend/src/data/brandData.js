@@ -284,5 +284,28 @@ export const brandData = {
     signatureStyles: ['Barolo Riserva D.O.C.G.', 'Barolo Gabutti D.O.C.G.', 'Barbaresco D.O.C.G.', 'Langhe Nebbiolo D.O.C.', 'Grappa Barolo Riserva Francesco 12 Anni'],
     seoTitle: 'Buy Cantina del Conte Barolo, Barbaresco & Piedmont Wines Online — The Grand Store',
     metaDescription: 'Shop Cantina del Conte (Azienda Pelissero) Barolo Riserva, Barolo Gabutti Cru, Barbaresco, and artisanal Grappe directly from Grinzane Cavour, Piedmont, at The Grand Store.'
+  },
+  'tesselaarsdal-wines': {
+    slug: 'tesselaarsdal-wines',
+    brandName: 'Tesselaarsdal Wines',
+    category: 'South African Fine Estate Wine',
+    country: 'South Africa',
+    region: 'Hemel-en-Aarde Ridge, Overberg',
+    foundedYear: 2015,
+    heroImage: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793099700/grandstore-uploads/estate/tesselaarsdal/vineyard_hero.jpg',
+    tagline: 'Historic Cool-Climate Pinot Noir & Chardonnay by Berene Sauls',
+    heritageStory: [
+      'Founded in 2015 by long-standing Hamilton Russell Vineyards employee Berene Sauls, Tesselaarsdal honors the historic Overberg hamlet where freed slaves were bequeathed land in 1810. Berene, whose maternal ancestors lived in the valley for generations, acquired high-altitude land on the Hemel-en-Aarde Ridge.',
+      'Crafted in limited, numbered allocations using traditional clay amphorae and neutral French oak puncheons, Tesselaarsdal wines are globally celebrated for their natural tension, maritime salinity, and profound cool-climate elegance.'
+    ],
+    tastingProfile: {
+      nose: 'Sour red cherry, wild bramble berries, crushed river stones, clove spice, and delicate lime blossom.',
+      palate: 'Vibrant cool-climate acidity, pure crunchy red fruit, saline sea-spray minerality, and fine silky tannins.',
+      finish: 'Long, poised, and crystalline with persistent maritime salinity and refined structural tension.'
+    },
+    signatureStyles: ['Pinot Noir 2024 (10th Anniversary Vintage)', 'Chardonnay 2024', 'Amphorae Maturation'],
+    seoTitle: 'Buy Tesselaarsdal Wines Online — Hemel-en-Aarde Ridge Pinot Noir & Chardonnay',
+    metaDescription: 'Shop authentic Tesselaarsdal Wines Pinot Noir & Chardonnay crafted by Berene Sauls from the Hemel-en-Aarde Ridge. Cellar-direct provenance at The Grand Store.'
   }
 };
+
