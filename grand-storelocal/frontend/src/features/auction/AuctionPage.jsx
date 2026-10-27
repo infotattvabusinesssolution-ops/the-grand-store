@@ -16,7 +16,6 @@ export default function AuctionPage({ onNotify }) {
   
   const [now, setNow] = useState(() => Date.now());
   const [filters, setFilters] = useState({ search: '', category: 'all', price: 'all', ending: 'all' });
-  const [appliedFilters, setAppliedFilters] = useState(filters);
 
   const fetchLots = async () => {
     try {
@@ -48,13 +47,26 @@ export default function AuctionPage({ onNotify }) {
 
   const displayLots = lots.map((lot) => ({ ...lot, displayStatus: getAuctionPhase(lot, now) }));
 
+  // Dynamically extract available categories from active lots
+  const availableCategories = ['all', ...Array.from(new Set(lots.map(l => l.category).filter(Boolean)))];
+
   const visibleLots = displayLots.filter((lot) => {
-    const matchesSearch = `${lot.title} ${lot.lotNumber}`.toLowerCase().includes(appliedFilters.search.trim().toLowerCase());
-    const matchesCategory = appliedFilters.category === 'all' || lot.category === appliedFilters.category;
-    const matchesPrice = appliedFilters.price === 'all'
-      || (appliedFilters.price === 'under-10000' ? lot.currentBid < 10000 : lot.currentBid >= 10000);
+    const searchTarget = `${lot.title || ''} ${lot.lotNumber || ''} ${lot.distillery || ''} ${lot.category || ''} ${lot.expression || ''}`.toLowerCase();
+    const matchesSearch = !filters.search.trim() || searchTarget.includes(filters.search.trim().toLowerCase());
+    const matchesCategory = filters.category === 'all' || (lot.category && lot.category.toLowerCase() === filters.category.toLowerCase());
+    
+    const lotPrice = Number(lot.currentBid && lot.currentBid > 0 ? lot.currentBid : (lot.startingBid || lot.estimatedValueMin || 0));
+    let matchesPrice = true;
+    if (filters.price === 'under-20000') {
+      matchesPrice = lotPrice < 20000;
+    } else if (filters.price === '20000-50000') {
+      matchesPrice = lotPrice >= 20000 && lotPrice <= 50000;
+    } else if (filters.price === 'over-50000') {
+      matchesPrice = lotPrice > 50000;
+    }
+
     const remainingDays = (new Date(lot.endDate).getTime() - now) / 86400000;
-    const matchesEnding = appliedFilters.ending === 'all' || remainingDays < 5;
+    const matchesEnding = filters.ending === 'all' || remainingDays < 5;
     return matchesSearch && matchesCategory && matchesPrice && matchesEnding && (lot.displayStatus === 'live' || lot.displayStatus === 'upcoming');
   });
 
@@ -149,24 +161,59 @@ export default function AuctionPage({ onNotify }) {
             </p>
           </div>
           
-          <form className="flex flex-col md:flex-row gap-4 mb-12 bg-white/[0.02] p-4 rounded-2xl border border-white/[0.05]" onSubmit={(event) => { event.preventDefault(); setAppliedFilters(filters) }}>
+          <div className="flex flex-col md:flex-row gap-4 mb-12 bg-white/[0.02] p-4 rounded-2xl border border-white/[0.05] items-stretch md:items-center">
             <label className="flex-1 flex items-center gap-3 bg-black/40 border border-white/[0.05] rounded-xl px-4 py-3">
-              <Search size={16} className="text-gold-gradient" />
-              <input className="bg-transparent text-sm text-[var(--color-ivory)] w-full focus:outline-none placeholder-white/30" value={filters.search} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Search whisky, distillery or lot" aria-label="Search auction lots" />
+              <Search size={16} className="text-gold-gradient shrink-0" />
+              <input 
+                className="bg-transparent text-sm text-[var(--color-ivory)] w-full focus:outline-none placeholder-white/30" 
+                value={filters.search} 
+                onChange={(event) => setFilters({ ...filters, search: event.target.value })} 
+                placeholder="Search whisky, champagne, wine, distillery or lot..." 
+                aria-label="Search auction lots" 
+              />
+              {filters.search && (
+                <button
+                  type="button"
+                  onClick={() => setFilters({ ...filters, search: '' })}
+                  className="text-white/40 hover:text-white text-xs px-1 cursor-pointer"
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
             </label>
-            <select className="bg-black/40 border border-white/[0.05] rounded-xl px-4 py-3 text-sm text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)]/50 [color-scheme:dark]" value={filters.category} onChange={(event) => setFilters({ ...filters, category: event.target.value })} aria-label="Category">
+            <select 
+              className="bg-black/40 border border-white/[0.05] rounded-xl px-4 py-3 text-sm text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)]/50 [color-scheme:dark] cursor-pointer" 
+              value={filters.category} 
+              onChange={(event) => setFilters({ ...filters, category: event.target.value })} 
+              aria-label="Category"
+            >
                <option value="all">All categories</option>
-               <option>Whisky</option>
-               <option>Wine</option>
-               <option>Spirits</option>
+               {availableCategories.filter(c => c !== 'all').map(cat => (
+                 <option key={cat} value={cat}>{cat}</option>
+               ))}
             </select>
-            <select className="bg-black/40 border border-white/[0.05] rounded-xl px-4 py-3 text-sm text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)]/50 [color-scheme:dark]" value={filters.price} onChange={(event) => setFilters({ ...filters, price: event.target.value })} aria-label="Price range">
+            <select 
+              className="bg-black/40 border border-white/[0.05] rounded-xl px-4 py-3 text-sm text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)]/50 [color-scheme:dark] cursor-pointer" 
+              value={filters.price} 
+              onChange={(event) => setFilters({ ...filters, price: event.target.value })} 
+              aria-label="Price range"
+            >
                <option value="all">All price ranges</option>
-               <option value="under-10000">Under R 10,000</option>
-               <option value="over-10000">R 10,000 and above</option>
+               <option value="under-20000">Under R 20,000</option>
+               <option value="20000-50000">R 20,000 – R 50,000</option>
+               <option value="over-50000">R 50,000 and above</option>
             </select>
-            <button className="bg-gold-gradient text-black font-bold uppercase tracking-widest text-[10px] px-8 py-3 rounded-xl hover:shadow-[0_0_15px_rgba(212,175,55,0.4)] transition-shadow" type="submit">Apply</button>
-          </form>
+            {(filters.search || filters.category !== 'all' || filters.price !== 'all') && (
+              <button
+                type="button"
+                onClick={() => setFilters({ search: '', category: 'all', price: 'all', ending: 'all' })}
+                className="px-5 py-3 rounded-xl border border-[var(--color-gold)]/30 text-[#e1bd70] hover:bg-[var(--color-gold)]/10 text-xs font-semibold uppercase tracking-widest transition-colors cursor-pointer whitespace-nowrap"
+              >
+                Reset
+              </button>
+            )}
+          </div>
           
           {visibleLots.length ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -175,7 +222,7 @@ export default function AuctionPage({ onNotify }) {
           ) : (
             <div className="py-24 text-center flex flex-col items-center bg-white/[0.01] rounded-3xl border border-white/[0.02]">
               <h3 className="text-2xl font-serif text-[var(--color-ivory)] mb-4">No lots match your selection.</h3>
-              <button className="text-xs uppercase tracking-widest text-gold-gradient border-b border-[var(--color-gold)] pb-1 hover:opacity-70 transition-opacity" type="button" onClick={() => { const reset = { search: '', category: 'all', price: 'all', ending: 'all' }; setFilters(reset); setAppliedFilters(reset) }}>Clear filters</button>
+              <button className="text-xs uppercase tracking-widest text-gold-gradient border-b border-[var(--color-gold)] pb-1 hover:opacity-70 transition-opacity cursor-pointer" type="button" onClick={() => setFilters({ search: '', category: 'all', price: 'all', ending: 'all' })}>Clear filters</button>
             </div>
           )}
         </div>
