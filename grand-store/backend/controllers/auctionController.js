@@ -500,7 +500,7 @@ exports.submitLot = async (req, res) => {
       estimatedValueMin, estimatedValueMax, reserveType
     } = req.body;
     
-    if (req.user.role !== 'vendor_active' && req.user.role !== 'auction_host' && !isUserAdmin(req.user)) {
+    if (req.user.role !== 'vendor_active' && req.user.role !== 'auction_host' && req.user.role !== 'vendor' && !isUserAdmin(req.user)) {
        return res.status(403).json({ message: 'Only active vendors, auction hosts, and admins can submit lots.' });
     }
 
@@ -595,7 +595,7 @@ exports.submitLot = async (req, res) => {
 // VENDOR: Resubmit an unsold/closed lot
 exports.resubmitLot = async (req, res) => {
   try {
-    if (req.user.role !== 'vendor_active' && req.user.role !== 'auction_host') {
+    if (req.user.role !== 'vendor_active' && req.user.role !== 'auction_host' && req.user.role !== 'vendor' && !isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Vendor or auction host access required' });
     }
 
@@ -753,12 +753,13 @@ exports.getUserBids = async (req, res) => {
 // VENDOR: Get all lots submitted by this vendor
 exports.getVendorLots = async (req, res) => {
   try {
-    if (req.user.role !== 'vendor_active' && req.user.role !== 'auction_host') {
+    if (req.user.role !== 'vendor_active' && req.user.role !== 'auction_host' && req.user.role !== 'vendor' && !isUserAdmin(req.user)) {
       return res.status(403).json({ message: 'Vendor or auction host access required' });
     }
     
-    // Sort by newest first
-    const lots = await AuctionLot.find({ vendor: req.user._id }).sort({ createdAt: -1 }).populate('winner', 'name email').lean();
+    // Sort by newest first - if admin is viewing vendor inventory, view all or their own
+    const query = isUserAdmin(req.user) ? {} : { vendor: req.user._id };
+    const lots = await AuctionLot.find(query).sort({ createdAt: -1 }).populate('winner', 'name email').lean();
     
     // Attach order shipping address if available
     for (let lot of lots) {

@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
-import { Building2, Package, CheckCircle2, AlertCircle, PlusCircle, User, Gavel, Image as ImageIcon, Video, Upload, Trash2, Star, Play, Link as LinkIcon, Film, X, Minus, MinusCircle, Plus, Eye, ZoomIn } from 'lucide-react';
+import { 
+  Building2, Package, CheckCircle2, AlertCircle, PlusCircle, User, Gavel, 
+  Image as ImageIcon, Video, Upload, Trash2, Star, Play, Link as LinkIcon, 
+  Film, X, Minus, Plus, Eye, Sparkles
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCategories } from '../../context/CategoryContext';
 
@@ -11,8 +15,116 @@ const toDatetimeLocal = (date) => {
   return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
 };
 
+// Preset sample data for quick auto-fill if vendor desires
+const SAMPLE_PRESETS = {
+  ballantines: {
+    title: "Ballantine's 30 Year Old Blended Scotch Whisky",
+    category: "Whisky",
+    startingBid: "5500",
+    reservePrice: "9900",
+    estimatedValueMin: "9500",
+    estimatedValueMax: "12500",
+    distillery: "Ballantine's",
+    expression: "30 Year Old Very Rare Scotch",
+    vintage: "2020",
+    bottlingYear: "2024",
+    ageStatement: "30 Years",
+    bottleNumber: "B782 / 2500",
+    caskNumber: "Oak Cask Batch #14",
+    bottleSizeMl: "750",
+    abv: "40",
+    countryOfOrigin: "Scotland",
+    fillLevel: "Into Neck",
+    boxCondition: "Original Box / Case Pristine",
+    sealCondition: "Intact & Pristine",
+    condition: "Bottle, label, capsule, and wooden presentation box in immaculate museum condition.",
+    provenance: "Direct from private temperature-controlled cellar in Western Cape. Stored horizontally at 14°C.",
+    description: "An exquisite blend of Scotland's rarest whiskies aged for at least 30 years. Rich, sweet fruit flavors with subtle oak and vanillin notes, leading to a long, luxurious and velvety finish.",
+    imageFilename: "ballantines-30-year-old.png",
+    imageUrl: "/assets/auction/ballantines-30-year-old.png"
+  },
+  threeships: {
+    title: "Three Ships 13 Year Old Cape Ruby Cask Single Malt Whisky",
+    category: "Whisky",
+    startingBid: "1000",
+    reservePrice: "1550",
+    estimatedValueMin: "1500",
+    estimatedValueMax: "2200",
+    distillery: "The James Sedgwick Distillery",
+    expression: "13 Year Old Cape Ruby Cask Finish",
+    vintage: "2011",
+    bottlingYear: "2024",
+    ageStatement: "13 Years",
+    bottleNumber: "Lot 142 of 1200",
+    caskNumber: "Cask #204",
+    bottleSizeMl: "750",
+    abv: "46.5",
+    countryOfOrigin: "South Africa",
+    fillLevel: "High Fill",
+    boxCondition: "Original Box / Case Pristine",
+    sealCondition: "Intact & Pristine",
+    condition: "Flawless collector bottle with embossed Cape Ruby wax seal and presentation tube in mint museum condition.",
+    provenance: "Acquired upon release directly from The James Sedgwick Distillery release event. Stored in collector's vault.",
+    description: "Master distiller Andy Watts crafted this exceptional South African single malt finished in authentic fortified Cape Ruby wine casks. Rich dried fruits, warm spice, and deep ruby fruit sweetness.",
+    imageFilename: "three-ships-13-year-old.png",
+    imageUrl: "/assets/auction/three-ships-13-year-old.png"
+  },
+  cardhu: {
+    title: "Cardhu 18 Years Blue Label Single Malt Scotch Whisky",
+    category: "Whisky",
+    startingBid: "1500",
+    reservePrice: "2590",
+    estimatedValueMin: "2500",
+    estimatedValueMax: "3400",
+    distillery: "Cardhu Distillery",
+    expression: "18 Year Old Speyside Single Malt (Blue Label)",
+    vintage: "2006",
+    bottlingYear: "2024",
+    ageStatement: "18 Years",
+    bottleNumber: "Batch #8",
+    caskNumber: "Oak Cask Selection",
+    bottleSizeMl: "750",
+    abv: "40",
+    countryOfOrigin: "Scotland",
+    fillLevel: "Into Neck",
+    boxCondition: "Original Box / Case Pristine",
+    sealCondition: "Intact & Pristine",
+    condition: "Iconic decanter-style bottle in mint condition, blue label pristine, original gift box included.",
+    provenance: "Speyside distillery allocation, cellared in dark, temperature-stabilized private collection.",
+    description: "A luxurious Speyside single malt with gentle fruitiness, rich toffee, baked apple, and smooth polished oak with a warming finish.",
+    imageFilename: "cardhu-18-year-old-blue-label.png",
+    imageUrl: "/assets/auction/cardhu-18-year-old-blue-label.png"
+  },
+  glenfiddich: {
+    title: "Glenfiddich Ceramic Decanter 18 Years Old Blue Flagon",
+    category: "Whisky",
+    startingBid: "3500",
+    reservePrice: "5990",
+    estimatedValueMin: "5500",
+    estimatedValueMax: "7500",
+    distillery: "Glenfiddich Distillery",
+    expression: "18 Year Old Rare Ceramic Blue Flagon Decanter",
+    vintage: "1980s",
+    bottlingYear: "1990s",
+    ageStatement: "18 Years",
+    bottleNumber: "Decanter Batch #12",
+    caskNumber: "Oloroso & Fine Oak Casks",
+    bottleSizeMl: "750",
+    abv: "43",
+    countryOfOrigin: "Scotland",
+    fillLevel: "High Fill",
+    boxCondition: "Original Box / Minor Wear",
+    sealCondition: "Intact & Pristine",
+    condition: "Rare royal blue ceramic flagon crafted by Spode. 24ct gold heraldry in pristine condition, original seal unbroken.",
+    provenance: "Acquired in the mid-1990s, kept in original presentation box in bonded cellar.",
+    description: "A highly prized collector's release presented in an opulent royal blue ceramic decanter crafted exclusively by Spode.",
+    imageFilename: "glenfiddich-18-year-old-ceramic-decanter-blue.png",
+    imageUrl: "/assets/auction/glenfiddich-18-year-old-ceramic-decanter-blue.png"
+  }
+};
+
 export default function AuctionSubmission({ onNotify }) {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
   const { categories } = useCategories();
   const storeCategories = categories.map(c => c.name);
@@ -56,13 +168,103 @@ export default function AuctionSubmission({ onNotify }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [demoLoggingIn, setDemoLoggingIn] = useState(false);
 
-  if (!user || (user.role !== 'vendor_active' && user.role !== 'admin' && user.role !== 'super_admin' && user.role !== 'auction_host')) {
+  const isAuthorized = Boolean(
+    user && (
+      user.role === 'vendor_active' || 
+      user.role === 'vendor' || 
+      user.role === 'admin' || 
+      user.role === 'super_admin' || 
+      user.role === 'auction_host'
+    )
+  );
+
+  // Quick Demo Login if unauthenticated
+  const handleDemoVendorLogin = async () => {
+    setDemoLoggingIn(true);
+    setError('');
+    try {
+      await login('vendor@grandstore.com', 'Vendor123!');
+      if (onNotify) onNotify('Signed in as Maison Dobbé Cognac (vendor@grandstore.com)!');
+    } catch (err) {
+      setError('Failed to log in as demo vendor: ' + (err.message || ''));
+    } finally {
+      setDemoLoggingIn(false);
+    }
+  };
+
+  // Simple auto-fill helper (optional, compact, unobtrusive)
+  const handleSelectPreset = async (key) => {
+    if (!key || !SAMPLE_PRESETS[key]) return;
+    const preset = SAMPLE_PRESETS[key];
+    
+    const now = new Date();
+    const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
+    setFormData(prev => ({
+      ...prev,
+      ...preset,
+      startDate: toDatetimeLocal(now),
+      endDate: toDatetimeLocal(end)
+    }));
+
+    try {
+      const response = await fetch(preset.imageUrl);
+      if (response.ok) {
+        const blob = await response.blob();
+        const file = new File([blob], preset.imageFilename, { type: blob.type || 'image/png' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setLotImages([
+            {
+              id: `seed_${Date.now()}`,
+              file,
+              preview: reader.result,
+              name: preset.imageFilename,
+              size: (file.size / (1024 * 1024)).toFixed(2)
+            }
+          ]);
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err) {
+      console.warn('Could not auto-fetch sample image:', err);
+    }
+
+    if (onNotify) onNotify(`Loaded sample "${preset.title}"`);
+  };
+
+  if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4">
-        <div className="p-8 border border-red-500/20 bg-red-950/10 text-[var(--color-ivory)] max-w-md w-full flex items-center gap-4">
-          <AlertCircle size={32} className="text-red-400 shrink-0" />
-          <p className="font-light leading-relaxed">Only approved vendors can submit lots for auction.</p>
+        <div className="p-8 border border-white/10 bg-[#0a0a0a] rounded-2xl text-[var(--color-ivory)] max-w-md w-full text-center shadow-2xl">
+          <AlertCircle size={36} className="text-[#e1bd70] mx-auto mb-4" />
+          <h2 className="text-2xl font-serif mb-2">Vendor Access Required</h2>
+          <p className="font-light text-sm text-[var(--color-ivory-muted)] mb-6 leading-relaxed">
+            Only approved vendors and curators can submit lots for auction.
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={handleDemoVendorLogin}
+              disabled={demoLoggingIn}
+              className="w-full py-3 rounded-full bg-[#c9a35b] text-black font-bold uppercase tracking-widest text-xs hover:brightness-110 transition-all cursor-pointer"
+            >
+              {demoLoggingIn ? 'Signing in...' : '⚡ Sign In as Demo Vendor'}
+            </button>
+            <button
+              onClick={() => navigate('/login?redirect=/vendor/auction-submit')}
+              className="w-full py-3 rounded-full bg-white/5 hover:bg-white/10 text-white text-xs uppercase tracking-widest transition-colors cursor-pointer"
+            >
+              Sign In with Account
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="text-xs text-[var(--color-ivory-muted)] hover:text-white uppercase tracking-widest mt-2 cursor-pointer"
+            >
+              Return to Store
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -72,7 +274,6 @@ export default function AuctionSubmission({ onNotify }) {
     const rawFiles = Array.from(e.target.files || []);
     if (rawFiles.length === 0) return;
     
-    // Reset file input so selecting same filename again works
     e.target.value = '';
 
     const remainingSlots = 8 - lotImages.length;
@@ -101,7 +302,6 @@ export default function AuctionSubmission({ onNotify }) {
       )
     );
 
-    // Append to existing images - NEVER replaces them!
     setLotImages((prev) => [...prev, ...newItems]);
     setError('');
   };
@@ -156,9 +356,6 @@ export default function AuctionSubmission({ onNotify }) {
     setSuccess(false);
     
     try {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-      const token = userInfo?.token || user?.token;
-
       if (!lotImages || lotImages.length === 0) {
         throw new Error('At least one primary lot image is required.');
       }
@@ -186,7 +383,7 @@ export default function AuctionSubmission({ onNotify }) {
       payload.append('condition', formData.condition);
       payload.append('provenance', formData.provenance);
 
-      // Phase 2 Specifications
+      // Specifications
       payload.append('distillery', formData.distillery);
       payload.append('expression', formData.expression);
       payload.append('vintage', formData.vintage);
@@ -224,7 +421,7 @@ export default function AuctionSubmission({ onNotify }) {
       if (onNotify) onNotify('Auction lot submitted successfully for review!');
       
       setTimeout(() => {
-        navigate(user.role === 'auction_host' ? '/auction-manager/dashboard' : '/vendor/dashboard');
+        navigate(user?.role === 'auction_host' ? '/auction-manager/dashboard' : '/vendor/inventory');
       }, 2000);
       
     } catch (err) {
@@ -239,13 +436,33 @@ export default function AuctionSubmission({ onNotify }) {
     <div className="flex flex-col gap-8 w-full max-w-7xl mx-auto">
       <div className="max-w-4xl w-full">
         {/* Welcome Section */}
-        <section className="mb-4">
-          <h1 className="text-[var(--color-ivory)] font-serif text-5xl mb-4">
-            Submit <span className="text-6xl text-[#e1bd70] font-normal ml-2 tracking-wide ">Auction Lot</span>
-          </h1>
-          <p className="text-[var(--color-ivory-muted)] text-lg max-w-2xl font-light">
-            Submit your rare and collectible items for review by our expert curators.
-          </p>
+        <section className="mb-4 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-[var(--color-ivory)] font-serif text-5xl mb-4">
+              Submit <span className="text-6xl text-[#e1bd70] font-normal ml-2 tracking-wide ">Auction Lot</span>
+            </h1>
+            <p className="text-[var(--color-ivory-muted)] text-lg max-w-2xl font-light">
+              Submit your rare and collectible items for review by our expert curators.
+            </p>
+          </div>
+
+          {/* Simple optional preset selector */}
+          <div className="shrink-0 pb-2">
+            <select
+              onChange={(e) => {
+                handleSelectPreset(e.target.value);
+                e.target.value = '';
+              }}
+              defaultValue=""
+              className="text-xs bg-black/40 border border-[#e1bd70]/40 text-[#e1bd70] rounded-lg px-3 py-2 outline-none hover:bg-black/60 transition-colors cursor-pointer"
+            >
+              <option value="" disabled>⚡ Fill Sample Lot (Optional)...</option>
+              <option value="ballantines" className="bg-[#111] text-white">Ballantine's 30 Year Old</option>
+              <option value="threeships" className="bg-[#111] text-white">Three Ships 13 Year Old</option>
+              <option value="cardhu" className="bg-[#111] text-white">Cardhu 18 Years</option>
+              <option value="glenfiddich" className="bg-[#111] text-white">Glenfiddich 18 Decanter</option>
+            </select>
+          </div>
         </section>
 
         {error && (
@@ -255,14 +472,13 @@ export default function AuctionSubmission({ onNotify }) {
         )}
 
         {success ? (
-          <div className="bg-green-950/10 border border-green-500/20 text-green-400 p-8 mt-8 flex flex-col items-center justify-center text-center">
+          <div className="bg-green-950/10 border border-green-500/20 text-green-400 p-8 mt-8 flex flex-col items-center justify-center text-center rounded-2xl">
             <CheckCircle2 size={48} className="mb-4" />
             <h3 className="text-2xl font-serif mb-2 text-[var(--color-ivory)]">Submission Successful</h3>
-            <p className="font-light">Your lot has been submitted for curation. Redirecting to dashboard...</p>
+            <p className="font-light">Your lot has been submitted for curation. Redirecting to inventory...</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="w-full mt-12 space-y-16">
-            
             {/* General Information */}
             <div className="space-y-10">
               <h2 className="text-[var(--color-ivory)] font-serif text-3xl flex items-center gap-4 border-b border-white/[0.05] pb-4">
@@ -306,7 +522,12 @@ export default function AuctionSubmission({ onNotify }) {
                     className="block w-full px-4 py-3 text-base text-[var(--color-ivory)] bg-black/20 border border-[var(--color-gold)]/50 rounded-lg appearance-none focus:outline-none focus:border-[var(--color-gold)] focus:bg-black/40 transition-colors"
                   >
                     <option value="" disabled hidden>Select Category</option>
-                    {storeCategories.map(cat => (
+                    <option value="Whisky" className="bg-[#1a1a1a]">Whisky</option>
+                    <option value="Wine" className="bg-[#1a1a1a]">Wine</option>
+                    <option value="Champagne & Sparkling Wine" className="bg-[#1a1a1a]">Champagne & Sparkling Wine</option>
+                    <option value="Cognac & Armagnac" className="bg-[#1a1a1a]">Cognac & Armagnac</option>
+                    <option value="Rare Spirits" className="bg-[#1a1a1a]">Rare Spirits</option>
+                    {storeCategories.filter(c => !['Whisky', 'Wine', 'Rare Spirits'].includes(c)).map(cat => (
                       <option key={cat} className="bg-[#1a1a1a]" value={cat}>{cat}</option>
                     ))}
                   </select>
@@ -366,7 +587,7 @@ export default function AuctionSubmission({ onNotify }) {
                           <img
                             src={imgItem.preview}
                             alt={imgItem.name}
-                            className="absolute inset-0 w-full h-full object-cover -z-10 group-hover:scale-105 transition-transform duration-300"
+                            className="absolute inset-0 w-full h-full object-contain p-2 -z-10 group-hover:scale-105 transition-transform duration-300"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/70 -z-10 pointer-events-none" />
 
@@ -383,7 +604,6 @@ export default function AuctionSubmission({ onNotify }) {
                             )}
 
                             <div className="flex items-center gap-1.5">
-                              {/* Preview Option */}
                               <button
                                 type="button"
                                 onClick={() => setPreviewModalItem({ type: 'image', url: imgItem.preview, title: imgItem.name, size: imgItem.size, id: imgItem.id })}
@@ -393,7 +613,6 @@ export default function AuctionSubmission({ onNotify }) {
                                 <Eye size={13} />
                               </button>
 
-                              {/* Minus Option */}
                               <button
                                 type="button"
                                 onClick={() => handleRemoveImage(imgItem.id)}
@@ -405,7 +624,7 @@ export default function AuctionSubmission({ onNotify }) {
                             </div>
                           </div>
 
-                          {/* Bottom Controls: File info & Make Cover button */}
+                          {/* Bottom Controls */}
                           <div className="z-10 mt-auto">
                             <div className="text-[9px] text-white/60 font-mono truncate mb-1">
                               {imgItem.name} ({imgItem.size} MB)
@@ -423,7 +642,6 @@ export default function AuctionSubmission({ onNotify }) {
                         </div>
                       ))}
 
-                      {/* Explicit '+' Add More Photos Tile in Grid */}
                       {lotImages.length < 8 && (
                         <label className="border-2 border-dashed border-white/20 hover:border-[#e1bd70] hover:bg-white/[0.03] transition-all rounded-xl aspect-[3/4] flex flex-col items-center justify-center text-center cursor-pointer p-4 group">
                           <div className="w-10 h-10 rounded-full bg-white/5 group-hover:bg-[#e1bd70]/20 flex items-center justify-center mb-2 transition-colors">
@@ -518,7 +736,6 @@ export default function AuctionSubmission({ onNotify }) {
                               <Eye size={13} /> Preview Video
                             </button>
                             
-                            {/* Minus / Remove Option */}
                             <button
                               type="button"
                               onClick={handleRemoveVideo}
@@ -579,7 +796,7 @@ export default function AuctionSubmission({ onNotify }) {
               </div>
             </div>
 
-            {/* Bottle Specifications (Phase 2) */}
+            {/* Bottle Specifications */}
             <div className="space-y-10 pt-6">
               <h2 className="text-[var(--color-ivory)] font-serif text-3xl flex items-center gap-4 border-b border-white/[0.05] pb-4">
                 <Package size={24} className="text-[#e1bd70]" />
@@ -655,7 +872,7 @@ export default function AuctionSubmission({ onNotify }) {
                 <div className="relative z-0 w-full group">
                   <input 
                     type="number" 
-                    step="0.1"
+                    step="0.1" 
                     value={formData.abv} 
                     onChange={e => setFormData({...formData, abv: e.target.value})} 
                     className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
@@ -923,7 +1140,6 @@ export default function AuctionSubmission({ onNotify }) {
               className="relative max-w-4xl w-full bg-[#111] border border-white/10 rounded-2xl overflow-hidden flex flex-col shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Modal Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black/60">
                 <div className="flex items-center gap-2 overflow-hidden">
                   <Eye size={16} className="text-[#e1bd70] shrink-0" />
@@ -946,7 +1162,6 @@ export default function AuctionSubmission({ onNotify }) {
                 </button>
               </div>
 
-              {/* Modal Media Body */}
               <div className="p-4 flex items-center justify-center min-h-[300px] max-h-[75vh] overflow-hidden bg-black/40">
                 {previewModalItem.type === 'video' ? (
                   <video

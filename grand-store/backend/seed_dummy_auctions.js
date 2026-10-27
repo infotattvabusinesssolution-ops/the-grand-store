@@ -61,7 +61,6 @@ async function seedDummyAuctions() {
         documentationImages: [
           "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=800"
         ],
-        videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
         startDate: startDate,
         endDate: endDate,
         vendor: vendor._id,
@@ -99,13 +98,12 @@ async function seedDummyAuctions() {
         provenanceHistory: "Single-owner provenance since release. Capsule embossed with DRC Domaine crest; wax seal entirely unblemished. Stored continuously at 11.5°C and 70% relative humidity.",
         description: "The 1990 vintage from DRC is revered as one of the greatest Burgundy expressions of the twentieth century. Possessing an enthralling bouquet of wild violets, black truffles, Asian spices, and macerated dark cherries. Velvety, opulent texture with an endless mineral finish. Ideal for the discerning cellar investor.",
         images: [
-          "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&q=80&w=1200",
-          "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&q=80&w=1200"
+          "https://res.cloudinary.com/oioqrgj0/image/upload/v1793077742/grandstore-auctions/drc-romanee-conti-1990.jpg",
+          "/assets/auction/drc-romanee-conti-1990.jpg"
         ],
         documentationImages: [
           "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=800"
         ],
-        videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
         startDate: startDate,
         endDate: endDate,
         vendor: vendor._id,
@@ -143,13 +141,12 @@ async function seedDummyAuctions() {
         provenanceHistory: "Released after 18 years of slow maturation on the lees, reaching its second peak of vitality (Plénitude). Hand-inspected with dark matte presentation coffret intact.",
         description: "The 2004 Plénitude 2 represents the second life of Dom Pérignon, patient maturation leading to enhanced energy, depth, and resonance. Aromas of pink grapefruit, blood orange, cocoa, and toasted brioche mingle with saline minerality and a persistent fine bead. Comes in bespoke collector packaging with certificate.",
         images: [
-          "https://images.unsplash.com/photo-1560512823-829485b8bf24?auto=format&fit=crop&q=80&w=1200",
-          "https://images.unsplash.com/photo-1594911772125-07fc7a2d8d9f?auto=format&fit=crop&q=80&w=1200"
+          "https://res.cloudinary.com/oioqrgj0/image/upload/v1793077737/grandstore-auctions/dom-perignon-p2-2004.jpg",
+          "/assets/auction/dom-perignon-p2-2004.jpg"
         ],
         documentationImages: [
           "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=800"
         ],
-        videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4",
         startDate: startDate,
         endDate: endDate,
         vendor: vendor._id,
