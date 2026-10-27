@@ -925,39 +925,45 @@ export default function EstateDetail() {
             {/* Section Header */}
             <div className="text-center mb-12 sm:mb-16 max-w-3xl mx-auto">
               <span className="text-xs font-bold uppercase tracking-widest text-ink/40 mb-3 block">
-                {isCantinaDelConte 
-                  ? 'Grinzane Cavour Barolo, Barbaresco & Grappe Portfolio' 
-                  : isDogliotti 
-                    ? 'Piedmont Fine Wine & Vermouth Portfolio' 
-                    : isBrunoAndreu 
-                      ? 'The Estate Cellar' 
-                      : 'From the Cellar'}
+                {isTesselaarsdal
+                  ? 'Hemel-en-Aarde Ridge Portfolio'
+                  : isCantinaDelConte 
+                    ? 'Grinzane Cavour Barolo, Barbaresco & Grappe Portfolio' 
+                    : isDogliotti 
+                      ? 'Piedmont Fine Wine & Vermouth Portfolio' 
+                      : isBrunoAndreu 
+                        ? 'The Estate Cellar' 
+                        : 'From the Cellar'}
               </span>
               <h2 className="font-serif text-[34px] sm:text-[44px] text-ink font-normal leading-[1.15] mb-3">
-                {isCantinaDelConte 
-                  ? 'The Cantina del Conte Cellar' 
-                  : isDogliotti 
-                    ? 'The Dogliotti 1870 Cellar' 
-                    : isBrunoAndreu 
-                      ? 'Shop The Wine Collections' 
-                      : 'Shop Our Wines'}
+                {isTesselaarsdal
+                  ? 'The Tesselaarsdal Cellar'
+                  : isCantinaDelConte 
+                    ? 'The Cantina del Conte Cellar' 
+                    : isDogliotti 
+                      ? 'The Dogliotti 1870 Cellar' 
+                      : isBrunoAndreu 
+                        ? 'Shop The Wine Collections' 
+                        : 'Shop Our Wines'}
               </h2>
               <p className="text-ink/60 text-base sm:text-lg">
-                {isCantinaDelConte
-                  ? 'Discover 12 exceptional artisan wines and grappe from Azienda Pelissero in Grinzane Cavour, rooted in Count Cavour’s historic vineyards. Monumental Barolo Riserva, Barolo Gabutti, Barbaresco, Roero Arneis, and aged single-variety grappe.'
-                  : isDogliotti
-                    ? 'Explore 28 signature vintages, Moscato d’Asti, Barolo DOCG, Barbera d’Asti, and botanical Vermouth di Torino crafted across five generations in Langhe & Monferrato.'
-                    : isBrunoAndreu 
-                      ? 'Discover 35 authentic cuvées from Bruno Andreu. Each bottle reflects Mediterranean terroir and craft.' 
-                      : 'Discover our exceptional selection of handcrafted wines.'
+                {isTesselaarsdal
+                  ? 'Discover the 10th Anniversary Vintage Pinot Noir and clay amphorae Chardonnay handcrafted in limited allocations by Berene Sauls on the extreme cool-climate Hemel-en-Aarde Ridge.'
+                  : isCantinaDelConte
+                    ? 'Discover 12 exceptional artisan wines and grappe from Azienda Pelissero in Grinzane Cavour, rooted in Count Cavour’s historic vineyards. Monumental Barolo Riserva, Barolo Gabutti, Barbaresco, Roero Arneis, and aged single-variety grappe.'
+                    : isDogliotti
+                      ? 'Explore 28 signature vintages, Moscato d’Asti, Barolo DOCG, Barbera d’Asti, and botanical Vermouth di Torino crafted across five generations in Langhe & Monferrato.'
+                      : isBrunoAndreu 
+                        ? 'Discover 35 authentic cuvées from Bruno Andreu. Each bottle reflects Mediterranean terroir and craft.' 
+                        : 'Discover our exceptional selection of handcrafted wines.'
                 }
               </p>
             </div>
 
             {/* Product Grid */}
-            {isBrunoAndreu || isDogliotti || isCantinaDelConte ? (
-              /* Studio Showcase for Dogliotti 1870, Bruno Andreu and Cantina del Conte */
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {isBrunoAndreu || isDogliotti || isCantinaDelConte || isTesselaarsdal ? (
+              /* Studio Showcase for Dogliotti 1870, Bruno Andreu, Cantina del Conte and Tesselaarsdal Wines */
+              <div className={`grid grid-cols-1 sm:grid-cols-2 ${products.length === 2 ? 'max-w-4xl mx-auto' : 'lg:grid-cols-3'} gap-6 sm:gap-8`}>
                 {products.map(p => {
                   const prodSlug = p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
                   const isAlcoholFree = getWineCategory(p) === 'dealcoholized';
@@ -992,15 +998,19 @@ export default function EstateDetail() {
                           <span className={`text-[9px] uppercase tracking-[0.16em] font-semibold px-2.5 py-1 rounded-xs shadow-xs ${
                             isAlcoholFree 
                               ? 'bg-[#1b4332] text-white border border-[#2d6a4f]'
-                              : (isDogliotti || isCantinaDelConte)
-                                ? 'bg-[#1a1815] text-[#e1bd70] border border-[#e1bd70]/40'
-                                : 'bg-white/95 text-stone-800 border border-stone-200'
+                              : isTesselaarsdal
+                                ? 'bg-[#14120e] text-[#c9a35b] border border-[#c9a35b]/50'
+                                : (isDogliotti || isCantinaDelConte)
+                                  ? 'bg-[#1a1815] text-[#e1bd70] border border-[#e1bd70]/40'
+                                  : 'bg-white/95 text-stone-800 border border-stone-200'
                           }`}>
-                            {isCantinaDelConte
-                              ? (p.subcategory || p.range || 'Grinzane Cavour DOCG')
-                              : isDogliotti 
-                                ? (p.subcategory || p.range || 'Piedmont DOCG') 
-                                : (isAlcoholFree ? '0.0% Alcohol Free' : (p.subcategory || p.range || 'Languedoc'))}
+                            {isTesselaarsdal
+                              ? (p.subcategory ? `${p.subcategory} • Hemel-en-Aarde Ridge` : 'Hemel-en-Aarde Ridge')
+                              : isCantinaDelConte
+                                ? (p.subcategory || p.range || 'Grinzane Cavour DOCG')
+                                : isDogliotti 
+                                  ? (p.subcategory || p.range || 'Piedmont DOCG') 
+                                  : (isAlcoholFree ? '0.0% Alcohol Free' : (p.subcategory || p.range || 'Languedoc'))}
                           </span>
                         </div>
 
@@ -1029,6 +1039,19 @@ export default function EstateDetail() {
                       
                       {/* Content Area */}
                       <div className="p-6 flex flex-col flex-1 border-t border-stone-100">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          {p.vintage && (
+                            <span className="text-[11px] font-semibold tracking-wider text-[#9c8249] uppercase">
+                              Vintage {p.vintage}
+                            </span>
+                          )}
+                          {p.identity?.production && (
+                            <span className="text-[10px] text-stone-400 font-medium truncate max-w-[60%]">
+                              {p.identity.production}
+                            </span>
+                          )}
+                        </div>
+
                         <Link to={`/product/${prodSlug}`} className="block mb-2 min-h-[50px] sm:min-h-[56px] flex items-start">
                           <h3 className="font-serif text-[19px] sm:text-[21px] text-[#0f0f0f] font-medium leading-[1.3] hover:text-[#8a2232] transition-colors line-clamp-2">
                             {p.name}
@@ -1039,26 +1062,27 @@ export default function EstateDetail() {
                           {p.description || "Refined expression of estate terroir handcrafted with passion and tradition."}
                         </p>
                         
-                        {/* Elegant Action Link */}
+                        {/* Elegant Action Link & Price */}
                         <div className="mt-auto pt-4 border-t border-stone-200/80 flex items-center justify-between">
                           <Link
                             to={`/product/${prodSlug}`}
                             className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] font-bold text-black hover:text-[#8a2232] transition-colors group-hover:translate-x-1 duration-200"
                           >
-                            <span>{isDogliotti ? 'Explore Vintage' : 'Explore Cuvée'}</span>
+                            <span>{isDogliotti ? 'Explore Vintage' : isTesselaarsdal ? 'Explore Wine' : 'Explore Cuvée'}</span>
                             <span>→</span>
                           </Link>
 
-                          {p.factSheetPdf && (
-                            <a 
-                              href={`${API}${p.factSheetPdf}`} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-stone-500 hover:text-black transition-colors font-medium"
-                            >
-                              <Download size={11} />
-                              <span>Factsheet</span>
-                            </a>
+                          {p.price && (
+                            <div className="text-right">
+                              <span className="font-serif text-[17px] font-bold text-ink">
+                                R {Number(p.price).toFixed(2)}
+                              </span>
+                              {p.size && (
+                                <span className="text-[10px] text-stone-400 block -mt-0.5">
+                                  {p.size}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
 
