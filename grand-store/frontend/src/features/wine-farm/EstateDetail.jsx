@@ -134,8 +134,9 @@ export default function EstateDetail() {
 
   // Authentic tasting images for Tesselaarsdal fallback
   const tesselaarsdalPdfTastings = [
-    '/assets/estate/tesselaarsdal/vineyard_hero.jpg',
-    '/assets/estate/tesselaarsdal/berene_sauls.jpg'
+    '/assets/estate/tesselaarsdal/tesselaarsdal_cellar_tasting_table.jpg',
+    '/assets/estate/tesselaarsdal/tesselaarsdal_wine_pour_tasting.jpg',
+    '/assets/estate/tesselaarsdal/tesselaarsdal_bottles_candlelight.jpg'
   ];
 
   // Authentic PDF Page 1 tasting images for Bruno Andreu fallback
@@ -523,52 +524,63 @@ export default function EstateDetail() {
       {(story.history || story.philosophy || story.winemaker || story.images?.length > 0) && (
         <section id="our-story" className="py-16 md:py-24 bg-white relative overflow-hidden border-b border-gray-100">
           {isTesselaarsdal ? (
-            /* Tesselaarsdal Wines Specific 4-Photo Heritage Story Layout */
+            /* Tesselaarsdal Wines Specific 4-Photo Heritage Story Layout (Balanced Authentic Photography) */
             <div className="max-w-[1300px] mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-center gap-10 lg:gap-14">
               <div className="flex-1 w-full max-w-xl">
-                <div className="grid grid-cols-2 gap-3 p-3 bg-[#fcf9f2] border border-gray-200/80 rounded-sm shadow-sm">
-                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100">
+                <div className="grid grid-cols-2 gap-3.5 p-3.5 bg-[#fcfaf6] border border-[#e8e2d5] rounded-sm shadow-sm">
+                  {/* Photo 1: Berene Sauls in the vineyard */}
+                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100 rounded-xs shadow-xs">
                     <img 
-                      src={resolveImageUrl(story.images?.[0]) || '/assets/estate/tesselaarsdal/berene_sauls.jpg'} 
-                      alt="Berene Sauls Winemaker" 
-                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/tesselaarsdal/berene_sauls.jpg'; }}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      src={resolveImageUrl(story.images?.[0]) || '/assets/estate/tesselaarsdal/tesselaarsdal_berene_vineyard.jpg'} 
+                      alt="Berene Sauls Winemaker in Vineyard" 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/tesselaarsdal/tesselaarsdal_berene_vineyard.jpg'; }}
+                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                     />
-                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2 py-0.5 backdrop-blur-sm">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-90 pointer-events-none" />
+                    <span className="absolute bottom-2.5 left-2.5 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2.5 py-1 backdrop-blur-md rounded-xs border border-white/10">
                       Berene Sauls • Founder & Winemaker
                     </span>
                   </div>
-                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100">
+
+                  {/* Photo 2: Ridge high-density vineyards & terroir */}
+                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100 rounded-xs shadow-xs">
                     <img 
-                      src={resolveImageUrl(story.images?.[1]) || '/assets/estate/tesselaarsdal/vineyard_hero.jpg'} 
+                      src={resolveImageUrl(story.images?.[1]) || '/assets/estate/tesselaarsdal/tesselaarsdal_vineyard_ridge.jpg'} 
                       alt="Hemel-en-Aarde Ridge Terroir" 
-                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/tesselaarsdal/vineyard_hero.jpg'; }}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/tesselaarsdal/tesselaarsdal_vineyard_ridge.jpg'; }}
+                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                     />
-                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2 py-0.5 backdrop-blur-sm">
-                      Hemel-en-Aarde Ridge
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-90 pointer-events-none" />
+                    <span className="absolute bottom-2.5 left-2.5 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2.5 py-1 backdrop-blur-md rounded-xs border border-white/10">
+                      Hemel-en-Aarde Ridge Terroir
                     </span>
                   </div>
-                  <div className="relative aspect-[4/3] overflow-hidden group bg-[#0a0a0c] flex items-center justify-center p-1.5 shadow-sm">
+
+                  {/* Photo 3: Authentic wine thief drawing barrel sample */}
+                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100 rounded-xs shadow-xs">
                     <img 
-                      src={'/assets/products/tesselaarsdal/tesselaarsdal-pinot-noir-2024-story.jpg'} 
-                      alt="Tesselaarsdal Pinot Noir 2024" 
-                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/products/tesselaarsdal/tesselaarsdal-pinot-noir-2024-black.jpg'; }}
-                      className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                      src={resolveImageUrl(story.images?.[2]) || '/assets/estate/tesselaarsdal/tesselaarsdal_wine_thief_barrel.jpg'} 
+                      alt="Cellar Craft Pinot Noir Barrel Tasting" 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/tesselaarsdal/tesselaarsdal_wine_thief_barrel.jpg'; }}
+                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                     />
-                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/70 px-2 py-0.5 backdrop-blur-sm z-10">
-                      Pinot Noir 2024
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-90 pointer-events-none" />
+                    <span className="absolute bottom-2.5 left-2.5 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2.5 py-1 backdrop-blur-md rounded-xs border border-white/10">
+                      Cellar Craft • Barrel Maturation
                     </span>
                   </div>
-                  <div className="relative aspect-[4/3] overflow-hidden group bg-[#0a0a0c] flex items-center justify-center p-1.5 shadow-sm">
+
+                  {/* Photo 4: Official Tesselaarsdal French oak barrels */}
+                  <div className="relative aspect-[4/3] overflow-hidden group bg-gray-100 rounded-xs shadow-xs">
                     <img 
-                      src={'/assets/products/tesselaarsdal/tesselaarsdal-chardonnay-2024-story.jpg'} 
-                      alt="Tesselaarsdal Chardonnay 2024" 
-                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/products/tesselaarsdal/tesselaarsdal-chardonnay-2024-black.jpg'; }}
-                      className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                      src={resolveImageUrl(story.images?.[3]) || '/assets/estate/tesselaarsdal/tesselaarsdal_oak_barrels.png'} 
+                      alt="Tesselaarsdal French Oak Barrels" 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/tesselaarsdal/tesselaarsdal_oak_barrels.png'; }}
+                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                     />
-                    <span className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white font-medium bg-black/70 px-2 py-0.5 backdrop-blur-sm z-10">
-                      Chardonnay 2024
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-90 pointer-events-none" />
+                    <span className="absolute bottom-2.5 left-2.5 text-[9px] uppercase tracking-wider text-white font-medium bg-black/60 px-2.5 py-1 backdrop-blur-md rounded-xs border border-white/10">
+                      French Oak & Clay Amphorae
                     </span>
                   </div>
                 </div>
@@ -1210,12 +1222,12 @@ export default function EstateDetail() {
               <div className="flex-1 w-full max-w-lg">
                 <div className="w-full aspect-[4/3] overflow-hidden shadow-lg border border-gray-200 relative group bg-gray-100">
                   <img 
-                    src={resolveImageUrl(vineyard.imageUrl) || (isTesselaarsdal ? '/assets/estate/tesselaarsdal/vineyard_hero.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_terroir_vineyard_map.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_vineyard_panorama.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_pure_barrels.png' : '')} 
+                    src={resolveImageUrl(vineyard.imageUrl) || (isTesselaarsdal ? '/assets/estate/tesselaarsdal/tesselaarsdal_vineyard_ridge.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_terroir_vineyard_map.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_vineyard_panorama.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_pure_barrels.png' : '')} 
                     alt="Terroir and Vineyard" 
                     onError={(e) => {
                       if (isTesselaarsdal) {
                         e.currentTarget.onerror = null;
-                        e.currentTarget.src = '/assets/estate/tesselaarsdal/vineyard_hero.jpg';
+                        e.currentTarget.src = '/assets/estate/tesselaarsdal/tesselaarsdal_vineyard_ridge.jpg';
                       } else if (isCantinaDelConte) {
                         e.currentTarget.onerror = null;
                         e.currentTarget.src = '/assets/estate/cantina-del-conte/cantina_terroir_vineyard_map.jpg';
@@ -1511,12 +1523,12 @@ export default function EstateDetail() {
         {/* Top Banner for Contact/Visit */}
         <div className="relative h-[240px] sm:h-[280px] flex items-center justify-center overflow-hidden">
           <img 
-            src={resolveImageUrl(estate.heroImageUrl) || (isTesselaarsdal ? '/assets/estate/tesselaarsdal/vineyard_hero.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_cellar_barrels.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')}
+            src={resolveImageUrl(estate.heroImageUrl) || (isTesselaarsdal ? '/assets/estate/tesselaarsdal/tesselaarsdal_bottles_candlelight.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_cellar_barrels.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')}
             alt={estate.estateName}
             onError={(e) => {
               e.currentTarget.onerror = null;
               e.currentTarget.src = isTesselaarsdal
-                ? '/assets/estate/tesselaarsdal/vineyard_hero.jpg'
+                ? '/assets/estate/tesselaarsdal/tesselaarsdal_bottles_candlelight.jpg'
                 : isCantinaDelConte
                   ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg'
                   : isDogliotti 
@@ -1599,12 +1611,12 @@ export default function EstateDetail() {
           {/* Right Side Follow Estate */}
           <div className="flex-1 relative overflow-hidden p-8 flex items-center justify-center text-center border border-white/10 min-h-[260px]">
             <img 
-              src={isTesselaarsdal ? '/assets/estate/tesselaarsdal/berene_sauls.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_cask_barrel_hall.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_bruno_elixir_magnum.png' : (resolveImageUrl(estate.heroImageUrl) || 'https://images.unsplash.com/photo-1565922336365-1d44eb37a06a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80')}
+              src={isTesselaarsdal ? '/assets/estate/tesselaarsdal/tesselaarsdal_berene_cellar.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_cask_barrel_hall.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_bruno_elixir_magnum.png' : (resolveImageUrl(estate.heroImageUrl) || 'https://images.unsplash.com/photo-1565922336365-1d44eb37a06a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80')}
               alt={estate.estateName}
               onError={(e) => {
                 e.currentTarget.onerror = null;
                 e.currentTarget.src = isTesselaarsdal
-                  ? '/assets/estate/tesselaarsdal/berene_sauls.jpg'
+                  ? '/assets/estate/tesselaarsdal/tesselaarsdal_berene_cellar.jpg'
                   : isCantinaDelConte
                     ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg'
                     : isDogliotti 

@@ -14,12 +14,20 @@ const TESSELAARSDAL_EMAIL = 'berene@tesselaarsdalwines.co.za';
 const TESSELAARSDAL_PASSWORD = 'Tesselaarsdal2026!';
 
 const ASSETS = {
-  pinotNoirTransparent: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793099691/grandstore-uploads/products/tesselaarsdal/tesselaarsdal-pinot-noir-2024.png',
-  pinotNoirBlack: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793099692/grandstore-uploads/products/tesselaarsdal/tesselaarsdal-pinot-noir-2024-black.jpg',
-  chardonnayTransparent: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793099696/grandstore-uploads/products/tesselaarsdal/tesselaarsdal-chardonnay-2024.png',
-  chardonnayBlack: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793099698/grandstore-uploads/products/tesselaarsdal/tesselaarsdal-chardonnay-2024-black.jpg',
-  vineyardHero: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793099700/grandstore-uploads/estate/tesselaarsdal/vineyard_hero.jpg',
-  bereneSauls: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793100071/grandstore-uploads/estate/tesselaarsdal/berene_sauls.jpg',
+  pinotNoirTransparent: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793165571/grandstore-uploads/products/tesselaarsdal/tesselaarsdal-pinot-noir-2024.png',
+  pinotNoirLifestyle: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793165574/grandstore-uploads/products/tesselaarsdal/tesselaarsdal-pinot-noir-2024-lifestyle.jpg',
+  chardonnayTransparent: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793165572/grandstore-uploads/products/tesselaarsdal/tesselaarsdal-chardonnay-2024.png',
+  chardonnayLifestyle: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793165575/grandstore-uploads/products/tesselaarsdal/tesselaarsdal-chardonnay-2024-lifestyle.jpg',
+  vineyardHero: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793165576/grandstore-uploads/estate/tesselaarsdal/vineyard_hero.jpg',
+  bereneVineyard: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793165577/grandstore-uploads/estate/tesselaarsdal/berene_sauls.jpg',
+  cellarTastingTable: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793165579/grandstore-uploads/estate/tesselaarsdal/tesselaarsdal_cellar_tasting_table.jpg',
+  winePourTasting: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793165580/grandstore-uploads/estate/tesselaarsdal/tesselaarsdal_wine_pour_tasting.jpg',
+  bottlesCandlelight: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793165581/grandstore-uploads/estate/tesselaarsdal/tesselaarsdal_bottles_candlelight.jpg',
+  vineyardRidge: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793165582/grandstore-uploads/estate/tesselaarsdal/tesselaarsdal_vineyard_ridge.jpg',
+  oakBarrels: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793165583/grandstore-uploads/estate/tesselaarsdal/tesselaarsdal_oak_barrels.png',
+  bereneCellar: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793165584/grandstore-uploads/estate/tesselaarsdal/tesselaarsdal_berene_cellar.jpg',
+  wineThiefBarrel: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793165585/grandstore-uploads/estate/tesselaarsdal/tesselaarsdal_wine_thief_barrel.jpg',
+  bereneTastingBarrel: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1793165586/grandstore-uploads/estate/tesselaarsdal/tesselaarsdal_berene_tasting_barrel.jpg',
   logoSvg: 'https://res.cloudinary.com/oioqrgj0/raw/upload/v1793100320/grandstore-uploads/estate/tesselaarsdal/tesselaarsdal_logo_white.svg'
 };
 
@@ -34,12 +42,12 @@ const PRODUCTS_DATA = [
     caseRetailPrice: 4860.00,
     caseTradePrice: 3645.00,
     size: '750ml',
-    abv: '13.5%',
+    abv: '13.0%',
     production: '6,312 bottles & 30 Magnums',
-    description: 'Marking the landmark 10th Vintage for Tesselaarsdal Wines. Only 6,312 bottles and 30 Magnums produced. Hand-harvested from extreme cool-climate vineyards on the Hemel-en-Aarde Ridge, fermented with indigenous yeasts, and matured in traditional clay amphorae and neutral French oak. Expresses wild red fruits, sour cherry, cloves, baking spices, and a distinctive maritime saline tension with silky persistence.',
+    description: 'Marking the landmark 10th Vintage for Tesselaarsdal Wines. Only 6,312 bottles and 30 Magnums produced. Hand-harvested from extreme cool-climate vineyards on the Hemel-en-Aarde Ridge, fermented with indigenous yeasts, and matured in traditional clay amphorae and neutral French oak. Expresses wild red fruits, sour cherries and raspberries with combined hints of cloves and baking spices, finishing with a distinctive maritime saline tension and silky persistence.',
     tastingNotes: [
-      'Wild Red Fruits',
-      'Sour Cherry',
+      'Sour Cherries',
+      'Wild Raspberries',
       'Clove & Baking Spice',
       'Dried Cranberry',
       'Maritime Salinity',
@@ -57,7 +65,7 @@ const PRODUCTS_DATA = [
       'Grilled Salmon'
     ],
     image: ASSETS.pinotNoirTransparent,
-    blackImage: ASSETS.pinotNoirBlack,
+    lifestyleImage: ASSETS.pinotNoirLifestyle,
     featured: true,
     stock: 48
   },
@@ -73,7 +81,7 @@ const PRODUCTS_DATA = [
     size: '750ml',
     abv: '13.0%',
     production: '7,930 bottles & 30 Magnums',
-    description: 'Handcrafted in limited volumes (7,930 bottles and 30 Magnums produced) on the Hemel-en-Aarde Ridge by Berene Sauls. Vinified using an expressive combination of clay amphorae and neutral French oak puncheons to preserve vivid maritime freshness. Features luminous aromas of white pear, lime blossom, lemon toast, and wet stone minerality, leading into a textured, energetic palate with cool ocean acidity and a long saline finish.',
+    description: 'Handcrafted in limited volumes (7,930 bottles and 30 Magnums produced) on the Hemel-en-Aarde Ridge by Berene Sauls. Vinified using an expressive combination of clay amphorae and neutral oak ageing to create an elegant wine that reflects roundness and a crisp acidity with subtle defining notes of white pear, lemon toast, and accents of lime blossom. Both silky and fresh with an elegant long finish.',
     tastingNotes: [
       'White Pear',
       'Lemon Toast',
@@ -94,7 +102,7 @@ const PRODUCTS_DATA = [
       'Creamy Risotto'
     ],
     image: ASSETS.chardonnayTransparent,
-    blackImage: ASSETS.chardonnayBlack,
+    lifestyleImage: ASSETS.chardonnayLifestyle,
     featured: true,
     stock: 60
   }
@@ -238,9 +246,12 @@ async function seedTesselaarsdal() {
       logoUrl: ASSETS.logoSvg,
       galleryUrls: [
         ASSETS.vineyardHero,
-        ASSETS.bereneSauls,
-        ASSETS.pinotNoirBlack,
-        ASSETS.chardonnayBlack
+        ASSETS.bereneVineyard,
+        ASSETS.cellarTastingTable,
+        ASSETS.winePourTasting,
+        ASSETS.bottlesCandlelight,
+        ASSETS.vineyardRidge,
+        ASSETS.oakBarrels
       ],
       story: {
         foundedYear: 2015,
@@ -250,10 +261,10 @@ async function seedTesselaarsdal() {
         history: 'Tesselaarsdal takes its name from the historic settlement in the Overberg founded in 1810 by Johannes Jacobus Tesselaar, who bequeathed his farm to his former servants and freed slaves. Berene Sauls, whose maternal ancestors lived in the valley for generations, purchased land on the Hemel-en-Aarde Ridge to cultivate high-density vineyards and produce unadorned, terroir-driven Pinot Noir and Chardonnay.',
         philosophy: 'Extreme cool-climate purity, minimal intervention, natural yeast fermentation, and traditional terracotta clay amphorae aging. The focus is on pristine fruit expression, vibrant maritime acidity, and a distinctive mineral salinity that mirrors the shale-rich soils of the Hemel-en-Aarde Ridge.',
         images: [
-          ASSETS.bereneSauls,
-          ASSETS.vineyardHero,
-          ASSETS.pinotNoirBlack,
-          ASSETS.chardonnayBlack
+          ASSETS.bereneVineyard,
+          ASSETS.vineyardRidge,
+          ASSETS.wineThiefBarrel,
+          ASSETS.oakBarrels
         ]
       },
       vineyard: {
@@ -266,30 +277,39 @@ async function seedTesselaarsdal() {
         ],
         viticulture: 'Sustainable cool-climate viticulture, low yields, hand-harvested in early morning hours',
         sustainability: 'Low-intervention vinification, terracotta amphorae maturation, water stewardship, eco-conscious packaging',
-        imageUrl: ASSETS.vineyardHero
+        imageUrl: ASSETS.vineyardRidge
       },
       hospitality: {
         title: 'Cellar & Tasting Allocations',
         subtitle: 'Experience Tesselaarsdal in the Hemel-en-Aarde Ridge, Hermanus',
         hasTastings: true,
-        tastingsImageUrl: ASSETS.vineyardHero,
+        tastingsImageUrl: ASSETS.cellarTastingTable,
         tastings: [
           {
-            name: 'Tesselaarsdal Signature Ridge Tasting',
-            description: 'An intimate tasting of Tesselaarsdal Pinot Noir and Chardonnay vintages exploring cool-climate maritime terroir.',
+            name: 'Tesselaarsdal Cellar Table Tasting',
+            description: 'An intimate candlelit tasting of Tesselaarsdal Pinot Noir and Chardonnay vintages exploring cool-climate maritime terroir.',
             price: 250,
             duration: '60 minutes',
             capacity: 8,
-            imageUrl: ASSETS.vineyardHero,
+            imageUrl: ASSETS.cellarTastingTable,
             isAvailable: true
           },
           {
-            name: 'Amphorae & Terroir Masterclass',
-            description: 'Explore the nuances of terracotta amphora maturation vs neutral oak, featuring 2024 releases and private allocations.',
+            name: 'Signature Ridge Wine & Food Pairing',
+            description: 'Explore the nuances of terracotta amphora maturation vs neutral oak, featuring 2024 releases paired with regional delicacies.',
             price: 450,
             duration: '75 minutes',
             capacity: 6,
-            imageUrl: ASSETS.bereneSauls,
+            imageUrl: ASSETS.winePourTasting,
+            isAvailable: true
+          },
+          {
+            name: 'Private Cellar Allocation Experience',
+            description: 'Exclusive barrel cellar tasting with founder Berene Sauls, tasting current 10th Vintage releases and library reserves.',
+            price: 650,
+            duration: '90 minutes',
+            capacity: 6,
+            imageUrl: ASSETS.bottlesCandlelight,
             isAvailable: true
           }
         ]
@@ -342,12 +362,12 @@ async function seedTesselaarsdal() {
         description: pData.description,
         price: pData.price,
         image: pData.image,
-        originalImage: pData.blackImage,
+        originalImage: pData.lifestyleImage,
         gallery: [
           pData.image,
-          pData.blackImage,
-          ASSETS.vineyardHero,
-          ASSETS.bereneSauls
+          pData.lifestyleImage,
+          ASSETS.bottlesCandlelight,
+          ASSETS.winePourTasting
         ],
         featured: !!pData.featured,
         options: [pData.size],
