@@ -362,12 +362,9 @@ async function seedTesselaarsdal() {
         description: pData.description,
         price: pData.price,
         image: pData.image,
-        originalImage: pData.lifestyleImage,
+        originalImage: pData.image,
         gallery: [
-          pData.image,
-          pData.lifestyleImage,
-          ASSETS.bottlesCandlelight,
-          ASSETS.winePourTasting
+          pData.image
         ],
         featured: !!pData.featured,
         options: [pData.size],

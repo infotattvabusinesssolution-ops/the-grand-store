@@ -5,7 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { 
   Users, Building2, TrendingUp, DollarSign, Activity, 
   Search, X, ExternalLink, Edit, Barcode, Copy, Check, 
-  Package, Filter, ArrowRight, Sparkles 
+  Package, Filter, ArrowRight, Sparkles, Trash2, Loader2 
 } from "lucide-react";
 import Price from "../../components/ui/Price";
 import AdminFinancials from "./AdminFinancials"; // We reuse the detailed ledger here!
@@ -64,7 +64,32 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCategory, setSearchCategory] = useState('All');
   const [copiedBarcode, setCopiedBarcode] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteToast, setDeleteToast] = useState(null);
   const searchInputRef = useRef(null);
+
+  const handleDeleteProduct = async (e, prod) => {
+    e.stopPropagation();
+    const prodName = prod.fullName || prod.name || 'this product';
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${prodName}"?\n\nThis will permanently remove it from the catalog and store search.`
+    );
+    if (!confirmed) return;
+
+    const prodId = prod.id || prod._id;
+    try {
+      setDeletingId(prodId);
+      await api.delete(`/products/${prodId}`);
+      setProducts((prev) => prev.filter((p) => p._id !== prod._id && p.id !== prod.id));
+      setDeleteToast(`"${prodName}" has been successfully removed.`);
+      setTimeout(() => setDeleteToast(null), 3500);
+    } catch (err) {
+      console.error('Failed to delete product:', err);
+      alert(err.response?.data?.message || 'Failed to delete product. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const goldText = "text-[#c9a35b]";
   const formatR = (v) => `R${Number(v || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`;
@@ -207,6 +232,16 @@ export default function AdminDashboard() {
 
       {/* Global Product Search Bar */}
       <section className="relative z-30">
+        {deleteToast && (
+          <div className="mb-3 bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 px-4 py-2.5 rounded-xl text-xs flex items-center justify-between shadow-lg">
+            <span className="flex items-center gap-2">
+              <Check size={14} className="text-emerald-400 shrink-0" /> {deleteToast}
+            </span>
+            <button type="button" onClick={() => setDeleteToast(null)} className="text-emerald-400/60 hover:text-emerald-200">
+              <X size={13} />
+            </button>
+          </div>
+        )}
         <div className="relative">
           <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-[#0d0d0d] p-3 rounded-2xl border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.5)] focus-within:border-[var(--color-gold)]/60 focus-within:shadow-[0_0_25px_rgba(201,163,91,0.2)] transition-all">
             <div className="relative flex-1 flex items-center">
@@ -401,6 +436,19 @@ export default function AdminDashboard() {
                           >
                             <Edit size={13} />
                             Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteProduct(e, prod)}
+                            disabled={deletingId === (prod.id || prod._id)}
+                            className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/20 hover:border-red-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Delete this product"
+                          >
+                            {deletingId === (prod.id || prod._id) ? (
+                              <Loader2 size={14} className="animate-spin text-red-400" />
+                            ) : (
+                              <Trash2 size={14} />
+                            )}
                           </button>
                         </div>
                       </div>

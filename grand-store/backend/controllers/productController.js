@@ -585,9 +585,10 @@ const deleteProduct = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
+    const isSuperAdminOrAdmin = ['admin', 'super_admin'].includes(req.user?.role);
     const ownsVendorProduct = product.vendorId?.toString() === req.user._id.toString();
     const managesInternalProduct = canManageInternalProducts(req.user) && !product.vendorId;
-    if (!ownsVendorProduct && !managesInternalProduct) {
+    if (!isSuperAdminOrAdmin && !ownsVendorProduct && !managesInternalProduct) {
       return res.status(403).json({ message: 'Not authorized to delete this product' });
     }
 

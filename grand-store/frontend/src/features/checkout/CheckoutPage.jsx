@@ -108,7 +108,13 @@ export default function CheckoutPage({
   const [quote, setQuote] = useState(null);
   const [dutiesAccepted, setDutiesAccepted] = useState(false);
   const [deliveryPreference, setDeliveryPreference] = useState('home'); // 'home' or 'postnet'
-  const [destinationMode, setDestinationMode] = useState('domestic_sa'); // 'domestic_sa' or 'international_aramex'
+  const urlMode = searchParams.get('mode');
+  const urlCountry = searchParams.get('country');
+  const isIntlCountry = (c) => Boolean(c && !['south africa', 'za', 'rsa'].includes(c.toLowerCase().trim()));
+  const hasIntlProduct = vendorCartItems.some((item) => isIntlCountry(item.country));
+  const isInternationalOrder = urlMode === 'international_aramex' || (urlMode !== 'domestic_sa' && hasIntlProduct);
+
+  const [destinationMode, setDestinationMode] = useState(() => (isInternationalOrder ? 'international_aramex' : 'domestic_sa'));
   const isDomestic = destinationMode === 'domestic_sa';
   const [applyRewards, setApplyRewards] = useState(false);
   const [useSuperCoins, setUseSuperCoins] = useState(true);
@@ -251,7 +257,7 @@ export default function CheckoutPage({
       address: '',
       city: '',
       postalCode: '',
-      country: 'South Africa',
+      country: urlCountry || (isInternationalOrder ? (vendorCartItems.find((item) => isIntlCountry(item.country))?.country || 'France') : 'South Africa'),
       lat: null,
       lng: null
     };
@@ -414,6 +420,23 @@ export default function CheckoutPage({
     }
   };
 
+  
+  // Auto-sync International Aramex mode from URL (?mode=international_aramex) or international cart items
+  useEffect(() => {
+    if (urlMode === 'international_aramex') {
+      setDestinationMode('international_aramex');
+      setDeliveryPreference('home');
+      if (urlCountry) {
+        setFormData((prev) => ({ ...prev, country: urlCountry }));
+      }
+    } else if (urlMode === 'domestic_sa') {
+      setDestinationMode('domestic_sa');
+      setFormData((prev) => ({ ...prev, country: 'South Africa' }));
+    } else if (hasIntlProduct) {
+      setDestinationMode('international_aramex');
+      setDeliveryPreference('home');
+    }
+  }, [urlMode, urlCountry, hasIntlProduct]);
   useEffect(() => {
     document.title = 'Checkout – The Grand Store';
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -1464,8 +1487,36 @@ export default function CheckoutPage({
                 )}
 
                 {/* Delivery Location & Fulfillment Mode */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                  {/* Card 1: South Africa Door Delivery */}
+                {destinationMode === 'international_aramex' ? (
+                  <div className="w-full">
+                    {/* Only Aramex Global Express when international */}
+                    <div className="relative p-5 rounded-2xl border border-red-500 bg-red-500/15 shadow-[0_0_25px_rgba(239,68,68,0.2)] ring-1 ring-red-400/40 text-left flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-start sm:items-center gap-3.5">
+                        <span className="p-3 rounded-xl bg-red-500 text-white shrink-0">
+                          <Globe size={22} />
+                        </span>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-base font-semibold text-white leading-snug">Aramex Global Express</p>
+                            <span className="text-[9px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded font-mono">
+                              ✈️ International Courier
+                            </span>
+                          </div>
+                          <p className="text-xs text-[var(--color-ivory-muted)] leading-relaxed">
+                            Priority air express door-to-door delivery with full customs clearance. Local South African couriers (PostNet, PUDO, Courier Guy) are unavailable for international shipments.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        <span className="text-xs font-semibold text-red-300 flex items-center gap-1.5 bg-red-500/20 border border-red-500/40 px-3 py-1.5 rounded-xl">
+                          <CheckCircle2 size={16} className="text-red-400" /> Active Delivery Mode
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    {/* Card 1: South Africa Door Delivery */}
                   <button
                     type="button"
                     onClick={() => selectDeliveryMode('domestic_home')}
@@ -1578,6 +1629,7 @@ export default function CheckoutPage({
                     <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Priority air express courier to UK, USA, Europe, UAE & 220+ countries</p>
                   </button>
                 </div>
+              )}
 
                 {/* Recipient Details */}
                 <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
@@ -1617,7 +1669,7 @@ export default function CheckoutPage({
                     <div className="sm:col-span-2">
                       <div className="flex items-center justify-between mb-1.5">
                         <label htmlFor="checkout-phone" className="text-[11px] uppercase tracking-wider text-white/70 flex items-center gap-1.5">
-                          <Phone size={12} className="text-[var(--color-gold)]" /> Mobile Number (Required for PostNet SMS alerts) *
+                          <Phone size={12} className="text-[var(--color-gold)]" /> Mobile Number {destinationMode === 'domestic_sa' ? '(Required for PostNet SMS alerts) *' : '*'}
                         </label>
                       </div>
                       <div className="flex min-w-0 rounded-xl border border-white/10 bg-black/60 focus-within:border-[var(--color-gold)] transition-colors relative overflow-visible">

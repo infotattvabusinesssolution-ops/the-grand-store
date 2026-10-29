@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Filter, Search, X, Wine } from 'lucide-react';
 import { useProducts } from '../../context/ProductContext';
@@ -122,6 +122,8 @@ const deterministicShuffle = (array, seedStr = 'global-wine-collection') => {
 export default function CountryPavilionPage({ onAdd, onWish, onCompare, compareItems = [] }) {
   const { country } = useParams();
   const { products } = useProducts();
+  const navigate = useNavigate();
+
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -337,6 +339,7 @@ export default function CountryPavilionPage({ onAdd, onWish, onCompare, compareI
                 onWish={() => onWish(product)}
                 onCompare={() => onCompare(product)}
                 isCompared={compareItems.some((item) => item.id === product.id)}
+                isGlobalWine={cleanCountryKey !== 'south africa'}
               />
             ))}
           </div>

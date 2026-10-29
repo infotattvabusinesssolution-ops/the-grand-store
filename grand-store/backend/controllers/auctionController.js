@@ -193,6 +193,18 @@ exports.placeBid = async (req, res) => {
     const lot = await AuctionLot.findById(lotId);
     if (!lot) return res.status(404).json({ message: 'Lot not found' });
     const originalBid = lot.currentBid;
+
+    // Role restriction: Admins and Vendors cannot participate in bidding
+    const userRole = req.user?.role || '';
+    if (['admin', 'super_admin'].includes(userRole) || userRole.startsWith('vendor') || userRole === 'auction_host') {
+      return res.status(403).json({ message: 'Admins and Vendors cannot participate in bidding.' });
+    }
+    
+    // Role restriction: Admins and Vendors cannot participate in bidding
+    const userRole = req.user?.role || '';
+    if (['admin', 'super_admin'].includes(userRole) || userRole.startsWith('vendor') || userRole === 'auction_host') {
+      return res.status(403).json({ message: 'Admins and Vendors cannot participate in bidding.' });
+    }
     
     // Bidder Permission, KYC & Admin Approval checks
     if (req.user.isBiddingSuspended) {
@@ -662,6 +674,10 @@ exports.toggleWatchlist = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (['admin', 'super_admin'].includes(user.role) || (user.role && user.role.startsWith('vendor')) || user.role === 'auction_host') {
+      return res.status(403).json({ message: 'Only customer accounts can register for auction bidding. Admins and vendors cannot participate.' });
+    }
 
     const lotIndex = user.auctionWatchlist.indexOf(lotId);
     if (lotIndex === -1) {
@@ -1459,6 +1475,16 @@ exports.registerBidder = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    // Role restriction: Admins and Vendors cannot register as bidders
+    const applicantRole = user.role || '';
+    if (['admin', 'super_admin'].includes(applicantRole) || applicantRole.startsWith('vendor') || applicantRole === 'auction_host') {
+      return res.status(403).json({ message: 'Only customer accounts can register for auction bidding. Admins and vendors cannot participate.' });
+    }
+
+    if (['admin', 'super_admin'].includes(user.role) || (user.role && user.role.startsWith('vendor')) || user.role === 'auction_host') {
+      return res.status(403).json({ message: 'Only customer accounts can register for auction bidding. Admins and vendors cannot participate.' });
+    }
+
     // Dynamic Platform Settings for Age & Requirements
     const settings = await PlatformSettings.findOne();
     const minAge = settings?.bidderKycMinAge || 18;
@@ -1632,6 +1658,10 @@ exports.getBidderStatus = async (req, res) => {
     );
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    if (['admin', 'super_admin'].includes(user.role) || (user.role && user.role.startsWith('vendor')) || user.role === 'auction_host') {
+      return res.status(403).json({ message: 'Only customer accounts can register for auction bidding. Admins and vendors cannot participate.' });
+    }
+
     let bankAccountDetails = user.bankAccountDetails || null;
     if (!bankAccountDetails?.accountNumber) {
       const deposit = await BidderDeposit.findOne({ 
@@ -1714,6 +1744,10 @@ exports.approveBidder = async (req, res) => {
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    if (['admin', 'super_admin'].includes(user.role) || (user.role && user.role.startsWith('vendor')) || user.role === 'auction_host') {
+      return res.status(403).json({ message: 'Only customer accounts can register for auction bidding. Admins and vendors cannot participate.' });
+    }
+
     user.bidderApprovalStatus = 'approved';
     user.kycVerified = true;
     user.isAgeVerified = true;
@@ -1780,6 +1814,10 @@ exports.rejectBidder = async (req, res) => {
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    if (['admin', 'super_admin'].includes(user.role) || (user.role && user.role.startsWith('vendor')) || user.role === 'auction_host') {
+      return res.status(403).json({ message: 'Only customer accounts can register for auction bidding. Admins and vendors cannot participate.' });
+    }
+
     user.bidderApprovalStatus = 'rejected';
     user.bidderRejectionReason = reason;
     user.kycVerified = false;
@@ -1827,6 +1865,10 @@ exports.updateBidderLimit = async (req, res) => {
 
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (['admin', 'super_admin'].includes(user.role) || (user.role && user.role.startsWith('vendor')) || user.role === 'auction_host') {
+      return res.status(403).json({ message: 'Only customer accounts can register for auction bidding. Admins and vendors cannot participate.' });
+    }
 
     if (biddingLimit !== undefined) user.biddingLimit = Number(biddingLimit);
     if (bidderLevel !== undefined) user.bidderLevel = bidderLevel;
@@ -1885,6 +1927,10 @@ exports.createBidderDeposit = async (req, res) => {
     const { amount, paymentMethod = 'payfast', proofOfPayment, lotId, bankAccountDetails, tier = 'premium' } = req.body;
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (['admin', 'super_admin'].includes(user.role) || (user.role && user.role.startsWith('vendor')) || user.role === 'auction_host') {
+      return res.status(403).json({ message: 'Only customer accounts can register for auction bidding. Admins and vendors cannot participate.' });
+    }
 
     // Fetch dynamic deposit amount from platform settings
     const settings = await PlatformSettings.findOne();

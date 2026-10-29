@@ -547,10 +547,12 @@ export default function AuctionLotDetail({ onNotify }) {
                 />
 
                 {/* Media Counter Pill */}
-                <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest text-white/80 border border-white/10 flex items-center gap-1.5">
-                  <ImageIcon size={12} className="text-[#e1bd70]" />
-                  Photo {typeof activeMedia === 'number' ? activeMedia + 1 : 1} of {lot.images?.length || 1}
-                </div>
+                {((lot.images && lot.images.length > 1) || lot.videoUrl) && (
+                  <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest text-white/80 border border-white/10 flex items-center gap-1.5">
+                    <ImageIcon size={12} className="text-[#e1bd70]" />
+                    Photo {typeof activeMedia === 'number' ? activeMedia + 1 : 1} of {lot.images?.length || 1}
+                  </div>
+                )}
               </div>
             )}
           </div>

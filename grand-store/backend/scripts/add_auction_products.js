@@ -224,7 +224,7 @@ async function run() {
         originalEndDate: endDate,
         condition: item.condition,
         provenance: item.provenance,
-        images: [cdnUrl, localUrl],
+        images: [cdnUrl],
         vendor: adminVendorId,
         status: 'live',
         distillery: item.distillery,

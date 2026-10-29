@@ -743,9 +743,8 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                 className={`order-4 col-span-2 h-[52px] w-full min-w-0 border border-[#222] bg-[#222] text-xs font-bold uppercase tracking-[0.12em] text-[#eee8dd] sm:order-3 sm:flex-1 sm:min-w-[140px] ${product.stock === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-[#333] transition-colors'}`}
                 type="button"
                 onClick={() => {
-                  if (product.stock !== 0 && onAdd) {
-                    onAdd(product, quantity, selectedOption, false);
-                    navigate("/customer/checkout");
+                  if (product.stock !== 0) {
+                    setIsCheckoutModalOpen(true);
                   }
                 }}
                 disabled={product.stock === 0}
@@ -1192,6 +1191,22 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
           </div>
         </div>
       )}
+      <ConfirmCheckoutModal 
+        isOpen={isCheckoutModalOpen} 
+        onClose={() => setIsCheckoutModalOpen(false)} 
+        product={product}
+        initialQuantity={quantity || 1}
+        selectedOption={selectedOption || product.options?.[0] || '750ml'}
+        onAddToCart={(prod, qty, opt, openCart) => {
+          if (onAdd) onAdd(prod, qty, opt, openCart);
+        }}
+        onProceed={(prod, qty, opt) => {
+          if (onAdd) onAdd(prod, qty, opt, false);
+          const isIntl = (prod?.country && !['south africa', 'za', 'rsa'].includes(prod.country.toLowerCase().trim())) || (product?.country && !['south africa', 'za', 'rsa'].includes(product.country.toLowerCase().trim()));
+          const targetCountry = (prod?.country || product?.country) ? `&country=${encodeURIComponent(prod?.country || product?.country)}` : '';
+          navigate(isIntl ? `/customer/checkout?mode=international_aramex${targetCountry}` : '/customer/checkout?mode=domestic_sa');
+        }}
+      />
     </main>
   );
 }

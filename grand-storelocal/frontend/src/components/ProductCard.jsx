@@ -228,6 +228,7 @@ export default function ProductCard({
   onCompare,
   isCompared = false,
   onQuickView,
+  isGlobalWine = false,
 }) {
   const navigate = useNavigate();
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
@@ -294,12 +295,12 @@ export default function ProductCard({
           </div>
 
           <Link
-            className="product-image-link"
-            to={productPath}
-            aria-label={`View ${productName}`}
-          >
-            <VendorProductImage src={product.image} alt={productName} />
-          </Link>
+              className="product-image-link"
+              to={productPath}
+              aria-label={`View ${productName}`}
+            >
+              <VendorProductImage src={product.image} alt={productName} />
+            </Link>
           <div className="product-glow" />
         </div>
 
@@ -479,7 +480,7 @@ export default function ProductCard({
           }}
           onProceed={(prod, qty, opt) => {
             if (onAdd) onAdd(prod, qty, opt, false);
-            navigate('/customer/checkout');
+            const isIntl = isGlobalWine || (prod?.country && !['south africa', 'za', 'rsa'].includes(prod.country.toLowerCase().trim())); const targetCountry = prod?.country ? `&country=${encodeURIComponent(prod.country)}` : ''; navigate(isIntl ? `/customer/checkout?mode=international_aramex${targetCountry}` : '/customer/checkout?mode=domestic_sa');
           }}
         />
       </article>

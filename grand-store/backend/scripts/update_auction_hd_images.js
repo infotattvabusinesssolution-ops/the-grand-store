@@ -114,10 +114,7 @@ async function updateHDImages() {
       {
         $set: {
           images: [
-            urls.transparent,
-            urls.black,
-            urls.localPng,
-            urls.localJpg
+            urls.transparent
           ],
           updatedAt: new Date()
         }
