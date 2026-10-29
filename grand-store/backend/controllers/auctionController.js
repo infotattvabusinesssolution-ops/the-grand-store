@@ -193,12 +193,6 @@ exports.placeBid = async (req, res) => {
     const lot = await AuctionLot.findById(lotId);
     if (!lot) return res.status(404).json({ message: 'Lot not found' });
     const originalBid = lot.currentBid;
-
-    // Role restriction: Admins and Vendors cannot participate in bidding
-    const userRole = req.user?.role || '';
-    if (['admin', 'super_admin'].includes(userRole) || userRole.startsWith('vendor') || userRole === 'auction_host') {
-      return res.status(403).json({ message: 'Admins and Vendors cannot participate in bidding.' });
-    }
     
     // Role restriction: Admins and Vendors cannot participate in bidding
     const userRole = req.user?.role || '';
