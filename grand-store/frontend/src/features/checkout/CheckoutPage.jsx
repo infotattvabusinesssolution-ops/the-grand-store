@@ -910,8 +910,8 @@ export default function CheckoutPage({
       return;
     }
 
-    if (quote.hasInternational && !dutiesAccepted) {
-      onNotify('Please accept the International Duties acknowledgment.');
+    if (quote.hasInternational && (!dutiesAccepted || !commercialInvoiceAcknowledged)) {
+      setShowCommercialInvoiceModal(true);
       return;
     }
 
@@ -1145,6 +1145,35 @@ export default function CheckoutPage({
               </button>
             </div>
 
+            {/* Prominent High-Visibility Summary Notice */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#1a140a] to-[#0d0a05] border border-[var(--color-gold)]/50 space-y-3.5 shadow-inner">
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-gold)]">
+                <AlertTriangle size={18} className="shrink-0" />
+                <span>Notice on Destination Import Duties & Border Clearance</span>
+              </div>
+              <p className="text-xs text-white/90 leading-relaxed">
+                All international cross-border consignments are dispatched on <strong>Incoterms® 2020: DAP (Delivered at Place)</strong> terms:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div className="p-3.5 rounded-xl bg-black/60 border border-emerald-500/30 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                    <CheckCircle2 size={15} className="shrink-0" /> All Documents Provided
+                  </div>
+                  <p className="text-[11px] text-white/70 leading-relaxed">
+                    Grand Store and our partner wineries provide complete official paperwork (Commercial Export Invoice with HS 2208/2204 Tariff Codes, Air Waybill, and Packing List) securely affixed to the parcel.
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-black/60 border border-amber-500/30 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
+                    <Globe size={15} className="shrink-0" /> Client's Account at Destination
+                  </div>
+                  <p className="text-[11px] text-white/70 leading-relaxed">
+                    All destination import duties, local alcohol excise taxes, or clearance fees levied by your country's customs authority will be at the <strong>client's / recipient's account upon arrival</strong>.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Navigation Tabs */}
             <div className="flex gap-2 border-b border-white/10 pb-2">
               <button
@@ -1344,10 +1373,14 @@ export default function CheckoutPage({
                   setCommercialInvoiceAcknowledged(true);
                   setDutiesAccepted(true);
                   setShowCommercialInvoiceModal(false);
+                  if (checkoutStep === 2) {
+                    setCheckoutStep(3);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
                 }}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[var(--color-gold)] hover:bg-[var(--color-gold-light)] text-black text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-lg"
+                className="w-full sm:w-auto px-8 py-3 rounded-xl bg-[var(--color-gold)] hover:bg-[var(--color-gold-light)] text-black text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2"
               >
-                Acknowledge & Close
+                <CheckCircle2 size={16} /> I Understand & Agree — Continue to Payment
               </button>
             </div>
           </div>
@@ -3639,6 +3672,35 @@ export default function CheckoutPage({
               </button>
             </div>
 
+            {/* Prominent High-Visibility Summary Notice */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#1a140a] to-[#0d0a05] border border-[var(--color-gold)]/50 space-y-3.5 shadow-inner">
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-gold)]">
+                <AlertTriangle size={18} className="shrink-0" />
+                <span>Notice on Destination Import Duties & Border Clearance</span>
+              </div>
+              <p className="text-xs text-white/90 leading-relaxed">
+                All international cross-border consignments are dispatched on <strong>Incoterms® 2020: DAP (Delivered at Place)</strong> terms:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div className="p-3.5 rounded-xl bg-black/60 border border-emerald-500/30 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                    <CheckCircle2 size={15} className="shrink-0" /> All Documents Provided
+                  </div>
+                  <p className="text-[11px] text-white/70 leading-relaxed">
+                    Grand Store and our partner wineries provide complete official paperwork (Commercial Export Invoice with HS 2208/2204 Tariff Codes, Air Waybill, and Packing List) securely affixed to the parcel.
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-black/60 border border-amber-500/30 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
+                    <Globe size={15} className="shrink-0" /> Client's Account at Destination
+                  </div>
+                  <p className="text-[11px] text-white/70 leading-relaxed">
+                    All destination import duties, local alcohol excise taxes, or clearance fees levied by your country's customs authority will be at the <strong>client's / recipient's account upon arrival</strong>.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Navigation Tabs */}
             <div className="flex gap-2 border-b border-white/10 pb-2">
               <button
@@ -3838,10 +3900,14 @@ export default function CheckoutPage({
                   setCommercialInvoiceAcknowledged(true);
                   setDutiesAccepted(true);
                   setShowCommercialInvoiceModal(false);
+                  if (checkoutStep === 2) {
+                    setCheckoutStep(3);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
                 }}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[var(--color-gold)] hover:bg-[var(--color-gold-light)] text-black text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-lg"
+                className="w-full sm:w-auto px-8 py-3 rounded-xl bg-[var(--color-gold)] hover:bg-[var(--color-gold-light)] text-black text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2"
               >
-                Acknowledge & Close
+                <CheckCircle2 size={16} /> I Understand & Agree — Continue to Payment
               </button>
             </div>
           </div>
