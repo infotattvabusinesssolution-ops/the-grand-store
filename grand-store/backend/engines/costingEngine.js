@@ -198,6 +198,7 @@ class CostingEngine {
       createdAt: new Date(),
       subTotal,
       totalPrice: order.totalPrice,
+      transitInsuranceAmount: Number(order.transitInsurance?.amount || 0),
       grossPlatformCommission,
       totalVendorPayouts: totalVendorPayouts,
       gatewayFeeTotal: rawGatewayFee,

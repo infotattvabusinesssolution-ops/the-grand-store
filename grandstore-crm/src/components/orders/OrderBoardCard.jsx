@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Eye, MapPin, MessageSquare, Package, User, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Clock, Eye, MapPin, MessageSquare, Package, User, AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react';
 
 export default function OrderBoardCard({ lane, item, onOpenOrder, onOpenTicket, onResolveException, onViewSettlements }) {
   const linkedOrder = item.order || item.orderId;
@@ -37,6 +37,19 @@ export default function OrderBoardCard({ lane, item, onOpenOrder, onOpenTicket, 
           <Package size={12} /> {products.length ? `${products.length} product line${products.length === 1 ? '' : 's'}` : 'Order items'}
         </p>
         <p className="truncate mt-1 text-[11px] text-slate-500" title={productSummary}>{productSummary || 'View order for item details'}</p>
+      </div>
+      <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${
+          order.transitInsurance?.optIn ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'
+        }`}>
+          <ShieldCheck size={11} className={order.transitInsurance?.optIn ? 'text-emerald-600' : 'text-slate-400'} />
+          {order.transitInsurance?.optIn ? 'Insured (1.5%)' : 'No Insurance'}
+        </span>
+        {Boolean(order.commercialInvoiceAcknowledged || order.isInternational) && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+            DAP Export
+          </span>
+        )}
       </div>
       <div className="crm-order-action">
         {lane.isExceptionLane ? (

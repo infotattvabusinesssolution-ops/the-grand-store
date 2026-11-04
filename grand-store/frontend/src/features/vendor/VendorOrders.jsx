@@ -219,10 +219,20 @@ export default function VendorOrders() {
                   <div className="flex flex-col md:flex-row gap-2 md:gap-8">
                     <div>
                       <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">
-                        Shipment ID
+                        Sub-Order Ref
                       </div>
-                      <div className="text-sm text-[#e1bd70] font-bold">
-                        {shp.shipmentId || shp._id}
+                      <div className="text-sm text-[#e1bd70] font-mono font-bold">
+                        {shp.subOrderRef || shp.shipmentId || shp._id}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">
+                        Cellar Origin
+                      </div>
+                      <div className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/30">
+                        {shp.originCountry?.toLowerCase().includes('ital') || (shp.items || []).some(it => (it.name || '').toLowerCase().includes('dogliotti') || (it.name || '').toLowerCase().includes('cantina'))
+                          ? '🇮🇹 Italy Cellar'
+                          : '🇿🇦 South Africa Cellar'}
                       </div>
                     </div>
                     <div>
@@ -263,10 +273,13 @@ export default function VendorOrders() {
                   </div>
                   <div className="text-left md:text-right">
                     <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">
-                      Products Total
+                      Your Net Payout (85%)
                     </div>
-                    <div className="text-xl font-serif text-[#e1bd70]">
-                      <Price amount={shp.vendorTotal} />
+                    <div className="text-xl font-serif text-[#e1bd70] font-bold">
+                      <Price amount={shp.financialSplit?.vendorNetProceeds ?? (shp.vendorTotal * 0.85)} />
+                    </div>
+                    <div className="text-[10px] text-white/50 mt-0.5 font-mono">
+                      Gross: <Price amount={shp.vendorTotal} /> • Less 15%: -<Price amount={shp.financialSplit?.commissionAmount ?? (shp.vendorTotal * 0.15)} />
                     </div>
                   </div>
                 </div>
@@ -385,7 +398,10 @@ export default function VendorOrders() {
 
                 {/* Card Actions Footer */}
                 <div className="bg-black/30 px-6 py-4 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
-                  <div className="text-xs text-white/50">
+                  <div className="text-xs text-white/50 flex flex-col gap-0.5">
+                    <span className="text-[11px] text-white/40 italic">
+                      * Courier freight is billed directly to Grand Store account — 0% vendor deduction.
+                    </span>
                     {shp.adminMessages?.length > 0 ? (
                       <span className="text-amber-400 font-medium flex items-center gap-1.5">
                         <Send size={12} /> {shp.adminMessages.length} {shp.adminMessages.length === 1 ? 'Advisory Notice Sent' : 'Advisory Notices Sent'}

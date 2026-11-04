@@ -17,11 +17,38 @@ const isSouthAfrica = (country) => {
 
 const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtotal, totalWeightKg, options = {}) => {
   try {
-    let vendor = null;
-    if (vendorId && /^[0-9a-fA-F]{24}$/.test(vendorId.toString())) {
-      vendor = await Vendor.findById(vendorId);
+    let vendor = options.vendor || null;
+    if (!vendor && vendorId && /^[0-9a-fA-F]{24}$/.test(vendorId.toString())) {
+      vendor = await Vendor.findById(vendorId).catch(() => null);
+      if (!vendor) {
+        vendor = await Vendor.findOne({ userId: vendorId }).catch(() => null);
+      }
     }
-    const originCountry = vendor?.shippingProfile?.pickupAddress?.country || 'South Africa';
+
+    let originCountry = vendor?.shippingProfile?.pickupAddress?.country 
+      || vendor?.businessInfo?.address?.country 
+      || null;
+
+    if (!originCountry && options.items && Array.isArray(options.items) && options.items.length > 0) {
+      const itemWithCountry = options.items.find(it => it.country || it.originCountry);
+      if (itemWithCountry) {
+        originCountry = itemWithCountry.country || itemWithCountry.originCountry;
+      }
+    }
+
+    if (!originCountry && options.items && Array.isArray(options.items) && options.items.length > 0) {
+      const itemBrandOrName = options.items.map(it => (it.name || '') + ' ' + (it.brand || '')).join(' ').toLowerCase();
+      if (itemBrandOrName.includes('dogliotti') || itemBrandOrName.includes('cantina del conte') || itemBrandOrName.includes('giuliani')) {
+        originCountry = 'Italy';
+      } else if (itemBrandOrName.includes('bruno andreu') || itemBrandOrName.includes('dobbé') || itemBrandOrName.includes('dobbe')) {
+        originCountry = 'France';
+      }
+    }
+
+    if (!originCountry) {
+      originCountry = 'South Africa';
+    }
+
     const destCountry = customerAddress.country || 'South Africa';
 
     const originSA = isSouthAfrica(originCountry);
@@ -456,34 +483,119 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
       estimatedTaxes = parseFloat((shipmentItemsSubtotal * 0.20).toFixed(2));
       customsFees = 250; 
     } 
-    // 3. IMPORT (Intl -> SA) or CROSS-BORDER
-    else {
+    // 3A. CROSS-BORDER DIRECT INTERNATIONAL (e.g. Italy -> UK/Scotland, Italy -> France, France -> USA)
+    else if (!originSA && !destSA) {
       isInternational = true;
-      let baseRate = 2500;
+
+      let maxLen = 12, maxWid = 12, maxHgt = 34, totalActualWeight = totalWeightKg || 1.85;
+      let totalVolumetric = 0;
+      let isFragileParcel = true;
+
+      if (options.items && Array.isArray(options.items) && options.items.length > 0) {
+        options.items.forEach(it => {
+          const l = Number(it.shipping?.length_cm || 12);
+          const w = Number(it.shipping?.width_cm || 12);
+          const h = Number(it.shipping?.height_cm || 34);
+          const wt = Number(it.shipping?.weight_kg || 1.85);
+          const q = Number(it.quantity || it.qty || 1);
+          maxLen = Math.max(maxLen, l);
+          maxWid = Math.max(maxWid, w);
+          maxHgt = Math.max(maxHgt, h);
+          totalVolumetric += ((l * w * h) / 5000) * q;
+          if (it.shipping?.is_fragile !== undefined) isFragileParcel = it.shipping.is_fragile;
+        });
+      } else {
+        totalVolumetric = (maxLen * maxWid * maxHgt) / 5000;
+      }
+
+      const chargeableWeight = Math.max(totalActualWeight, totalVolumetric);
+      const roundedChargeable = Math.max(0.5, Math.ceil(chargeableWeight * 2) / 2);
+
+      const base05Kg = 420.0;
+      const additionalHalfKgs = Math.max(0, Math.round((roundedChargeable - 0.5) / 0.5));
+      const freightBase = base05Kg + (additionalHalfKgs * 110.0);
+      const fuelSurcharge = Number((freightBase * 0.125).toFixed(2));
+      const securityFee = 65.0;
+      const fragileCare = isFragileParcel ? 85.0 : 0.0;
+      const dynamicRate = Number((freightBase + fuelSurcharge + securityFee + fragileCare).toFixed(2));
+
       quotes.push({
         courierName: 'Aramex',
-        serviceLevel: 'Aramex International Priority',
+        serviceLevel: 'Aramex Worldwide Express',
+        serviceCode: 'EPX',
+        deliveryType: 'home',
+        cost: dynamicRate,
+        estimatedDays: '3–6 business days',
+        description: `Direct European & Global Express (${originCountry} → ${destCountry}, Box: ${maxLen}x${maxWid}x${maxHgt}cm, Wt: ${Number(chargeableWeight.toFixed(2))}kg)`,
+        boxDetails: {
+          length_cm: maxLen,
+          width_cm: maxWid,
+          height_cm: maxHgt,
+          actual_weight_kg: Number(totalActualWeight.toFixed(2)),
+          volumetric_weight_kg: Number(totalVolumetric.toFixed(2)),
+          chargeable_weight_kg: Number(chargeableWeight.toFixed(2))
+        },
+        legs: [
+          {
+            courierName: `${originCountry} Estate Dispatch Hub`,
+            origin: originCountry,
+            destination: `${originCountry} Air Cargo Gateway`,
+            cost: Number((dynamicRate * 0.20).toFixed(2))
+          },
+          {
+            courierName: 'Aramex Global Air Transit',
+            origin: `${originCountry} Air Cargo Gateway`,
+            destination: `${destCountry} Cargo Gateway`,
+            cost: Number((dynamicRate * 0.60).toFixed(2))
+          },
+          {
+            courierName: `${destCountry} Doorstep Courier Delivery`,
+            origin: `${destCountry} Cargo Gateway`,
+            destination: customerAddress.city || destCountry,
+            cost: Number((dynamicRate * 0.20).toFixed(2))
+          }
+        ]
+      });
+
+      estimatedDuties = parseFloat((shipmentItemsSubtotal * 0.12).toFixed(2));
+      estimatedTaxes = parseFloat((shipmentItemsSubtotal * 0.20).toFixed(2));
+      customsFees = 200;
+    }
+    // 3B. IMPORT INTO SOUTH AFRICA (Intl -> SA, e.g. Italy -> SA, France -> SA)
+    else {
+      isInternational = true;
+      let baseRate = 2200;
+      quotes.push({
+        courierName: 'Aramex',
+        serviceLevel: 'Aramex International Priority (Import)',
         serviceCode: 'EPX',
         deliveryType: 'home',
         cost: baseRate,
-        estimatedDays: '5-10 business days',
+        estimatedDays: '5–8 business days',
+        description: `Aramex International Priority Import (${originCountry} → South Africa)`,
         legs: [
           {
-            courierName: 'Aramex Global Air Freight',
+            courierName: `${originCountry} Estate Collection`,
             origin: originCountry,
-            destination: 'Aramex SA Import Hub (JNB/CPT)',
-            cost: baseRate * 0.65
+            destination: `${originCountry} Air Export Gateway`,
+            cost: baseRate * 0.25
+          },
+          {
+            courierName: 'Aramex Global Air Freight',
+            origin: `${originCountry} Air Export Gateway`,
+            destination: 'Aramex SA Import Hub (OR Tambo / CPT)',
+            cost: baseRate * 0.55
           },
           {
             courierName: 'Aramex South Africa Domestic Delivery',
-            origin: 'Aramex SA Import Hub (JNB/CPT)',
+            origin: 'Aramex SA Import Hub (OR Tambo / CPT)',
             destination: customerAddress.city || 'Customer',
-            cost: baseRate * 0.15
+            cost: baseRate * 0.20
           }
         ]
       });
       estimatedDuties = parseFloat((shipmentItemsSubtotal * 0.20).toFixed(2));
-      estimatedTaxes = parseFloat((shipmentItemsSubtotal * 0.15).toFixed(2)); // SA VAT is 15% on imports
+      estimatedTaxes = parseFloat((shipmentItemsSubtotal * 0.15).toFixed(2));
       customsFees = 300;
     }
 

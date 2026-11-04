@@ -219,6 +219,20 @@ export default function AdminOrders() {
                       </span>
                     </div>
 
+                    <div>
+                      <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-0.5">
+                        Transit Insurance
+                      </div>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        ord.transitInsurance?.optIn
+                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                          : "bg-white/5 text-white/50 border border-white/10"
+                      }`}>
+                        <ShieldCheck size={11} className={ord.transitInsurance?.optIn ? "text-emerald-400" : "text-white/40"} />
+                        {ord.transitInsurance?.optIn ? "Insured (1.5%)" : "Not Selected"}
+                      </span>
+                    </div>
+
                     {ord.isGift && (
                       <div>
                         <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">
@@ -250,17 +264,9 @@ export default function AdminOrders() {
                         <User size={13} /> Customer Details
                       </h4>
                       <span className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${
-                        ord.isGuest
-                          ? ord.guestInfo?.isLinkedToAccount
-                            ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                            : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                          : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                        ord.isGuest ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                       }`}>
-                        {ord.isGuest
-                          ? ord.guestInfo?.isLinkedToAccount
-                            ? "Guest (Linked Account)"
-                            : "Guest Checkout"
-                          : "VIP Member"}
+                        {ord.isGuest ? "Guest Checkout" : "VIP Member"}
                       </span>
                     </div>
 

@@ -105,6 +105,8 @@ const generateQuote = async (req, res) => {
         vendorId: product.vendorId,
         category: product.category || 'Uncategorised',
         subcategory: product.subcategory || '',
+        country: product.country || (product.originCountry || null),
+        brand: product.brand || null,
         isSuperCoinEligible,
         maxSuperCoinDiscountPct,
         isReferralEligible,
@@ -135,10 +137,14 @@ const generateQuote = async (req, res) => {
       const group = vendorGroups[vId];
       
       let vendorName = 'The Grand Store';
+      let vendorDoc = null;
       if (group.vendorId) {
-        const vendor = await Vendor.findOne({ userId: group.vendorId }).catch(() => null);
-        if (vendor) {
-          vendorName = vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || 'Unknown Vendor';
+        vendorDoc = await Vendor.findOne({ userId: group.vendorId }).catch(() => null);
+        if (!vendorDoc && /^[0-9a-fA-F]{24}$/.test(group.vendorId.toString())) {
+          vendorDoc = await Vendor.findById(group.vendorId).catch(() => null);
+        }
+        if (vendorDoc) {
+          vendorName = vendorDoc.businessInfo?.tradingName || vendorDoc.businessInfo?.legalName || 'Unknown Vendor';
         }
       }
 
@@ -147,7 +153,7 @@ const generateQuote = async (req, res) => {
         shippingAddress, 
         group.subtotal, 
         group.totalWeightKg,
-        { postnetLookup, settings, items: group.items }
+        { postnetLookup, settings, items: group.items, vendor: vendorDoc }
       );
 
       if (shippingData.isInternational) hasInternational = true;
@@ -279,12 +285,20 @@ const generateQuote = async (req, res) => {
     const quoteId = `QUOTE-${Date.now()}`;
     const expiresAt = new Date(Date.now() + 10 * 60000); // 10 minutes
 
+    // Fragile Transit & Breakage Insurance (1.5% premium protection, minimum R50)
+    const transitInsuranceRatePct = 1.5;
+    const transitInsuranceEstimate = Math.max(50, parseFloat((globalSubtotal * 0.015).toFixed(2)));
+
     res.json({
       quoteId,
       expiresAt,
       deliveryPreference,
       globalSubtotal,
       hasInternational,
+      transitInsurance: {
+        ratePct: transitInsuranceRatePct,
+        amount: transitInsuranceEstimate
+      },
       aggregatedTotals: {
         shipping: defaultShippingTotal,
         vat: defaultVatTotal,

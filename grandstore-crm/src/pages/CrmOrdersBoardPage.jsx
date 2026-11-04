@@ -379,6 +379,171 @@ export default function CrmOrdersBoardPage() {
               </div>
             </div>
 
+            {/* VENDOR CONSIGNMENTS & SUB-ORDERS (CRM INSPECTION) */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                  <Package size={14} className="text-amber-600" />
+                  Vendor Consignments & Independent Sub-Orders
+                </p>
+                <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                  {((selectedOrder.shipments && selectedOrder.shipments.length > 0) ? selectedOrder.shipments.length : 1)} Consignment(s)
+                </span>
+              </div>
+
+              {(() => {
+                const isIntlOrder = selectedOrder.isInternational || 
+                  (selectedOrder.shippingAddress?.country && !['south africa', 'za', 'rsa'].includes(String(selectedOrder.shippingAddress.country).toLowerCase().trim()));
+                const fallbackSubtotal = (selectedOrder.orderItems || []).reduce(
+                  (sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 1)),
+                  0
+                ) || Number(selectedOrder.totalPrice ?? selectedOrder.totalAmount ?? 0);
+
+                const shipments = (selectedOrder.shipments && selectedOrder.shipments.length > 0)
+                  ? selectedOrder.shipments
+                  : [
+                      {
+                        _id: selectedOrder._id,
+                        subOrderRef: `${selectedOrder.orderId || 'GS-ORD'}-S01`,
+                        originCountry: isIntlOrder ? 'International Cellar' : 'South Africa',
+                        courierName: selectedOrder.deliveryPreference === 'postnet' ? 'PostNet to PostNet' : 'Courier Direct',
+                        status: selectedOrder.status || 'Order Confirmed',
+                        financialSplit: {
+                          merchandiseSubtotal: fallbackSubtotal,
+                          commissionRatePct: 15,
+                          commissionAmount: fallbackSubtotal * 0.15,
+                          vendorNetProceeds: fallbackSubtotal * 0.85,
+                          courierShippingCost: selectedOrder.shippingCost || 0,
+                          transitInsuranceCost: selectedOrder.transitInsurance?.amount || 0
+                        }
+                      }
+                    ];
+
+                return (
+                  <div className="space-y-3">
+                    {shipments.map((shp, sIdx) => {
+                      const isItaly = shp.originCountry?.toLowerCase().includes('ital') ||
+                        (shp.items || selectedOrder.orderItems || []).some(it => (it.name || '').toLowerCase().includes('dogliotti') || (it.name || '').toLowerCase().includes('cantina'));
+                      const originBadge = isItaly ? '🇮🇹 Italy (Export Cellar)' : '🇿🇦 South Africa (Domestic)';
+                      const split = shp.financialSplit || {};
+                      const gross = Number(split.merchandiseSubtotal || fallbackSubtotal);
+                      const comm = Number(split.commissionAmount || (gross * 0.15));
+                      const net = Number(split.vendorNetProceeds || (gross - comm));
+                      const freight = Number(split.courierShippingCost || (sIdx === 0 ? selectedOrder.shippingCost || 0 : 0));
+
+                      return (
+                        <div key={shp._id || sIdx} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5 text-xs">
+                          {/* Consignment Sub-Order Header */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded border border-amber-300">
+                                {shp.subOrderRef || `${selectedOrder.orderId}-S${String(sIdx + 1).padStart(2, '0')}`}
+                              </span>
+                              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                                {originBadge}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                              {shp.status || selectedOrder.status || 'Order Confirmed'}
+                            </span>
+                          </div>
+
+                          {/* Logistics & Carrier */}
+                          <div className="text-[11px] text-slate-600 flex justify-between">
+                            <span>Courier Service: <strong>{shp.courierName || 'Integrated Courier Express'}</strong></span>
+                            {shp.mainTrackingNumber && (
+                              <span className="font-mono text-emerald-700 font-bold">AWB: {shp.mainTrackingNumber}</span>
+                            )}
+                          </div>
+
+                          {/* Tripartite Settlement (Doc Section 5) */}
+                          <div className="bg-white border border-slate-200 rounded-lg p-2.5 space-y-1.5">
+                            <div className="flex justify-between text-[11px] font-bold text-slate-700">
+                              <span>Tripartite Split (Doc Sec 5)</span>
+                              <span className="text-emerald-700 font-mono">Net Vendor: R {net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-[10px] pt-1 border-t border-slate-100 text-slate-500">
+                              <div>
+                                <span className="block text-slate-400">Merchandise:</span>
+                                <span className="font-mono font-semibold text-slate-700">R {gross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </div>
+                              <div>
+                                <span className="block text-slate-400">GS Comm (15%):</span>
+                                <span className="font-mono font-semibold text-rose-600">- R {comm.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </div>
+                              <div>
+                                <span className="block text-slate-400">Courier Freight:</span>
+                                <span className="font-mono font-semibold text-blue-700">
+                                  {freight > 0 ? `R ${freight.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Free'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Financial Summary & Insurance Breakdown (CRM) */}
+            {(() => {
+              const itemsSubtotal = (selectedOrder.orderItems || []).reduce(
+                (sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 1)),
+                0
+              );
+              const resolvedSubtotal = Number(selectedOrder.subTotal || 0) > 0 
+                ? Number(selectedOrder.subTotal) 
+                : (itemsSubtotal > 0 ? itemsSubtotal : Number(selectedOrder.totalPrice ?? selectedOrder.totalAmount ?? 0));
+              const isIntl = selectedOrder.isInternational || 
+                (selectedOrder.shippingAddress?.country && !['south africa', 'za', 'rsa'].includes(String(selectedOrder.shippingAddress.country).toLowerCase().trim()));
+
+              return (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1.5 text-xs">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Merchandise Subtotal:</span>
+                    <span className="font-mono font-medium text-slate-800">
+                      R {resolvedSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Shipping & Freight:</span>
+                    <span className="font-mono font-medium text-slate-800">
+                      {selectedOrder.shippingCost > 0 ? `R ${Number(selectedOrder.shippingCost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Free'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span className="flex items-center gap-1.5">
+                      <ShieldCheck size={13} className={selectedOrder.transitInsurance?.optIn ? "text-emerald-600" : "text-slate-400"} />
+                      <span>Fragile Transit Insurance (1.5%):</span>
+                    </span>
+                    <span className="font-mono">
+                      {selectedOrder.transitInsurance?.optIn && Number(selectedOrder.transitInsurance?.amount) > 0 ? (
+                        <span className="text-emerald-700 font-bold">+ R {Number(selectedOrder.transitInsurance.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      ) : (
+                        <span className="text-slate-400 italic">Not Selected (R 0.00)</span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-[11px] pt-1 border-t border-slate-200/60 text-slate-600">
+                    <span>Customs Documentation:</span>
+                    {selectedOrder.commercialInvoiceAcknowledged || isIntl ? (
+                      <span className="font-bold text-blue-700">Official Commercial Invoice & AWB Attached (DAP)</span>
+                    ) : (
+                      <span className="text-slate-500 font-medium">Domestic Delivery (Local SA VAT Applied)</span>
+                    )}
+                  </div>
+                  <div className="pt-2 border-t border-slate-200 flex justify-between items-baseline font-bold text-slate-900">
+                    <span>Total Amount Paid / Due:</span>
+                    <span className="text-sm font-mono text-slate-900">
+                      R {Number(selectedOrder.totalPrice ?? selectedOrder.totalAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Telemetry & Logistics Information Banner (Read-Only) */}
             <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
               <div className="flex items-center gap-2">

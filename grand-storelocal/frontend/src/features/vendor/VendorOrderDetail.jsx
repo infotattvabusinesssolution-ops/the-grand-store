@@ -7,6 +7,7 @@ import {
   MapPin,
   Truck,
   Send,
+  CreditCard,
   CheckCircle2,
   AlertCircle,
   Clock,
@@ -200,9 +201,9 @@ export default function VendorOrderDetail({ onNotify }) {
           </Link>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl md:text-3xl font-serif text-white flex items-center gap-3">
-              Shipment{" "}
-              <span className="text-[#c99742]">
-                #{shipment.shipmentId || shipment._id}
+              Sub-Order{" "}
+              <span className="text-[#c99742] font-mono">
+                #{shipment.subOrderRef || shipment.shipmentId || shipment._id}
               </span>
             </h1>
             <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-gold/10 text-[#e1bd70] border border-gold/20">
@@ -210,9 +211,14 @@ export default function VendorOrderDetail({ onNotify }) {
             </span>
             {shipment.orderRef && (
               <span className="px-3 py-1 rounded-full text-xs font-mono bg-white/5 text-white/70 border border-white/10">
-                Order #{shipment.orderRef}
+                Master Order #{shipment.orderRef}
               </span>
             )}
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/30">
+              {shipment.originCountry?.toLowerCase().includes('ital') || (shipment.items || []).some(it => (it.name || '').toLowerCase().includes('dogliotti') || (it.name || '').toLowerCase().includes('cantina'))
+                ? '🇮🇹 Castagnole delle Lanze, Italy (Export Cellar)'
+                : '🇿🇦 South Africa (Domestic Estate Reserve)'}
+            </span>
           </div>
           <p className="text-xs text-white/50 mt-1">
             Order Date:{" "}
@@ -261,10 +267,13 @@ export default function VendorOrderDetail({ onNotify }) {
 
           <div className="text-left md:text-right">
             <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">
-              Products Total
+              Your Net Proceeds (85%)
             </div>
             <div className="text-2xl font-serif text-[#e1bd70] font-bold">
-              <Price amount={shipment.vendorTotal} />
+              <Price amount={shipment.financialSplit?.vendorNetProceeds ?? (shipment.vendorTotal * 0.85)} />
+            </div>
+            <div className="text-[11px] text-white/50 mt-0.5 font-mono">
+              Gross: <Price amount={shipment.vendorTotal} /> • Comm (15%): -<Price amount={shipment.financialSplit?.commissionAmount ?? (shipment.vendorTotal * 0.15)} />
             </div>
           </div>
         </div>
@@ -468,6 +477,54 @@ export default function VendorOrderDetail({ onNotify }) {
 
         {/* Right Column: Customer Details & Fulfillment Management */}
         <div className="space-y-6">
+          {/* TRIPARTITE FINANCIAL SETTLEMENT CARD (DOCUMENT SECTION 5) */}
+          {(() => {
+            const split = shipment.financialSplit || {};
+            const gross = Number(split.merchandiseSubtotal || shipment.vendorTotal || 0);
+            const comm = Number(split.commissionAmount || (gross * 0.15));
+            const net = Number(split.vendorNetProceeds || (gross - comm));
+            const freight = Number(split.courierShippingCost || shipment.shippingCost || 0);
+
+            return (
+              <div className="bg-gradient-to-b from-[#18130d] to-[#0d0b09] border border-[#c99742]/40 rounded-2xl p-6 shadow-xl space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <h3 className="text-xs uppercase tracking-widest text-[#c99742] font-bold flex items-center gap-2">
+                    <CreditCard size={14} /> Tripartite Payout Breakdown
+                  </h3>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                    {split.payoutStatus || 'Pending Payout'}
+                  </span>
+                </div>
+
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex justify-between text-white/70">
+                    <span>Merchandise Gross Subtotal:</span>
+                    <span className="font-mono text-white font-bold"><Price amount={gross} /></span>
+                  </div>
+                  <div className="flex justify-between text-rose-400">
+                    <span>Grand Store Commission (15%):</span>
+                    <span className="font-mono font-bold">- <Price amount={comm} /></span>
+                  </div>
+                  <div className="pt-2 border-t border-white/10 flex justify-between items-baseline">
+                    <span className="text-sm font-bold text-amber-300">Your Net Payout:</span>
+                    <span className="text-xl font-bold font-serif text-[#e1bd70]"><Price amount={net} /></span>
+                  </div>
+
+                  <div className="pt-3 border-t border-white/5 space-y-1.5 text-[11px] text-white/50">
+                    <div className="flex justify-between">
+                      <span>Courier Freight Allocation:</span>
+                      <span className="text-blue-400 font-mono font-semibold">
+                        {freight > 0 ? <Price amount={freight} /> : 'Covered by GS Account'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-white/40 italic leading-relaxed pt-1">
+                      * Section 5 Accounting: Courier freight is billed directly to Grand Store corporate logistics and strictly excluded from vendor 15% commission.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
           {/* Customer & Delivery Details */}
           <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 shadow-xl space-y-4">
             <h3 className="text-xs uppercase tracking-widest text-[#c99742] font-bold flex items-center gap-2">

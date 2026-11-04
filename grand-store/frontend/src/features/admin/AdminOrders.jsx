@@ -219,6 +219,20 @@ export default function AdminOrders() {
                       </span>
                     </div>
 
+                    <div>
+                      <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-0.5">
+                        Transit Insurance
+                      </div>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        ord.transitInsurance?.optIn
+                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                          : "bg-white/5 text-white/50 border border-white/10"
+                      }`}>
+                        <ShieldCheck size={11} className={ord.transitInsurance?.optIn ? "text-emerald-400" : "text-white/40"} />
+                        {ord.transitInsurance?.optIn ? "Insured (1.5%)" : "Not Selected"}
+                      </span>
+                    </div>
+
                     {ord.isGift && (
                       <div>
                         <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-1">

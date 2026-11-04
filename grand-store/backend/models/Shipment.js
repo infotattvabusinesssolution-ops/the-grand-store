@@ -9,6 +9,48 @@ const shipmentSchema = new mongoose.Schema(
       required: true,
     },
     orderRef: { type: String, required: true }, // GS-YY-SHP-ORD-XXXXXX
+    subOrderRef: { type: String, index: true }, // Sub-Order Ref (GS-YY-SHP-ORD-XXXXXX-S01)
+    vendorName: { type: String, default: '' },
+    originCountry: { type: String, default: 'South Africa' },
+    destCountry: { type: String, default: 'South Africa' },
+    isInternational: { type: Boolean, default: false },
+    courierName: { type: String, default: '' },
+    serviceLevel: { type: String, default: '' },
+
+    // Independent Sub-Order Consignment Items
+    items: [
+      {
+        product: { type: String },
+        name: { type: String },
+        category: { type: String },
+        quantity: { type: Number, default: 1 },
+        price: { type: Number, default: 0 },
+        option: { type: String },
+        image: { type: String },
+        country: { type: String },
+        hsCode: { type: String }
+      }
+    ],
+
+    // Tripartite Financial Settlement Breakdown (Document Section 5)
+    financialSplit: {
+      merchandiseSubtotal: { type: Number, default: 0 },
+      commissionRatePct: { type: Number, default: 15 },
+      commissionAmount: { type: Number, default: 0 },
+      vendorNetProceeds: { type: Number, default: 0 }, // Product price minus GS commission
+      courierShippingCost: { type: Number, default: 0 }, // Allocated to courier account
+      transitInsuranceCost: { type: Number, default: 0 }, // 1.5% allocated to insurance reserve
+      payoutStatus: { type: String, enum: ['Pending', 'Eligible', 'Settled', 'On Hold'], default: 'Pending' },
+      settlementReference: { type: String }
+    },
+
+    // Customs & International Compliance (Document Section 6 & 8)
+    customsCompliance: {
+      terms: { type: String, default: 'DAP' },
+      commercialInvoiceRef: { type: String },
+      hsCode: { type: String, default: '2204.21' },
+      declaredValue: { type: Number, default: 0 }
+    },
 
     vendorId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     customerId: {

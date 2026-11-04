@@ -1035,6 +1035,16 @@ export default function OrderSuccessPage({ onClearCart }) {
                       )}
                     </span>
                   </div>
+                  {Boolean(order.transitInsurance?.optIn || order.transitInsurance?.amount > 0) && (
+                    <div className="flex justify-between items-center py-2 text-sm text-emerald-400 font-medium border-b border-white/10">
+                      <span className="flex items-center gap-1.5">
+                        <ShieldCheck size={14} /> Fragile Transit & Breakage Insurance (1.5%)
+                      </span>
+                      <span className="font-mono text-base">
+                        +<Price amount={order.transitInsurance.amount} />
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center py-4 text-xl text-[#c9a35b] font-bold">
                     <span className="font-serif">Total</span>
                     <span className="font-mono text-2xl">

@@ -183,7 +183,18 @@ const addOrderItems = async (req, res) => {
     const importTaxes = Number(quote.aggregatedTotals?.estimatedImportTaxes || quote.importTaxes || 0);
     const customsFees = Number(quote.aggregatedTotals?.estimatedCustomsFees || quote.customsFees || 0);
     
-    const calculatedTotal = parseFloat((subTotal + shippingCost).toFixed(2));
+    // Fragile Transit & Breakage Insurance (1.5% premium protection, minimum R50)
+    const transitInsuranceOptIn = Boolean(
+      req.body.transitInsurance?.optIn !== undefined 
+        ? req.body.transitInsurance.optIn 
+        : (req.body.requiresInsurance ?? quote.transitInsurance?.optIn ?? false)
+    );
+    const transitInsuranceRatePct = 1.5;
+    const transitInsuranceAmount = transitInsuranceOptIn
+      ? Math.max(50, parseFloat((subTotal * (transitInsuranceRatePct / 100)).toFixed(2)))
+      : 0;
+
+    const calculatedTotal = parseFloat((subTotal + shippingCost + transitInsuranceAmount).toFixed(2));
     const vendorSubTotal = (quote.shipments || [])
       .filter(s => Boolean(s.vendorId))
       .reduce((sum, s) => sum + Number(s.subtotal || 0), 0);
@@ -485,6 +496,13 @@ const addOrderItems = async (req, res) => {
       selectedPostnetStore: isPostnetOrder ? effectivePostnetStore : null,
       selectedLocker: isPudoOrder ? effectiveLocker : null,
       paymentMethod,
+      // Fragile Transit Insurance & Export Commercial Invoice
+      transitInsurance: {
+        optIn: transitInsuranceOptIn,
+        ratePct: transitInsuranceRatePct,
+        amount: transitInsuranceAmount
+      },
+      commercialInvoiceAcknowledged: Boolean(req.body.commercialInvoiceAcknowledged || req.body.commercialInvoiceNoticeAcknowledged),
       isGift: isGift || false,
       giftRecipientName: giftRecipientName || "",
       giftMessage: giftMessage || "",
@@ -546,9 +564,18 @@ const addOrderItems = async (req, res) => {
       const vendorGross = Number(shp.subtotal || 0);
       const vendorCommission = isVendorShipment ? parseFloat(((vendorGross * commissionPct) / 100).toFixed(2)) : 0;
       const vendorVat = Number(shp.taxData?.vatAmount || 0);
-      const shippingCostVendorGets = (isVendorShipment && shp.selectedCourier) ? Number(shp.selectedCourier.cost || 0) : 0;
-      
-      const vendorNet = isVendorShipment ? parseFloat((vendorGross - vendorCommission - vendorVat + shippingCostVendorGets).toFixed(2)) : 0;
+      const courierShippingCost = (shp.selectedCourier && Number(shp.selectedCourier.cost) > 0) ? Number(shp.selectedCourier.cost) : 0;
+
+      // Document Section 5 Tripartite Accounting:
+      // Product price minus Grand Store commission = Vendor Product Proceeds
+      const vendorNetProceeds = isVendorShipment ? parseFloat(Math.max(0, vendorGross - vendorCommission).toFixed(2)) : 0;
+      const vendorNet = vendorNetProceeds;
+
+      // Calculate pro-rata insurance share for this consignment
+      const totalInsuranceAmount = Number(order.transitInsurance?.amount || 0);
+      const proRataInsurance = totalInsuranceAmount > 0 && calculatedSubTotal > 0
+        ? parseFloat(((vendorGross / calculatedSubTotal) * totalInsuranceAmount).toFixed(2))
+        : 0;
 
       if (isVendorShipment) {
         vendorPayables.push({
@@ -556,12 +583,15 @@ const addOrderItems = async (req, res) => {
           grossAmount: vendorGross,
           commission: vendorCommission,
           vatDeducted: vendorVat,
-          netPayable: vendorNet
+          netPayable: vendorNet,
+          shippingAllocated: courierShippingCost,
+          insuranceShare: proRataInsurance
         });
       }
 
       const shipmentSeqString = `${sequence}-${shipmentSeqCounter.toString().padStart(2, '0')}`;
       const shipmentId = `GS-${year}-${moduleCode}-SHP-${shipmentSeqString}`;
+      const subOrderRef = `${order.orderId}-S${shipmentSeqCounter.toString().padStart(2, '0')}`;
 
       let internalLegs = [];
       let actualCost = 0;
@@ -610,22 +640,57 @@ const addOrderItems = async (req, res) => {
             }
           : undefined);
 
+      const subOrderItems = (shp.items || []).map(it => ({
+        product: String(it.product || it.id || it._id || ''),
+        name: it.name || 'Fine Spirits / Wine Item',
+        category: it.category || 'Luxury Goods',
+        quantity: Number(it.quantity || 1),
+        price: Number(it.price || 0),
+        option: it.option || '',
+        image: it.image || '',
+        country: it.country || shp.originCountry || 'South Africa',
+        hsCode: it.shipping?.hs_code || (shp.isInternational ? '2204.21' : '2208.30')
+      }));
+
       const newShipment = new Shipment({
         shipmentId,
+        subOrderRef,
         orderId: order._id,
         orderRef: order.orderId,
         vendorId: shp.vendorId,
+        vendorName: shp.vendorName || 'The Grand Store Flagship Vaults',
         customerId: user ? user._id : null,
-        pickupAddress: { country: shp.originCountry },
+        originCountry: shp.originCountry || 'South Africa',
+        destCountry: shp.destCountry || shippingAddress.country || 'South Africa',
+        isInternational: Boolean(shp.isInternational),
+        courierName: shp.selectedCourier?.courierName || 'Vendor Managed',
+        serviceLevel: shp.selectedCourier?.serviceLevel || 'Standard Express Delivery',
+        pickupAddress: { country: shp.originCountry || 'South Africa' },
         deliveryAddress: activePickupLocation
           ? { ...shippingAddress, address: activePickupLocation.address }
           : shippingAddress,
         deliveryMethod: shipmentDeliveryMethod,
         pickupLocation: activePickupLocation,
-        customerShippingCharge: shp.selectedCourier ? shp.selectedCourier.cost : 0,
+        customerShippingCharge: courierShippingCost,
         actualShippingCost: actualCost,
         legs: internalLegs,
-        status: order.isPaid ? 'Order Confirmed' : 'Payment Pending'
+        status: order.isPaid ? 'Order Confirmed' : 'Payment Pending',
+        items: subOrderItems,
+        financialSplit: {
+          merchandiseSubtotal: vendorGross,
+          commissionRatePct: commissionPct,
+          commissionAmount: vendorCommission,
+          vendorNetProceeds: vendorNetProceeds,
+          courierShippingCost: courierShippingCost,
+          transitInsuranceCost: proRataInsurance,
+          payoutStatus: order.isPaid ? 'Eligible' : 'Pending'
+        },
+        customsCompliance: {
+          terms: 'DAP',
+          commercialInvoiceRef: `CI-${order.orderId}-${shipmentSeqCounter.toString().padStart(2, '0')}`,
+          hsCode: (subOrderItems[0]?.hsCode) || '2204.21',
+          declaredValue: vendorGross
+        }
       });
 
       await newShipment.save();
@@ -1558,16 +1623,25 @@ const getVendorOrders = async (req, res) => {
         return item.vendorId && item.vendorId.toString() === req.user._id.toString();
       });
       
+      const vendorGross = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+      const commissionAmount = parseFloat(((vendorGross * 15) / 100).toFixed(2));
+      const vendorNet = parseFloat((vendorGross - commissionAmount).toFixed(2));
+
       return {
         _id: shp._id,
         shipmentId: shp.shipmentId,
+        subOrderRef: shp.subOrderRef || `${shp.orderRef}-S01`,
         orderId: shp.orderId,
         orderRef: shp.orderRef,
+        originCountry: shp.originCountry || 'South Africa',
+        destCountry: shp.destCountry || masterOrder.shippingAddress?.country || 'South Africa',
+        isInternational: Boolean(shp.isInternational),
         createdAt: shp.createdAt,
         status: shp.status,
-        courierName: shp.legs && shp.legs.length > 0 ? shp.legs[0].courierName : 'Vendor Managed',
+        courierName: shp.courierName || (shp.legs && shp.legs.length > 0 ? shp.legs[0].courierName : 'Vendor Managed'),
+        serviceLevel: shp.serviceLevel || 'Standard Express Delivery',
         shippingCost: shp.customerShippingCharge,
-        trackingNumber: shp.mainTrackingNumber,
+        trackingNumber: shp.mainTrackingNumber || shp.aramexWaybillNumber || shp.tcgWaybillNumber,
         deliveryAddress: shp.deliveryAddress,
         customerName: shp.customerId ? shp.customerId.name : (masterOrder.shippingAddress?.fullName || masterOrder.guestInfo?.name || 'Customer'),
         customerEmail: shp.customerId ? shp.customerId.email : (masterOrder.shippingAddress?.email || masterOrder.guestInfo?.email || ''),
@@ -1575,7 +1649,15 @@ const getVendorOrders = async (req, res) => {
         adminMessages: masterOrder.adminMessages || [],
         latestAdminMessage: masterOrder.latestAdminMessage || null,
         items: items,
-        vendorTotal: items.reduce((acc, item) => acc + (item.price * item.quantity), 0)
+        vendorTotal: vendorGross,
+        financialSplit: shp.financialSplit || {
+          merchandiseSubtotal: vendorGross,
+          commissionRatePct: 15,
+          commissionAmount: commissionAmount,
+          vendorNetProceeds: vendorNet,
+          courierShippingCost: shp.customerShippingCharge || 0
+        },
+        customsCompliance: shp.customsCompliance || { terms: 'DAP' }
       };
     }));
 
@@ -1626,16 +1708,25 @@ const getVendorOrderById = async (req, res) => {
       return item.vendorId && item.vendorId.toString() === req.user._id.toString();
     });
 
+    const vendorGross = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const commissionAmount = parseFloat(((vendorGross * 15) / 100).toFixed(2));
+    const vendorNet = parseFloat((vendorGross - commissionAmount).toFixed(2));
+
     const result = {
       _id: shipment._id,
       shipmentId: shipment.shipmentId,
+      subOrderRef: shipment.subOrderRef || `${shipment.orderRef || masterOrder.orderId}-S01`,
       orderId: shipment.orderId,
       orderRef: shipment.orderRef || masterOrder.invoiceNumber || masterOrder.orderId,
+      originCountry: shipment.originCountry || 'South Africa',
+      destCountry: shipment.destCountry || masterOrder.shippingAddress?.country || 'South Africa',
+      isInternational: Boolean(shipment.isInternational),
       createdAt: shipment.createdAt,
       status: shipment.status,
-      courierName: shipment.legs && shipment.legs.length > 0 ? shipment.legs[0].courierName : 'Vendor Managed',
+      courierName: shipment.courierName || (shipment.legs && shipment.legs.length > 0 ? shipment.legs[0].courierName : 'Vendor Managed'),
+      serviceLevel: shipment.serviceLevel || 'Standard Express Delivery',
       shippingCost: shipment.customerShippingCharge,
-      trackingNumber: shipment.mainTrackingNumber,
+      trackingNumber: shipment.mainTrackingNumber || shipment.aramexWaybillNumber || shipment.tcgWaybillNumber,
       deliveryAddress: shipment.deliveryAddress || masterOrder.shippingAddress,
       deliveryPreference: masterOrder.deliveryPreference,
       selectedPostnetStore: masterOrder.selectedPostnetStore,
@@ -1651,7 +1742,15 @@ const getVendorOrderById = async (req, res) => {
       isPaid: masterOrder.isPaid,
       paymentMethod: masterOrder.paymentMethod,
       items: items,
-      vendorTotal: items.reduce((acc, item) => acc + (item.price * item.quantity), 0)
+      vendorTotal: vendorGross,
+      financialSplit: shipment.financialSplit || {
+        merchandiseSubtotal: vendorGross,
+        commissionRatePct: 15,
+        commissionAmount: commissionAmount,
+        vendorNetProceeds: vendorNet,
+        courierShippingCost: shipment.customerShippingCharge || 0
+      },
+      customsCompliance: shipment.customsCompliance || { terms: 'DAP' }
     };
 
     res.json(result);
@@ -2035,14 +2134,25 @@ const getAdminOrderById = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    const retailItems = (order.orderItems || []).filter(item => !item.vendorId);
-    // Overwrite orderItems with only retail items (no vendor products visible to admin)
-    order.orderItems = retailItems;
+    const Shipment = require('../models/Shipment');
+    let shipments = await Shipment.find({
+      $or: [
+        { orderId: order._id },
+        { orderRef: order.orderId },
+        { orderRef: order.invoiceNumber }
+      ]
+    }).lean();
+
+    const allOrderItems = order.orderItems || [];
+    const retailItems = allOrderItems.filter(item => !item.vendorId);
+    const vendorItems = allOrderItems.filter(item => Boolean(item.vendorId));
 
     res.json({
       ...order,
-      orderItems: retailItems,
+      orderItems: allOrderItems,
       retailItems,
+      vendorItems,
+      shipments: shipments || [],
       retailSubtotal: retailItems.reduce((acc, it) => acc + (Number(it.price || 0) * Number(it.quantity || 1)), 0),
       customerName: order.guestInfo?.name || order.shippingAddress?.fullName || order.user?.name || 'Customer',
       customerEmail: order.guestInfo?.email || order.shippingAddress?.email || order.user?.email || '',

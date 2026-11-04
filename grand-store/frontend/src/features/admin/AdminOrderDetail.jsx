@@ -231,6 +231,24 @@ export default function AdminOrderDetail({ onNotify }) {
     }
   };
 
+  const [updatingSubOrder, setUpdatingSubOrder] = useState({});
+
+  const handleUpdateSubOrderStatus = async (shipmentId, newStatus) => {
+    try {
+      setUpdatingSubOrder(prev => ({ ...prev, [shipmentId]: true }));
+      await api.patch(`/orders/vendor/sales/${shipmentId}/status`, { status: newStatus });
+      if (onNotify) onNotify(`Consignment status updated to ${newStatus}`, 'success');
+      fetchOrder();
+    } catch (err) {
+      console.error('Failed to update sub-order status:', err);
+      const msg = err.response?.data?.message || 'Failed to update consignment status';
+      if (onNotify) onNotify(msg, 'error');
+      else alert(msg);
+    } finally {
+      setUpdatingSubOrder(prev => ({ ...prev, [shipmentId]: false }));
+    }
+  };
+
   const handleConfirmHandover = async () => {
     if (!window.confirm('Confirm that the courier driver has physically collected this parcel?')) return;
     try {
@@ -602,6 +620,182 @@ export default function AdminOrderDetail({ onNotify }) {
               </div>
             )}
           </div>
+
+          {/* VENDOR CONSIGNMENTS & INDEPENDENT SUB-ORDERS (PHASE 2 ARCHITECTURE) */}
+          {(() => {
+            const consignments = order.shipments && order.shipments.length > 0 ? order.shipments : [];
+            const displayConsignments = consignments.length > 0 ? consignments : [
+              {
+                _id: order._id,
+                shipmentId: `${order.orderId || 'GS-ORD'}-S01`,
+                subOrderRef: `${order.orderId || 'GS-ORD'}-S01`,
+                originCountry: order.isInternational ? 'International Cellar' : 'South Africa',
+                courierName: order.deliveryPreference === 'postnet' ? 'PostNet to PostNet' : (order.driver?.courierCompany || 'Aramex Express Air'),
+                status: order.deliveryStatusText || order.status || 'Order Confirmed',
+                items: order.orderItems || [],
+                financialSplit: {
+                  merchandiseSubtotal: order.subTotal || (order.totalPrice - (order.shippingCost || 0) - (order.transitInsurance?.amount || 0)),
+                  commissionRatePct: 15,
+                  commissionAmount: ((order.subTotal || (order.totalPrice - (order.shippingCost || 0) - (order.transitInsurance?.amount || 0))) * 0.15),
+                  vendorNetProceeds: ((order.subTotal || (order.totalPrice - (order.shippingCost || 0) - (order.transitInsurance?.amount || 0))) * 0.85),
+                  courierShippingCost: order.shippingCost || 0,
+                  transitInsuranceCost: order.transitInsurance?.amount || 0
+                }
+              }
+            ];
+
+            return (
+              <div className="bg-[#120f0c] border border-[#c99742]/40 rounded-2xl p-6 shadow-2xl space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-[#c99742]/20 text-[#f5c242] border border-[#c99742]/40">
+                      <Package size={22} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-serif text-white flex items-center gap-2">
+                        Vendor Consignments & Independent Sub-Orders
+                      </h3>
+                      <p className="text-xs text-white/60">
+                        Independent cellar origin dispatches, tracking references, and tripartite financial split (Doc Section 5 & 8)
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-[#f5c242] bg-[#f5c242]/10 px-3.5 py-1 rounded-full border border-[#f5c242]/30 uppercase tracking-wider">
+                    {displayConsignments.length} {displayConsignments.length === 1 ? 'Consignment Sub-Order' : 'Consignment Sub-Orders'}
+                  </span>
+                </div>
+
+                <div className="space-y-6">
+                  {displayConsignments.map((shp, idx) => {
+                    const isItaly = shp.originCountry?.toLowerCase().includes('ital') ||
+                      (shp.items || []).some(it => (it.name || '').toLowerCase().includes('dogliotti') || (it.name || '').toLowerCase().includes('cantina'));
+                    const originLabel = isItaly ? '🇮🇹 Castagnole delle Lanze, Italy (Export Cellar)' : '🇿🇦 South Africa (Domestic Estate Reserve)';
+                    const subRef = shp.subOrderRef || `${order.orderId || order._id}-S${String(idx + 1).padStart(2, '0')}`;
+                    const split = shp.financialSplit || {};
+                    const gross = Number(split.merchandiseSubtotal || (shp.items || []).reduce((sum, it) => sum + (Number(it.price || 0) * Number(it.quantity || 1)), 0));
+                    const comm = Number(split.commissionAmount || (gross * 0.15));
+                    const net = Number(split.vendorNetProceeds || (gross - comm));
+                    const freight = Number(split.courierShippingCost || (idx === 0 ? order.shippingCost || 0 : 0));
+                    const insurance = Number(split.transitInsuranceCost || (idx === 0 ? (order.transitInsurance?.amount || 0) : 0));
+
+                    return (
+                      <div key={shp._id || idx} className="bg-black/50 border border-white/10 hover:border-[#c99742]/50 rounded-xl p-5 space-y-4 transition-all">
+                        {/* Consignment Sub-Order Header */}
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/5 pb-4">
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-mono font-bold text-amber-400 text-sm tracking-wide bg-amber-400/10 px-2.5 py-1 rounded border border-amber-400/30">
+                                {subRef}
+                              </span>
+                              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/30 flex items-center gap-1.5">
+                                {originLabel}
+                              </span>
+                              <span className="text-[11px] text-white/50 font-mono">
+                                {shp.isInternational ? 'DAP Incoterms • HS 2204.21' : 'Domestic Vault Delivery'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-white/60 pt-0.5">
+                              Courier: <strong className="text-white">{shp.courierName || order.driver?.courierCompany || 'Aramex Express Air'}</strong>
+                              {shp.mainTrackingNumber && (
+                                <span className="ml-2 font-mono text-emerald-400 font-bold">Waybill: {shp.mainTrackingNumber}</span>
+                              )}
+                            </p>
+                          </div>
+
+                          {/* Status Selector */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] uppercase tracking-wider text-white/50 font-semibold">Consignment Status:</span>
+                            <select
+                              value={shp.status || 'Order Confirmed'}
+                              disabled={updatingSubOrder[shp._id]}
+                              onChange={(e) => handleUpdateSubOrderStatus(shp._id || shp.shipmentId, e.target.value)}
+                              className="bg-black/80 border border-amber-400/40 rounded-lg px-3 py-1.5 text-xs text-amber-300 font-bold focus:outline-none focus:border-amber-400 cursor-pointer"
+                            >
+                              <option value="Order Confirmed">Order Confirmed</option>
+                              <option value="Preparing">Preparing</option>
+                              <option value="Collected">Collected</option>
+                              <option value="In Transit">In Transit</option>
+                              <option value="Out for Delivery">Out for Delivery</option>
+                              <option value="Delivered">Delivered</option>
+                              <option value="Delayed">Delayed</option>
+                              <option value="Failed">Failed</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Consignment Items */}
+                        <div className="space-y-2">
+                          <div className="text-[11px] uppercase tracking-wider text-white/40 font-semibold">Consignment Parcel Contents</div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {(shp.items && shp.items.length > 0 ? shp.items : order.orderItems || []).map((it, iIdx) => (
+                              <div key={iIdx} className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] border border-white/5 text-xs">
+                                <div className="flex items-center gap-3">
+                                  {it.image && (
+                                    <img src={it.image} alt={it.name} className="w-9 h-9 object-contain rounded bg-black/40 border border-white/10" />
+                                  )}
+                                  <div>
+                                    <div className="font-semibold text-white truncate max-w-[200px]" title={it.name}>{it.name}</div>
+                                    <div className="text-[11px] text-white/50">{it.quantity} × <Price amount={it.price} /></div>
+                                  </div>
+                                </div>
+                                <div className="font-bold text-[#c99742]">
+                                  <Price amount={Number(it.price || 0) * Number(it.quantity || 1)} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Tripartite Settlement Ledger (Document Section 5) */}
+                        <div className="mt-3 p-4 rounded-xl bg-gradient-to-r from-black/80 via-[#16120b] to-black/80 border border-amber-500/20 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1.5">
+                              <CreditCard size={13} /> Tripartite Financial Settlement Breakdown (Doc Section 5)
+                            </span>
+                            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                              {split.payoutStatus || 'Pending Payout'}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                            <div className="p-2.5 rounded-lg bg-white/5 border border-white/5">
+                              <span className="text-white/40 block text-[10px] uppercase">Merchandise Gross</span>
+                              <strong className="text-white block font-mono text-sm"><Price amount={gross} /></strong>
+                            </div>
+                            <div className="p-2.5 rounded-lg bg-white/5 border border-white/5">
+                              <span className="text-white/40 block text-[10px] uppercase">GS Commission (15%)</span>
+                              <strong className="text-rose-400 block font-mono text-sm">- <Price amount={comm} /></strong>
+                            </div>
+                            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                              <span className="text-amber-300 block text-[10px] uppercase font-bold">Vendor Net Proceeds</span>
+                              <strong className="text-amber-400 block font-mono text-sm font-bold"><Price amount={net} /></strong>
+                            </div>
+                            <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                              <span className="text-blue-300 block text-[10px] uppercase font-bold">Courier Freight Allocation</span>
+                              <strong className="text-blue-400 block font-mono text-sm font-bold">
+                                {freight > 0 ? <Price amount={freight} /> : 'FREE (Direct Bill)'}
+                              </strong>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center justify-between text-[11px] text-white/50 pt-1 border-t border-white/5">
+                            <span className="italic">
+                              * Tripartite Rule: Courier freight is settled directly to courier logistics account and strictly excluded from vendor commission deduction.
+                            </span>
+                            {insurance > 0 && (
+                              <span className="text-emerald-400 font-mono">
+                                Transit Insurance Reserve (1.5%): + <Price amount={insurance} />
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* VAULT LOGISTICS, PACKAGING INSPECTION & DRIVER ASSIGNMENT (WITH LIVE QR) */}
           <div className="bg-[#100e0b] border border-[#c99742]/30 rounded-2xl p-6 shadow-2xl space-y-6">
@@ -1017,6 +1211,19 @@ export default function AdminOrderDetail({ onNotify }) {
                 <span>Shipping & Logistics:</span>
                 <span className="font-mono text-white">
                   {order.shippingCost > 0 ? <Price amount={order.shippingCost} /> : <span className="text-emerald-400 font-bold">FREE</span>}
+                </span>
+              </div>
+              <div className="flex justify-between text-white/70">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck size={13} className={order.transitInsurance?.optIn ? "text-emerald-400" : "text-white/40"} />
+                  <span>Fragile Transit Insurance (1.5%):</span>
+                </span>
+                <span className="font-mono">
+                  {order.transitInsurance?.optIn && Number(order.transitInsurance?.amount) > 0 ? (
+                    <span className="text-emerald-400 font-bold">+ <Price amount={order.transitInsurance.amount} /></span>
+                  ) : (
+                    <span className="text-white/40 text-[11px] italic">Not Selected (R 0.00)</span>
+                  )}
                 </span>
               </div>
               {order.superCoinsDiscount > 0 && (

@@ -124,7 +124,15 @@ const orderSchema = new mongoose.Schema({
     provider: { type: String, default: 'tcg-locker' },
     pickupPointId: { type: String }
   },
-  totalPrice: { type: Number, required: true, default: 0 }, // = subTotal + shipping + VAT + duties - discounts
+  totalPrice: { type: Number, required: true, default: 0 }, // = subTotal + shipping + insurance + VAT + duties - discounts
+
+  // Fragile Goods Transit Insurance (1.5% premium protection)
+  transitInsurance: {
+    optIn: { type: Boolean, default: false },
+    ratePct: { type: Number, default: 1.5 },
+    amount: { type: Number, default: 0 }
+  },
+  commercialInvoiceAcknowledged: { type: Boolean, default: false },
 
   shipments: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -215,6 +223,7 @@ const orderSchema = new mongoose.Schema({
   financialSnapshot: {
     subTotal: { type: Number },
     totalPrice: { type: Number },
+    transitInsuranceAmount: { type: Number, default: 0 },
     grossPlatformCommission: { type: Number },
     totalVendorPayouts: { type: Number },
     gatewayFeeTotal: { type: Number },

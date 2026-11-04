@@ -56,8 +56,8 @@ exports.getOrderOperationsBoard = async (req, res) => {
         $or: [{ isPaid: true }, { paymentStatus: 'Paid' }],
         status: { $nin: ['Vendor Processing', 'In Transit', 'Delivered', 'Completed', 'Cancelled'] }
       })
-      .select('orderId user guestInfo orderItems totalPrice totalAmount paymentMethod createdAt shippingAddress status')
       .populate('user', 'name email phone')
+      .populate('shipments')
       .sort({ createdAt: -1 })
       .limit(30),
 
@@ -65,8 +65,8 @@ exports.getOrderOperationsBoard = async (req, res) => {
       Order.find({
         status: { $in: ['Vendor Processing', 'In Packaging', 'Processing'] }
       })
-      .select('orderId user guestInfo orderItems totalPrice totalAmount createdAt shippingAddress status trackingNumber')
       .populate('user', 'name email phone')
+      .populate('shipments')
       .sort({ createdAt: -1 })
       .limit(30),
 
@@ -86,8 +86,8 @@ exports.getOrderOperationsBoard = async (req, res) => {
       Order.find({
         status: { $in: ['Delivered', 'Completed'] }
       })
-      .select('orderId user guestInfo totalPrice totalAmount deliveredAt createdAt shippingAddress status trackingNumber')
       .populate('user', 'name email phone')
+      .populate('shipments')
       .sort({ deliveredAt: -1, updatedAt: -1 })
       .limit(30),
 
