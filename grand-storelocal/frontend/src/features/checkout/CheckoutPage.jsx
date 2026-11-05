@@ -116,7 +116,7 @@ export default function CheckoutPage({
   const [quote, setQuote] = useState(null);
   const [dutiesAccepted, setDutiesAccepted] = useState(false);
   // Shipment Transit Insurance & Export Commercial Invoice states (Phase 1)
-  const [transitInsuranceOptIn, setTransitInsuranceOptIn] = useState(true);
+  const [transitInsuranceOptIn, setTransitInsuranceOptIn] = useState(false);
   const [showCommercialInvoiceModal, setShowCommercialInvoiceModal] = useState(false);
   const [commercialInvoiceAcknowledged, setCommercialInvoiceAcknowledged] = useState(false);
   const [customsActiveTab, setCustomsActiveTab] = useState('GB');
@@ -1535,30 +1535,6 @@ export default function CheckoutPage({
                         'Calculated next'
                       )}
                     </span>
-                  </div>
-
-                  {/* Fragile Transit & Breakage Insurance */}
-                  <div className="flex justify-between items-center text-[var(--color-ivory-muted)]">
-                    <span className="flex items-center gap-1.5">
-                      <ShieldCheck size={13} className={transitInsuranceOptIn ? "text-emerald-400 shrink-0" : "text-white/40 shrink-0"} />
-                      <span>Transit Insurance (1.5%)</span>
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      {transitInsuranceOptIn ? (
-                        <span className="text-emerald-400 font-mono font-medium">
-                          +<Price amount={transitInsuranceAmount} />
-                        </span>
-                      ) : (
-                        <span className="text-white/40 text-[11px] italic">Not selected</span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setTransitInsuranceOptIn(!transitInsuranceOptIn)}
-                        className="text-[10px] text-[var(--color-gold)] hover:underline font-bold uppercase tracking-wider ml-1"
-                      >
-                        {transitInsuranceOptIn ? 'Opt Out' : 'Add'}
-                      </button>
-                    </div>
                   </div>
 
                   {/* Super Coins Deduction in Summary */}
