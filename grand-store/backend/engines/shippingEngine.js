@@ -25,17 +25,14 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
       }
     }
 
+    const destCountry = customerAddress.country || 'South Africa';
+    const destSA = isSouthAfrica(destCountry);
+
     let originCountry = vendor?.shippingProfile?.pickupAddress?.country 
       || vendor?.businessInfo?.address?.country 
       || null;
 
-    if (!originCountry && options.items && Array.isArray(options.items) && options.items.length > 0) {
-      const itemWithCountry = options.items.find(it => it.country || it.originCountry);
-      if (itemWithCountry) {
-        originCountry = itemWithCountry.country || itemWithCountry.originCountry;
-      }
-    }
-
+    // Check if items belong to direct overseas cellar estates (Italy / France)
     if (!originCountry && options.items && Array.isArray(options.items) && options.items.length > 0) {
       const itemBrandOrName = options.items.map(it => (it.name || '') + ' ' + (it.brand || '')).join(' ').toLowerCase();
       if (itemBrandOrName.includes('dogliotti') || itemBrandOrName.includes('cantina del conte') || itemBrandOrName.includes('giuliani')) {
@@ -45,14 +42,27 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
       }
     }
 
+    // For domestic South African delivery (The Courier Guy / PostNet / PUDO):
+    // All local retail inventory (tequila, whisky, local wines) dispatches from South Africa!
+    if (destSA) {
+      if (!originCountry || (!['Italy', 'France'].includes(originCountry) && (!vendor || isSouthAfrica(originCountry)))) {
+        originCountry = 'South Africa';
+      }
+    } else {
+      // For international delivery to overseas customers:
+      if (!originCountry && options.items && Array.isArray(options.items) && options.items.length > 0) {
+        const itemWithCountry = options.items.find(it => it.country || it.originCountry);
+        if (itemWithCountry) {
+          originCountry = itemWithCountry.country || itemWithCountry.originCountry;
+        }
+      }
+    }
+
     if (!originCountry) {
       originCountry = 'South Africa';
     }
 
-    const destCountry = customerAddress.country || 'South Africa';
-
     const originSA = isSouthAfrica(originCountry);
-    const destSA = isSouthAfrica(destCountry);
 
     let quotes = [];
     let isInternational = false;

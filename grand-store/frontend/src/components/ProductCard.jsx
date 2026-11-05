@@ -480,7 +480,8 @@ export default function ProductCard({
           }}
           onProceed={(prod, qty, opt) => {
             if (onAdd) onAdd(prod, qty, opt, false);
-            const isIntl = isGlobalWine || (prod?.country && !['south africa', 'za', 'rsa'].includes(prod.country.toLowerCase().trim())); const targetCountry = prod?.country ? `&country=${encodeURIComponent(prod.country)}` : ''; navigate(isIntl ? `/customer/checkout?mode=international_aramex${targetCountry}` : '/customer/checkout?mode=domestic_sa');
+            // Default to South Africa domestic checkout, with International toggle available in Step 1
+            navigate('/customer/checkout?mode=domestic_sa');
           }}
         />
       </article>

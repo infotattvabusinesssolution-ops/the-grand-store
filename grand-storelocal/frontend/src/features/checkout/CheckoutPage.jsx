@@ -122,9 +122,10 @@ export default function CheckoutPage({
   const urlCountry = searchParams.get('country');
   const isIntlCountry = (c) => Boolean(c && !['south africa', 'za', 'rsa'].includes(c.toLowerCase().trim()));
   const hasIntlProduct = vendorCartItems.some((item) => isIntlCountry(item.country));
-  const isInternationalOrder = urlMode === 'international_aramex' || (urlMode !== 'domestic_sa' && hasIntlProduct);
+  const isInternationalOrder = urlMode === 'international_aramex';
 
-  const [destinationMode, setDestinationMode] = useState(() => (isInternationalOrder ? 'international_aramex' : 'domestic_sa'));
+  // South Africa (domestic_sa) is ALWAYS the default unless explicitly urlMode === 'international_aramex'
+  const [destinationMode, setDestinationMode] = useState(() => (urlMode === 'international_aramex' ? 'international_aramex' : 'domestic_sa'));
   const isDomestic = destinationMode === 'domestic_sa';
   const [applyRewards, setApplyRewards] = useState(false);
   const [useSuperCoins, setUseSuperCoins] = useState(true);
@@ -437,7 +438,7 @@ export default function CheckoutPage({
   };
 
   
-  // Auto-sync International Aramex mode from URL (?mode=international_aramex) or international cart items
+  // Auto-sync delivery mode from URL query (?mode=international_aramex or ?mode=domestic_sa)
   useEffect(() => {
     if (urlMode === 'international_aramex') {
       setDestinationMode('international_aramex');
@@ -448,11 +449,8 @@ export default function CheckoutPage({
     } else if (urlMode === 'domestic_sa') {
       setDestinationMode('domestic_sa');
       setFormData((prev) => ({ ...prev, country: 'South Africa' }));
-    } else if (hasIntlProduct) {
-      setDestinationMode('international_aramex');
-      setDeliveryPreference('home');
     }
-  }, [urlMode, urlCountry, hasIntlProduct]);
+  }, [urlMode, urlCountry]);
   useEffect(() => {
     document.title = 'Checkout – The Grand Store';
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -557,14 +555,32 @@ export default function CheckoutPage({
       setDestinationMode('domestic_sa');
       setDeliveryPreference('home');
       setFormData((current) => ({ ...current, country: 'South Africa' }));
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('mode', 'domestic_sa');
+        next.delete('country');
+        return next;
+      });
     } else if (mode === 'domestic_pudo') {
       setDestinationMode('domestic_sa');
       setDeliveryPreference('pudo');
       setFormData((current) => ({ ...current, country: 'South Africa' }));
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('mode', 'domestic_sa');
+        next.delete('country');
+        return next;
+      });
     } else if (mode === 'domestic_postnet') {
       setDestinationMode('domestic_sa');
       setDeliveryPreference('postnet');
       setFormData((current) => ({ ...current, country: 'South Africa' }));
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('mode', 'domestic_sa');
+        next.delete('country');
+        return next;
+      });
     } else if (mode === 'international_aramex') {
       setDestinationMode('international_aramex');
       setDeliveryPreference('home');
@@ -572,6 +588,11 @@ export default function CheckoutPage({
         ? formData.country
         : 'United Kingdom';
       setFormData((current) => ({ ...current, country: currentCountry }));
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('mode', 'international_aramex');
+        return next;
+      });
     }
   };
 
@@ -910,7 +931,7 @@ export default function CheckoutPage({
       return;
     }
 
-    if (quote.hasInternational && (!dutiesAccepted || !commercialInvoiceAcknowledged)) {
+    if ((destinationMode === 'international_aramex' || quote.hasInternational) && (!dutiesAccepted || !commercialInvoiceAcknowledged)) {
       setShowCommercialInvoiceModal(true);
       return;
     }
@@ -1838,150 +1859,192 @@ export default function CheckoutPage({
                   </div>
                 )}
 
-                {/* Delivery Location & Fulfillment Mode */}
-                {destinationMode === 'international_aramex' ? (
+                {/* Primary Destination Mode Selector: Two Separate Clear Parts (Local vs International) */}
+                <div className="p-1.5 bg-[#0a0a0a] rounded-2xl border border-white/10 shadow-lg mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Tab 1: South Africa (Domestic Delivery) — DEFAULT */}
+                    <button
+                      type="button"
+                      onClick={() => selectDeliveryMode('domestic_home')}
+                      className={`relative flex items-center gap-3.5 p-4 rounded-xl transition-all text-left cursor-pointer ${
+                        destinationMode === 'domestic_sa'
+                          ? 'bg-gradient-to-r from-amber-500/20 via-[var(--color-gold)]/10 to-transparent border border-[var(--color-gold)] shadow-[0_0_20px_rgba(212,175,55,0.15)] ring-1 ring-[var(--color-gold)]/30'
+                          : 'border border-transparent bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/15'
+                      }`}
+                    >
+                      <div className={`p-2.5 rounded-xl text-xl shrink-0 ${destinationMode === 'domestic_sa' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
+                        🇿🇦
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="text-sm font-bold text-white tracking-wide">South Africa (Domestic)</p>
+                          <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[var(--color-gold)] text-black">
+                            Default
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--color-ivory-muted)] truncate">
+                          The Courier Guy • PUDO Locker • PostNet
+                        </p>
+                      </div>
+                      {destinationMode === 'domestic_sa' && (
+                        <CheckCircle2 size={18} className="text-[var(--color-gold)] shrink-0" />
+                      )}
+                    </button>
+
+                    {/* Tab 2: International Delivery (Worldwide via Aramex) */}
+                    <button
+                      type="button"
+                      onClick={() => selectDeliveryMode('international_aramex')}
+                      className={`relative flex items-center gap-3.5 p-4 rounded-xl transition-all text-left cursor-pointer ${
+                        destinationMode === 'international_aramex'
+                          ? 'bg-gradient-to-r from-red-500/20 via-red-500/10 to-transparent border border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.2)] ring-1 ring-red-400/40'
+                          : 'border border-transparent bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/15'
+                      }`}
+                    >
+                      <div className={`p-2.5 rounded-xl text-xl shrink-0 ${destinationMode === 'international_aramex' ? 'bg-red-500 text-white' : 'bg-white/5 text-white/60'}`}>
+                        🌍
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="text-sm font-bold text-white tracking-wide">International Delivery</p>
+                          <span className="text-[9px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.5 rounded font-mono">
+                            ✈️ Worldwide
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--color-ivory-muted)] truncate">
+                          Aramex Global Priority Air Express
+                        </p>
+                      </div>
+                      {destinationMode === 'international_aramex' && (
+                        <CheckCircle2 size={18} className="text-red-400 shrink-0" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sub-Section A: SOUTH AFRICA DOMESTIC DELIVERY OPTIONS (3 Clean Options) */}
+                {destinationMode === 'domestic_sa' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs uppercase tracking-wider text-[var(--color-gold)] font-bold">
+                        Select South African Delivery Courier:
+                      </p>
+                      <span className="text-[11px] text-white/40">3 Local Delivery Methods Available</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                      {/* Option 1: South Africa Door Delivery (The Courier Guy) */}
+                      <button
+                        type="button"
+                        onClick={() => selectDeliveryMode('domestic_home')}
+                        className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                          deliveryPreference === 'home'
+                            ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_20px_rgba(212,175,55,0.15)] ring-1 ring-[var(--color-gold)]/30'
+                            : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between min-h-[32px] mb-3">
+                            <span className={`p-2.5 rounded-xl shrink-0 ${deliveryPreference === 'home' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
+                              <Truck size={18} />
+                            </span>
+                            {deliveryPreference === 'home' && (
+                              <CheckCircle2 size={16} className="text-[var(--color-gold)] shrink-0" />
+                            )}
+                          </div>
+                          <div className="mb-2">
+                            <p className="text-sm font-bold text-white leading-snug">SA Door Delivery</p>
+                            <p className="text-[10px] text-[var(--color-gold)] font-semibold leading-tight mt-0.5">🇿🇦 The Courier Guy</p>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Door-to-door direct courier to your home or office</p>
+                      </button>
+
+                      {/* Option 2: PUDO Smart Locker (The Courier Guy 24/7) */}
+                      <button
+                        type="button"
+                        onClick={() => selectDeliveryMode('domestic_pudo')}
+                        className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                          deliveryPreference === 'pudo'
+                            ? 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.18)] ring-1 ring-emerald-400/30'
+                            : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between min-h-[32px] mb-3">
+                            <span className={`p-2.5 rounded-xl shrink-0 ${deliveryPreference === 'pudo' ? 'bg-emerald-400 text-black' : 'bg-white/5 text-emerald-400/70'}`}>
+                              <Package size={18} />
+                            </span>
+                            {deliveryPreference === 'pudo' && (
+                              <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                            )}
+                          </div>
+                          <div className="mb-2">
+                            <p className="text-sm font-bold text-white leading-snug">PUDO Locker</p>
+                            <p className="text-[10px] text-emerald-400 font-semibold leading-tight mt-0.5">🇿🇦 24/7 Smart Locker</p>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Collect 24/7 at automated PUDO lockers nationwide</p>
+                      </button>
+
+                      {/* Option 3: South Africa PostNet Store Collection */}
+                      <button
+                        type="button"
+                        onClick={() => selectDeliveryMode('domestic_postnet')}
+                        className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                          deliveryPreference === 'postnet'
+                            ? 'border-amber-400 bg-amber-500/10 shadow-[0_0_20px_rgba(245,158,11,0.18)] ring-1 ring-amber-400/30'
+                            : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between min-h-[32px] mb-3">
+                            <span className={`p-2.5 rounded-xl shrink-0 ${deliveryPreference === 'postnet' ? 'bg-amber-400 text-black' : 'bg-white/5 text-white/60'}`}>
+                              <Store size={18} />
+                            </span>
+                            {deliveryPreference === 'postnet' && (
+                              <CheckCircle2 size={16} className="text-amber-400 shrink-0" />
+                            )}
+                          </div>
+                          <div className="mb-2">
+                            <p className="text-sm font-bold text-white leading-snug">PostNet Collection</p>
+                            <p className="text-[10px] text-amber-400 font-semibold leading-tight mt-0.5">🇿🇦 PostNet-to-PostNet</p>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Collect securely at 450+ PostNet branches nationwide</p>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-Section B: INTERNATIONAL DELIVERY COURIER (Aramex Global Express) */}
+                {destinationMode === 'international_aramex' && (
                   <div className="w-full">
-                    {/* Only Aramex Global Express when international */}
-                    <div className="relative p-5 rounded-2xl border border-red-500 bg-red-500/15 shadow-[0_0_25px_rgba(239,68,68,0.2)] ring-1 ring-red-400/40 text-left flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-start sm:items-center gap-3.5">
-                        <span className="p-3 rounded-xl bg-red-500 text-white shrink-0">
-                          <Globe size={22} />
+                    <div className="relative p-5 md:p-6 rounded-2xl border border-red-500 bg-gradient-to-br from-red-950/30 via-[#0d0d0d] to-[#0a0a0a] shadow-[0_0_30px_rgba(239,68,68,0.2)] ring-1 ring-red-400/40 text-left flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-start sm:items-center gap-4">
+                        <span className="p-3.5 rounded-xl bg-red-500 text-white shrink-0 shadow-lg">
+                          <Globe size={24} />
                         </span>
                         <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="text-base font-semibold text-white leading-snug">Aramex Global Express</p>
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <p className="text-base font-bold text-white leading-snug">Aramex Global Express</p>
                             <span className="text-[9px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded font-mono">
-                              ✈️ International Courier
+                              ✈️ Priority Air Courier
                             </span>
                           </div>
                           <p className="text-xs text-[var(--color-ivory-muted)] leading-relaxed">
-                            Priority air express door-to-door delivery with full customs clearance. Local South African couriers (PostNet, PUDO, Courier Guy) are unavailable for international shipments.
+                            Express door-to-door priority air transit with end-to-end global tracking to UK, USA, Europe, UAE & 220+ countries worldwide.
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                        <span className="text-xs font-semibold text-red-300 flex items-center gap-1.5 bg-red-500/20 border border-red-500/40 px-3 py-1.5 rounded-xl">
-                          <CheckCircle2 size={16} className="text-red-400" /> Active Delivery Mode
+                        <span className="text-xs font-semibold text-red-300 flex items-center gap-1.5 bg-red-500/20 border border-red-500/40 px-3.5 py-2 rounded-xl">
+                          <CheckCircle2 size={16} className="text-red-400" /> Active International Mode
                         </span>
                       </div>
                     </div>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    {/* Card 1: South Africa Door Delivery */}
-                  <button
-                    type="button"
-                    onClick={() => selectDeliveryMode('domestic_home')}
-                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                      destinationMode === 'domestic_sa' && deliveryPreference === 'home'
-                        ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_20px_rgba(212,175,55,0.12)] ring-1 ring-[var(--color-gold)]/30'
-                        : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between min-h-[32px] mb-3">
-                        <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'home' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
-                          <Truck size={18} />
-                        </span>
-                        {destinationMode === 'domestic_sa' && deliveryPreference === 'home' && (
-                          <CheckCircle2 size={16} className="text-[var(--color-gold)] shrink-0" />
-                        )}
-                      </div>
-                      <div className="mb-2">
-                        <p className="text-sm font-semibold text-white leading-snug">SA Door Delivery</p>
-                        <p className="text-[10px] text-[var(--color-gold)] font-medium leading-tight mt-0.5">🇿🇦 South Africa Direct Courier</p>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Door-to-door courier via The Courier Guy</p>
-                  </button>
-
-                  {/* Card 2: PUDO Smart Locker (The Courier Guy) */}
-                  <button
-                    type="button"
-                    onClick={() => selectDeliveryMode('domestic_pudo')}
-                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                      destinationMode === 'domestic_sa' && deliveryPreference === 'pudo'
-                        ? 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.15)] ring-1 ring-emerald-400/30'
-                        : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between min-h-[32px] mb-3">
-                        <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'pudo' ? 'bg-emerald-400 text-black' : 'bg-white/5 text-emerald-400/70'}`}>
-                          <Package size={18} />
-                        </span>
-                        {destinationMode === 'domestic_sa' && deliveryPreference === 'pudo' && (
-                          <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                        )}
-                      </div>
-                      <div className="mb-2">
-                        <p className="text-sm font-semibold text-white leading-snug">PUDO Locker</p>
-                        <p className="text-[10px] text-emerald-400 font-medium leading-tight mt-0.5">🇿🇦 The Courier Guy 24/7</p>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Collect 24/7 at smart lockers across South Africa</p>
-                  </button>
-
-                  {/* Card 3: South Africa PostNet Store Collection */}
-                  <button
-                    type="button"
-                    onClick={() => selectDeliveryMode('domestic_postnet')}
-                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                      destinationMode === 'domestic_sa' && deliveryPreference === 'postnet'
-                        ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 shadow-[0_0_20px_rgba(212,175,55,0.12)] ring-1 ring-[var(--color-gold)]/30'
-                        : 'border-white/10 bg-[#0d0d0d] hover:border-white/25'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between min-h-[32px] mb-3">
-                        <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'domestic_sa' && deliveryPreference === 'postnet' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
-                          <Store size={18} />
-                        </span>
-                        {destinationMode === 'domestic_sa' && deliveryPreference === 'postnet' && (
-                          <CheckCircle2 size={16} className="text-[var(--color-gold)] shrink-0" />
-                        )}
-                      </div>
-                      <div className="mb-2">
-                        <p className="text-sm font-semibold text-white leading-snug">PostNet Collection</p>
-                        <p className="text-[10px] text-red-400 font-medium leading-tight mt-0.5">🇿🇦 PostNet-to-PostNet</p>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Collect at over 450+ PostNet branches nationwide</p>
-                  </button>
-
-                  {/* Card 4: International Worldwide Delivery (Aramex Global Express) */}
-                  <button
-                    type="button"
-                    onClick={() => selectDeliveryMode('international_aramex')}
-                    className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                      destinationMode === 'international_aramex'
-                        ? 'border-red-500 bg-red-500/15 shadow-[0_0_25px_rgba(239,68,68,0.2)] ring-1 ring-red-400/40'
-                        : 'border-white/10 bg-[#0d0d0d] hover:border-red-500/40'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between min-h-[32px] mb-3">
-                        <span className={`p-2 rounded-xl shrink-0 ${destinationMode === 'international_aramex' ? 'bg-red-500 text-white' : 'bg-white/5 text-red-400/80'}`}>
-                          <Globe size={18} />
-                        </span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[9px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.5 rounded font-mono shrink-0 whitespace-nowrap">
-                            Worldwide
-                          </span>
-                          {destinationMode === 'international_aramex' && (
-                            <CheckCircle2 size={16} className="text-red-400 shrink-0" />
-                          )}
-                        </div>
-                      </div>
-                      <div className="mb-2">
-                        <p className="text-sm font-semibold text-white leading-snug">Aramex Global Express</p>
-                        <p className="text-[10px] text-red-400/90 font-medium leading-tight mt-0.5">✈️ International Courier</p>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-[var(--color-ivory-muted)] leading-relaxed mt-2">Priority air express courier to UK, USA, Europe, UAE & 220+ countries</p>
-                  </button>
-                </div>
-              )}
+                )}
 
                 {/* Recipient Details */}
                 <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4">
@@ -2966,7 +3029,7 @@ export default function CheckoutPage({
                       (!detectedOrigin || detectedOrigin.toLowerCase().includes('south africa') || detectedOrigin.toLowerCase() === 'za') &&
                       shp.items && shp.items[0]?.country && !['south africa', 'za', 'rsa'].includes(shp.items[0].country.toLowerCase())
                     ) {
-                      detectedOrigin = shp.items[0].country;
+                      detectedOrigin = destinationMode === 'domestic_sa' ? 'South Africa' : shp.items[0].country;
                     }
 
                     if (!detectedOrigin) {
@@ -3148,7 +3211,8 @@ export default function CheckoutPage({
                   </div>
                 </div>
 
-                {/* 📄 Commercial Export Invoice & Destination Customs Advisory (DAP Terms) */}
+                {/* 📄 Commercial Export Invoice & Destination Customs Advisory (Only for International Orders) */}
+                {destinationMode === 'international_aramex' && (
                 <div className="rounded-2xl border border-[var(--color-gold)]/40 bg-gradient-to-br from-[var(--color-gold)]/10 via-[#0d0d0d] to-[#0a0a0a] p-5 md:p-6 space-y-4 shadow-xl">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -3208,6 +3272,7 @@ export default function CheckoutPage({
                     </span>
                   </label>
                 </div>
+                )}
 
 
                 {/* 🔒 THE CONFIDENCE SECTION (Alcohol Compliance & Security) */}
