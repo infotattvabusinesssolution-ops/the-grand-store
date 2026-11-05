@@ -12,6 +12,7 @@ import {
   Loader2,
   Truck,
   AlertTriangle,
+  AlertCircle,
   CheckCircle2,
   ShoppingCart,
   MapPin,
@@ -484,6 +485,7 @@ export default function CheckoutPage({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    clearFieldError(name);
     if (name === 'fullName') {
       const parts = value.trim().split(/\s+/).filter(Boolean);
       setFormData((current) => ({
@@ -515,6 +517,7 @@ export default function CheckoutPage({
 
   const handleCityChange = (event) => {
     const { name, value } = event.target;
+    clearFieldError('city');
     setFormData((current) => ({
       ...current,
       [name]: value,
@@ -833,6 +836,7 @@ export default function CheckoutPage({
     }
     setDeliveryPreference('postnet');
     setPreferredPostnetStore(store);
+    clearFieldError('postnet');
     setSelectedPostnetBranch(store);
     setIsChangingPostnetBranch(false);
 
@@ -865,38 +869,137 @@ export default function CheckoutPage({
     }
   };
 
-  // Step 1 -> Step 2 validation
+  // Validation state for per-blank validation popups
+  const [formErrors, setFormErrors] = useState({});
+
+  const clearFieldError = (name) => {
+    setFormErrors((prev) => {
+      if (!prev[name]) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+  };
+
+  const validateField = (fieldName, val, currentFormData = formData) => {
+    let error = null;
+    const value = val !== undefined ? val : currentFormData[fieldName];
+
+    if (fieldName === 'fullName') {
+      const nameVal = (value || `${currentFormData.firstName || ''} ${currentFormData.lastName || ''}`).trim();
+      if (!nameVal) {
+        error = 'Full name is required';
+      }
+    } else if (fieldName === 'email') {
+      const emailVal = (value || '').trim();
+      if (!emailVal) {
+        error = 'Email address is required';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+        error = 'Please enter a valid email address';
+      }
+    } else if (fieldName === 'phone') {
+      const phoneVal = (value || '').trim();
+      if (!phoneVal) {
+        error = 'Mobile phone number is required';
+      } else if (!getCheckoutPhone(phoneVal, currentFormData.phoneCountry)) {
+        error = 'Please enter a valid mobile number for the selected country';
+      }
+    } else if (fieldName === 'address' && deliveryPreference === 'home') {
+      if (!(value || '').trim()) {
+        error = 'Street address is required';
+      }
+    } else if (fieldName === 'city' && deliveryPreference === 'home') {
+      if (!(value || '').trim()) {
+        error = 'City / Suburb is required';
+      }
+    } else if (fieldName === 'postalCode' && deliveryPreference === 'home') {
+      if (!(value || '').trim()) {
+        error = 'Postal code is required';
+      }
+    } else if (fieldName === 'country' && deliveryPreference === 'home' && destinationMode === 'international_aramex') {
+      if (!(value || '').trim()) {
+        error = 'Destination country is required';
+      }
+    }
+
+    return error;
+  };
+
+  const validateAllStep1Fields = (storeOverride = null) => {
+    const errors = {};
+
+    const nameErr = validateField('fullName', formData.fullName);
+    if (nameErr) errors.fullName = nameErr;
+
+    const emailErr = validateField('email', formData.email);
+    if (emailErr) errors.email = emailErr;
+
+    const phoneErr = validateField('phone', formData.phone);
+    if (phoneErr) errors.phone = phoneErr;
+
+    if (deliveryPreference === 'home') {
+      const addressErr = validateField('address', formData.address);
+      if (addressErr) errors.address = addressErr;
+
+      const cityErr = validateField('city', formData.city);
+      if (cityErr) errors.city = cityErr;
+
+      const postalErr = validateField('postalCode', formData.postalCode);
+      if (postalErr) errors.postalCode = postalErr;
+
+      if (destinationMode === 'international_aramex') {
+        const countryErr = validateField('country', formData.country);
+        if (countryErr) errors.country = countryErr;
+      }
+    } else if (deliveryPreference === 'pudo') {
+      if (!preferredLocker) {
+        errors.pudo = 'Please search and select your preferred PUDO Smart Locker';
+      }
+    } else if (deliveryPreference === 'postnet') {
+      const branchToConfirm = storeOverride || preferredPostnetStore || selectedPostnetBranch;
+      if (!branchToConfirm) {
+        errors.postnet = 'Please select and confirm your preferred PostNet collection branch';
+      }
+    }
+
+    return errors;
+  };
+
+  const handleFieldBlur = (name, value) => {
+    const err = validateField(name, value);
+    if (err) {
+      setFormErrors((prev) => ({ ...prev, [name]: err }));
+    }
+  };
+
+  // Step 1 -> Step 2 validation (Per-blank validation & popup)
   const handleProceedToDeliveryMethod = async (e, storeOverride = null) => {
     if (e && e.preventDefault) e.preventDefault();
 
-    const effectiveFullName = (formData.fullName || `${formData.firstName || ''} ${formData.lastName || ''}`).trim();
-    if (!effectiveFullName || !formData.phone || !formData.email) {
-      onNotify('Please fill in your recipient contact details including full name and email address.');
-      return;
-    }
-    if (!getCheckoutPhone(formData.phone, formData.phoneCountry)) {
-      onNotify('Please select a country code and enter a valid phone number for that country.');
-      return;
-    }
+    const errors = validateAllStep1Fields(storeOverride);
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
 
-    if (deliveryPreference === 'home' && (!formData.address || !formData.city || !formData.postalCode)) {
-      onNotify('Please provide your complete street address, city, and postal code for door delivery.');
-      return;
-    }
+      const fieldOrder = ['fullName', 'email', 'phone', 'address', 'city', 'postalCode', 'country', 'pudo', 'postnet'];
+      const firstField = fieldOrder.find((f) => errors[f]) || Object.keys(errors)[0];
+      const firstErrorMsg = errors[firstField];
 
-    if (deliveryPreference === 'pudo') {
-      if (!preferredLocker) {
-        onNotify('Please search and select your preferred PUDO Smart Locker.');
-        return;
+      if (onNotify) {
+        onNotify(firstErrorMsg);
       }
+
+      const targetElement = document.querySelector(`[name="${firstField}"]`) || document.getElementById(`checkout-${firstField}`);
+      if (targetElement) {
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => targetElement.focus?.(), 100);
+      }
+      return;
     }
+
+    setFormErrors({});
 
     if (deliveryPreference === 'postnet') {
       const branchToConfirm = storeOverride || preferredPostnetStore || selectedPostnetBranch;
-      if (!branchToConfirm) {
-        onNotify('Please select and confirm your preferred PostNet collection branch.');
-        return;
-      }
       handleConfirmPostnetStore(branchToConfirm, false);
     }
 
@@ -1772,11 +1875,25 @@ export default function CheckoutPage({
                         type="text"
                         name="fullName"
                         value={formData.fullName}
-                        onChange={handleChange}
+                        onChange={(e) => {
+                          handleChange(e);
+                          clearFieldError('fullName');
+                        }}
+                        onBlur={(e) => handleFieldBlur('fullName', e.target.value)}
                         required
                         placeholder="e.g. Johnathan Smith"
-                        className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors text-white placeholder:text-white/30"
+                        className={`w-full rounded-xl px-4 py-2.5 text-sm transition-colors focus:outline-none ${
+                          formErrors.fullName
+                            ? 'border border-red-500 bg-red-950/20 ring-1 ring-red-500/50 text-white placeholder:text-red-300/40 focus:border-red-500'
+                            : 'border border-white/10 bg-black/60 text-white placeholder:text-white/30 focus:border-[var(--color-gold)]'
+                        }`}
                       />
+                      {formErrors.fullName && (
+                        <div className="flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-md bg-red-500/15 border border-red-500/30 text-red-300 text-[11px] font-medium animate-fadeIn">
+                          <AlertCircle size={13} className="shrink-0 text-red-400" />
+                          <span>{formErrors.fullName}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="sm:col-span-2">
                       <label className="block text-[11px] uppercase tracking-wider text-white/70 mb-1.5">Email Address (For Invoices & Tracking Updates) *</label>
@@ -1784,11 +1901,25 @@ export default function CheckoutPage({
                         type="email"
                         name="email"
                         value={formData.email}
-                        onChange={handleChange}
+                        onChange={(e) => {
+                          handleChange(e);
+                          clearFieldError('email');
+                        }}
+                        onBlur={(e) => handleFieldBlur('email', e.target.value)}
                         required
                         placeholder="e.g. yourname@example.com"
-                        className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                        className={`w-full rounded-xl px-4 py-2.5 text-sm transition-colors focus:outline-none ${
+                          formErrors.email
+                            ? 'border border-red-500 bg-red-950/20 ring-1 ring-red-500/50 text-white placeholder:text-red-300/40 focus:border-red-500'
+                            : 'border border-white/10 bg-black/60 text-white placeholder:text-white/30 focus:border-[var(--color-gold)]'
+                        }`}
                       />
+                      {formErrors.email && (
+                        <div className="flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-md bg-red-500/15 border border-red-500/30 text-red-300 text-[11px] font-medium animate-fadeIn">
+                          <AlertCircle size={13} className="shrink-0 text-red-400" />
+                          <span>{formErrors.email}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="sm:col-span-2">
                       <div className="flex items-center justify-between mb-1.5">
@@ -1796,7 +1927,11 @@ export default function CheckoutPage({
                           <Phone size={12} className="text-[var(--color-gold)]" /> Mobile Number {destinationMode === 'domestic_sa' ? '(Required for PostNet SMS alerts) *' : '*'}
                         </label>
                       </div>
-                      <div className="flex min-w-0 rounded-xl border border-white/10 bg-black/60 focus-within:border-[var(--color-gold)] transition-colors relative overflow-visible">
+                      <div className={`flex min-w-0 rounded-xl transition-colors relative overflow-visible ${
+                        formErrors.phone
+                          ? 'border border-red-500 bg-red-950/20 ring-1 ring-red-500/50'
+                          : 'border border-white/10 bg-black/60 focus-within:border-[var(--color-gold)]'
+                      }`}>
                         <CountryCodeSelect
                           value={formData.phoneCountry}
                           onChange={(dialCode, country) => {
@@ -1804,6 +1939,7 @@ export default function CheckoutPage({
                               ...current,
                               phoneCountry: country?.country || dialCode
                             }));
+                            clearFieldError('phone');
                           }}
                           id="checkout-phone-country"
                           buttonClassName="py-3 px-2.5 sm:px-3.5 rounded-l-xl bg-[#191712] hover:bg-[#232019] text-xs text-[var(--color-gold)] border-r border-white/10 shrink-0"
@@ -1816,13 +1952,23 @@ export default function CheckoutPage({
                           autoComplete="tel-national"
                           name="phone"
                           value={formData.phone}
-                          onChange={handleChange}
+                          onChange={(e) => {
+                            handleChange(e);
+                            clearFieldError('phone');
+                          }}
+                          onBlur={(e) => handleFieldBlur('phone', e.target.value)}
                           required
                           maxLength={17}
                           placeholder="Mobile number"
-                          className="w-full min-w-0 bg-transparent rounded-r-xl px-3 py-3 text-sm focus:outline-none"
+                          className="w-full min-w-0 bg-transparent rounded-r-xl px-3 py-3 text-sm focus:outline-none text-white placeholder:text-white/30"
                         />
                       </div>
+                      {formErrors.phone && (
+                        <div className="flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-md bg-red-500/15 border border-red-500/30 text-red-300 text-[11px] font-medium animate-fadeIn">
+                          <AlertCircle size={13} className="shrink-0 text-red-400" />
+                          <span>{formErrors.phone}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1849,7 +1995,10 @@ export default function CheckoutPage({
                         <LocationInput
                           name="address"
                           value={formData.address}
-                          onChange={handleChange}
+                          onChange={(e) => {
+                            handleChange(e);
+                            clearFieldError('address');
+                          }}
                           onPlaceDetails={({ address, city, postalCode, country, lat, lng }) => {
                             setFormData((current) => ({
                               ...current,
@@ -1861,12 +2010,25 @@ export default function CheckoutPage({
                               lng: lng ?? current.lng
                             }));
                             setQuote(null);
+                            clearFieldError('address');
+                            if (city) clearFieldError('city');
+                            if (postalCode) clearFieldError('postalCode');
                           }}
                           restrictToSouthAfrica={isDomestic}
                           required
-                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                          className={`w-full rounded-xl px-4 py-2.5 text-sm transition-colors focus:outline-none ${
+                            formErrors.address
+                              ? 'border border-red-500 bg-red-950/20 ring-1 ring-red-500/50 text-white placeholder:text-red-300/40 focus:border-red-500'
+                              : 'border border-white/10 bg-black/60 text-white placeholder:text-white/30 focus:border-[var(--color-gold)]'
+                          }`}
                           placeholder={isDomestic ? "Start typing South African street address (e.g. 15 Alice Lane, Sandton)..." : "Street number and name..."}
                         />
+                        {formErrors.address && (
+                          <div className="flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-md bg-red-500/15 border border-red-500/30 text-red-300 text-[11px] font-medium animate-fadeIn">
+                            <AlertCircle size={13} className="shrink-0 text-red-400" />
+                            <span>{formErrors.address}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* 2. City / Suburb (Above) */}
@@ -1875,7 +2037,10 @@ export default function CheckoutPage({
                         <CityInput
                           name="city"
                           value={formData.city}
-                          onChange={handleCityChange}
+                          onChange={(e) => {
+                            handleCityChange(e);
+                            clearFieldError('city');
+                          }}
                           onCityDetails={({ city, postalCode, country, lat, lng }) => {
                             const matchedCity = POSTNET_AVAILABLE_CITIES.find(
                               (c) => c.name.toLowerCase() === city.toLowerCase()
@@ -1890,12 +2055,24 @@ export default function CheckoutPage({
                               lng
                             }));
                             setQuote(null);
+                            clearFieldError('city');
+                            if (targetPostalCode) clearFieldError('postalCode');
                           }}
                           restrictToSouthAfrica={isDomestic}
                           required
-                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                          className={`w-full rounded-xl px-4 py-2.5 text-sm transition-colors focus:outline-none ${
+                            formErrors.city
+                              ? 'border border-red-500 bg-red-950/20 ring-1 ring-red-500/50 text-white placeholder:text-red-300/40 focus:border-red-500'
+                              : 'border border-white/10 bg-black/60 text-white placeholder:text-white/30 focus:border-[var(--color-gold)]'
+                          }`}
                           placeholder={isDomestic ? "e.g. Sandton, Cape Town, Pretoria..." : "e.g. Sandton or London"}
                         />
+                        {formErrors.city && (
+                          <div className="flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-md bg-red-500/15 border border-red-500/30 text-red-300 text-[11px] font-medium animate-fadeIn">
+                            <AlertCircle size={13} className="shrink-0 text-red-400" />
+                            <span>{formErrors.city}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* 3. Postal Code (Above) */}
@@ -1908,16 +2085,30 @@ export default function CheckoutPage({
                           cityLat={formData.lat}
                           cityLng={formData.lng}
                           suggestedPostalCodes={postnetPostalCodes}
-                          onChange={handleChange}
+                          onChange={(e) => {
+                            handleChange(e);
+                            clearFieldError('postalCode');
+                          }}
                           onPostalDetails={({ postalCode }) => {
                             setFormData((current) => ({ ...current, postalCode }));
                             setQuote(null);
+                            clearFieldError('postalCode');
                           }}
                           restrictToSouthAfrica={isDomestic}
                           required
-                          className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                          className={`w-full rounded-xl px-4 py-2.5 text-sm transition-colors focus:outline-none ${
+                            formErrors.postalCode
+                              ? 'border border-red-500 bg-red-950/20 ring-1 ring-red-500/50 text-white placeholder:text-red-300/40 focus:border-red-500'
+                              : 'border border-white/10 bg-black/60 text-white placeholder:text-white/30 focus:border-[var(--color-gold)]'
+                          }`}
                           placeholder={isDomestic ? "e.g. 2196 or 8001" : "e.g. 2196 or SW1A 2AA"}
                         />
+                        {formErrors.postalCode && (
+                          <div className="flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-md bg-red-500/15 border border-red-500/30 text-red-300 text-[11px] font-medium animate-fadeIn">
+                            <AlertCircle size={13} className="shrink-0 text-red-400" />
+                            <span>{formErrors.postalCode}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* 4. Country */}
@@ -1949,15 +2140,31 @@ export default function CheckoutPage({
                             </div>
                           </div>
                         ) : (
-                          <input
-                            type="text"
-                            name="country"
-                            value={formData.country}
-                            onChange={handleChange}
-                            required
-                            placeholder="e.g. United Kingdom, United States, Germany..."
-                            className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-[var(--color-gold)] focus:outline-none transition-colors text-white placeholder:text-white/30"
-                          />
+                          <div>
+                            <input
+                              type="text"
+                              name="country"
+                              value={formData.country}
+                              onChange={(e) => {
+                                handleChange(e);
+                                clearFieldError('country');
+                              }}
+                              onBlur={(e) => handleFieldBlur('country', e.target.value)}
+                              required
+                              placeholder="e.g. United Kingdom, United States, Germany..."
+                              className={`w-full rounded-xl px-4 py-2.5 text-sm transition-colors focus:outline-none ${
+                                formErrors.country
+                                  ? 'border border-red-500 bg-red-950/20 ring-1 ring-red-500/50 text-white placeholder:text-red-300/40 focus:border-red-500'
+                                  : 'border border-white/10 bg-black/60 text-white placeholder:text-white/30 focus:border-[var(--color-gold)]'
+                              }`}
+                            />
+                            {formErrors.country && (
+                              <div className="flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-md bg-red-500/15 border border-red-500/30 text-red-300 text-[11px] font-medium animate-fadeIn">
+                                <AlertCircle size={13} className="shrink-0 text-red-400" />
+                                <span>{formErrors.country}</span>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -2021,6 +2228,14 @@ export default function CheckoutPage({
                         />
                       </div>
                     </div>
+
+                    {/* PostNet Store Validation Error */}
+                    {formErrors.postnet && (
+                      <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/40 text-red-300 text-xs font-medium animate-fadeIn">
+                        <AlertCircle size={14} className="shrink-0 text-red-400" />
+                        <span>{formErrors.postnet}</span>
+                      </div>
+                    )}
 
                     {/* Confirmed Collection Point Card (shown when a store is confirmed and not currently changing) */}
                     {preferredPostnetStore && !isChangingPostnetBranch && (
@@ -2299,6 +2514,14 @@ export default function CheckoutPage({
                       </div>
                     </div>
 
+                    {/* PUDO Locker Selection Validation Error */}
+                    {formErrors.pudo && (
+                      <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/40 text-red-300 text-xs font-medium animate-fadeIn">
+                        <AlertCircle size={14} className="shrink-0 text-red-400" />
+                        <span>{formErrors.pudo}</span>
+                      </div>
+                    )}
+
                     {/* Confirmed Locker Card */}
                     {preferredLocker && (
                       <div className="rounded-xl border border-emerald-500/50 bg-emerald-500/10 p-4 md:p-5 flex items-start justify-between gap-4 transition-all">
@@ -2359,6 +2582,7 @@ export default function CheckoutPage({
                                   key={locker.id || locker.name}
                                   onClick={() => {
                                     setPreferredLocker(locker);
+                          clearFieldError('pudo');
                                     if (locker.postalCode) {
                                       setFormData((prev) => ({ ...prev, postalCode: locker.postalCode }));
                                     }
@@ -2672,7 +2896,15 @@ export default function CheckoutPage({
                 ========================================================================================
                 */}
 
-                                {/* Continue to Step 2 Button */}
+                {/* Incomplete Form Notification Banner */}
+                {Object.keys(formErrors).length > 0 && (
+                  <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/40 text-red-300 text-xs flex items-center gap-2.5 animate-fadeIn">
+                    <AlertCircle size={16} className="text-red-400 shrink-0" />
+                    <span>Please fill in the required blanks highlighted in red above to continue.</span>
+                  </div>
+                )}
+
+                {/* Continue to Step 2 Button */}
                 <button
                   type="button"
                   onClick={handleProceedToDeliveryMethod}
