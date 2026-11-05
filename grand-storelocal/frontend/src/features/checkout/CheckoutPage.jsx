@@ -499,6 +499,18 @@ export default function CheckoutPage({
     }
   }, [user]);
 
+  // Ensure the order summary card stays firmly fixed / sticky while scrolling across all browsers
+  useEffect(() => {
+    const appEl = document.querySelector('.app');
+    if (appEl) {
+      const prevOverflowX = appEl.style.overflowX;
+      appEl.style.overflowX = 'visible';
+      return () => {
+        appEl.style.overflowX = prevOverflowX;
+      };
+    }
+  }, []);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     clearFieldError(name);
@@ -1252,7 +1264,7 @@ export default function CheckoutPage({
   }
 
   return (
-    <main className="pt-24 pb-36 min-h-screen bg-[#050505] md:pt-32 md:pb-16 text-white">
+    <main className="checkout-page pt-20 pb-36 min-h-screen bg-[#050505] md:pt-28 md:pb-16 text-white">
       <div className="max-w-7xl mx-auto px-4 mb-8 sm:px-6 md:mb-12">
         {/* Top Breadcrumb & Step Indicator */}
         <div className="mb-6 flex items-center justify-between">
@@ -1322,8 +1334,8 @@ export default function CheckoutPage({
         <div className="flex flex-col lg:flex-row-reverse lg:items-start gap-8 w-full md:gap-12 xl:gap-16">
           {/* Right Column - Itemised Order Summary */}
           {checkoutStep !== 4 && (
-            <div className="w-full lg:w-[420px] xl:w-[450px] lg:sticky lg:top-32 shrink-0">
-              <div className="w-full bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-7 shadow-2xl relative overflow-hidden">
+            <div className="w-full lg:w-[420px] xl:w-[450px] checkout-sidebar-sticky lg:sticky lg:top-6 lg:self-start shrink-0 z-30">
+              <div className="w-full bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-gold)] to-transparent opacity-60"></div>
                 <div className="flex items-center justify-between gap-4 mb-4">
                   <div>

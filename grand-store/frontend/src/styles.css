@@ -463,6 +463,20 @@ video {
   overflow-x: clip;
 }
 
+/* Ensure sticky summary card on checkout stays firmly pinned during scroll across all browsers */
+.app:has(.checkout-page),
+.checkout-page {
+  overflow-x: visible !important;
+}
+
+.checkout-sidebar-sticky {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 1.5rem !important; /* 24px from top of viewport */
+  align-self: flex-start !important;
+  z-index: 30;
+}
+
 .shell {
   width: min(1500px, calc(100% - 96px));
   margin-inline: auto;
