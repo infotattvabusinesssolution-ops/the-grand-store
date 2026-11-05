@@ -109,7 +109,7 @@ export default function CheckoutPage({
   const [loading, setLoading] = useState(false);
   const [quoteLoading, setQuoteLoading] = useState(false);
 
-  // 4-Step Wizard: 1 = Details, 2 = Delivery Method, 3 = Payment, 4 = Proof Upload
+  // 4-Step Wizard: 1 = Details, 2 = Courier Service, 3 = Payment, 4 = Proof Upload
   const [checkoutStep, setCheckoutStep] = useState(1);
   const [quote, setQuote] = useState(null);
   const [dutiesAccepted, setDutiesAccepted] = useState(false);
@@ -1260,7 +1260,7 @@ export default function CheckoutPage({
             <div className="flex items-center min-w-max justify-between gap-2 border-b border-white/10 pb-4">
               {[
                 { step: 1, label: 'Delivery Details', icon: MapPin },
-                { step: 2, label: 'Delivery Method', icon: Truck },
+                { step: 2, label: 'Courier Service', icon: Truck },
                 { step: 3, label: 'Payment', icon: CreditCard },
                 { step: 4, label: 'Confirmation', icon: CheckCircle2 }
               ].map((item) => {
@@ -1742,7 +1742,7 @@ export default function CheckoutPage({
                       <p className="text-xs uppercase tracking-wider text-[var(--color-gold)] font-bold">
                         Select South African Delivery Courier:
                       </p>
-                      <span className="text-[11px] text-white/40">3 Local Delivery Methods Available</span>
+                      <span className="text-[11px] text-white/40">3 Local Courier Services Available</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
@@ -2914,21 +2914,21 @@ export default function CheckoutPage({
                   {quoteLoading ? (
                     <><Loader2 size={16} className="animate-spin" /> Calculating Rates...</>
                   ) : (
-                    <>Continue to Delivery Method <ArrowRight size={16} /></>
+                    <>Continue to Courier Service <ArrowRight size={16} /></>
                   )}
                 </button>
               </div>
             )}
 
             {/* ========================================================================= */}
-            {/* STEP 2: DELIVERY METHOD & ALCOHOL CONFIDENCE SECTION                    */}
+            {/* STEP 2: COURIER SERVICE & ALCOHOL CONFIDENCE SECTION                    */}
             {/* ========================================================================= */}
             {checkoutStep === 2 && (
               <div className="space-y-6 animate-fadeIn">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-serif text-white mb-1">2. Delivery Method</h2>
-                    <p className="text-xs text-[var(--color-ivory-muted)]">Choose your preferred shipping service level.</p>
+                    <h2 className="text-2xl font-serif text-white mb-1">2. Courier Service</h2>
+                    <p className="text-xs text-[var(--color-ivory-muted)]">Choose your preferred courier service level.</p>
                   </div>
                   <button
                     type="button"
@@ -3280,7 +3280,7 @@ export default function CheckoutPage({
                   </button>
                 </div>
 
-                {/* Locked Delivery Summary with Change Delivery Method Shortcut */}
+                {/* Locked Delivery Summary with Change Courier Service Shortcut */}
                 <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2 rounded-xl bg-white/5 border border-white/10 text-[var(--color-gold)] shrink-0">
@@ -3318,7 +3318,7 @@ export default function CheckoutPage({
                     onClick={() => setCheckoutStep(1)}
                     className="self-start sm:self-auto text-xs text-[var(--color-gold)] hover:text-white uppercase font-bold tracking-wider underline shrink-0"
                   >
-                    Change Delivery Method
+                    Change Courier Service
                   </button>
                 </div>
 
