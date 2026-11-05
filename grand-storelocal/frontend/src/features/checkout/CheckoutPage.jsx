@@ -3505,7 +3505,7 @@ export default function CheckoutPage({
                         compact={true}
                         reference="ORDER-REF-ON-SUBMIT"
                         referenceLabel="Payment Reference"
-                        title="Grand Store Settlement Account"
+                        title="Nivarp International Account"
                         subtitle="EFT details will be designated with your unique order reference upon submission"
                         onNotify={onNotify}
                       />
@@ -3547,6 +3547,7 @@ export default function CheckoutPage({
                 <StoreBankDetailsCard
                   reference={createdOrderDepositRef || (createdOrderId ? `GS-${String(createdOrderId).slice(-6).toUpperCase()}` : '')}
                   referenceLabel="Deposit Reference"
+                  title="Nivarp International Account"
                   className="max-w-xl mx-auto mb-6"
                   onNotify={onNotify}
                 />

@@ -7,7 +7,7 @@ let cachedSettings = null;
 export default function StoreBankDetailsCard({
   reference,
   referenceLabel = 'Payment Reference',
-  title = 'Grand Store Escrow Banking Details',
+  title = 'Nivarp International Account',
   subtitle = 'Official institutional South African EFT settlement account',
   bankDetailsList: propBankList,
   bankDetails: propBankDetails,
