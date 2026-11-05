@@ -43,11 +43,9 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
     }
 
     // For domestic South African delivery (The Courier Guy / PostNet / PUDO):
-    // All local retail inventory (tequila, whisky, local wines) dispatches from South Africa!
+    // All local retail inventory (tequila, whisky, local wines, imported spirits) dispatches from South Africa!
     if (destSA) {
-      if (!originCountry || (!['Italy', 'France'].includes(originCountry) && (!vendor || isSouthAfrica(originCountry)))) {
-        originCountry = 'South Africa';
-      }
+      originCountry = 'South Africa';
     } else {
       // For international delivery to overseas customers:
       if (!originCountry && options.items && Array.isArray(options.items) && options.items.length > 0) {

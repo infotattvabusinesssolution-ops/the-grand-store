@@ -931,7 +931,8 @@ export default function CheckoutPage({
       return;
     }
 
-    if ((destinationMode === 'international_aramex' || quote.hasInternational) && (!dutiesAccepted || !commercialInvoiceAcknowledged)) {
+    // Commercial Export Invoice & DAP Customs Modal strictly for International orders
+    if (destinationMode === 'international_aramex' && (!dutiesAccepted || !commercialInvoiceAcknowledged)) {
       setShowCommercialInvoiceModal(true);
       return;
     }
@@ -1127,288 +1128,7 @@ export default function CheckoutPage({
             </Link>
           </div>
         </div>
-      
-      {/* ========================================================================= */}
-      {/* COMMERCIAL EXPORT INVOICE & DESTINATION CUSTOMS MODAL (Phase 1)           */}
-      {/* ========================================================================= */}
-      {showCommercialInvoiceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-fadeIn">
-          <div className="relative w-full max-w-3xl bg-[#0d0d0d] border border-[var(--color-gold)]/40 rounded-3xl p-6 md:p-8 shadow-[0_0_60px_rgba(0,0,0,0.9)] space-y-6 my-8 text-left">
-            {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-white/10 pb-5">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-[var(--color-gold)]/20 text-[var(--color-gold)] border border-[var(--color-gold)]/30">
-                  <FileText size={24} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-gold)] bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 px-2 py-0.5 rounded font-mono">
-                      Export Compliance Notice
-                    </span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded font-mono">
-                      Incoterms 2020: DAP
-                    </span>
-                  </div>
-                  <h3 className="text-xl md:text-2xl font-serif text-white font-bold">
-                    Commercial Invoice & Customs Guide
-                  </h3>
-                  <p className="text-xs text-[var(--color-ivory-muted)]">
-                    Official documentation & destination border clearance procedures for cross-border spirits
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCommercialInvoiceModal(false)}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Prominent High-Visibility Summary Notice */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#1a140a] to-[#0d0a05] border border-[var(--color-gold)]/50 space-y-3.5 shadow-inner">
-              <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-gold)]">
-                <AlertTriangle size={18} className="shrink-0" />
-                <span>Notice on Destination Import Duties & Border Clearance</span>
-              </div>
-              <p className="text-xs text-white/90 leading-relaxed">
-                All international cross-border consignments are dispatched on <strong>Incoterms® 2020: DAP (Delivered at Place)</strong> terms:
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div className="p-3.5 rounded-xl bg-black/60 border border-emerald-500/30 space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
-                    <CheckCircle2 size={15} className="shrink-0" /> All Documents Provided
-                  </div>
-                  <p className="text-[11px] text-white/70 leading-relaxed">
-                    Grand Store and our partner wineries provide complete official paperwork (Commercial Export Invoice with HS 2208/2204 Tariff Codes, Air Waybill, and Packing List) securely affixed to the parcel.
-                  </p>
-                </div>
-                <div className="p-3.5 rounded-xl bg-black/60 border border-amber-500/30 space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
-                    <Globe size={15} className="shrink-0" /> Client's Account at Destination
-                  </div>
-                  <p className="text-[11px] text-white/70 leading-relaxed">
-                    All destination import duties, local alcohol excise taxes, or clearance fees levied by your country's customs authority will be at the <strong>client's / recipient's account upon arrival</strong>.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Navigation Tabs */}
-            <div className="flex gap-2 border-b border-white/10 pb-2">
-              <button
-                type="button"
-                onClick={() => setCustomsActiveTab('doc')}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  customsActiveTab === 'doc'
-                    ? 'bg-[var(--color-gold)] text-black'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <FileCheck size={14} /> Attached Documents
-              </button>
-              <button
-                type="button"
-                onClick={() => setCustomsActiveTab('dap')}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  customsActiveTab === 'dap'
-                    ? 'bg-[var(--color-gold)] text-black'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Globe size={14} /> DAP Trade Terms
-              </button>
-              <button
-                type="button"
-                onClick={() => setCustomsActiveTab('rates')}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  customsActiveTab === 'rates'
-                    ? 'bg-[var(--color-gold)] text-black'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Tag size={14} /> Country Customs Rates
-              </button>
-              <button
-                type="button"
-                onClick={() => setCustomsActiveTab('insurance')}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  customsActiveTab === 'insurance'
-                    ? 'bg-[var(--color-gold)] text-black'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <ShieldCheck size={14} /> Transit Protection
-              </button>
-            </div>
-
-            {/* Tab 1: Attached Documentation */}
-            {customsActiveTab === 'doc' && (
-              <div className="space-y-4 text-xs">
-                <div className="bg-black/50 p-4 rounded-2xl border border-white/10 space-y-3">
-                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <BadgeCheck size={16} className="text-[var(--color-gold)]" /> What Is Attached to Your Consignment
-                  </h4>
-                  <p className="text-[var(--color-ivory-muted)] leading-relaxed">
-                    Under international postal and air courier customs treaties (WCO & IATA), all international consignments shipped from our vendor estates in Italy, South Africa, and France carry official export documentation affixed to the outer parcel carton in an exterior weatherproof pouch:
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                      <p className="font-bold text-white flex items-center gap-1.5">
-                        <FileText size={13} className="text-[var(--color-gold)]" /> Official Commercial Invoice
-                      </p>
-                      <p className="text-[11px] text-white/60 leading-relaxed">
-                        Contains full vendor legal entity, buyer details, declared commercial value (ZAR/EUR/USD), Harmonized Tariff HS codes, bottle volumes, and alcohol by volume (ABV%).
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                      <p className="font-bold text-white flex items-center gap-1.5">
-                        <Truck size={13} className="text-emerald-400" /> Carrier Air Waybill (AWB)
-                      </p>
-                      <p className="text-[11px] text-white/60 leading-relaxed">
-                        Express barcoded courier consignment note (Aramex Worldwide Express / DHL Express) linked to continuous GPS telemetry and destination electronic pre-clearance.
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                      <p className="font-bold text-white flex items-center gap-1.5">
-                        <Package size={13} className="text-blue-400" /> Packing Slip & Cellar Certificate
-                      </p>
-                      <p className="text-[11px] text-white/60 leading-relaxed">
-                        Itemized lot numbers, vintage specifications, tamper-evident seal serial numbers, and estate origin validation.
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                      <p className="font-bold text-white flex items-center gap-1.5">
-                        <ShieldCheck size={13} className="text-amber-400" /> HS Tariff Classification
-                      </p>
-                      <p className="text-[11px] text-white/60 leading-relaxed">
-                        Spirits & Grappa: <code className="text-[var(--color-gold)] font-mono">HS 2208.20</code> / Wine: <code className="text-[var(--color-gold)] font-mono">HS 2204.21</code> for transparent border inspection.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 2: DAP Trade Terms */}
-            {customsActiveTab === 'dap' && (
-              <div className="space-y-4 text-xs">
-                <div className="bg-black/50 p-4 rounded-2xl border border-white/10 space-y-3">
-                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <Globe size={16} className="text-[var(--color-gold)]" /> Delivered at Place (DAP) Incoterms Explained
-                  </h4>
-                  <p className="text-[var(--color-ivory-muted)] leading-relaxed">
-                    All cross-border orders on The Grand Store are governed by <strong>Incoterms® 2020: Delivered at Place (DAP)</strong>. Here is the exact division of responsibilities:
-                  </p>
-                  <div className="space-y-2 pt-1">
-                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">
-                      <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-400" />
-                      <div>
-                        <strong className="text-white block mb-0.5">Covered by Grand Store & Vendor (Prepaid):</strong>
-                        Product price, cellar packing, shock packaging, export customs filing, and complete priority air courier freight to your delivery address.
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200">
-                      <Info size={16} className="shrink-0 mt-0.5 text-amber-400" />
-                      <div>
-                        <strong className="text-white block mb-0.5">Assessed at Destination (Payable by Recipient):</strong>
-                        Import VAT/GST, local alcohol excise taxes, and customs administrative fees levied by your nation's border authority. The courier will notify you via SMS/Email with a direct payment link to release the consignment.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 3: Country Customs Rates */}
-            {customsActiveTab === 'rates' && (
-              <div className="space-y-4 text-xs">
-                <div className="bg-black/50 p-4 rounded-2xl border border-white/10 space-y-3">
-                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <Tag size={16} className="text-[var(--color-gold)]" /> Destination Tax & Customs Guide
-                  </h4>
-                  <p className="text-[var(--color-ivory-muted)]">
-                    Standard VAT and customs duty rates for our most popular global destination corridors:
-                  </p>
-                  <div className="divide-y divide-white/10 border border-white/10 rounded-xl overflow-hidden">
-                    <div className="p-3 bg-white/[0.02] flex items-center justify-between">
-                      <span className="font-semibold text-white">🇬🇧 United Kingdom</span>
-                      <span className="text-white/80">20% Import VAT + HMRC Alcohol Duty (~£3.40/bottle)</span>
-                    </div>
-                    <div className="p-3 bg-black/40 flex items-center justify-between">
-                      <span className="font-semibold text-white">🇺🇸 United States</span>
-                      <span className="text-white/80">Federal Excise Tax ($0.27-$2.70/bottle) + State Tax</span>
-                    </div>
-                    <div className="p-3 bg-white/[0.02] flex items-center justify-between">
-                      <span className="font-semibold text-white">🇪🇺 European Union (IT, FR, DE)</span>
-                      <span className="text-white/80">19%–21% National VAT + European Excise Duty</span>
-                    </div>
-                    <div className="p-3 bg-black/40 flex items-center justify-between">
-                      <span className="font-semibold text-white">🇦🇪 United Arab Emirates</span>
-                      <span className="text-white/80">5% Import VAT + 50% Alcohol Excise Tax</span>
-                    </div>
-                    <div className="p-3 bg-white/[0.02] flex items-center justify-between">
-                      <span className="font-semibold text-white">🇦🇺 Australia</span>
-                      <span className="text-white/80">10% GST + Wine Equalisation Tax (WET 29%)</span>
-                    </div>
-                    <div className="p-3 bg-black/40 flex items-center justify-between">
-                      <span className="font-semibold text-white">🇿🇦 South Africa (Domestic)</span>
-                      <span className="text-emerald-400 font-bold">15% VAT included at checkout • Zero Import Duty</span>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-white/50 italic pt-1">
-                    * Calculation Formula: Customs Duty = (Declared CIF Value × Duty Rate). Import VAT = (CIF Value + Customs Duty) × VAT Rate.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 4: Fragile Protection */}
-            {customsActiveTab === 'insurance' && (
-              <div className="space-y-4 text-xs">
-                <div className="bg-black/50 p-4 rounded-2xl border border-white/10 space-y-3">
-                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <ShieldCheck size={16} className="text-emerald-400" /> Fragile Goods Transit Insurance (1.5% Premium)
-                  </h4>
-                  <p className="text-[var(--color-ivory-muted)] leading-relaxed">
-                    Fine wines and aged spirits bottles are fragile luxury items. Our optional 1.5% transit insurance policy provides complete peace of mind:
-                  </p>
-                  <ul className="space-y-2 text-white/80 list-disc list-inside pt-1">
-                    <li><strong className="text-white">100% Replacement Guarantee:</strong> Direct replacement bottle dispatched immediately or prompt refund if bottle suffers breakage in transit.</li>
-                    <li><strong className="text-white">Carrier Loss & Leakage:</strong> Covers cork compromise, liquid ullage loss, temperature damage, or carrier theft.</li>
-                    <li><strong className="text-white">Certified Packaging:</strong> All parcels utilize certified air-column inflatable cushions and heavy-duty corrugated cartons designed for air transit.</li>
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {/* Modal Actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-white/10">
-              <span className="text-[11px] text-white/50">
-                Official document issued under The Grand Store Global Terms & Conditions
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setCommercialInvoiceAcknowledged(true);
-                  setDutiesAccepted(true);
-                  setShowCommercialInvoiceModal(false);
-                  if (checkoutStep === 2) {
-                    setCheckoutStep(3);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }
-                }}
-                className="w-full sm:w-auto px-8 py-3 rounded-xl bg-[var(--color-gold)] hover:bg-[var(--color-gold-light)] text-black text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2"
-              >
-                <CheckCircle2 size={16} /> I Understand & Agree — Continue to Payment
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-    </main>
+      </main>
     );
   }
 
@@ -1787,29 +1507,31 @@ export default function CheckoutPage({
                   </span>
                 </div>
 
-                {/* Commercial Invoice & DAP Customs Information Pill */}
-                <div className="mt-3.5 pt-3 border-t border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setShowCommercialInvoiceModal(true)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 hover:border-[var(--color-gold)]/40 transition-all text-left text-xs group cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-6 h-6 rounded-lg bg-[var(--color-gold)]/15 text-[var(--color-gold)] flex items-center justify-center shrink-0">
-                        <FileText size={13} />
+                {/* Commercial Invoice & DAP Customs Information Pill (International Orders Only) */}
+                {destinationMode === 'international_aramex' && (
+                  <div className="mt-3.5 pt-3 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setShowCommercialInvoiceModal(true)}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 hover:border-[var(--color-gold)]/40 transition-all text-left text-xs group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded-lg bg-[var(--color-gold)]/15 text-[var(--color-gold)] flex items-center justify-center shrink-0">
+                          <FileText size={13} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold text-white truncate group-hover:text-[var(--color-gold)] transition-colors">
+                            Commercial Invoice & Customs Notice
+                          </p>
+                          <p className="text-[10px] text-white/50 truncate">
+                            DAP Terms • Attached Documentation & Duties
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-semibold text-white truncate group-hover:text-[var(--color-gold)] transition-colors">
-                          Commercial Invoice & Customs Notice
-                        </p>
-                        <p className="text-[10px] text-white/50 truncate">
-                          DAP Terms • Attached Documentation & Duties
-                        </p>
-                      </div>
-                    </div>
-                    <ArrowRight size={13} className="text-white/40 group-hover:text-[var(--color-gold)] group-hover:translate-x-0.5 transition-all shrink-0 ml-1.5" />
-                  </button>
-                </div>
+                      <ArrowRight size={13} className="text-white/40 group-hover:text-[var(--color-gold)] group-hover:translate-x-0.5 transition-all shrink-0 ml-1.5" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Potential Super Coins Earned Banner */}
                 {quote?.superCoins?.potentialCoinsToEarn > 0 && (
@@ -1859,66 +1581,54 @@ export default function CheckoutPage({
                   </div>
                 )}
 
-                {/* Primary Destination Mode Selector: Two Separate Clear Parts (Local vs International) */}
-                <div className="p-1.5 bg-[#0a0a0a] rounded-2xl border border-white/10 shadow-lg mb-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {/* Tab 1: South Africa (Domestic Delivery) — DEFAULT */}
+                {/* Sleek Minimalist Luxury Segmented Control (Local vs International) */}
+                <div className="space-y-2.5 mb-5">
+                  <div className="p-1 rounded-2xl bg-[#0d0d0d] border border-white/10 flex gap-1.5 shadow-inner">
+                    {/* Tab 1: South Africa (Domestic) */}
                     <button
                       type="button"
                       onClick={() => selectDeliveryMode('domestic_home')}
-                      className={`relative flex items-center gap-3.5 p-4 rounded-xl transition-all text-left cursor-pointer ${
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all cursor-pointer ${
                         destinationMode === 'domestic_sa'
-                          ? 'bg-gradient-to-r from-amber-500/20 via-[var(--color-gold)]/10 to-transparent border border-[var(--color-gold)] shadow-[0_0_20px_rgba(212,175,55,0.15)] ring-1 ring-[var(--color-gold)]/30'
-                          : 'border border-transparent bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/15'
+                          ? 'bg-[var(--color-gold)] text-black font-bold shadow-md'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
                       }`}
                     >
-                      <div className={`p-2.5 rounded-xl text-xl shrink-0 ${destinationMode === 'domestic_sa' ? 'bg-[var(--color-gold)] text-black' : 'bg-white/5 text-white/60'}`}>
-                        🇿🇦
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <p className="text-sm font-bold text-white tracking-wide">South Africa (Domestic)</p>
-                          <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[var(--color-gold)] text-black">
-                            Default
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-[var(--color-ivory-muted)] truncate">
-                          The Courier Guy • PUDO Locker • PostNet
-                        </p>
-                      </div>
-                      {destinationMode === 'domestic_sa' && (
-                        <CheckCircle2 size={18} className="text-[var(--color-gold)] shrink-0" />
-                      )}
+                      <span className="text-base leading-none">🇿🇦</span>
+                      <span>South Africa (Domestic)</span>
                     </button>
 
-                    {/* Tab 2: International Delivery (Worldwide via Aramex) */}
+                    {/* Tab 2: International Delivery */}
                     <button
                       type="button"
                       onClick={() => selectDeliveryMode('international_aramex')}
-                      className={`relative flex items-center gap-3.5 p-4 rounded-xl transition-all text-left cursor-pointer ${
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all cursor-pointer ${
                         destinationMode === 'international_aramex'
-                          ? 'bg-gradient-to-r from-red-500/20 via-red-500/10 to-transparent border border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.2)] ring-1 ring-red-400/40'
-                          : 'border border-transparent bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/15'
+                          ? 'bg-red-500 text-white font-bold shadow-md'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
                       }`}
                     >
-                      <div className={`p-2.5 rounded-xl text-xl shrink-0 ${destinationMode === 'international_aramex' ? 'bg-red-500 text-white' : 'bg-white/5 text-white/60'}`}>
-                        🌍
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <p className="text-sm font-bold text-white tracking-wide">International Delivery</p>
-                          <span className="text-[9px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.5 rounded font-mono">
-                            ✈️ Worldwide
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-[var(--color-ivory-muted)] truncate">
-                          Aramex Global Priority Air Express
-                        </p>
-                      </div>
-                      {destinationMode === 'international_aramex' && (
-                        <CheckCircle2 size={18} className="text-red-400 shrink-0" />
-                      )}
+                      <span className="text-base leading-none">🌍</span>
+                      <span>International Delivery</span>
                     </button>
+                  </div>
+
+                  {/* Clean, quiet reassurance line */}
+                  <div className="flex items-center justify-between px-1 text-[11px] text-white/50">
+                    {destinationMode === 'domestic_sa' ? (
+                      <span className="flex items-center gap-1.5 text-white/70">
+                        <Truck size={13} className="text-[var(--color-gold)] shrink-0" />
+                        Local delivery via <strong>The Courier Guy</strong>, <strong>PUDO Locker</strong>, or <strong>PostNet</strong>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-white/70">
+                        <Globe size={13} className="text-red-400 shrink-0" />
+                        Worldwide priority air courier via <strong>Aramex Global Express</strong> with full customs clearance
+                      </span>
+                    )}
+                    <span className="text-[10px] uppercase font-mono tracking-wider text-[var(--color-gold)] font-medium hidden sm:inline">
+                      {destinationMode === 'domestic_sa' ? 'ZAR Domestic' : 'Cross-Border DAP'}
+                    </span>
                   </div>
                 </div>
 
@@ -2020,27 +1730,26 @@ export default function CheckoutPage({
                 {/* Sub-Section B: INTERNATIONAL DELIVERY COURIER (Aramex Global Express) */}
                 {destinationMode === 'international_aramex' && (
                   <div className="w-full">
-                    <div className="relative p-5 md:p-6 rounded-2xl border border-red-500 bg-gradient-to-br from-red-950/30 via-[#0d0d0d] to-[#0a0a0a] shadow-[0_0_30px_rgba(239,68,68,0.2)] ring-1 ring-red-400/40 text-left flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-start sm:items-center gap-4">
-                        <span className="p-3.5 rounded-xl bg-red-500 text-white shrink-0 shadow-lg">
-                          <Globe size={24} />
-                        </span>
+                    <div className="p-4 sm:p-5 rounded-2xl border border-red-500/40 bg-gradient-to-r from-red-950/20 via-[#0d0d0d] to-[#0a0a0a] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-11 h-11 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 border border-red-500/30">
+                          <Globe size={20} />
+                        </div>
                         <div>
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <p className="text-base font-bold text-white leading-snug">Aramex Global Express</p>
-                            <span className="text-[9px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded font-mono">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm sm:text-base font-bold text-white leading-snug">Aramex Global Express</p>
+                            <span className="text-[9.5px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded font-mono">
                               ✈️ Priority Air Courier
                             </span>
                           </div>
-                          <p className="text-xs text-[var(--color-ivory-muted)] leading-relaxed">
-                            Express door-to-door priority air transit with end-to-end global tracking to UK, USA, Europe, UAE & 220+ countries worldwide.
+                          <p className="text-xs text-white/50 leading-relaxed mt-0.5">
+                            Express door-to-door air transit with full tracking & customs clearance to UK, USA, Europe, UAE & 220+ countries worldwide.
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                        <span className="text-xs font-semibold text-red-300 flex items-center gap-1.5 bg-red-500/20 border border-red-500/40 px-3.5 py-2 rounded-xl">
-                          <CheckCircle2 size={16} className="text-red-400" /> Active International Mode
-                        </span>
+                      <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-center bg-red-500/10 border border-red-500/30 px-3 py-1.5 rounded-xl">
+                        <CheckCircle2 size={14} className="text-red-400" />
+                        <span className="text-xs font-semibold text-red-300">Active International Courier</span>
                       </div>
                     </div>
                   </div>
@@ -3160,43 +2869,36 @@ export default function CheckoutPage({
                 </div>
 
                 
-                {/* 🛡️ Fragile Luxury Transit & Breakage Protection Card */}
-                <div className={`p-5 md:p-6 rounded-2xl border transition-all ${
+                {/* 🛡️ Transit & Bottle Breakage Protection (Clean & Streamlined) */}
+                <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
                   transitInsuranceOptIn
-                    ? 'border-emerald-500/50 bg-gradient-to-br from-emerald-950/30 via-[#0d0d0d] to-[#0a0a0a] shadow-[0_0_25px_rgba(16,185,129,0.12)] ring-1 ring-emerald-500/30'
+                    ? 'border-emerald-500/40 bg-emerald-500/5 shadow-sm'
                     : 'border-white/10 bg-[#0d0d0d] hover:border-white/20'
                 }`}>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-start gap-3.5">
-                      <div className={`p-3 rounded-xl shrink-0 ${
-                        transitInsuranceOptIn ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/5 text-white/40 border border-white/10'
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className={`p-2.5 rounded-xl shrink-0 ${
+                        transitInsuranceOptIn ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-white/40'
                       }`}>
-                        <ShieldCheck size={24} />
+                        <ShieldCheck size={20} />
                       </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-                            Comprehensive Transit & Bottle Breakage Protection
-                          </h4>
-                          <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-mono">
-                            🛡️ 1.5% Premium
-                          </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-semibold text-white">Transit & Breakage Protection</h4>
+                          <span className="text-[10px] text-emerald-400 font-mono font-medium hidden sm:inline">(1.5%)</span>
                         </div>
-                        <p className="text-xs text-[var(--color-ivory-muted)] leading-relaxed">
-                          Guaranteed 100% full replacement value or prompt reimbursement in the event of bottle breakage, carrier loss, liquid leakage, temperature shock, or parcel damage from the vendor's private cellar to delivery handover.
-                        </p>
-                        <p className="text-[11px] text-emerald-400/80 font-medium pt-0.5">
-                          ✓ Highly recommended for collectible spirits, rare Italian grappas, and vintage cellar wines.
+                        <p className="text-xs text-white/50 truncate">
+                          100% full replacement coverage against bottle damage or loss in transit
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-white/10">
+                    <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
-                        <p className="text-base font-bold text-emerald-400 font-mono">
+                        <p className="text-sm font-bold text-emerald-400 font-mono">
                           +<Price amount={transitInsuranceAmount} />
                         </p>
-                        <p className="text-[10px] text-white/40">1.5% of bottle subtotal</p>
+                        <p className="text-[10px] text-white/40">1.5% premium</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer select-none">
                         <input
@@ -3205,73 +2907,56 @@ export default function CheckoutPage({
                           onChange={(e) => setTransitInsuranceOptIn(e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-12 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        <div className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
                       </label>
                     </div>
                   </div>
                 </div>
 
-                {/* 📄 Commercial Export Invoice & Destination Customs Advisory (Only for International Orders) */}
+                {/* 📄 International Customs & Export Notice (Clean & Minimal - International Only) */}
                 {destinationMode === 'international_aramex' && (
-                <div className="rounded-2xl border border-[var(--color-gold)]/40 bg-gradient-to-br from-[var(--color-gold)]/10 via-[#0d0d0d] to-[#0a0a0a] p-5 md:p-6 space-y-4 shadow-xl">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 rounded-xl bg-[var(--color-gold)]/20 text-[var(--color-gold)] border border-[var(--color-gold)]/30 shrink-0">
-                        <FileText size={22} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-white">
-                            Official Commercial Export Invoice & Customs Notice
-                          </h4>
-                          <span className="text-[9.5px] font-bold uppercase tracking-wider bg-[var(--color-gold)]/20 text-[var(--color-gold)] border border-[var(--color-gold)]/40 px-2 py-0.5 rounded font-mono">
-                            DAP Terms
-                          </span>
+                  <div className="p-4 sm:p-5 rounded-2xl border border-[var(--color-gold)]/30 bg-[#0d0d0d] space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2.5 rounded-xl bg-[var(--color-gold)]/10 text-[var(--color-gold)] shrink-0">
+                          <FileText size={18} />
                         </div>
-                        <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
-                          Cross-border international documentation & destination border clearance procedures
-                        </p>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-white">Destination Import Duties & Clearance</h4>
+                            <span className="text-[9.5px] font-bold uppercase tracking-wider bg-[var(--color-gold)]/15 text-[var(--color-gold)] border border-[var(--color-gold)]/30 px-1.5 py-0.5 rounded font-mono">
+                              DAP Terms
+                            </span>
+                          </div>
+                          <p className="text-xs text-white/50 mt-0.5">
+                            All official export paperwork provided. Destination duties are payable upon arrival.
+                          </p>
+                        </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowCommercialInvoiceModal(true)}
+                        className="text-xs text-[var(--color-gold)] hover:underline font-semibold flex items-center gap-1 shrink-0 cursor-pointer self-start sm:self-center"
+                      >
+                        <Info size={13} /> View Customs Guide
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowCommercialInvoiceModal(true)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--color-gold)] hover:bg-[var(--color-gold-light)] text-black text-xs font-bold transition-all cursor-pointer shrink-0 self-start sm:self-center shadow-md"
-                    >
-                      <Info size={14} /> View Customs & Tariff Guide
-                    </button>
-                  </div>
 
-                  <div className="bg-black/50 rounded-xl p-3.5 border border-white/5 space-y-2 text-xs text-white/80 leading-relaxed">
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 size={14} className="text-[var(--color-gold)] shrink-0 mt-0.5" />
+                    <label className="flex items-start gap-2.5 cursor-pointer pt-1 text-xs text-white/70 hover:text-white/90 select-none">
+                      <input
+                        type="checkbox"
+                        checked={commercialInvoiceAcknowledged || dutiesAccepted}
+                        onChange={(e) => {
+                          setCommercialInvoiceAcknowledged(e.target.checked);
+                          setDutiesAccepted(e.target.checked);
+                        }}
+                        className="accent-[var(--color-gold)] w-4 h-4 rounded cursor-pointer mt-0.5 shrink-0"
+                      />
                       <span>
-                        <strong className="text-white">Commercial Invoice & Air Waybill:</strong> A compliant Commercial Export Invoice with declared transactional value, alcohol ABV, and Harmonized System (HS 2208/2204) tariff codes is generated and enclosed in an exterior waterproof pouch.
+                        I understand that destination import duties, local excise taxes, or clearance fees are at the client's account at destination.
                       </span>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 size={14} className="text-[var(--color-gold)] shrink-0 mt-0.5" />
-                      <span>
-                        <strong className="text-white">Delivered at Place (DAP) Trade Terms:</strong> Freight and dispatch are 100% prepaid. Destination VAT, alcohol excise duties, and customs inspection fees are determined by your country's customs authority and payable at destination prior to delivery.
-                      </span>
-                    </div>
+                    </label>
                   </div>
-
-                  <label className="flex items-center gap-3 cursor-pointer pt-1 bg-black/30 p-3 rounded-xl border border-white/5">
-                    <input
-                      type="checkbox"
-                      checked={commercialInvoiceAcknowledged || dutiesAccepted}
-                      onChange={(e) => {
-                        setCommercialInvoiceAcknowledged(e.target.checked);
-                        setDutiesAccepted(e.target.checked);
-                      }}
-                      className="accent-[var(--color-gold)] w-4 h-4 rounded cursor-pointer shrink-0"
-                    />
-                    <span className="text-xs text-white/90 select-none">
-                      I understand that an export commercial invoice accompanies my parcel and local import duties/customs clearance procedures apply at destination.
-                    </span>
-                  </label>
-                </div>
                 )}
 
 
@@ -3699,266 +3384,113 @@ export default function CheckoutPage({
         </div>
       </div>
     
-      {/* ========================================================================= */}
-      {/* COMMERCIAL EXPORT INVOICE & DESTINATION CUSTOMS MODAL (Phase 1)           */}
-      {/* ========================================================================= */}
+            {/* COMMERCIAL EXPORT INVOICE & DESTINATION CUSTOMS MODAL */}
       {showCommercialInvoiceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-fadeIn">
-          <div className="relative w-full max-w-3xl bg-[#0d0d0d] border border-[var(--color-gold)]/40 rounded-3xl p-6 md:p-8 shadow-[0_0_60px_rgba(0,0,0,0.9)] space-y-6 my-8 text-left">
+          <div className="relative w-full max-w-xl bg-[#0e0e0e] border border-[var(--color-gold)]/40 rounded-3xl p-6 sm:p-7 shadow-[0_0_60px_rgba(0,0,0,0.9)] space-y-5 my-8 text-left">
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-white/10 pb-5">
+            <div className="flex items-start justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-[var(--color-gold)]/20 text-[var(--color-gold)] border border-[var(--color-gold)]/30">
-                  <FileText size={24} />
+                <div className="p-2.5 rounded-2xl bg-[var(--color-gold)]/15 text-[var(--color-gold)] border border-[var(--color-gold)]/30 shrink-0">
+                  <Globe size={22} />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-gold)] bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 px-2 py-0.5 rounded font-mono">
-                      Export Compliance Notice
-                    </span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded font-mono">
-                      Incoterms 2020: DAP
-                    </span>
-                  </div>
-                  <h3 className="text-xl md:text-2xl font-serif text-white font-bold">
-                    Commercial Invoice & Customs Guide
+                  <h3 className="text-lg sm:text-xl font-serif text-white font-bold">
+                    Destination Customs & Duties
                   </h3>
-                  <p className="text-xs text-[var(--color-ivory-muted)]">
-                    Official documentation & destination border clearance procedures for cross-border spirits
+                  <p className="text-xs text-[var(--color-ivory-muted)] mt-0.5">
+                    Cross-border dispatch on Incoterms® 2020: DAP (Delivered at Place)
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowCommercialInvoiceModal(false)}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors cursor-pointer shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Prominent High-Visibility Summary Notice */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#1a140a] to-[#0d0a05] border border-[var(--color-gold)]/50 space-y-3.5 shadow-inner">
-              <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-gold)]">
-                <AlertTriangle size={18} className="shrink-0" />
-                <span>Notice on Destination Import Duties & Border Clearance</span>
+            {/* Core Two Points */}
+            <div className="space-y-3">
+              {/* Point 1: All Documents Provided */}
+              <div className="p-4 rounded-2xl bg-black/50 border border-emerald-500/30 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                    <CheckCircle2 size={16} className="shrink-0" />
+                    <span>All Official Documents Provided</span>
+                  </div>
+                  <span className="text-[10px] uppercase font-mono tracking-wider font-semibold text-emerald-400/80 bg-emerald-500/10 px-2 py-0.5 rounded">
+                    Pre-Attached
+                  </span>
+                </div>
+                <p className="text-xs text-white/80 leading-relaxed pl-6">
+                  Grand Store and our partner wineries provide complete official paperwork—including Commercial Export Invoice with HS 2208/2204 Tariff Codes, Air Waybill, and Packing List—securely affixed to the parcel for expedited border clearance.
+                </p>
               </div>
-              <p className="text-xs text-white/90 leading-relaxed">
-                All international cross-border consignments are dispatched on <strong>Incoterms® 2020: DAP (Delivered at Place)</strong> terms:
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div className="p-3.5 rounded-xl bg-black/60 border border-emerald-500/30 space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
-                    <CheckCircle2 size={15} className="shrink-0" /> All Documents Provided
+
+              {/* Point 2: Destination Duties */}
+              <div className="p-4 rounded-2xl bg-black/50 border border-[var(--color-gold)]/30 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-gold)]">
+                    <Globe size={16} className="shrink-0" />
+                    <span>Client's Account at Destination</span>
                   </div>
-                  <p className="text-[11px] text-white/70 leading-relaxed">
-                    Grand Store and our partner wineries provide complete official paperwork (Commercial Export Invoice with HS 2208/2204 Tariff Codes, Air Waybill, and Packing List) securely affixed to the parcel.
-                  </p>
+                  <span className="text-[10px] uppercase font-mono tracking-wider font-semibold text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-0.5 rounded">
+                    DAP Terms
+                  </span>
                 </div>
-                <div className="p-3.5 rounded-xl bg-black/60 border border-amber-500/30 space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
-                    <Globe size={15} className="shrink-0" /> Client's Account at Destination
-                  </div>
-                  <p className="text-[11px] text-white/70 leading-relaxed">
-                    All destination import duties, local alcohol excise taxes, or clearance fees levied by your country's customs authority will be at the <strong>client's / recipient's account upon arrival</strong>.
-                  </p>
-                </div>
+                <p className="text-xs text-white/80 leading-relaxed pl-6">
+                  All international consignments are dispatched on <strong>DAP (Delivered at Place)</strong> terms. Destination import duties, local alcohol excise taxes, or clearance fees levied by your country's customs authority will be at the <strong>client's / recipient's account upon arrival</strong>.
+                </p>
               </div>
             </div>
 
-            {/* Navigation Tabs */}
-            <div className="flex gap-2 border-b border-white/10 pb-2">
+            {/* Collapsible Country Rates Guide */}
+            <div className="border border-white/10 rounded-2xl bg-black/40 overflow-hidden text-xs">
               <button
                 type="button"
-                onClick={() => setCustomsActiveTab('doc')}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  customsActiveTab === 'doc'
-                    ? 'bg-[var(--color-gold)] text-black'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
+                onClick={() => setCustomsActiveTab(customsActiveTab === 'rates' ? '' : 'rates')}
+                className="w-full p-3.5 flex items-center justify-between text-white/80 hover:text-white transition-colors cursor-pointer text-left font-medium"
               >
-                <FileCheck size={14} /> Attached Documents
+                <span className="flex items-center gap-2">
+                  <Tag size={14} className="text-[var(--color-gold)]" />
+                  <span>View Common Destination Tax Rates</span>
+                </span>
+                <span className="text-xs text-[var(--color-gold)] font-mono">
+                  {customsActiveTab === 'rates' ? '− Hide' : '+ Show'}
+                </span>
               </button>
-              <button
-                type="button"
-                onClick={() => setCustomsActiveTab('dap')}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  customsActiveTab === 'dap'
-                    ? 'bg-[var(--color-gold)] text-black'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Globe size={14} /> DAP Trade Terms
-              </button>
-              <button
-                type="button"
-                onClick={() => setCustomsActiveTab('rates')}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  customsActiveTab === 'rates'
-                    ? 'bg-[var(--color-gold)] text-black'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Tag size={14} /> Country Customs Rates
-              </button>
-              <button
-                type="button"
-                onClick={() => setCustomsActiveTab('insurance')}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  customsActiveTab === 'insurance'
-                    ? 'bg-[var(--color-gold)] text-black'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <ShieldCheck size={14} /> Transit Protection
-              </button>
+
+              {customsActiveTab === 'rates' && (
+                <div className="p-3.5 pt-0 border-t border-white/5 space-y-2 text-[11px] text-white/70 divide-y divide-white/5">
+                  <div className="pt-2 flex justify-between">
+                    <span className="font-semibold text-white">🇬🇧 United Kingdom:</span>
+                    <span>20% Import VAT + HMRC Alcohol Duty</span>
+                  </div>
+                  <div className="pt-2 flex justify-between">
+                    <span className="font-semibold text-white">🇺🇸 United States:</span>
+                    <span>Federal Excise Tax ($0.27–$2.70/btl) + State Tax</span>
+                  </div>
+                  <div className="pt-2 flex justify-between">
+                    <span className="font-semibold text-white">🇪🇺 European Union:</span>
+                    <span>19%–21% National VAT + Local Excise</span>
+                  </div>
+                  <div className="pt-2 flex justify-between">
+                    <span className="font-semibold text-white">🇦🇪 United Arab Emirates:</span>
+                    <span>5% Import VAT + 50% Alcohol Excise</span>
+                  </div>
+                  <div className="pt-2 flex justify-between">
+                    <span className="font-semibold text-white">🇦🇺 Australia:</span>
+                    <span>10% GST + Wine Equalisation Tax (WET)</span>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {/* Tab 1: Attached Documentation */}
-            {customsActiveTab === 'doc' && (
-              <div className="space-y-4 text-xs">
-                <div className="bg-black/50 p-4 rounded-2xl border border-white/10 space-y-3">
-                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <BadgeCheck size={16} className="text-[var(--color-gold)]" /> What Is Attached to Your Consignment
-                  </h4>
-                  <p className="text-[var(--color-ivory-muted)] leading-relaxed">
-                    Under international postal and air courier customs treaties (WCO & IATA), all international consignments shipped from our vendor estates in Italy, South Africa, and France carry official export documentation affixed to the outer parcel carton in an exterior weatherproof pouch:
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                      <p className="font-bold text-white flex items-center gap-1.5">
-                        <FileText size={13} className="text-[var(--color-gold)]" /> Official Commercial Invoice
-                      </p>
-                      <p className="text-[11px] text-white/60 leading-relaxed">
-                        Contains full vendor legal entity, buyer details, declared commercial value (ZAR/EUR/USD), Harmonized Tariff HS codes, bottle volumes, and alcohol by volume (ABV%).
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                      <p className="font-bold text-white flex items-center gap-1.5">
-                        <Truck size={13} className="text-emerald-400" /> Carrier Air Waybill (AWB)
-                      </p>
-                      <p className="text-[11px] text-white/60 leading-relaxed">
-                        Express barcoded courier consignment note (Aramex Worldwide Express / DHL Express) linked to continuous GPS telemetry and destination electronic pre-clearance.
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                      <p className="font-bold text-white flex items-center gap-1.5">
-                        <Package size={13} className="text-blue-400" /> Packing Slip & Cellar Certificate
-                      </p>
-                      <p className="text-[11px] text-white/60 leading-relaxed">
-                        Itemized lot numbers, vintage specifications, tamper-evident seal serial numbers, and estate origin validation.
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                      <p className="font-bold text-white flex items-center gap-1.5">
-                        <ShieldCheck size={13} className="text-amber-400" /> HS Tariff Classification
-                      </p>
-                      <p className="text-[11px] text-white/60 leading-relaxed">
-                        Spirits & Grappa: <code className="text-[var(--color-gold)] font-mono">HS 2208.20</code> / Wine: <code className="text-[var(--color-gold)] font-mono">HS 2204.21</code> for transparent border inspection.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 2: DAP Trade Terms */}
-            {customsActiveTab === 'dap' && (
-              <div className="space-y-4 text-xs">
-                <div className="bg-black/50 p-4 rounded-2xl border border-white/10 space-y-3">
-                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <Globe size={16} className="text-[var(--color-gold)]" /> Delivered at Place (DAP) Incoterms Explained
-                  </h4>
-                  <p className="text-[var(--color-ivory-muted)] leading-relaxed">
-                    All cross-border orders on The Grand Store are governed by <strong>Incoterms® 2020: Delivered at Place (DAP)</strong>. Here is the exact division of responsibilities:
-                  </p>
-                  <div className="space-y-2 pt-1">
-                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">
-                      <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-400" />
-                      <div>
-                        <strong className="text-white block mb-0.5">Covered by Grand Store & Vendor (Prepaid):</strong>
-                        Product price, cellar packing, shock packaging, export customs filing, and complete priority air courier freight to your delivery address.
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200">
-                      <Info size={16} className="shrink-0 mt-0.5 text-amber-400" />
-                      <div>
-                        <strong className="text-white block mb-0.5">Assessed at Destination (Payable by Recipient):</strong>
-                        Import VAT/GST, local alcohol excise taxes, and customs administrative fees levied by your nation's border authority. The courier will notify you via SMS/Email with a direct payment link to release the consignment.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 3: Country Customs Rates */}
-            {customsActiveTab === 'rates' && (
-              <div className="space-y-4 text-xs">
-                <div className="bg-black/50 p-4 rounded-2xl border border-white/10 space-y-3">
-                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <Tag size={16} className="text-[var(--color-gold)]" /> Destination Tax & Customs Guide
-                  </h4>
-                  <p className="text-[var(--color-ivory-muted)]">
-                    Standard VAT and customs duty rates for our most popular global destination corridors:
-                  </p>
-                  <div className="divide-y divide-white/10 border border-white/10 rounded-xl overflow-hidden">
-                    <div className="p-3 bg-white/[0.02] flex items-center justify-between">
-                      <span className="font-semibold text-white">🇬🇧 United Kingdom</span>
-                      <span className="text-white/80">20% Import VAT + HMRC Alcohol Duty (~£3.40/bottle)</span>
-                    </div>
-                    <div className="p-3 bg-black/40 flex items-center justify-between">
-                      <span className="font-semibold text-white">🇺🇸 United States</span>
-                      <span className="text-white/80">Federal Excise Tax ($0.27-$2.70/bottle) + State Tax</span>
-                    </div>
-                    <div className="p-3 bg-white/[0.02] flex items-center justify-between">
-                      <span className="font-semibold text-white">🇪🇺 European Union (IT, FR, DE)</span>
-                      <span className="text-white/80">19%–21% National VAT + European Excise Duty</span>
-                    </div>
-                    <div className="p-3 bg-black/40 flex items-center justify-between">
-                      <span className="font-semibold text-white">🇦🇪 United Arab Emirates</span>
-                      <span className="text-white/80">5% Import VAT + 50% Alcohol Excise Tax</span>
-                    </div>
-                    <div className="p-3 bg-white/[0.02] flex items-center justify-between">
-                      <span className="font-semibold text-white">🇦🇺 Australia</span>
-                      <span className="text-white/80">10% GST + Wine Equalisation Tax (WET 29%)</span>
-                    </div>
-                    <div className="p-3 bg-black/40 flex items-center justify-between">
-                      <span className="font-semibold text-white">🇿🇦 South Africa (Domestic)</span>
-                      <span className="text-emerald-400 font-bold">15% VAT included at checkout • Zero Import Duty</span>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-white/50 italic pt-1">
-                    * Calculation Formula: Customs Duty = (Declared CIF Value × Duty Rate). Import VAT = (CIF Value + Customs Duty) × VAT Rate.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 4: Fragile Protection */}
-            {customsActiveTab === 'insurance' && (
-              <div className="space-y-4 text-xs">
-                <div className="bg-black/50 p-4 rounded-2xl border border-white/10 space-y-3">
-                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <ShieldCheck size={16} className="text-emerald-400" /> Fragile Goods Transit Insurance (1.5% Premium)
-                  </h4>
-                  <p className="text-[var(--color-ivory-muted)] leading-relaxed">
-                    Fine wines and aged spirits bottles are fragile luxury items. Our optional 1.5% transit insurance policy provides complete peace of mind:
-                  </p>
-                  <ul className="space-y-2 text-white/80 list-disc list-inside pt-1">
-                    <li><strong className="text-white">100% Replacement Guarantee:</strong> Direct replacement bottle dispatched immediately or prompt refund if bottle suffers breakage in transit.</li>
-                    <li><strong className="text-white">Carrier Loss & Leakage:</strong> Covers cork compromise, liquid ullage loss, temperature damage, or carrier theft.</li>
-                    <li><strong className="text-white">Certified Packaging:</strong> All parcels utilize certified air-column inflatable cushions and heavy-duty corrugated cartons designed for air transit.</li>
-                  </ul>
-                </div>
-              </div>
-            )}
 
             {/* Modal Actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-white/10">
-              <span className="text-[11px] text-white/50">
-                Official document issued under The Grand Store Global Terms & Conditions
-              </span>
+            <div className="pt-2">
               <button
                 type="button"
                 onClick={() => {
@@ -3970,7 +3502,7 @@ export default function CheckoutPage({
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }
                 }}
-                className="w-full sm:w-auto px-8 py-3 rounded-xl bg-[var(--color-gold)] hover:bg-[var(--color-gold-light)] text-black text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-6 rounded-xl bg-[var(--color-gold)] hover:bg-[var(--color-gold-light)] text-black text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2"
               >
                 <CheckCircle2 size={16} /> I Understand & Agree — Continue to Payment
               </button>
