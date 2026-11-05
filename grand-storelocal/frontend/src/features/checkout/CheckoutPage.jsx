@@ -1,3 +1,32 @@
+const getItemOriginInfo = (item) => {
+  const name = (item.fullName || item.name || '').toLowerCase();
+  const country = (item.country || item.origin || item.identity?.origin || '').toLowerCase();
+  const brand = (item.brand || '').toLowerCase();
+
+  if (country.includes('ital') || name.includes('grappa') || name.includes('conte') || brand.includes('conte') || brand.includes('dogliotti') || brand.includes('giuliani')) {
+    return { flag: '🇮🇹', country: 'Italy', isImport: true };
+  }
+  if (country.includes('scot') || country.includes('uk') || name.includes('scotch') || name.includes('dimple') || name.includes('whisky') || name.includes('whiskey') || name.includes('ballantine') || name.includes('bowmore') || brand.includes('dimple')) {
+    return { flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', country: 'Scotland', isImport: true };
+  }
+  if (country.includes('mexic') || name.includes('tequila') || name.includes('clase azul') || brand.includes('clase azul')) {
+    return { flag: '🇲🇽', country: 'Mexico', isImport: true };
+  }
+  if (country.includes('franc') || name.includes('cognac') || name.includes('champagne') || brand.includes('andreu') || brand.includes('dobbe') || brand.includes('dobbé')) {
+    return { flag: '🇫🇷', country: 'France', isImport: true };
+  }
+  if (country.includes('japan') || name.includes('hibiki') || name.includes('yamazaki')) {
+    return { flag: '🇯🇵', country: 'Japan', isImport: true };
+  }
+  if (country.includes('ireland') || name.includes('irish')) {
+    return { flag: '🇮🇪', country: 'Ireland', isImport: true };
+  }
+  if (country.includes('united states') || country.includes('usa') || name.includes('bourbon')) {
+    return { flag: '🇺🇸', country: 'USA', isImport: true };
+  }
+  return { flag: '🇿🇦', country: 'South Africa', isImport: false };
+};
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
@@ -1374,33 +1403,47 @@ export default function CheckoutPage({
                                     · {item.option}
                                   </span>
                                 )}
-                                <span className={`inline-flex items-center gap-1 text-[9.5px] font-medium px-1.5 py-0.5 rounded border ${
-                                  destinationMode === 'international_aramex' || destinationMode === 'international_dhl'
-                                    ? 'bg-red-500/15 text-red-300 border-red-500/30'
-                                    : deliveryPreference === 'pudo'
-                                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                                    : deliveryPreference === 'postnet'
-                                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                                    : 'bg-white/5 text-[var(--color-gold)] border-white/10'
-                                }`}>
-                                  {destinationMode === 'international_aramex' || destinationMode === 'international_dhl' ? (
-                                    <>
-                                      <Globe size={10} className="shrink-0 text-red-400" /> Aramex Delivery
-                                    </>
-                                  ) : deliveryPreference === 'pudo' ? (
-                                    <>
-                                      <Package size={10} className="shrink-0 text-emerald-400" /> PUDO Locker
-                                    </>
-                                  ) : deliveryPreference === 'postnet' ? (
-                                    <>
-                                      <Store size={10} className="shrink-0 text-[var(--color-gold)]" /> PostNet
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Truck size={10} className="shrink-0 text-[var(--color-gold)]" /> The Courier Guy
-                                    </>
-                                  )}
-                                </span>
+{(() => {
+                                  const originInfo = getItemOriginInfo(item);
+                                  return (
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      {/* Provenance Origin Badge */}
+                                      <span className="inline-flex items-center gap-1 text-[9.5px] font-medium px-1.5 py-0.5 rounded bg-white/5 text-white/80 border border-white/10">
+                                        <span>{originInfo.flag}</span>
+                                        <span>{originInfo.country}</span>
+                                      </span>
+
+                                      {/* Dispatch Courier Badge */}
+                                      <span className={`inline-flex items-center gap-1 text-[9.5px] font-medium px-1.5 py-0.5 rounded border ${
+                                        destinationMode === 'international_aramex' || destinationMode === 'international_dhl'
+                                          ? 'bg-red-500/15 text-red-300 border-red-500/30'
+                                          : deliveryPreference === 'pudo'
+                                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                          : deliveryPreference === 'postnet'
+                                          ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                          : 'bg-white/5 text-[var(--color-gold)] border-white/10'
+                                      }`}>
+                                        {destinationMode === 'international_aramex' || destinationMode === 'international_dhl' ? (
+                                          <>
+                                            <Globe size={10} className="shrink-0 text-red-400" /> Aramex Delivery
+                                          </>
+                                        ) : deliveryPreference === 'pudo' ? (
+                                          <>
+                                            <Package size={10} className="shrink-0 text-emerald-400" /> PUDO Locker
+                                          </>
+                                        ) : deliveryPreference === 'postnet' ? (
+                                          <>
+                                            <Store size={10} className="shrink-0 text-[var(--color-gold)]" /> PostNet
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Truck size={10} className="shrink-0 text-[var(--color-gold)]" /> The Courier Guy
+                                          </>
+                                        )}
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             </div>
                           </div>
