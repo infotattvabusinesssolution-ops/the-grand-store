@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Price from '../ui/Price';
+import { useGeoLocation } from '../../context/LocationContext';
 
 const preparedVendorImages = {
   "/uploads/images-1787292711461.png": "/assets/products/vendor/whisky-tona-full.png",
@@ -53,6 +54,7 @@ export default function ConfirmCheckoutModal({
   onProceed = null,
   onAddToCart = null
 }) {
+  const { country_code, country_name } = (typeof useGeoLocation === 'function' ? useGeoLocation() : {}) || {};
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(initialQuantity || 1);
   const [selectedOption, setSelectedOption] = useState(
@@ -134,7 +136,12 @@ export default function ConfirmCheckoutModal({
       if (onAddToCart) {
         onAddToCart(product, quantity, selectedOption, false);
       }
-      navigate('/customer/checkout');
+      const isIntl = country_code && country_code !== 'ZA';
+      if (isIntl) {
+        navigate(`/customer/checkout?mode=international_aramex${country_name ? `&country=${encodeURIComponent(country_name)}` : ''}`);
+      } else {
+        navigate('/customer/checkout?mode=domestic_sa');
+      }
     }
     onClose();
   };

@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ChevronLeft, ChevronRight, Minus, PackageCheck, Plus, ShieldCheck, ShoppingBag, Trash2, Truck, Sparkles } from 'lucide-react';
 import { getProductPrice } from '../../data';
 import { useAuth } from '../../context/AuthContext';
+import { useGeoLocation } from '../../context/LocationContext';
 import Price from '../../components/ui/Price';
 import ProteaEmblem from '../home/components/ProteaEmblem';
 import ArrivalsMandala from '../home/components/ArrivalsMandala';
 import CardChakra from '../home/components/CardChakra';
 
 export default function CartPage({ cartItems, onUpdateQuantity, onRemove, onClear, onNotify }) {
+  const { country_code, country_name } = (typeof useGeoLocation === 'function' ? useGeoLocation() : {}) || {};
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -22,7 +24,12 @@ export default function CartPage({ cartItems, onUpdateQuantity, onRemove, onClea
         return;
       }
     }
-    navigate('/customer/checkout');
+    const isIntl = country_code && country_code !== 'ZA';
+    if (isIntl) {
+      navigate(`/customer/checkout?mode=international_aramex${country_name ? `&country=${encodeURIComponent(country_name)}` : ''}`);
+    } else {
+      navigate('/customer/checkout?mode=domestic_sa');
+    }
   };
 
   const itemCount = cartItems.reduce((total, item) => total + item.quantity, 0);

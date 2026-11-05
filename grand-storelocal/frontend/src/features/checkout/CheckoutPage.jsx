@@ -39,6 +39,7 @@ import {
   Check
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useGeoLocation } from '../../context/LocationContext';
 import { getProductPrice } from '../../data';
 import LocationInput from '../../components/LocationInput';
 import CityInput from '../../components/CityInput';
@@ -98,6 +99,7 @@ export default function CheckoutPage({
   clearVendorCart,
   onNotify
 }) {
+  const { country_code, country_name } = (typeof useGeoLocation === 'function' ? useGeoLocation() : {}) || {};
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const vendorId = searchParams.get('vendor');
@@ -123,10 +125,19 @@ export default function CheckoutPage({
   const urlCountry = searchParams.get('country');
   const isIntlCountry = (c) => Boolean(c && !['south africa', 'za', 'rsa'].includes(c.toLowerCase().trim()));
   const hasIntlProduct = vendorCartItems.some((item) => isIntlCountry(item.country));
-  const isInternationalOrder = urlMode === 'international_aramex';
 
-  // South Africa (domestic_sa) is ALWAYS the default unless explicitly urlMode === 'international_aramex'
-  const [destinationMode, setDestinationMode] = useState(() => (urlMode === 'international_aramex' ? 'international_aramex' : 'domestic_sa'));
+  const detectIsInternational = () => {
+    if (urlMode === 'international_aramex') return true;
+    if (urlMode === 'domestic_sa') return false;
+    if (urlCountry && isIntlCountry(urlCountry)) return true;
+    if (urlCountry && !isIntlCountry(urlCountry)) return false;
+    if (country_code && country_code !== 'ZA') return true;
+    if (user?.shippingAddress?.country && isIntlCountry(user.shippingAddress.country)) return true;
+    return false;
+  };
+
+  const isInternationalOrder = detectIsInternational();
+  const [destinationMode, setDestinationMode] = useState(() => (detectIsInternational() ? 'international_aramex' : 'domestic_sa'));
   const isDomestic = destinationMode === 'domestic_sa';
   const [applyRewards, setApplyRewards] = useState(false);
   const [useSuperCoins, setUseSuperCoins] = useState(true);
@@ -439,19 +450,24 @@ export default function CheckoutPage({
   };
 
   
-  // Auto-sync delivery mode from URL query (?mode=international_aramex or ?mode=domestic_sa)
+  // Auto-sync delivery mode: for international order it redirects to international delivery button; for local vice-versa
   useEffect(() => {
-    if (urlMode === 'international_aramex') {
+    const isIntl = detectIsInternational();
+    if (isIntl) {
       setDestinationMode('international_aramex');
       setDeliveryPreference('home');
-      if (urlCountry) {
-        setFormData((prev) => ({ ...prev, country: urlCountry }));
-      }
-    } else if (urlMode === 'domestic_sa') {
+      const targetCountry = (urlCountry && isIntlCountry(urlCountry))
+        ? urlCountry
+        : ((country_name && isIntlCountry(country_name)) ? country_name : (user?.shippingAddress?.country || 'United Kingdom'));
+      setFormData((prev) => ({
+        ...prev,
+        country: prev.country && isIntlCountry(prev.country) ? prev.country : targetCountry
+      }));
+    } else {
       setDestinationMode('domestic_sa');
       setFormData((prev) => ({ ...prev, country: 'South Africa' }));
     }
-  }, [urlMode, urlCountry]);
+  }, [urlMode, urlCountry, country_code, country_name]);
   useEffect(() => {
     document.title = 'Checkout – The Grand Store';
     window.scrollTo({ top: 0, behavior: 'auto' });

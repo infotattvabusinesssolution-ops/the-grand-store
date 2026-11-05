@@ -230,6 +230,7 @@ export default function ProductCard({
   onQuickView,
   isGlobalWine = false,
 }) {
+  const { country_code, country_name } = (typeof useGeoLocation === 'function' ? useGeoLocation() : {}) || {};
   const navigate = useNavigate();
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const productId = product.id || product._id;
@@ -480,8 +481,12 @@ export default function ProductCard({
           }}
           onProceed={(prod, qty, opt) => {
             if (onAdd) onAdd(prod, qty, opt, false);
-            // Default to South Africa domestic checkout, with International toggle available in Step 1
-            navigate('/customer/checkout?mode=domestic_sa');
+            const isIntl = country_code && country_code !== 'ZA';
+            if (isIntl) {
+              navigate(`/customer/checkout?mode=international_aramex${country_name ? `&country=${encodeURIComponent(country_name)}` : ''}`);
+            } else {
+              navigate('/customer/checkout?mode=domestic_sa');
+            }
           }}
         />
       </article>

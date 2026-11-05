@@ -81,7 +81,7 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   const navigate = useNavigate();
   const { products, loading: productsLoading } = useProducts();
   const { slug } = useParams();
-  const { currency, country_name } = useGeoLocation();
+  const { currency, country_name, country_code } = useGeoLocation();
 
   const [directProduct, setDirectProduct] = useState(null);
   const [directLoading, setDirectLoading] = useState(false);
@@ -1202,8 +1202,12 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
         }}
         onProceed={(prod, qty, opt) => {
           if (onAdd) onAdd(prod, qty, opt, false);
-          // Default to South Africa domestic checkout, with International toggle available in Step 1
-          navigate('/customer/checkout?mode=domestic_sa');
+          const isIntl = country_code && country_code !== 'ZA';
+          if (isIntl) {
+            navigate(`/customer/checkout?mode=international_aramex${country_name ? `&country=${encodeURIComponent(country_name)}` : ''}`);
+          } else {
+            navigate('/customer/checkout?mode=domestic_sa');
+          }
         }}
       />
     </main>
