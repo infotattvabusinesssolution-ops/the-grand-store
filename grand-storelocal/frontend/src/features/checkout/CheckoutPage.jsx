@@ -1510,7 +1510,7 @@ export default function CheckoutPage({
                   <div className="flex justify-between text-[var(--color-ivory-muted)]">
                     <span className="flex items-center gap-1.5">
                       {destinationMode === 'international_aramex' || destinationMode === 'international_dhl' ? (
-                        <Globe size={13} className="text-red-400 shrink-0" />
+                        <Globe size={13} className="text-[var(--color-gold)] shrink-0" />
                       ) : deliveryPreference === 'pudo' ? (
                         <Package size={13} className="text-emerald-400 shrink-0" />
                       ) : deliveryPreference === 'postnet' ? (
@@ -1518,7 +1518,7 @@ export default function CheckoutPage({
                       ) : (
                         <Truck size={13} className="text-[var(--color-gold)] shrink-0" />
                       )}
-                      <span className={destinationMode === 'international_aramex' || destinationMode === 'international_dhl' ? 'text-red-300 font-medium' : ''}>
+                      <span className={destinationMode === 'international_aramex' || destinationMode === 'international_dhl' ? 'text-[var(--color-gold)] font-medium' : ''}>
                         {destinationMode === 'international_aramex' || destinationMode === 'international_dhl'
                           ? 'Aramex Delivery'
                           : deliveryPreference === 'postnet'
@@ -1708,7 +1708,7 @@ export default function CheckoutPage({
                       onClick={() => selectDeliveryMode('international_aramex')}
                       className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all cursor-pointer ${
                         destinationMode === 'international_aramex'
-                          ? 'bg-red-500 text-white font-bold shadow-md'
+                          ? 'bg-[var(--color-gold)] text-black font-bold shadow-md'
                           : 'text-white/60 hover:text-white hover:bg-white/5'
                       }`}
                     >
@@ -1726,7 +1726,7 @@ export default function CheckoutPage({
                       </span>
                     ) : (
                       <span className="flex items-center gap-1.5 text-white/70">
-                        <Globe size={13} className="text-red-400 shrink-0" />
+                        <Globe size={13} className="text-[var(--color-gold)] shrink-0" />
                         Worldwide priority air courier via <strong>Aramex Global Express</strong> with full customs clearance
                       </span>
                     )}
@@ -1834,15 +1834,15 @@ export default function CheckoutPage({
                 {/* Sub-Section B: INTERNATIONAL DELIVERY COURIER (Aramex Global Express) */}
                 {destinationMode === 'international_aramex' && (
                   <div className="w-full">
-                    <div className="p-4 sm:p-5 rounded-2xl border border-red-500/40 bg-gradient-to-r from-red-950/20 via-[#0d0d0d] to-[#0a0a0a] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
+                    <div className="p-4 sm:p-5 rounded-2xl border border-[var(--color-gold)]/40 bg-gradient-to-r from-[var(--color-gold)]/10 via-[#0d0d0d] to-[#0a0a0a] shadow-[0_0_20px_rgba(212,175,55,0.12)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
                       <div className="flex items-center gap-3.5">
-                        <div className="w-11 h-11 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 border border-red-500/30">
+                        <div className="w-11 h-11 rounded-xl bg-[var(--color-gold)]/15 text-[var(--color-gold)] flex items-center justify-center shrink-0 border border-[var(--color-gold)]/30">
                           <Globe size={20} />
                         </div>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-sm sm:text-base font-bold text-white leading-snug">Aramex Global Express</p>
-                            <span className="text-[9.5px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded font-mono">
+                            <span className="text-[9.5px] font-bold uppercase tracking-wider bg-[var(--color-gold)]/20 text-[var(--color-gold)] border border-[var(--color-gold)]/30 px-2 py-0.5 rounded font-mono">
                               ✈️ Priority Air Courier
                             </span>
                           </div>
@@ -1851,9 +1851,9 @@ export default function CheckoutPage({
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-center bg-red-500/10 border border-red-500/30 px-3 py-1.5 rounded-xl">
-                        <CheckCircle2 size={14} className="text-red-400" />
-                        <span className="text-xs font-semibold text-red-300">Active International Courier</span>
+                      <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-center bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/30 px-3 py-1.5 rounded-xl">
+                        <CheckCircle2 size={14} className="text-[var(--color-gold)]" />
+                        <span className="text-xs font-semibold text-[var(--color-gold)]">Active International Courier</span>
                       </div>
                     </div>
                   </div>
@@ -1984,7 +1984,7 @@ export default function CheckoutPage({
                           🇿🇦 The Courier Guy Domestic Delivery
                         </span>
                       ) : (
-                        <span className="text-[10px] text-red-300 font-mono flex items-center gap-1 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] text-[var(--color-gold)] font-mono flex items-center gap-1 bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 px-2 py-0.5 rounded-full">
                           ✈️ Aramex Global Express Delivery
                         </span>
                       )}
@@ -3061,9 +3061,9 @@ export default function CheckoutPage({
                                       {opt.courierName && (
                                         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
                                           opt.courierName.includes('Aramex') || opt.courierName.includes('DHL')
-                                            ? 'bg-red-500/20 text-red-300 border-red-500/40 font-mono'
+                                            ? 'bg-[var(--color-gold)]/20 text-[var(--color-gold)] border-[var(--color-gold)]/40 font-mono'
                                             : opt.courierName.includes('PostNet')
-                                            ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                                             : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                                         }`}>
                                           {opt.courierName}
@@ -3286,7 +3286,7 @@ export default function CheckoutPage({
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2 rounded-xl bg-white/5 border border-white/10 text-[var(--color-gold)] shrink-0">
                       {destinationMode === 'international_aramex' || destinationMode === 'international_dhl' ? (
-                        <Globe size={18} className="text-red-400" />
+                        <Globe size={18} className="text-[var(--color-gold)]" />
                       ) : deliveryPreference === 'pudo' ? (
                         <Package size={18} className="text-emerald-400" />
                       ) : deliveryPreference === 'postnet' ? (
