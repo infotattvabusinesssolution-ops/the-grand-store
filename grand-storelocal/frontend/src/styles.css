@@ -3229,6 +3229,10 @@ video {
 .tequila-product-rail .product-card {
   min-width: 0;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid var(--white-line);
 }
 
 .arrival-luxury-card,
@@ -3252,7 +3256,7 @@ video {
 }
 
 .tequila-product-rail .product-visual {
-  height: auto;
+  height: 300px;
 }
 
 .tequila-product-rail .product-info h3 {

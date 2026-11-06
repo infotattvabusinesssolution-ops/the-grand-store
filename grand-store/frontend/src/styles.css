@@ -3211,6 +3211,11 @@ video {
 
 .tequila-product-rail .product-card {
   min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid var(--white-line);
 }
 
 .tequila-product-rail .product-visual {
