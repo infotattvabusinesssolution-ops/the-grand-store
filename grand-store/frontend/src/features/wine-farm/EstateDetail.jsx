@@ -126,11 +126,18 @@ export default function EstateDetail() {
   const { estate, products = [] } = data;
   const { story = {}, vineyard = {}, hospitality = {}, contact = {} } = estate;
 
-  // Determine whether this is Bruno Andreu, Dogliotti 1870, Cantina del Conte, Tesselaarsdal, or another estate (like Giuliani Vini)
+  // Determine whether this is Bruno Andreu, Dogliotti 1870, Cantina del Conte, Tesselaarsdal, or another estate (like Giuliani Vini / Maison Dobbé)
   const isBrunoAndreu = estate.slug === 'bruno-andreu' || slug === 'bruno-andreu' || estate.estateName?.toLowerCase().includes('bruno');
   const isDogliotti = estate.slug === 'dogliotti-1870' || slug === 'dogliotti-1870' || estate.estateName?.toLowerCase().includes('dogliotti');
   const isCantinaDelConte = estate.slug === 'cantina-del-conte' || slug === 'cantina-del-conte' || estate.estateName?.toLowerCase().includes('conte') || estate.estateName?.toLowerCase().includes('cantina');
   const isTesselaarsdal = estate.slug === 'tesselaarsdal-wines' || slug === 'tesselaarsdal-wines' || estate.estateName?.toLowerCase().includes('tesselaarsdal');
+  const isDobbe = estate.slug === 'maison-dobbe' || estate.slug === 'stellenbosch-hills-wine-estate' || slug === 'maison-dobbe' || slug === 'stellenbosch-hills-wine-estate' || estate.estateName?.toLowerCase().includes('dobb') || estate.estateName?.toLowerCase().includes('dobbe');
+
+  // Authentic tasting images for Maison Dobbé Cognac fallback
+  const dobbePdfTastings = [
+    '/assets/estate/maison-dobbe/cognac_prestige_masterclass.jpg',
+    '/assets/estate/maison-dobbe/cellar_master_paradis_vault.jpg'
+  ];
 
   // Authentic tasting images for Tesselaarsdal fallback
   const tesselaarsdalPdfTastings = [
@@ -166,25 +173,35 @@ export default function EstateDetail() {
   if (hospitality.hasTastings && hospitality.tastings) {
     hospitality.tastings.forEach((t, idx) => {
       if (t.name) {
-        const fallbackImg = isTesselaarsdal
-          ? tesselaarsdalPdfTastings[idx % tesselaarsdalPdfTastings.length]
-          : isCantinaDelConte
-            ? cantinaPdfTastings[idx % cantinaPdfTastings.length]
-            : isDogliotti
-              ? dogliottiPdfTastings[idx % dogliottiPdfTastings.length]
-              : isBrunoAndreu 
-                ? authenticPdfTastings[idx % authenticPdfTastings.length] 
-                : resolveImageUrl(hospitality.tastingsImageUrl) || 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
+        const fallbackImg = isDobbe
+          ? dobbePdfTastings[idx % dobbePdfTastings.length]
+          : isTesselaarsdal
+            ? tesselaarsdalPdfTastings[idx % tesselaarsdalPdfTastings.length]
+            : isCantinaDelConte
+              ? cantinaPdfTastings[idx % cantinaPdfTastings.length]
+              : isDogliotti
+                ? dogliottiPdfTastings[idx % dogliottiPdfTastings.length]
+                : isBrunoAndreu 
+                  ? authenticPdfTastings[idx % authenticPdfTastings.length] 
+                  : resolveImageUrl(hospitality.tastingsImageUrl) || 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
+
+        const computedType = t.type || (isDobbe || t.name?.toLowerCase().includes('cognac') || t.name?.toLowerCase().includes('paradis')
+          ? (t.name?.toLowerCase().includes('masterclass') ? 'Cognac Masterclass' : t.name?.toLowerCase().includes('vault') ? 'Paradis Vault Tasting' : 'Cognac Tasting')
+          : 'Wine Tasting');
+
+        const formattedDuration = t.duration 
+          ? (String(t.duration).toLowerCase().includes('min') || String(t.duration).toLowerCase().includes('hr') ? t.duration : `${t.duration} mins`) 
+          : null;
 
         hCards.push({
-          type: 'Wine Tasting',
+          type: computedType,
           title: t.name,
           subtitle: t.subtitle,
           priceStr: t.price ? `R${t.price} / person` : null,
           image: resolveImageUrl(t.imageUrl) || fallbackImg,
           fallbackImage: fallbackImg,
           desc: t.description,
-          duration: t.duration,
+          duration: formattedDuration,
           capacity: t.capacity,
           phone: t.phone,
           email: t.email
@@ -211,7 +228,7 @@ export default function EstateDetail() {
           '@type': 'PostalAddress',
           streetAddress: contact.address || estate.region || 'Estate Location',
           addressRegion: estate.region || 'Wine Region',
-          addressCountry: estate.country || (isTesselaarsdal ? 'ZA' : (isDogliotti || isCantinaDelConte ? 'IT' : isBrunoAndreu ? 'FR' : 'ZA'))
+          addressCountry: estate.country || (isBrunoAndreu ? 'FR' : (isDogliotti || isCantinaDelConte ? 'IT' : 'ZA'))
         },
         makesOffer: products.map(p => ({
           '@type': 'Offer',
@@ -1268,7 +1285,7 @@ export default function EstateDetail() {
                 {hospitality.title || 'Cellar Door & Tasting Experiences'}
               </h2>
               <p className="text-gray-500 text-sm sm:text-base">
-                {hospitality.subtitle || 'Welcome to the Cellar — Discover our winemaking craft.'}
+                {hospitality.subtitle || (isDobbe ? 'Welcome to the Cellar — Discover our artisan Cognac distillation & ageing craft.' : 'Welcome to the Cellar — Discover our winemaking craft.')}
               </p>
             </div>
 

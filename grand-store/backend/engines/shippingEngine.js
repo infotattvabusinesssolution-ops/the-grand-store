@@ -28,35 +28,39 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
     const destCountry = customerAddress.country || 'South Africa';
     const destSA = isSouthAfrica(destCountry);
 
-    let originCountry = vendor?.shippingProfile?.pickupAddress?.country 
+    let originCountry = options.originCountry 
+      || vendor?.shippingProfile?.pickupAddress?.country 
       || vendor?.businessInfo?.address?.country 
       || null;
 
-    // Check if items belong to direct overseas cellar estates (Italy / France)
-    if (!originCountry && options.items && Array.isArray(options.items) && options.items.length > 0) {
-      const itemBrandOrName = options.items.map(it => (it.name || '') + ' ' + (it.brand || '')).join(' ').toLowerCase();
-      if (itemBrandOrName.includes('dogliotti') || itemBrandOrName.includes('cantina del conte') || itemBrandOrName.includes('giuliani')) {
-        originCountry = 'Italy';
-      } else if (itemBrandOrName.includes('bruno andreu') || itemBrandOrName.includes('dobbé') || itemBrandOrName.includes('dobbe')) {
-        originCountry = 'France';
-      }
+    // Check if items or vendor belong to an international origin (France, Italy, UK, etc.)
+    let isInternationalOrigin = false;
+    if (originCountry && !isSouthAfrica(originCountry)) {
+      isInternationalOrigin = true;
     }
 
-    // For domestic South African delivery (The Courier Guy / PostNet / PUDO):
-    // All local retail inventory (tequila, whisky, local wines, imported spirits) dispatches from South Africa!
-    if (destSA) {
-      originCountry = 'South Africa';
-    } else {
-      // For international delivery to overseas customers:
-      if (!originCountry && options.items && Array.isArray(options.items) && options.items.length > 0) {
-        const itemWithCountry = options.items.find(it => it.country || it.originCountry);
-        if (itemWithCountry) {
-          originCountry = itemWithCountry.country || itemWithCountry.originCountry;
+    if (!isInternationalOrigin && options.items && Array.isArray(options.items) && options.items.length > 0) {
+      const intlItem = options.items.find(it => {
+        const c = (it.country || it.originCountry || '').trim().toLowerCase();
+        return c && !isSouthAfrica(c);
+      });
+      if (intlItem) {
+        originCountry = intlItem.country || intlItem.originCountry;
+        isInternationalOrigin = true;
+      } else {
+        const itemBrandOrName = options.items.map(it => (it.name || '') + ' ' + (it.brand || '')).join(' ').toLowerCase();
+        if (itemBrandOrName.includes('dogliotti') || itemBrandOrName.includes('cantina del conte') || itemBrandOrName.includes('giuliani')) {
+          originCountry = 'Italy';
+          isInternationalOrigin = true;
+        } else if (itemBrandOrName.includes('bruno andreu') || itemBrandOrName.includes('dobbé') || itemBrandOrName.includes('dobbe')) {
+          originCountry = 'France';
+          isInternationalOrigin = true;
         }
       }
     }
 
-    if (!originCountry) {
+    // Domestic South African local inventory dispatches from South Africa
+    if (!isInternationalOrigin) {
       originCountry = 'South Africa';
     }
 
@@ -274,83 +278,6 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
           }
         ]
       });
-
-      // 1E. Aramex South Africa - Live Rate Engine (Overnight ONP & Economy Road PEC)
-      // Calculated dynamically from product package box specs & actual chargeable weight
-      const aramexVolumetricWeight = parseFloat(((parcelDims.length * parcelDims.width * parcelDims.height) / 5000).toFixed(2));
-      const aramexChargeableWeight = Math.max(Number(totalWeightKg.toFixed(2)), aramexVolumetricWeight);
-      const isRegionalDest = Boolean(customerAddress.isRegional || false);
-      const regionalFee = isRegionalDest ? 65.00 : 0.00;
-
-      // Aramex Overnight Express (ONP)
-      const onpBase = 125.00 + Math.max(0, aramexChargeableWeight - 2) * 28.00 + regionalFee;
-      const onpFuel = Number((onpBase * 0.125).toFixed(2));
-      const onpSecurity = 5.00;
-      const onpSubtotal = onpBase + onpFuel + onpSecurity;
-      const onpTotal = parseFloat((onpSubtotal * 1.15).toFixed(2));
-
-      // Aramex Economy Road (PEC)
-      const pecBase = 75.00 + Math.max(0, aramexChargeableWeight - 2) * 16.00 + regionalFee;
-      const pecFuel = Number((pecBase * 0.125).toFixed(2));
-      const pecSecurity = 3.50;
-      const pecSubtotal = pecBase + pecFuel + pecSecurity;
-      const pecTotal = parseFloat((pecSubtotal * 1.15).toFixed(2));
-
-      quotes.push({
-        courierName: 'Aramex',
-        serviceLevel: 'Aramex Overnight Express (ONP)',
-        serviceCode: 'ONP',
-        deliveryType: 'home',
-        cost: onpTotal,
-        originalCost: onpTotal,
-        isFreeDelivery: false,
-        estimatedDays: 'Next business day by 11:00 AM',
-        description: `Aramex Priority Door-to-Door Overnight Air Express (Box: ${parcelDims.length}x${parcelDims.width}x${parcelDims.height}cm, Wt: ${aramexChargeableWeight}kg)`,
-        boxDetails: {
-          length_cm: parcelDims.length,
-          width_cm: parcelDims.width,
-          height_cm: parcelDims.height,
-          actual_weight_kg: Number(totalWeightKg.toFixed(2)),
-          volumetric_weight_kg: aramexVolumetricWeight,
-          chargeable_weight_kg: aramexChargeableWeight
-        },
-        legs: [
-          {
-            courierName: 'Aramex SA Express Hub',
-            origin: originCountry,
-            destination: customerAddress.city || destCountry,
-            cost: Number((onpTotal * 0.8).toFixed(2))
-          }
-        ]
-      });
-
-      quotes.push({
-        courierName: 'Aramex',
-        serviceLevel: 'Aramex Economy Road (PEC)',
-        serviceCode: 'PEC',
-        deliveryType: 'home',
-        cost: pecTotal,
-        originalCost: pecTotal,
-        isFreeDelivery: false,
-        estimatedDays: '2–3 business days',
-        description: `Aramex Economy Road Express (Box: ${parcelDims.length}x${parcelDims.width}x${parcelDims.height}cm, Wt: ${aramexChargeableWeight}kg)`,
-        boxDetails: {
-          length_cm: parcelDims.length,
-          width_cm: parcelDims.width,
-          height_cm: parcelDims.height,
-          actual_weight_kg: Number(totalWeightKg.toFixed(2)),
-          volumetric_weight_kg: aramexVolumetricWeight,
-          chargeable_weight_kg: aramexChargeableWeight
-        },
-        legs: [
-          {
-            courierName: 'Aramex SA Road Network',
-            origin: originCountry,
-            destination: customerAddress.city || destCountry,
-            cost: Number((pecTotal * 0.8).toFixed(2))
-          }
-        ]
-      });
     } 
     // 2. EXPORT (SA -> Intl, e.g. India, UAE, UK, USA)
     else if (originSA && !destSA) {
@@ -451,7 +378,7 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
 
       quotes.push({
         courierName: 'Aramex',
-        serviceLevel: 'Aramex Worldwide Express',
+        serviceLevel: 'Aramex Global Express',
         serviceCode: 'EPX',
         deliveryType: 'home',
         cost: dynamicRate,
@@ -529,7 +456,7 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
 
       quotes.push({
         courierName: 'Aramex',
-        serviceLevel: 'Aramex Worldwide Express',
+        serviceLevel: 'Aramex Global Express',
         serviceCode: 'EPX',
         deliveryType: 'home',
         cost: dynamicRate,
@@ -572,39 +499,81 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
     // 3B. IMPORT INTO SOUTH AFRICA (Intl -> SA, e.g. Italy -> SA, France -> SA)
     else {
       isInternational = true;
-      let baseRate = 2200;
+
+      let maxLen = 12, maxWid = 12, maxHgt = 34, totalActualWeight = totalWeightKg || 1.85;
+      let totalVolumetric = 0;
+      let isFragileParcel = true;
+
+      if (options.items && Array.isArray(options.items) && options.items.length > 0) {
+        options.items.forEach(it => {
+          const l = Number(it.shipping?.length_cm || 12);
+          const w = Number(it.shipping?.width_cm || 12);
+          const h = Number(it.shipping?.height_cm || 34);
+          const wt = Number(it.shipping?.weight_kg || 1.85);
+          const q = Number(it.quantity || it.qty || 1);
+          maxLen = Math.max(maxLen, l);
+          maxWid = Math.max(maxWid, w);
+          maxHgt = Math.max(maxHgt, h);
+          totalVolumetric += ((l * w * h) / 5000) * q;
+          if (it.shipping?.is_fragile !== undefined) isFragileParcel = it.shipping.is_fragile;
+        });
+      } else {
+        totalVolumetric = (maxLen * maxWid * maxHgt) / 5000;
+      }
+
+      const chargeableWeight = Math.max(totalActualWeight, totalVolumetric);
+      const roundedChargeable = Math.max(0.5, Math.ceil(chargeableWeight * 2) / 2);
+
+      const base05Kg = 420.0;
+      const additionalHalfKgs = Math.max(0, Math.round((roundedChargeable - 0.5) / 0.5));
+      const freightBase = base05Kg + (additionalHalfKgs * 110.0);
+      const fuelSurcharge = Number((freightBase * 0.125).toFixed(2));
+      const securityFee = 65.0;
+      const fragileCare = isFragileParcel ? 85.0 : 0.0;
+      const dynamicRate = Number((freightBase + fuelSurcharge + securityFee + fragileCare).toFixed(2));
+
       quotes.push({
         courierName: 'Aramex',
-        serviceLevel: 'Aramex International Priority (Import)',
+        serviceLevel: 'Aramex Global Express',
         serviceCode: 'EPX',
         deliveryType: 'home',
-        cost: baseRate,
-        estimatedDays: '5–8 business days',
-        description: `Aramex International Priority Import (${originCountry} → South Africa)`,
+        cost: dynamicRate,
+        originalCost: dynamicRate,
+        isFreeDelivery: false,
+        estimatedDays: '4–7 business days',
+        description: `Aramex Priority Door-to-Door Air Courier (${originCountry} → South Africa)`,
+        boxDetails: {
+          length_cm: maxLen,
+          width_cm: maxWid,
+          height_cm: maxHgt,
+          actual_weight_kg: Number(totalActualWeight.toFixed(2)),
+          volumetric_weight_kg: Number(totalVolumetric.toFixed(2)),
+          chargeable_weight_kg: Number(chargeableWeight.toFixed(2))
+        },
         legs: [
           {
             courierName: `${originCountry} Estate Collection`,
             origin: originCountry,
             destination: `${originCountry} Air Export Gateway`,
-            cost: baseRate * 0.25
+            cost: Number((dynamicRate * 0.25).toFixed(2))
           },
           {
             courierName: 'Aramex Global Air Freight',
             origin: `${originCountry} Air Export Gateway`,
             destination: 'Aramex SA Import Hub (OR Tambo / CPT)',
-            cost: baseRate * 0.55
+            cost: Number((dynamicRate * 0.55).toFixed(2))
           },
           {
             courierName: 'Aramex South Africa Domestic Delivery',
             origin: 'Aramex SA Import Hub (OR Tambo / CPT)',
             destination: customerAddress.city || 'Customer',
-            cost: baseRate * 0.20
+            cost: Number((dynamicRate * 0.20).toFixed(2))
           }
         ]
       });
-      estimatedDuties = parseFloat((shipmentItemsSubtotal * 0.20).toFixed(2));
+      estimatedDuties = parseFloat((shipmentItemsSubtotal * 0.15).toFixed(2));
       estimatedTaxes = parseFloat((shipmentItemsSubtotal * 0.15).toFixed(2));
-      customsFees = 300;
+      customsFees = 250;
     }
 
     return {

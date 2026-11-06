@@ -128,12 +128,8 @@ export default function CheckoutPage({
   const hasIntlProduct = vendorCartItems.some((item) => isIntlCountry(item.country));
 
   const detectIsInternational = () => {
+    // South Africa (Domestic) is strictly default. International customers switch manually
     if (urlMode === 'international_aramex') return true;
-    if (urlMode === 'domestic_sa') return false;
-    if (urlCountry && isIntlCountry(urlCountry)) return true;
-    if (urlCountry && !isIntlCountry(urlCountry)) return false;
-    if (country_code && country_code !== 'ZA') return true;
-    if (user?.shippingAddress?.country && isIntlCountry(user.shippingAddress.country)) return true;
     return false;
   };
 
@@ -267,6 +263,23 @@ export default function CheckoutPage({
   const userFullName = resolveUserFullName(activeUser);
 
   const [formData, setFormData] = useState(() => {
+    const isIntl = urlMode === 'international_aramex';
+    if (isIntl) {
+      return {
+        email: '',
+        fullName: '',
+        firstName: '',
+        lastName: '',
+        phone: '',
+        phoneCountry: 'United Kingdom',
+        address: '',
+        city: '',
+        postalCode: '',
+        country: urlCountry || '',
+        lat: null,
+        lng: null
+      };
+    }
     const u = user || getStoredUser();
     const resolvedName = resolveUserFullName(u);
     const parts = resolvedName.split(/\s+/).filter(Boolean);
@@ -281,7 +294,7 @@ export default function CheckoutPage({
       address: '',
       city: '',
       postalCode: '',
-      country: urlCountry || (isInternationalOrder ? (vendorCartItems.find((item) => isIntlCountry(item.country))?.country || 'France') : 'South Africa'),
+      country: 'South Africa',
       lat: null,
       lng: null
     };
@@ -451,24 +464,15 @@ export default function CheckoutPage({
   };
 
   
-  // Auto-sync delivery mode: for international order it redirects to international delivery button; for local vice-versa
+  // Sync delivery mode based strictly on URL mode (defaults to domestic_sa)
   useEffect(() => {
-    const isIntl = detectIsInternational();
-    if (isIntl) {
+    if (urlMode === 'international_aramex') {
       setDestinationMode('international_aramex');
       setDeliveryPreference('home');
-      const targetCountry = (urlCountry && isIntlCountry(urlCountry))
-        ? urlCountry
-        : ((country_name && isIntlCountry(country_name)) ? country_name : (user?.shippingAddress?.country || 'United Kingdom'));
-      setFormData((prev) => ({
-        ...prev,
-        country: prev.country && isIntlCountry(prev.country) ? prev.country : targetCountry
-      }));
     } else {
       setDestinationMode('domestic_sa');
-      setFormData((prev) => ({ ...prev, country: 'South Africa' }));
     }
-  }, [urlMode, urlCountry, country_code, country_name]);
+  }, [urlMode]);
   useEffect(() => {
     document.title = 'Checkout – The Grand Store';
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -580,33 +584,48 @@ export default function CheckoutPage({
     }
   };
 
+  const domesticFormCache = useRef(null);
+  const internationalFormCache = useRef(null);
+
   const selectDeliveryMode = (mode) => {
     setQuote(null);
     setDutiesAccepted(false);
-    if (mode === 'domestic_home') {
+    setFormErrors({});
+
+    if (mode === 'domestic_home' || mode === 'domestic_pudo' || mode === 'domestic_postnet') {
+      // Save current international input if switching from international
+      if (destinationMode === 'international_aramex') {
+        internationalFormCache.current = { ...formData };
+      }
+
       setDestinationMode('domestic_sa');
-      setDeliveryPreference('home');
-      setFormData((current) => ({ ...current, country: 'South Africa' }));
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set('mode', 'domestic_sa');
-        next.delete('country');
-        return next;
-      });
-    } else if (mode === 'domestic_pudo') {
-      setDestinationMode('domestic_sa');
-      setDeliveryPreference('pudo');
-      setFormData((current) => ({ ...current, country: 'South Africa' }));
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set('mode', 'domestic_sa');
-        next.delete('country');
-        return next;
-      });
-    } else if (mode === 'domestic_postnet') {
-      setDestinationMode('domestic_sa');
-      setDeliveryPreference('postnet');
-      setFormData((current) => ({ ...current, country: 'South Africa' }));
+      const pref = mode === 'domestic_pudo' ? 'pudo' : mode === 'domestic_postnet' ? 'postnet' : 'home';
+      setDeliveryPreference(pref);
+
+      const cached = domesticFormCache.current;
+      if (cached) {
+        setFormData({ ...cached, country: 'South Africa' });
+      } else {
+        const u = user || getStoredUser();
+        const resolvedName = resolveUserFullName(u);
+        const parts = resolvedName.split(/\s+/).filter(Boolean);
+        const phoneInfo = splitPhoneNumber(u?.phone || u?.phoneNumber || '');
+        setFormData({
+          email: u?.email || '',
+          fullName: resolvedName,
+          firstName: parts[0] || '',
+          lastName: parts.slice(1).join(' ') || '',
+          phone: phoneInfo.phone || '',
+          phoneCountry: phoneInfo.phoneCountry || 'South Africa',
+          address: '',
+          city: '',
+          postalCode: '',
+          country: 'South Africa',
+          lat: null,
+          lng: null
+        });
+      }
+
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         next.set('mode', 'domestic_sa');
@@ -614,12 +633,35 @@ export default function CheckoutPage({
         return next;
       });
     } else if (mode === 'international_aramex') {
+      // Save current local input if switching from domestic
+      if (destinationMode === 'domestic_sa') {
+        domesticFormCache.current = { ...formData };
+      }
+
       setDestinationMode('international_aramex');
       setDeliveryPreference('home');
-      const currentCountry = formData.country && !['south africa', 'za', 'rsa'].includes(formData.country.trim().toLowerCase())
-        ? formData.country
-        : 'United Kingdom';
-      setFormData((current) => ({ ...current, country: currentCountry }));
+
+      // The international page should come fresh without fill ("all blank")
+      const cached = internationalFormCache.current;
+      if (cached) {
+        setFormData({ ...cached });
+      } else {
+        setFormData({
+          fullName: '',
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          phoneCountry: 'United Kingdom',
+          address: '',
+          city: '',
+          postalCode: '',
+          country: '',
+          lat: null,
+          lng: null
+        });
+      }
+
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         next.set('mode', 'international_aramex');
@@ -782,10 +824,16 @@ export default function CheckoutPage({
 
       if (data && Array.isArray(data.shipments)) {
         data.shipments = data.shipments.map((shipment) => {
-          const validQuotes = (shipment.shippingQuotes || []).filter(
-            (q) => q.serviceLevel !== 'PostNet Standard Delivery' && (Number(q.cost) >= 0 || q.isFreeDelivery || (q.serviceLevel && q.serviceLevel.includes('Economy Road')))
-          );
-          const validSelected = (shipment.selectedCourier && shipment.selectedCourier.serviceLevel !== 'PostNet Standard Delivery' && (Number(shipment.selectedCourier.cost) >= 0 || shipment.selectedCourier.isFreeDelivery || (shipment.selectedCourier.serviceLevel && shipment.selectedCourier.serviceLevel.includes('Economy Road'))))
+          const isShpIntl = Boolean(shipment.isInternational || (shipment.originCountry && !['south africa', 'za', 'rsa'].includes(shipment.originCountry.toLowerCase())));
+          const validQuotes = (shipment.shippingQuotes || []).filter((q) => {
+            if (q.serviceLevel === 'PostNet Standard Delivery') return false;
+            if (isShpIntl) {
+              return q.courierName?.includes('Aramex') || q.courierName?.includes('DHL');
+            } else {
+              return !q.serviceLevel?.includes('Global Express') && !q.serviceLevel?.includes('Worldwide Express') && (Number(q.cost) >= 0 || q.isFreeDelivery || (q.serviceLevel && q.serviceLevel.includes('Economy Road')));
+            }
+          });
+          const validSelected = (shipment.selectedCourier && validQuotes.some(vq => vq.serviceLevel === shipment.selectedCourier.serviceLevel))
             ? shipment.selectedCourier
             : (validQuotes[0] || null);
           return {
@@ -1521,6 +1569,10 @@ export default function CheckoutPage({
                       )}
                       <span className={destinationMode === 'international_aramex' || destinationMode === 'international_dhl' ? 'text-[var(--color-gold)] font-medium' : ''}>
                         {destinationMode === 'international_aramex' || destinationMode === 'international_dhl'
+                          ? 'Aramex Delivery'
+                          : quote?.shipments?.some(s => s.isInternational) && quote?.shipments?.some(s => !s.isInternational)
+                          ? 'The Courier Guy & Aramex Delivery'
+                          : quote?.shipments?.some(s => s.isInternational)
                           ? 'Aramex Delivery'
                           : deliveryPreference === 'postnet'
                           ? 'PostNet Collection'
@@ -2938,7 +2990,7 @@ export default function CheckoutPage({
                       (!detectedOrigin || detectedOrigin.toLowerCase().includes('south africa') || detectedOrigin.toLowerCase() === 'za') &&
                       shp.items && shp.items[0]?.country && !['south africa', 'za', 'rsa'].includes(shp.items[0].country.toLowerCase())
                     ) {
-                      detectedOrigin = destinationMode === 'domestic_sa' ? 'South Africa' : shp.items[0].country;
+                      detectedOrigin = shp.items[0].country;
                     }
 
                     if (!detectedOrigin) {
@@ -2959,6 +3011,8 @@ export default function CheckoutPage({
                       : cLow.includes('franc') ? 'France'
                       : (cLow.includes('south africa') || cLow === 'za' || cLow === 'rsa') ? 'South Africa'
                       : detectedOrigin;
+
+                    const isShipmentIntl = Boolean(shp.isInternational || (originCountry && !['south africa', 'za', 'rsa'].includes(originCountry.toLowerCase())));
 
                     const rawDest = shp.destCountry || formData.country || 'South Africa';
                     const destDisplay = rawDest ? (rawDest.charAt(0).toUpperCase() + rawDest.slice(1)) : 'South Africa';
@@ -3001,7 +3055,13 @@ export default function CheckoutPage({
                       
                       <div className="space-y-2.5">
                         {shp.shippingQuotes
-                          .filter((opt) => opt.serviceLevel !== 'PostNet Standard Delivery' && (Number(opt.cost) >= 0 || opt.isFreeDelivery || (opt.serviceLevel && opt.serviceLevel.includes('Economy Road'))))
+                          .filter((opt) => {
+                            if (opt.serviceLevel === 'PostNet Standard Delivery') return false;
+                            if (isShipmentIntl) {
+                              return opt.courierName?.includes('Aramex') || opt.courierName?.includes('DHL');
+                            }
+                            return !opt.serviceLevel?.includes('Global Express') && !opt.serviceLevel?.includes('Worldwide Express') && (Number(opt.cost) >= 0 || opt.isFreeDelivery || (opt.serviceLevel && opt.serviceLevel.includes('Economy Road')));
+                          })
                           .map((opt, optIndex) => {
                             const isSelected = shp.selectedCourier?.serviceLevel === opt.serviceLevel;
                             const isFree = Number(opt.cost || 0) === 0 || opt.isFreeDelivery;

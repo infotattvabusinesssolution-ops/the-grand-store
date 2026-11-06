@@ -72,10 +72,15 @@ const generateQuote = async (req, res) => {
         return res.status(404).json({ message: `Product not found: ${item.name}` });
       }
 
+      const prodCountry = (product.country || product.originCountry || '').trim().toLowerCase();
+      const isIntlProd = prodCountry && !['south africa', 'za', 'rsa'].includes(prodCountry);
       const vId = product.vendorId ? product.vendorId.toString() : 'unknown_vendor';
-      if (!vendorGroups[vId]) {
-        vendorGroups[vId] = {
+      const groupKey = `${vId}_${isIntlProd ? (product.country || product.originCountry) : 'za'}`;
+
+      if (!vendorGroups[groupKey]) {
+        vendorGroups[groupKey] = {
           vendorId: product.vendorId,
+          originCountry: isIntlProd ? (product.country || product.originCountry) : 'South Africa',
           items: [],
           subtotal: 0,
           totalWeightKg: 0
@@ -96,7 +101,7 @@ const generateQuote = async (req, res) => {
       const prodWidth = Number(product.shipping?.width_cm || product.width_cm || 12);
       const prodHeight = Number(product.shipping?.height_cm || product.height_cm || 34);
 
-      vendorGroups[vId].items.push({
+      vendorGroups[groupKey].items.push({
         ...item,
         price: itemPrice, // overriding with server price
         image: resolvedImage,
@@ -121,8 +126,8 @@ const generateQuote = async (req, res) => {
           aramexServiceType: product.shipping?.aramexServiceType || 'ONP'
         }
       });
-      vendorGroups[vId].subtotal += itemSubtotal;
-      vendorGroups[vId].totalWeightKg += (prodWeight * item.quantity); 
+      vendorGroups[groupKey].subtotal += itemSubtotal;
+      vendorGroups[groupKey].totalWeightKg += (prodWeight * item.quantity); 
       globalSubtotal += itemSubtotal;
     }
 
@@ -153,7 +158,7 @@ const generateQuote = async (req, res) => {
         shippingAddress, 
         group.subtotal, 
         group.totalWeightKg,
-        { postnetLookup, settings, items: group.items, vendor: vendorDoc }
+        { postnetLookup, settings, items: group.items, vendor: vendorDoc, originCountry: group.originCountry }
       );
 
       if (shippingData.isInternational) hasInternational = true;

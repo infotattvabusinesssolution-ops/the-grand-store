@@ -91,10 +91,37 @@ export default function Home() {
         })
       })
 
-      window.requestAnimationFrame(() => ScrollTrigger.refresh())
+      window.requestAnimationFrame(() => {
+        ScrollTrigger.refresh()
+        const initialHash = window.location.hash
+        if (initialHash) {
+          const target = (initialHash === '#gallery' || initialHash === '#cellar-film')
+            ? document.getElementById('cellar-film') || document.getElementById('gallery')
+            : document.querySelector(initialHash)
+          if (target) {
+            setTimeout(() => {
+              lenis.scrollTo(target, { offset: -50, duration: 1.2 })
+            }, 300)
+          }
+        }
+      })
     })
 
+    const handleHashChange = () => {
+      const hash = window.location.hash
+      if (hash) {
+        const target = (hash === '#gallery' || hash === '#cellar-film')
+          ? document.getElementById('cellar-film') || document.getElementById('gallery')
+          : document.querySelector(hash)
+        if (target) {
+          lenis.scrollTo(target, { offset: -50, duration: 1.2 })
+        }
+      }
+    }
+    window.addEventListener('hashchange', handleHashChange)
+
     return () => {
+      window.removeEventListener('hashchange', handleHashChange)
       context.revert()
       gsap.ticker.remove(tick)
       lenis.destroy()

@@ -481,12 +481,8 @@ export default function ProductCard({
           }}
           onProceed={(prod, qty, opt) => {
             if (onAdd) onAdd(prod, qty, opt, false);
-            const isIntl = country_code && country_code !== 'ZA';
-            if (isIntl) {
-              navigate(`/customer/checkout?mode=international_aramex${country_name ? `&country=${encodeURIComponent(country_name)}` : ''}`);
-            } else {
-              navigate('/customer/checkout?mode=domestic_sa');
-            }
+            // Default to South Africa (Domestic). International customers switch manually on checkout
+            navigate('/customer/checkout?mode=domestic_sa');
           }}
         />
       </article>

@@ -35,13 +35,27 @@ exports.listEstates = async (req, res) => {
 exports.getEstate = async (req, res) => {
   try {
     const slugOrId = req.params.slug;
-    let query = { slug: slugOrId, isPublished: true };
-    if (mongoose.Types.ObjectId.isValid(slugOrId)) {
+    let query;
+
+    // Handle legacy slug alias for Maison Dobbé Cognac
+    if (slugOrId === 'stellenbosch-hills-wine-estate' || slugOrId === 'maison-dobbe') {
+      query = {
+        $or: [
+          { slug: 'maison-dobbe' },
+          { slug: 'stellenbosch-hills-wine-estate' },
+          { _id: '6a86fc88f65fd21c2f682458' }
+        ],
+        isPublished: true,
+      };
+    } else if (mongoose.Types.ObjectId.isValid(slugOrId)) {
       query = {
         $or: [{ slug: slugOrId }, { _id: slugOrId }],
         isPublished: true,
       };
+    } else {
+      query = { slug: slugOrId, isPublished: true };
     }
+
     const estate = await EstateProfile.findOne(query)
       .populate('vendorId', 'name email')
       .lean();

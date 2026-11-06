@@ -9,6 +9,50 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (function() {
+        function scrollToVideo() {
+          var h = (window.location.hash || '').toLowerCase();
+          var q = (window.location.search || '').toLowerCase();
+          if (h.includes('gallery') || h.includes('cellar') || h.includes('film') || h.includes('video') || q.includes('gallery') || q.includes('video')) {
+            var tries = 0;
+            var timer = setInterval(function() {
+              tries++;
+              var target = document.getElementById('cellar-film') || 
+                           document.querySelector('.gallery-video-section') || 
+                           document.getElementById('gallery');
+              if (target) {
+                clearInterval(timer);
+                function doScroll() {
+                  if (window.lenis && typeof window.lenis.scrollTo === 'function') {
+                    window.lenis.scrollTo(target, { offset: -60, duration: 1.2 });
+                  } else {
+                    var rect = target.getBoundingClientRect();
+                    var absoluteTop = window.pageYOffset + rect.top - 60;
+                    window.scrollTo({ top: absoluteTop, behavior: 'smooth' });
+                  }
+                  var vid = target.querySelector('video');
+                  if (vid && vid.paused) {
+                    vid.play().catch(function() {});
+                  }
+                }
+                setTimeout(doScroll, 250);
+                setTimeout(doScroll, 800);
+                setTimeout(doScroll, 1600);
+              }
+              if (tries > 60) clearInterval(timer);
+            }, 100);
+          }
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', scrollToVideo);
+        } else {
+          scrollToVideo();
+        }
+        window.addEventListener('hashchange', scrollToVideo);
+        window.addEventListener('load', scrollToVideo);
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -89,7 +89,9 @@ export default function GalleryVideoSection() {
   };
 
   return (
-    <section className="gallery-video-section" id="cellar-film" ref={sectionRef}>
+    <>
+      <div id="gallery" style={{ position: 'relative', top: '-70px' }} />
+      <section className="gallery-video-section" id="cellar-film" ref={sectionRef}>
       <div className="shell video-section-header" data-reveal>
         <p className="eyebrow">
           <Film size={16} /> Exclusive Visuals
@@ -199,5 +201,6 @@ export default function GalleryVideoSection() {
         </div>
       </div>
     </section>
+    </>
   );
 }

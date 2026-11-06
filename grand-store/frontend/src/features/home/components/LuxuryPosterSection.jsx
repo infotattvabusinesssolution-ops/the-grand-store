@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Check, Sparkles } from 'lucide-react';
+import { ArrowUpRight, Check, Sparkles, Play } from 'lucide-react';
 import api from '../../../api';
 import './LuxuryPosterSection.css';
 
@@ -219,6 +219,20 @@ export default function LuxuryPosterSection({ onAdd }) {
                       {added ? <Check size={13} /> : <ArrowUpRight size={13} />}
                     </span>
                   </button>
+
+                  <a
+                    href="https://millionairescollection.com/?view=gallery#gallery"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="poster-video-link-btn"
+                    title="Experience the Cellar & Pour Showcase Video"
+                  >
+                    <span className="video-play-icon" aria-hidden="true">
+                      <Play size={9} className="fill-current ml-0.5" />
+                    </span>
+                    <span>CELLAR & POUR SHOWCASE</span>
+                    <ArrowUpRight size={12} />
+                  </a>
 
                   <a
                     href="https://millionairescollection.com/#giveaway"

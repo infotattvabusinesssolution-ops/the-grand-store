@@ -820,6 +820,53 @@
   box-shadow: 0 6px 20px -3px rgba(223, 153, 38, 0.35);
 }
 
+.poster-video-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.72rem 1.25rem;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.16) 0%, rgba(180, 130, 30, 0.08) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  border-radius: 9999px;
+  color: #f7eedb;
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.35);
+}
+
+.poster-video-link-btn:hover {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(180, 130, 30, 0.18) 100%);
+  border-color: #f0d588;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -2px rgba(212, 175, 55, 0.35);
+}
+
+.poster-video-link-btn .video-play-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f0d588 0%, #d4af37 100%);
+  color: #0b0906;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.3s ease, background 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.poster-video-link-btn:hover .video-play-icon {
+  transform: scale(1.12);
+  background: #ffffff;
+  color: #0b0906;
+}
+
 /* ==========================================================================
    MOBILE & TABLET RESPONSIVE VIEW OPTIMIZATION (SOUTH AFRICA / LOCAL)
    Editorial Elegance, Touch-Friendly Ergonomics & Cinematic Proportions
@@ -1121,6 +1168,14 @@
     width: 100%;
     justify-content: center;
     padding: 0.7rem 1rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+  }
+
+  .poster-video-link-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.72rem 1rem;
     font-size: 0.65rem;
     letter-spacing: 0.14em;
   }

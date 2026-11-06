@@ -88,6 +88,14 @@ const FALLBACK_FARMS = [
     copy: 'Founded in 2015 by long-standing Hamilton Russell Vineyards employee Berene Sauls. Classically styled small-production Pinot Noir and Chardonnay crafted in clay amphorae and neutral oak, expressing the cool, maritime Hemel-en-Aarde Ridge.',
   },
   {
+    name: 'Maison Dobbé Cognac',
+    vendor: 'Dobbé Family (Maison Dobbé SAS)',
+    slug: 'maison-dobbe',
+    region: 'Salignac-sur-Charente, Cognac, France',
+    image: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80',
+    copy: 'Founded in 1787 in Salignac-sur-Charente near Cognac, Maison Dobbé represents ten generations of winegrowers, artisan distillers, and master blenders. Double-distilled in traditional Charentais copper pot stills and matured in handcrafted French oak barrels.',
+  },
+  {
     name: 'Original Wines',
     vendor: 'Mr. Grand Store',
     image: '/assets/farm-original.jpg',
