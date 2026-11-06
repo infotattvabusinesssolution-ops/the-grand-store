@@ -15,6 +15,7 @@ const auctionLotSchema = new mongoose.Schema({
   provenance: { type: String },
   images: [{ type: String }],
   videoUrl: { type: String },
+  offeredBy: { type: String, default: 'The Grand Store Vault' },
   vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   winner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   status: {

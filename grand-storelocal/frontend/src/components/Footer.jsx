@@ -176,25 +176,6 @@ export default function Footer() {
           <Link className="block w-fit m-[0_0_14px] lg:m-[0_0_17px] text-[#f2ede4] font-serif text-[16px] lg:text-[17px] leading-[1.15] transition-all duration-[150ms] hover:text-[#e1bd70] hover:translate-x-[3px]" to="/auction" target="_blank" rel="noopener noreferrer">Auction</Link>
           <Link className="block w-fit m-[0_0_14px] lg:m-[0_0_17px] text-[#f2ede4] font-serif text-[16px] lg:text-[17px] leading-[1.15] transition-all duration-[150ms] hover:text-[#e1bd70] hover:translate-x-[3px]" to="/contact-us" target="_blank" rel="noopener noreferrer">Contact us</Link>
           <a className="block w-fit m-[0_0_14px] lg:m-[0_0_17px] text-[#f2ede4] font-serif text-[16px] lg:text-[17px] leading-[1.15] transition-all duration-[150ms] hover:text-[#e1bd70] hover:translate-x-[3px]" href="https://sacoronavirus.co.za/" target="_blank" rel="noopener noreferrer">Covid protocol</a>
-          
-          <div className="flex items-center gap-[12px] mt-[14px] flex-wrap">
-            {socialLinks.map((social) => {
-              const IconComponent = social.Icon
-              return (
-                <a 
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="grid place-items-center w-[42px] h-[42px] rounded-full bg-[#1c1d1d] text-[#f5d77f] border border-[#d4af37]/40 shadow-[0_4px_12px_rgba(0,0,0,0.5)] hover:border-[#ffd700] hover:bg-gradient-to-tr hover:from-[#ffd700] hover:to-[#d4af37] hover:text-[#0b0c0c] hover:scale-110 hover:shadow-[0_0_18px_rgba(212,175,55,0.5)] active:scale-95 transition-all duration-200 cursor-pointer"
-                  aria-label={`Visit The Grand Store on ${social.label}`}
-                  title={social.label}
-                >
-                  <IconComponent size={social.label === 'YouTube' ? 21 : 18} />
-                </a>
-              )
-            })}
-          </div>
         </div>
         <div className="flex flex-col">
           <h3 className="m-[0_0_20px] lg:m-[0_0_28px] pb-[13px] lg:pb-[18px] border-b border-[#d99d39]/80 text-[#d99d39] font-serif text-[23px] lg:text-[25px] font-medium">Our Policies</h3>
@@ -264,11 +245,31 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-[#e1bd70]/20 bg-[#070706]">
-        <div className="max-w-[1240px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between min-h-[80px] py-6 md:py-0 gap-6 text-[#d6cec0] font-serif text-[16px]">
-          <p className="m-0 text-center md:text-left text-[14px] sm:text-[16px] text-[#f2ede4]/80">
+        <div className="max-w-[1240px] mx-auto px-6 flex flex-col lg:flex-row items-center justify-between min-h-[86px] py-6 lg:py-0 gap-6 text-[#d6cec0] font-serif text-[16px]">
+          <p className="m-0 text-center lg:text-left text-[14px] sm:text-[15px] text-[#f2ede4]/80 order-2 lg:order-1">
             Copyright © {new Date().getFullYear()} <Link className="text-[var(--color-gold)] font-medium no-underline transition-colors hover:brightness-125 mx-1" to="/">The Grand Store</Link>. All Rights Reserved.
           </p>
-          <img className="h-10 md:h-12 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" src="/assets/footer/payment-strip.png" alt="Accepted payment methods" />
+
+          <div className="flex items-center gap-[12px] order-1 lg:order-2" aria-label="Follow The Grand Store on Social Media">
+            {socialLinks.map((social) => {
+              const IconComponent = social.Icon
+              return (
+                <a 
+                  key={social.label}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="grid place-items-center w-[38px] h-[38px] rounded-full bg-[#1c1d1d] text-[#f5d77f] border border-[#d4af37]/40 shadow-[0_4px_12px_rgba(0,0,0,0.5)] hover:border-[#ffd700] hover:bg-gradient-to-tr hover:from-[#ffd700] hover:to-[#d4af37] hover:text-[#0b0c0c] hover:scale-110 hover:shadow-[0_0_18px_rgba(212,175,55,0.5)] active:scale-95 transition-all duration-200 cursor-pointer"
+                  aria-label={`Visit The Grand Store on ${social.label}`}
+                  title={social.label}
+                >
+                  <IconComponent size={social.label === 'YouTube' ? 19 : 16} />
+                </a>
+              )
+            })}
+          </div>
+
+          <img className="h-9 lg:h-11 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity order-3" src="/assets/footer/payment-strip.png" alt="Accepted payment methods" />
         </div>
       </div>
     </footer>

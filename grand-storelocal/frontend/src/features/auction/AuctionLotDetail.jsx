@@ -387,7 +387,7 @@ export default function AuctionLotDetail({ onNotify }) {
   const isAdmin = Boolean(user && ['admin', 'super_admin'].includes(user.role));
   const isVendor = user && lot.vendor && (user._id === (typeof lot.vendor === 'object' ? lot.vendor._id : lot.vendor));
 
-  const vendorName = lot.vendor ? (lot.vendor.storeName || lot.vendor.name) : 'The Grand Store';
+  const vendorName = lot.offeredBy || (lot.vendor ? (lot.vendor.storeName || (lot.vendor.name === 'Store Administrator' || lot.vendor.role?.includes('admin') ? 'The Grand Store Vault' : (lot.vendor.name === 'Maison Dobbé Cognac' && !lot.category?.toLowerCase().includes('cognac') ? 'The Grand Store Vault' : lot.vendor.name))) : 'The Grand Store Vault');
 
   const currentUserId = user?._id;
   const isRestrictedRole = user && (['admin', 'super_admin', 'vendor_active'].includes(user.role));

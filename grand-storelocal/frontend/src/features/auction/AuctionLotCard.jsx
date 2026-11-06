@@ -10,7 +10,7 @@ import { getAuctionPhase, getAuctionTargetTime } from './auctionPhase';
 
 export default function AuctionLotCard({ lot, endTime, now, saved, onSave, onBid }) {
   const { products } = useProducts();
-  const vendorName = lot.vendor ? (lot.vendor.storeName || lot.vendor.name) : 'The Grand Store';
+  const vendorName = lot.offeredBy || (lot.vendor ? (lot.vendor.storeName || (lot.vendor.name === 'Store Administrator' || lot.vendor.role?.includes('admin') ? 'The Grand Store Vault' : (lot.vendor.name === 'Maison Dobbé Cognac' && !lot.category?.toLowerCase().includes('cognac') ? 'The Grand Store Vault' : lot.vendor.name))) : 'The Grand Store Vault');
   const phase = lot.displayStatus || getAuctionPhase(lot, now);
   const isUpcoming = phase === 'upcoming';
   const targetTime = getAuctionTargetTime(lot, now);

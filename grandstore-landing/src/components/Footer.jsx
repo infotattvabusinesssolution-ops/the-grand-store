@@ -219,25 +219,6 @@ export default function Footer({
           <a className="footer-nav-link" href="https://sacoronavirus.co.za/" target="_blank" rel="noopener noreferrer">
             Covid protocol
           </a>
-
-          <div className="footer-social-row">
-            {socialLinks.map((social) => {
-              const IconComponent = social.Icon;
-              return (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="footer-social-badge"
-                  aria-label={`Visit The Grand Store on ${social.label}`}
-                  title={social.label}
-                >
-                  <IconComponent size={social.label === 'YouTube' ? 21 : 18} />
-                </a>
-              );
-            })}
-          </div>
         </div>
 
         {/* Column 2: Our Policies */}
@@ -426,8 +407,8 @@ export default function Footer({
 
       {/* Bottom Legal & Payment Strip */}
       <div className="footer-bottom-bar">
-        <div className="footer-bottom-inner">
-          <p className="footer-copyright">
+        <div className="footer-bottom-inner flex flex-col lg:flex-row items-center justify-between min-h-[86px] py-6 lg:py-0 gap-6">
+          <p className="footer-copyright order-2 lg:order-1">
             Copyright © {new Date().getFullYear()}{' '}
             <a
               className="footer-brand-gold-link"
@@ -443,8 +424,28 @@ export default function Footer({
             </a>
             . All Rights Reserved.
           </p>
+
+          <div className="flex items-center gap-[12px] order-1 lg:order-2" aria-label="Follow The Grand Store on Social Media">
+            {socialLinks.map((social) => {
+              const IconComponent = social.Icon;
+              return (
+                <a
+                  key={social.label}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="grid place-items-center w-[38px] h-[38px] rounded-full bg-[#1c1d1d] text-[#f5d77f] border border-[#d4af37]/40 shadow-[0_4px_12px_rgba(0,0,0,0.5)] hover:border-[#ffd700] hover:bg-gradient-to-tr hover:from-[#ffd700] hover:to-[#d4af37] hover:text-[#0b0c0c] hover:scale-110 hover:shadow-[0_0_18px_rgba(212,175,55,0.5)] active:scale-95 transition-all duration-200 cursor-pointer"
+                  aria-label={`Visit The Grand Store on ${social.label}`}
+                  title={social.label}
+                >
+                  <IconComponent size={social.label === 'YouTube' ? 19 : 16} />
+                </a>
+              );
+            })}
+          </div>
+
           <img
-            className="footer-payment-strip"
+            className="footer-payment-strip order-3"
             src="/assets/footer/payment-strip.png"
             alt="Accepted payment methods"
           />
