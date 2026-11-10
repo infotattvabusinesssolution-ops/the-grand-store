@@ -7,6 +7,11 @@ test('resolveChannel routes explicit types', () => {
   assert.equal(resolveChannel({ channel: 'billing' }), 'billing');
   assert.equal(resolveChannel({ type: 'purchase' }), 'billing');
   assert.equal(resolveChannel({ type: 'order' }), 'billing');
+  assert.equal(resolveChannel({ type: 'support' }), 'support');
+
+  assert.equal(resolveChannel({ type: 'auth' }), 'auth');
+  assert.equal(resolveChannel({ type: 'noreply' }), 'auth');
+  assert.equal(resolveChannel({ type: 'auction' }), 'auction');
 
   assert.equal(resolveChannel({ type: 'info' }), 'info');
   assert.equal(resolveChannel({ channel: 'info' }), 'info');
@@ -35,10 +40,14 @@ test('resolveChannel auto-detects vendor from subject keywords', () => {
   assert.equal(resolveChannel({ subject: 'Monthly Settlement Payout Notice' }), 'vendor');
 });
 
-test('resolveChannel defaults to info for queries, OTP, and general emails', () => {
+test('resolveChannel auto-detects auth security from OTP and password reset keywords', () => {
+  assert.equal(resolveChannel({ subject: 'Your One-Time Password (OTP)' }), 'auth');
+  assert.equal(resolveChannel({ subject: 'Reset Your Grand Store Password' }), 'auth');
+  assert.equal(resolveChannel({ subject: 'Verify your email - The Grand Store' }), 'auth');
+});
+
+test('resolveChannel defaults to info for queries and general emails', () => {
   assert.equal(resolveChannel({ subject: 'We received your Mcigar enquiry' }), 'info');
-  assert.equal(resolveChannel({ subject: 'Your One-Time Password (OTP)' }), 'info');
-  assert.equal(resolveChannel({ subject: 'Reset Your Grand Store Password' }), 'info');
   assert.equal(resolveChannel({ subject: 'Welcome to The Grand Store' }), 'info');
   assert.equal(resolveChannel({ subject: 'Customer Question regarding Cohiba' }), 'info');
 });

@@ -5,8 +5,8 @@ import { FacebookIcon, TwitterIcon, InstagramIcon, YoutubeIcon, PinterestIcon, T
 export default function Footer() {
   const [newsletterStatus, setNewsletterStatus] = useState('')
 
-  // Dynamic Visitor Counter (starting baseline: 538,113)
-  const BASE_VISITORS = 538113
+  // Dynamic Visitor Counter (starting baseline: 545,462)
+  const BASE_VISITORS = 545462
   const [visitorCount, setVisitorCount] = useState(() => {
     try {
       const stored = localStorage.getItem('tgs_total_visitors')
@@ -19,6 +19,19 @@ export default function Footer() {
   })
   const [displayCount, setDisplayCount] = useState(visitorCount)
   const [isBumping, setIsBumping] = useState(false)
+
+  // Handle click on Total Visitors to add +5
+  const handleVisitorClick = () => {
+    setVisitorCount((prev) => {
+      const next = prev + 5
+      try {
+        localStorage.setItem('tgs_total_visitors', String(next))
+      } catch {}
+      return next
+    })
+    setIsBumping(true)
+    setTimeout(() => setIsBumping(false), 500)
+  }
 
   // Smooth roll-up on initial mount
   useEffect(() => {
@@ -46,14 +59,14 @@ export default function Footer() {
     return () => cancelAnimationFrame(animationFrameId)
   }, [])
 
-  // Count new visitor once per browser session
+  // Count new visitor once per browser session (+5 as requested)
   useEffect(() => {
     try {
       const hasCounted = sessionStorage.getItem('tgs_session_counted')
       if (!hasCounted) {
         sessionStorage.setItem('tgs_session_counted', 'true')
         setVisitorCount((prev) => {
-          const next = prev + 1
+          const next = prev + 5
           try {
             localStorage.setItem('tgs_total_visitors', String(next))
           } catch {}
@@ -175,7 +188,6 @@ export default function Footer() {
           <Link className="block w-fit m-[0_0_14px] lg:m-[0_0_17px] text-[#f2ede4] font-serif text-[16px] lg:text-[17px] leading-[1.15] transition-all duration-[150ms] hover:text-[#e1bd70] hover:translate-x-[3px]" to="/cocktail" target="_blank" rel="noopener noreferrer">Cocktail</Link>
           <Link className="block w-fit m-[0_0_14px] lg:m-[0_0_17px] text-[#f2ede4] font-serif text-[16px] lg:text-[17px] leading-[1.15] transition-all duration-[150ms] hover:text-[#e1bd70] hover:translate-x-[3px]" to="/auction" target="_blank" rel="noopener noreferrer">Auction</Link>
           <Link className="block w-fit m-[0_0_14px] lg:m-[0_0_17px] text-[#f2ede4] font-serif text-[16px] lg:text-[17px] leading-[1.15] transition-all duration-[150ms] hover:text-[#e1bd70] hover:translate-x-[3px]" to="/contact-us" target="_blank" rel="noopener noreferrer">Contact us</Link>
-          <a className="block w-fit m-[0_0_14px] lg:m-[0_0_17px] text-[#f2ede4] font-serif text-[16px] lg:text-[17px] leading-[1.15] transition-all duration-[150ms] hover:text-[#e1bd70] hover:translate-x-[3px]" href="https://sacoronavirus.co.za/" target="_blank" rel="noopener noreferrer">Covid protocol</a>
         </div>
         <div className="flex flex-col">
           <h3 className="m-[0_0_20px] lg:m-[0_0_28px] pb-[13px] lg:pb-[18px] border-b border-[#d99d39]/80 text-[#d99d39] font-serif text-[23px] lg:text-[25px] font-medium">Our Policies</h3>
@@ -222,13 +234,17 @@ export default function Footer() {
             </button>
           </form>
           {newsletterStatus && <p className="m-[10px_0_0] text-[#cfc6b7] font-sans text-[11px]" role="status">{newsletterStatus}</p>}
-          <strong className="block mt-[28px] pb-[22px] border-b border-[#d99d39]/70 text-[#d99d39] font-serif text-[23px] font-medium">
+          <strong 
+            onClick={handleVisitorClick}
+            className="block mt-[28px] pb-[22px] border-b border-[#d99d39]/70 text-[#d99d39] font-serif text-[23px] font-medium cursor-pointer select-none transition-transform active:scale-[0.98] group"
+            title="Click to increment total visitors (+5)"
+          >
             Total Visitors <span className="px-[5px]">:</span>
             <span 
               className={`inline-block ml-1 font-['Montserrat',sans-serif] font-bold text-[24px] lg:text-[25px] tracking-wider tabular-nums transition-all duration-300 ${
                 isBumping 
-                  ? 'text-[#fff4b8] scale-105 drop-shadow-[0_0_14px_rgba(255,215,0,0.8)]' 
-                  : 'text-[#ffd700] drop-shadow-[0_2px_8px_rgba(212,175,55,0.35)]'
+                  ? 'text-[#fff4b8] scale-110 drop-shadow-[0_0_16px_rgba(255,215,0,0.9)]' 
+                  : 'text-[#ffd700] drop-shadow-[0_2px_8px_rgba(212,175,55,0.35)] group-hover:brightness-110'
               }`}
             >
               {displayCount.toLocaleString()}

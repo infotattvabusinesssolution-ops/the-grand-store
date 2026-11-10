@@ -314,6 +314,12 @@ const createProduct = async (req, res) => {
       vendorId: canManageInternalProducts(req.user) ? null : req.user._id,
       approvalStatus: 'approved',
       shipping,
+      bottlesPerCase: Number(req.body.bottlesPerCase) || 6,
+      caseConfiguration: req.body.caseConfiguration || '',
+      casePrice: req.body.casePrice ? Number(req.body.casePrice) : undefined,
+      caseWeight: req.body.caseWeight ? Number(req.body.caseWeight) : undefined,
+      caseDimensions: parseJsonValue(req.body.caseDimensions, { length_cm: 32, width_cm: 26, height_cm: 35 }),
+      supplyType: req.body.supplyType || 'both',
       channelSettings: parseJsonValue(req.body.channelSettings, {
         retail: { enabled: true, minOrderQuantity: 1, maxOrderQuantity: 24 },
         trade: { enabled: false, exportApprovalStatus: 'not_applied' }
@@ -435,6 +441,24 @@ const updateProduct = async (req, res) => {
     }
     if (req.body.referralDiscountPct !== undefined && req.body.referralDiscountPct !== '') {
       product.referralDiscountPct = Math.max(0, Math.min(100, Number(req.body.referralDiscountPct) || 0));
+    }
+    if (req.body.bottlesPerCase !== undefined) {
+      product.bottlesPerCase = Number(req.body.bottlesPerCase) || 6;
+    }
+    if (req.body.caseConfiguration !== undefined) {
+      product.caseConfiguration = String(req.body.caseConfiguration);
+    }
+    if (req.body.casePrice !== undefined) {
+      product.casePrice = req.body.casePrice ? Number(req.body.casePrice) : undefined;
+    }
+    if (req.body.caseWeight !== undefined) {
+      product.caseWeight = req.body.caseWeight ? Number(req.body.caseWeight) : undefined;
+    }
+    if (req.body.caseDimensions !== undefined) {
+      product.caseDimensions = parseJsonValue(req.body.caseDimensions, product.caseDimensions);
+    }
+    if (req.body.supplyType !== undefined) {
+      product.supplyType = req.body.supplyType;
     }
     if (req.body.channelSettings !== undefined) {
       product.channelSettings = parseJsonValue(req.body.channelSettings, product.channelSettings);

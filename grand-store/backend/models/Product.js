@@ -108,6 +108,33 @@ const productSchema = new mongoose.Schema(
       default: 0, // Stock committed to accepted B2B trade consignments
     },
     // ==========================================
+    // CASE OF BOTTLE SPECIFICATIONS (International Vendor Standard P4-P5)
+    // ==========================================
+    bottlesPerCase: {
+      type: Number,
+      default: 6,
+    },
+    caseConfiguration: {
+      type: String,
+      default: "", // e.g. "6 × 750ml"
+    },
+    casePrice: {
+      type: Number, // Optional override or discounted case price
+    },
+    caseWeight: {
+      type: Number, // Gross case weight in kg
+    },
+    caseDimensions: {
+      length_cm: { type: Number, default: 32.0 },
+      width_cm: { type: Number, default: 26.0 },
+      height_cm: { type: Number, default: 35.0 },
+    },
+    supplyType: {
+      type: String,
+      enum: ["both", "case_only", "bottle_only"],
+      default: "both",
+    },
+    // ==========================================
     // DUAL CHANNEL SETTINGS (Retail vs Trade)
     // ==========================================
     channelSettings: {

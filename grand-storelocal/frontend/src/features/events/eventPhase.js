@@ -1,8 +1,25 @@
 const EVENT_TIMEZONE_OFFSET = "+02:00";
 
-export const resolveEventImage = (image) => {
+export const getEventFallbackImage = (event) => {
+  const title = String(event?.title || "").toLowerCase();
+  const type = String(event?.type || "").toLowerCase();
+  const desc = String(event?.description || "").toLowerCase();
+
+  if (title.includes("whisky") || type.includes("whisky") || desc.includes("whisky")) {
+    return "https://res.cloudinary.com/oioqrgj0/image/upload/v1792156282/grandstore-uploads/events/loch-lomond-whisky-tasting-8-october-2026.jpg";
+  }
+  if (title.includes("gala") || title.includes("dinner") || desc.includes("gala") || desc.includes("dinner")) {
+    return "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=1200&auto=format&fit=crop&q=85";
+  }
+  // Default wine tasting / masterclass setting
+  return "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=1200&auto=format&fit=crop&q=85";
+};
+
+export const resolveEventImage = (image, event) => {
   const source = String(image || "").trim();
-  if (!source) return "";
+  if (!source) {
+    return event ? getEventFallbackImage(event) : "";
+  }
   if (/^(https?:)?\/\//i.test(source) || source.startsWith("data:") || source.startsWith("blob:")) {
     return source;
   }

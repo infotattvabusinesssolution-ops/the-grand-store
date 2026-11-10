@@ -19,8 +19,8 @@ export default function Footer({
 }) {
   const [newsletterStatus, setNewsletterStatus] = useState('');
 
-  // Dynamic Visitor Counter (starting baseline: 538,113)
-  const BASE_VISITORS = 538113;
+  // Dynamic Visitor Counter (starting baseline: 545,462)
+  const BASE_VISITORS = 545462;
   const [visitorCount, setVisitorCount] = useState(() => {
     try {
       const stored = localStorage.getItem('tgs_total_visitors');
@@ -33,6 +33,19 @@ export default function Footer({
   });
   const [displayCount, setDisplayCount] = useState(visitorCount);
   const [isBumping, setIsBumping] = useState(false);
+
+  // Handle click on Total Visitors to add +5
+  const handleVisitorClick = () => {
+    setVisitorCount((prev) => {
+      const next = prev + 5;
+      try {
+        localStorage.setItem('tgs_total_visitors', String(next));
+      } catch {}
+      return next;
+    });
+    setIsBumping(true);
+    setTimeout(() => setIsBumping(false), 500);
+  };
 
   // Smooth roll-up on mount
   useEffect(() => {
@@ -60,14 +73,14 @@ export default function Footer({
     return () => cancelAnimationFrame(animationFrameId);
   }, []);
 
-  // Increment once per browser session
+  // Increment once per browser session (+5 as requested)
   useEffect(() => {
     try {
       const hasCounted = sessionStorage.getItem('tgs_session_counted');
       if (!hasCounted) {
         sessionStorage.setItem('tgs_session_counted', 'true');
         setVisitorCount((prev) => {
-          const next = prev + 1;
+          const next = prev + 5;
           try {
             localStorage.setItem('tgs_total_visitors', String(next));
           } catch {}
@@ -216,9 +229,6 @@ export default function Footer({
           <a className="footer-nav-link" href={`${STORE}/contact-us`} target="_blank" rel="noopener noreferrer">
             Contact us
           </a>
-          <a className="footer-nav-link" href="https://sacoronavirus.co.za/" target="_blank" rel="noopener noreferrer">
-            Covid protocol
-          </a>
         </div>
 
         {/* Column 2: Our Policies */}
@@ -355,7 +365,12 @@ export default function Footer({
               {newsletterStatus}
             </p>
           )}
-          <strong className="footer-visitor-counter">
+          <strong 
+            onClick={handleVisitorClick}
+            className="footer-visitor-counter cursor-pointer select-none"
+            title="Click to increment total visitors (+5)"
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+          >
             Total Visitors <span className="visitor-colon">:</span>
             <span 
               style={{
@@ -363,12 +378,12 @@ export default function Footer({
                 fontWeight: 700,
                 letterSpacing: '0.06em',
                 color: isBumping ? '#fff4b8' : '#ffd700',
-                textShadow: isBumping ? '0 0 14px rgba(255,215,0,0.8)' : '0 2px 8px rgba(212,175,55,0.35)',
+                textShadow: isBumping ? '0 0 16px rgba(255,215,0,0.9)' : '0 2px 8px rgba(212,175,55,0.35)',
                 display: 'inline-block',
                 marginLeft: '4px',
                 transition: 'all 0.3s ease',
                 fontVariantNumeric: 'tabular-nums',
-                transform: isBumping ? 'scale(1.05)' : 'scale(1)',
+                transform: isBumping ? 'scale(1.1)' : 'scale(1)',
               }}
             >
               {displayCount.toLocaleString()}

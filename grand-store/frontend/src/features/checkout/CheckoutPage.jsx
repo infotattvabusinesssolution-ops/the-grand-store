@@ -3129,49 +3129,7 @@ export default function CheckoutPage({
                 </div>
 
                 
-                {/* 🛡️ Transit & Bottle Breakage Protection (Clean & Streamlined) */}
-                <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
-                  transitInsuranceOptIn
-                    ? 'border-emerald-500/40 bg-emerald-500/5 shadow-sm'
-                    : 'border-white/10 bg-[#0d0d0d] hover:border-white/20'
-                }`}>
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className={`p-2.5 rounded-xl shrink-0 ${
-                        transitInsuranceOptIn ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-white/40'
-                      }`}>
-                        <ShieldCheck size={20} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-semibold text-white">Transit & Breakage Protection</h4>
-                          <span className="text-[10px] text-emerald-400 font-mono font-medium hidden sm:inline">(1.5%)</span>
-                        </div>
-                        <p className="text-xs text-white/50 truncate">
-                          100% full replacement coverage against bottle damage or loss in transit
-                        </p>
-                      </div>
-                    </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-emerald-400 font-mono">
-                          +<Price amount={transitInsuranceAmount} />
-                        </p>
-                        <p className="text-[10px] text-white/40">1.5% premium</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={transitInsuranceOptIn}
-                          onChange={(e) => setTransitInsuranceOptIn(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-                      </label>
-                    </div>
-                  </div>
-                </div>
 
                 {/* 📄 International Customs & Export Notice (Clean & Minimal - International Only) */}
                 {destinationMode === 'international_aramex' && (

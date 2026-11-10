@@ -49,6 +49,13 @@ export default function AddProduct({ onNotify }) {
     minOrderQuantity: '',
     exportReady: false,
     bottlesPerCase: '6',
+    caseConfiguration: '',
+    casePrice: '',
+    caseWeight: '',
+    caseLength_cm: '32',
+    caseWidth_cm: '26',
+    caseHeight_cm: '35',
+    supplyType: 'both',
     casesPerPallet: '56',
     hsCode: '2204.21',
     palletsPer20ft: '10',
@@ -278,6 +285,16 @@ export default function AddProduct({ onNotify }) {
       payload.append('width_cm', formData.width_cm);
       payload.append('height_cm', formData.height_cm);
       payload.append('box_type', formData.box_type);
+      payload.append('bottlesPerCase', formData.bottlesPerCase || 6);
+      payload.append('caseConfiguration', formData.caseConfiguration || `${formData.bottlesPerCase || 6} × ${formData.size || '750ml'}`);
+      if (formData.casePrice) payload.append('casePrice', formData.casePrice);
+      if (formData.caseWeight) payload.append('caseWeight', formData.caseWeight);
+      payload.append('caseDimensions', JSON.stringify({
+        length_cm: Number(formData.caseLength_cm) || 32,
+        width_cm: Number(formData.caseWidth_cm) || 26,
+        height_cm: Number(formData.caseHeight_cm) || 35
+      }));
+      payload.append('supplyType', formData.supplyType || 'both');
 
       let uploadIndex = 0;
       const imageOrder = imageEntries.map((entry) => {
@@ -490,6 +507,116 @@ export default function AddProduct({ onNotify }) {
                     </label>
                   </div>
                 </div>
+
+                {/* Section 4: Product Information & Case Quantities (Page 4-5 International Vendor Standard) */}
+                {(!formData.type || !/cigar|access/i.test(formData.type)) && (
+                  <div className="p-6 rounded-2xl bg-gradient-to-b from-[#17140f] to-[#0f0e0b] border border-[#c9a35b]/30 shadow-lg space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-4">
+                      <div className="flex items-center gap-2.5">
+                        <Package size={20} className="text-[#dfbd72]" />
+                        <div>
+                          <h3 className="text-base font-serif font-bold text-white uppercase tracking-wider">
+                            4. Case Quantities & Packaging Specs
+                          </h3>
+                          <p className="text-xs text-[#918a7f]">
+                            International Vendor Specification (Pages 4–5) • Required for case pricing & freight
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-mono text-[#dfbd72] bg-[#c9a35b]/10 border border-[#c9a35b]/30 px-3 py-1 rounded-full w-fit">
+                        Preview: {formData.caseConfiguration || `${formData.bottlesPerCase || 6} × ${formData.size || '750ml'} Case`}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-[#dfbd72] font-semibold mb-2">
+                          Bottles Per Case *
+                        </label>
+                        <select
+                          name="bottlesPerCase"
+                          value={formData.bottlesPerCase}
+                          onChange={handleChange}
+                          className="w-full bg-black/40 border border-[#c9a35b]/40 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                        >
+                          <option value="6" className="bg-[#1a1a1a]">6 bottles / case (Standard)</option>
+                          <option value="12" className="bg-[#1a1a1a]">12 bottles / case (Full Dozen)</option>
+                          <option value="3" className="bg-[#1a1a1a]">3 bottles / case (Magnum/Gift)</option>
+                          <option value="24" className="bg-[#1a1a1a]">24 bottles / case (Half-Bottles / Beer / Cider)</option>
+                          <option value="1" className="bg-[#1a1a1a]">1 bottle / case (Single Presentation Box)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-[#dfbd72] font-semibold mb-2">
+                          Case Configuration
+                        </label>
+                        <input
+                          type="text"
+                          name="caseConfiguration"
+                          value={formData.caseConfiguration}
+                          onChange={handleChange}
+                          placeholder={`${formData.bottlesPerCase || 6} × ${formData.size || '750ml'}`}
+                          className="w-full bg-black/40 border border-white/20 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                        />
+                        <p className="text-[10px] text-[#918a7f] mt-1 font-mono">
+                          Auto: {formData.bottlesPerCase || 6} × {formData.size || '750ml'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-[#dfbd72] font-semibold mb-2">
+                          Price Per Case (ZAR)
+                        </label>
+                        <input
+                          type="number"
+                          name="casePrice"
+                          value={formData.casePrice}
+                          onChange={handleChange}
+                          placeholder={formData.price ? String(Math.round(Number(formData.price) * (Number(formData.bottlesPerCase) || 6))) : '0'}
+                          className="w-full bg-black/40 border border-white/20 rounded-lg px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-[#c9a35b]"
+                        />
+                        <p className="text-[10px] text-[#918a7f] mt-1 font-mono">
+                          Default: R{Math.round((Number(formData.price) || 0) * (Number(formData.bottlesPerCase) || 6))} ({formData.bottlesPerCase || 6} × bottle)
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-[#dfbd72] font-semibold mb-2">
+                          Case Gross Weight (kg)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          name="caseWeight"
+                          value={formData.caseWeight}
+                          onChange={handleChange}
+                          placeholder={String(((Number(formData.weight_kg) || 1.85) * (Number(formData.bottlesPerCase) || 6) + 0.4).toFixed(2))}
+                          className="w-full bg-black/40 border border-white/20 rounded-lg px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-[#c9a35b]"
+                        />
+                        <p className="text-[10px] text-[#918a7f] mt-1 font-mono">
+                          Est: {((Number(formData.weight_kg) || 1.85) * (Number(formData.bottlesPerCase) || 6) + 0.4).toFixed(2)} kg
+                        </p>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs uppercase tracking-widest text-[#dfbd72] font-semibold mb-2">
+                          Supply Capability (PDF Q1–Q2)
+                        </label>
+                        <select
+                          name="supplyType"
+                          value={formData.supplyType}
+                          onChange={handleChange}
+                          className="w-full bg-black/40 border border-[#c9a35b]/40 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                        >
+                          <option value="both" className="bg-[#1a1a1a]">Can supply both single bottles and full cases</option>
+                          <option value="case_only" className="bg-[#1a1a1a]">Can supply full cases only</option>
+                          <option value="bottle_only" className="bg-[#1a1a1a]">Can supply single bottles only</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
                   <div className="relative z-0 w-full group">

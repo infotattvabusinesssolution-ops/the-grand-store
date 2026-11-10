@@ -15,21 +15,22 @@ const getStartingPrice = (ticketTiers = []) => {
 const EventCard = ({ event }) => {
   const startingPrice = getStartingPrice(event.ticketTiers);
   const phase = getEventPhase(event);
+  const eventImageUrl = resolveEventImage(event.image, event);
   return (
     <article className="group flex flex-col overflow-hidden border border-white/10 bg-[#12110e] transition-colors hover:border-[#c9a35b]/60">
       <div className="relative aspect-[16/10] overflow-hidden bg-[#14120e]">
-        {event.image ? (
+        {eventImageUrl ? (
           <>
             <img
-              src={resolveEventImage(event.image)}
+              src={eventImageUrl}
               alt=""
               aria-hidden="true"
               className="absolute inset-0 h-full w-full object-cover blur-md scale-110 opacity-35 brightness-75 pointer-events-none"
             />
             <img
-              src={resolveEventImage(event.image)}
+              src={eventImageUrl}
               alt={event.title}
-              className="relative h-full w-full object-contain transition-transform duration-700 group-hover:scale-[1.03]"
+              className="relative h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
             />
           </>
         ) : (

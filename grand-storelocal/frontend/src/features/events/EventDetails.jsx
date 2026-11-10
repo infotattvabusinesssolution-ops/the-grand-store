@@ -195,22 +195,24 @@ export default function EventDetails({ onNotify, onAdd }) {
     ]
   };
 
+  const eventImageUrl = resolveEventImage(event?.image, event);
+
   return (
     <div className="min-h-screen bg-[#0a0907] pb-20 text-[#eee8dd]">
       <SEO
         title={`${event.title} — Events & Tastings`}
         description={event.description?.substring(0, 160) || `Book tickets for ${event.title} at The Grand Store.`}
-        image={resolveEventImage(event.image)}
+        image={eventImageUrl}
         url={`/events/${event.slug || event._id || id}`}
         type="event"
         schema={eventSchema}
       />
       {/* Hero Section */}
       <div className="relative min-h-[55vh] md:min-h-[62vh] w-full overflow-hidden flex items-end">
-        {event.image ? (
+        {eventImageUrl ? (
           <>
             <img
-              src={resolveEventImage(event.image)}
+              src={eventImageUrl}
               alt=""
               aria-hidden="true"
               className="absolute inset-0 w-full h-full object-cover blur-md scale-105 opacity-30 brightness-75 pointer-events-none"
@@ -251,26 +253,26 @@ export default function EventDetails({ onNotify, onAdd }) {
 
       <main className="max-w-6xl mx-auto px-5 md:px-10 lg:px-12 pt-12 md:pt-16 space-y-16 md:space-y-20">
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-            <div className={event.image ? 'lg:col-span-7' : 'lg:col-span-12'}>
+            <div className={eventImageUrl ? 'lg:col-span-7' : 'lg:col-span-12'}>
               <h2 className="text-2xl font-serif text-white mb-6">About the Experience</h2>
               <div className="text-[#918a7f] leading-relaxed space-y-4 whitespace-pre-wrap text-base">
                 {event.description}
               </div>
             </div>
-            {event.image && (
+            {eventImageUrl && (
               <div className="lg:col-span-5">
                 <div className="relative group overflow-hidden rounded-2xl border border-[#c9a35b]/30 bg-[#12110e] p-3.5 shadow-[0_24px_60px_rgba(0,0,0,0.6)] transition-all duration-300 hover:border-[#c9a35b]/60">
                   <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[#171512]">
                     <img
-                      src={resolveEventImage(event.image)}
+                      src={eventImageUrl}
                       alt={event.title}
-                      className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.02]"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                     />
                   </div>
                   <div className="mt-3 flex items-center justify-between px-2 text-xs text-[#a59d91]">
                     <span className="font-semibold uppercase tracking-wider text-[#d8b76d]">Official Event Poster</span>
                     <a
-                      href={resolveEventImage(event.image)}
+                      href={eventImageUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 font-medium hover:text-white transition-colors"

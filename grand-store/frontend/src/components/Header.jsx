@@ -542,6 +542,33 @@ export default function Header({
           <div className="header-actions flex items-center justify-end gap-1 sm:gap-2.5 shrink-0">
             {user && <NotificationBell />}
 
+            <div className="hidden">
+              <IconButton
+                label="Compare products"
+                count={compareCount}
+                onClick={onCompareClick}
+              >
+                <GitCompareArrows size={21} />
+              </IconButton>
+            </div>
+
+            <IconButton
+              className={wishlistCount ? "wishlist-header-active" : ""}
+              label={`Wishlist, ${wishlistCount} saved ${wishlistCount === 1 ? "bottle" : "bottles"}`}
+              count={wishlistCount}
+              onClick={onWishlistClick}
+            >
+              <Heart size={21} fill={wishlistCount ? "currentColor" : "none"} />
+            </IconButton>
+
+            <IconButton
+              label="Shopping bag"
+              count={cartCount}
+              onClick={onBagClick}
+            >
+              <ShoppingBag size={21} />
+            </IconButton>
+
             {user ? (
               <IconButton
                 label="Profile"
@@ -586,7 +613,6 @@ export default function Header({
                     textTransform: "uppercase",
                     letterSpacing: "0.05em",
                     color: "#eee8dd",
-                    marginRight: "8px",
                   }}
                   onMouseEnter={(e) => (e.target.style.color = "#c9a35b")}
                   onMouseLeave={(e) => (e.target.style.color = "#eee8dd")}
@@ -595,33 +621,6 @@ export default function Header({
                 </button>
               </>
             )}
-
-            <div className="hidden">
-              <IconButton
-                label="Compare products"
-                count={compareCount}
-                onClick={onCompareClick}
-              >
-                <GitCompareArrows size={21} />
-              </IconButton>
-            </div>
-
-            <IconButton
-              className={wishlistCount ? "wishlist-header-active" : ""}
-              label={`Wishlist, ${wishlistCount} saved ${wishlistCount === 1 ? "bottle" : "bottles"}`}
-              count={wishlistCount}
-              onClick={onWishlistClick}
-            >
-              <Heart size={21} fill={wishlistCount ? "currentColor" : "none"} />
-            </IconButton>
-
-            <IconButton
-              label="Shopping bag"
-              count={cartCount}
-              onClick={onBagClick}
-            >
-              <ShoppingBag size={21} />
-            </IconButton>
           </div>
         </div>
 

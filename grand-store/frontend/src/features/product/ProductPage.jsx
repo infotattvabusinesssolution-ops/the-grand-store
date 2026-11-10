@@ -143,6 +143,7 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomOrigin, setZoomOrigin] = useState("50% 50%");
   const [showCertificate, setShowCertificate] = useState(false);
+  const [purchaseUnit, setPurchaseUnit] = useState('bottle'); // 'bottle' | 'case' (Dynamic Case of Bottle Selector)
 
   const [reviews, setReviews] = useState([]);
   const [reviewSummary, setReviewSummary] = useState({ averageRating: 0, reviewCount: 0 });
@@ -153,6 +154,7 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
     if (!product) return;
     setSelectedImage(resolveImageUrl(product.image));
     setQuantity(1);
+    setPurchaseUnit('bottle');
     setSelectedOption(product.options?.[0] ?? "Pack of 1");
     setIsZoomed(false);
     setZoomOrigin("50% 50%");
@@ -242,18 +244,72 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   const pkgHeight = shippingInfo.height_cm || product.height_cm;
   const pkgBox = shippingInfo.box_type || product.box_type;
 
+  const isWineOrChampagne = /champagne|wine|sparkling|prosecco|cava/i.test(
+    `${product.category || ''} ${product.type || ''} ${product.name || ''}`
+  );
+  const isSpirits = /whisky|whiskey|cognac|brandy|vodka|gin|rum|tequila/i.test(
+    `${product.category || ''} ${product.type || ''} ${product.name || ''}`
+  );
+  const isCigar = isCigarProduct(product);
+
+  // Case of Bottle Analysis (Section 4 of International Vendor Specification)
+  // Only applies to bottle beverages (Wine, Spirits, Champagne), NOT for everyone (e.g. cigars, accessories)
+  const isBottleProduct = !isCigar && (
+    Boolean(identity.bottleSize || product.bottleSize || product.size) ||
+    /wine|champagne|whisky|whiskey|cognac|brandy|vodka|gin|rum|tequila|liqueur|baijiu|sake|spirits/i.test(
+      `${product.category || ''} ${product.type || ''} ${product.name || ''}`
+    )
+  );
+
+  const bottlesPerCase = Math.max(
+    1,
+    Number(product.bottlesPerCase || product.channelSettings?.trade?.bottlesPerCase || 6)
+  );
+  const bottleSize = identity.bottleSize || product.bottleSize || product.size || "750ml";
+  const caseConfigText = product.caseConfiguration || `${bottlesPerCase} × ${bottleSize} Case`;
+
+  const singleBottlePrice = Number(product.price) || 0;
+  const singleCasePrice = product.casePrice && Number(product.casePrice) > 0
+    ? Number(product.casePrice)
+    : Math.round(singleBottlePrice * bottlesPerCase);
+
+  const activeUnitPrice = isBottleProduct && purchaseUnit === 'case' ? singleCasePrice : singleBottlePrice;
+  const activeEffectiveBottlePrice = isBottleProduct && purchaseUnit === 'case'
+    ? (singleCasePrice / bottlesPerCase).toFixed(2)
+    : singleBottlePrice.toFixed(2);
+
+  // Dynamic Case Weight & Dimensions for Shipping Logistics Card
+  const dynamicPkgWeight = isBottleProduct && purchaseUnit === 'case'
+    ? (product.caseWeight ? `${product.caseWeight} kg` : `${((pkgWeight ? Number(pkgWeight) : 1.5) * bottlesPerCase + 0.4).toFixed(2)} kg`)
+    : (pkgWeight ? `${pkgWeight} kg` : '1.85 kg');
+
+  const dynamicPkgBox = isBottleProduct && purchaseUnit === 'case'
+    ? `Certified Case Shipper (${bottlesPerCase} Bottles)`
+    : (pkgBox || 'Standard Luxury Box');
+
+  const dynamicPkgDims = isBottleProduct && purchaseUnit === 'case'
+    ? (product.caseDimensions?.length_cm 
+        ? `${product.caseDimensions.length_cm} × ${product.caseDimensions.width_cm} × ${product.caseDimensions.height_cm} cm` 
+        : (bottlesPerCase >= 12 ? '38 × 30 × 35 cm' : '32 × 26 × 35 cm'))
+    : (pkgLength && pkgWidth && pkgHeight ? `${pkgLength} × ${pkgWidth} × ${pkgHeight} cm` : '12 × 12 × 34 cm');
+
   const identityItems = [
     { label: "Type", value: identity.type },
     { label: "Style", value: identity.style },
     { label: "Production", value: identity.production },
     { label: "Origin", value: identity.origin },
     { label: "Age", value: identity.age },
-    { label: "Bottle Size", value: identity.bottleSize },
+    { label: "Bottle Size", value: identity.bottleSize || bottleSize },
     { label: "ABV", value: identity.abv },
-    ...(pkgWeight ? [{ label: "Gross Weight", value: `${pkgWeight} kg` }] : []),
-    ...(pkgLength && pkgWidth && pkgHeight ? [{ label: "Package Dims", value: `${pkgLength} × ${pkgWidth} × ${pkgHeight} cm` }] : []),
-    ...(pkgBox ? [{ label: "Packaging", value: pkgBox }] : []),
+    ...(isBottleProduct ? [
+      { label: "Case Configuration", value: caseConfigText },
+      { label: "Bottles Per Case", value: `${bottlesPerCase} bottles` },
+    ] : []),
+    { label: "Gross Weight", value: dynamicPkgWeight },
+    { label: "Package Dims", value: dynamicPkgDims },
+    { label: "Packaging", value: dynamicPkgBox },
   ];
+
   const categoryLabel = getProductCategory(product);
   const hasDistinctStyle = identity.style &&
     identity.style.trim().toLowerCase() !== categoryLabel.trim().toLowerCase();
@@ -273,14 +329,6 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
     || product.country
     || product.origin
     || "Direct Bonded Cellars";
-
-  const isWineOrChampagne = /champagne|wine|sparkling|prosecco|cava/i.test(
-    `${product.category || ''} ${product.type || ''} ${product.name || ''}`
-  );
-  const isSpirits = /whisky|whiskey|cognac|brandy|vodka|gin|rum|tequila/i.test(
-    `${product.category || ''} ${product.type || ''} ${product.name || ''}`
-  );
-  const isCigar = isCigarProduct(product);
 
   const packagingNote = isWineOrChampagne
     ? "Climate-stable thermal packaging with shock-proof bottle protection."
@@ -593,12 +641,31 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
 
                   <div className="mt-4 min-w-0 flex flex-wrap items-baseline gap-3">
                     <div className="text-[clamp(2rem,10vw,3rem)] font-semibold leading-none text-[#e1bd70]">
-                      <Price amount={product.price * quantity} presentation="product" />
+                      <Price amount={activeUnitPrice * quantity} presentation="product" />
                     </div>
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-2.5 py-1 text-xs font-mono text-[var(--color-gold)] font-medium">
                       Incl. 15% VAT
                     </span>
+                    {isBottleProduct && purchaseUnit === 'case' && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-950/50 px-2.5 py-1 text-xs font-mono text-emerald-400 font-medium">
+                        📦 Case of {bottlesPerCase}
+                      </span>
+                    )}
                   </div>
+
+                  {isBottleProduct && (
+                    <div className="mt-2 text-xs font-mono text-[#c9a35b]">
+                      {purchaseUnit === 'case' ? (
+                        <span>
+                          R{activeEffectiveBottlePrice} per bottle <span className="text-white/40">•</span> {caseConfigText}
+                        </span>
+                      ) : (
+                        <span>
+                          Single bottle price <span className="text-white/40">•</span> Case of {bottlesPerCase} available below
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   <p className="mt-4 border-t border-white/[0.08] pt-3 text-xs leading-relaxed text-[#837b70]">
                     15% South African VAT Included <span className="mx-2 text-[#c9a35b]/60">•</span> Delivery calculated at checkout
@@ -661,6 +728,75 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
               ))}
             </dl>
           </div>
+
+          {/* Dynamic Case of Bottle Selector — ONLY for bottle products (not for cigars / accessories) */}
+          {isBottleProduct && (
+            <div className="mb-6 p-4 rounded-xl border border-[#c9a35b]/30 bg-gradient-to-b from-[#16130e] to-[#0e0d0a] shadow-lg">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#dfbd72] flex items-center gap-2">
+                  <Package size={15} className="text-[#c9a35b]" />
+                  Purchase Format
+                </span>
+                <span className="text-[10px] text-[#918a7f] uppercase tracking-wider font-mono">
+                  Standard Case: {caseConfigText}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Option 1: Single Bottle */}
+                <button
+                  type="button"
+                  onClick={() => setPurchaseUnit('bottle')}
+                  className={`p-3.5 rounded-lg border text-left transition-all relative flex flex-col justify-between ${
+                    purchaseUnit === 'bottle'
+                      ? 'border-[#c9a35b] bg-[#c9a35b]/15 shadow-[0_0_15px_rgba(201,163,91,0.2)] ring-1 ring-[#c9a35b]'
+                      : 'border-white/10 bg-black/40 hover:border-white/25 text-[#918a7f]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className={`text-xs font-bold uppercase tracking-wider ${purchaseUnit === 'bottle' ? 'text-white' : 'text-[#eee8dd]'}`}>
+                      🍾 Single Bottle
+                    </span>
+                    <span className="text-[10px] text-[#918a7f] font-mono">1 × {bottleSize}</span>
+                  </div>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="text-sm font-bold text-[#dfbd72] font-mono">
+                      <Price amount={singleBottlePrice} presentation="badge" />
+                    </span>
+                    <span className="text-[10px] text-white/50">per bottle</span>
+                  </div>
+                </button>
+
+                {/* Option 2: Case of N Bottles */}
+                <button
+                  type="button"
+                  onClick={() => setPurchaseUnit('case')}
+                  className={`p-3.5 rounded-lg border text-left transition-all relative flex flex-col justify-between ${
+                    purchaseUnit === 'case'
+                      ? 'border-[#c9a35b] bg-[#c9a35b]/15 shadow-[0_0_15px_rgba(201,163,91,0.2)] ring-1 ring-[#c9a35b]'
+                      : 'border-white/10 bg-black/40 hover:border-white/25 text-[#918a7f]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className={`text-xs font-bold uppercase tracking-wider ${purchaseUnit === 'case' ? 'text-white' : 'text-[#eee8dd]'}`}>
+                      📦 Case of {bottlesPerCase} Bottles
+                    </span>
+                    <span className="text-[10px] text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30 font-mono">
+                      {caseConfigText}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="text-sm font-bold text-[#dfbd72] font-mono">
+                      <Price amount={singleCasePrice} presentation="badge" />
+                    </span>
+                    <span className="text-[10px] text-[#c9a35b] font-mono">
+                      R{activeEffectiveBottlePrice} / btl
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Select Options */}
           {product.options && product.options.length > 1 && (
@@ -733,10 +869,34 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
               <button
                 className={`order-3 col-span-2 h-[52px] w-full min-w-0 border border-[#eee8dd] bg-transparent text-xs font-bold uppercase tracking-[0.12em] text-[#eee8dd] sm:order-2 sm:flex-1 sm:min-w-[140px] ${product.stock === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-white/5 transition-colors'}`}
                 type="button"
-                onClick={() => product.stock !== 0 && onAdd && onAdd(product, quantity, selectedOption)}
+                onClick={() => {
+                  if (product.stock === 0 || !onAdd) return;
+                  if (isBottleProduct && purchaseUnit === 'case') {
+                    const caseProduct = {
+                      ...product,
+                      price: singleCasePrice,
+                      unitPrice: singleCasePrice,
+                      isCase: true,
+                      bottlesPerCase,
+                      caseConfiguration: caseConfigText,
+                      weight_kg: parseFloat(dynamicPkgWeight),
+                      shipping: {
+                        ...(product.shipping || {}),
+                        box_type: dynamicPkgBox,
+                        weight_kg: parseFloat(dynamicPkgWeight),
+                        length_cm: product.caseDimensions?.length_cm || (bottlesPerCase >= 12 ? 38 : 32),
+                        width_cm: product.caseDimensions?.width_cm || (bottlesPerCase >= 12 ? 30 : 26),
+                        height_cm: product.caseDimensions?.height_cm || 35
+                      }
+                    };
+                    onAdd(caseProduct, quantity, `Case of ${bottlesPerCase} (${caseConfigText})`);
+                  } else {
+                    onAdd(product, quantity, selectedOption);
+                  }
+                }}
                 disabled={product.stock === 0}
               >
-                {product.stock === 0 ? 'Out of Stock' : 'Add To Cart'}
+                {product.stock === 0 ? 'Out of Stock' : (isBottleProduct && purchaseUnit === 'case' ? `Add Case to Cart (${quantity})` : 'Add To Cart')}
               </button>
 
               <button
@@ -744,12 +904,32 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                 type="button"
                 onClick={() => {
                   if (product.stock !== 0) {
+                    if (isBottleProduct && purchaseUnit === 'case' && onAdd) {
+                      const caseProduct = {
+                        ...product,
+                        price: singleCasePrice,
+                        unitPrice: singleCasePrice,
+                        isCase: true,
+                        bottlesPerCase,
+                        caseConfiguration: caseConfigText,
+                        weight_kg: parseFloat(dynamicPkgWeight),
+                        shipping: {
+                          ...(product.shipping || {}),
+                          box_type: dynamicPkgBox,
+                          weight_kg: parseFloat(dynamicPkgWeight),
+                          length_cm: product.caseDimensions?.length_cm || (bottlesPerCase >= 12 ? 38 : 32),
+                          width_cm: product.caseDimensions?.width_cm || (bottlesPerCase >= 12 ? 30 : 26),
+                          height_cm: product.caseDimensions?.height_cm || 35
+                        }
+                      };
+                      onAdd(caseProduct, quantity, `Case of ${bottlesPerCase} (${caseConfigText})`, false);
+                    }
                     setIsCheckoutModalOpen(true);
                   }
                 }}
                 disabled={product.stock === 0}
               >
-                Buy Now
+                {isBottleProduct && purchaseUnit === 'case' ? 'Buy Case Now' : 'Buy Now'}
               </button>
 
               <button
@@ -853,19 +1033,21 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
                 <div className="bg-black/40 p-2 border border-white/5">
                   <span className="text-[9px] uppercase tracking-wider text-[#918a7f] block">Box Type</span>
-                  <span className="text-white font-medium truncate block">{pkgBox || 'Standard Luxury Box'}</span>
+                  <span className="text-white font-medium truncate block">{dynamicPkgBox}</span>
                 </div>
                 <div className="bg-black/40 p-2 border border-white/5">
                   <span className="text-[9px] uppercase tracking-wider text-[#918a7f] block">Dimensions</span>
-                  <span className="text-white font-medium">{pkgLength && pkgWidth && pkgHeight ? `${pkgLength} × ${pkgWidth} × ${pkgHeight} cm` : '12 × 12 × 34 cm'}</span>
+                  <span className="text-white font-medium">{dynamicPkgDims}</span>
                 </div>
                 <div className="bg-black/40 p-2 border border-white/5">
                   <span className="text-[9px] uppercase tracking-wider text-[#918a7f] block">Gross Weight</span>
-                  <span className="text-[#dfbd72] font-semibold">{pkgWeight ? `${pkgWeight} kg` : '1.85 kg'}</span>
+                  <span className="text-[#dfbd72] font-semibold">{dynamicPkgWeight}</span>
                 </div>
                 <div className="bg-black/40 p-2 border border-white/5">
                   <span className="text-[9px] uppercase tracking-wider text-[#918a7f] block">Protection</span>
-                  <span className="text-rose-400 font-medium">Fragile Glass (Insured)</span>
+                  <span className={purchaseUnit === 'case' ? "text-emerald-400 font-medium" : "text-rose-400 font-medium"}>
+                    {purchaseUnit === 'case' ? `Reinforced ${bottlesPerCase}-Bottle Cellar Shipper` : 'Fragile Glass (Insured)'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -916,14 +1098,7 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                 Live rates from The Courier Guy, PostNet, and Aramex are computed at checkout based on destination address, parcel volumetric weight, and insurance value.
               </p>
 
-              {/* Protective Packaging Assurance */}
-              <div className="mt-1 flex items-start gap-2 bg-[#17140f] p-2.5 border border-[#dfbd72]/20 text-[11px] text-[#eee8dd]/90">
-                <ShieldCheck size={16} className="text-[#dfbd72] shrink-0 mt-0.5" />
-                <div className="leading-snug">
-                  <span className="font-semibold text-[#dfbd72]">100% Transit Protection Included: </span>
-                  {packagingNote} Fully covered against loss, breakage, or temperature damage with adult signature verification (18+).
-                </div>
-              </div>
+
             </div>
           </div>
 
