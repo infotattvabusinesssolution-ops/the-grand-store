@@ -265,8 +265,8 @@ export default function CartPage({ cartItems, onUpdateQuantity, onRemove, onClea
                 {/* Breakdown */}
                 <dl className="space-y-3 text-sm text-[#bbb] border-b border-white/10 pb-5 mb-5">
                   {cartItems.map((item, idx) => (
-                    <div key={item.id || item._id || `${item.name}-${idx}`} className="flex justify-between items-baseline gap-2">
-                      <dt className="truncate max-w-[210px] text-xs text-[#9d9589]" title={item.fullName || item.name}>
+                    <div key={`${item.id || item._id || item.name}-${item.option || idx}`} className="flex justify-between items-baseline gap-2">
+                      <dt className="truncate max-w-[210px] text-xs text-[#9d9589]" title={`${item.fullName || item.name}${item.option ? ` (${item.option})` : ''}`}>
                         {item.quantity} &times; {item.fullName || item.name}
                       </dt>
                       <dd className="font-medium text-[#eee8dd] shrink-0 font-sans text-xs">

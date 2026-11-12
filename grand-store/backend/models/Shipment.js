@@ -26,6 +26,8 @@ const shipmentSchema = new mongoose.Schema(
         quantity: { type: Number, default: 1 },
         price: { type: Number, default: 0 },
         option: { type: String },
+        isCase: { type: Boolean, default: false },
+        bottlesPerCase: { type: Number, default: 1 },
         image: { type: String },
         country: { type: String },
         hsCode: { type: String }

@@ -7,6 +7,7 @@ import {
   PinterestIcon,
   TiktokIcon,
 } from './SocialIcons';
+import PaymentMethodsStrip from './PaymentMethodsStrip';
 
 const STORE = "https://grandstoreglobal.com";
 
@@ -34,10 +35,10 @@ export default function Footer({
   const [displayCount, setDisplayCount] = useState(visitorCount);
   const [isBumping, setIsBumping] = useState(false);
 
-  // Handle click on Total Visitors to add +5
-  const handleVisitorClick = () => {
+  // Increment visitor count consistently by +5
+  const incrementVisitors = (amount = 5) => {
     setVisitorCount((prev) => {
-      const next = prev + 5;
+      const next = prev + amount;
       try {
         localStorage.setItem('tgs_total_visitors', String(next));
       } catch {}
@@ -47,10 +48,26 @@ export default function Footer({
     setTimeout(() => setIsBumping(false), 500);
   };
 
-  // Smooth roll-up on mount
+  // Handle click on Total Visitors to add +5
+  const handleVisitorClick = () => {
+    incrementVisitors(5);
+  };
+
+  // Smooth roll-up on mount (+5 once per browser session)
   useEffect(() => {
-    const startValue = Math.max(BASE_VISITORS, visitorCount - 15);
-    const endValue = visitorCount;
+    let initialTarget = visitorCount;
+    try {
+      const hasCounted = sessionStorage.getItem('tgs_session_counted');
+      if (!hasCounted) {
+        sessionStorage.setItem('tgs_session_counted', 'true');
+        initialTarget = visitorCount + 5;
+        setVisitorCount(initialTarget);
+        localStorage.setItem('tgs_total_visitors', String(initialTarget));
+      }
+    } catch {}
+
+    const startValue = Math.max(BASE_VISITORS, initialTarget - 15);
+    const endValue = initialTarget;
     const duration = 900;
     const startTime = performance.now();
 
@@ -73,39 +90,13 @@ export default function Footer({
     return () => cancelAnimationFrame(animationFrameId);
   }, []);
 
-  // Increment once per browser session (+5 as requested)
-  useEffect(() => {
-    try {
-      const hasCounted = sessionStorage.getItem('tgs_session_counted');
-      if (!hasCounted) {
-        sessionStorage.setItem('tgs_session_counted', 'true');
-        setVisitorCount((prev) => {
-          const next = prev + 5;
-          try {
-            localStorage.setItem('tgs_total_visitors', String(next));
-          } catch {}
-          return next;
-        });
-      }
-    } catch {}
-  }, []);
-
-  // Periodically increment dynamically
+  // Periodically increment dynamically (+5 per tick)
   useEffect(() => {
     let timerId;
     const scheduleNext = () => {
       const randomDelay = Math.floor(Math.random() * 4000) + 4500;
       timerId = setTimeout(() => {
-        setVisitorCount((prev) => {
-          const increment = Math.random() < 0.2 ? 2 : 1;
-          const next = prev + increment;
-          try {
-            localStorage.setItem('tgs_total_visitors', String(next));
-          } catch {}
-          return next;
-        });
-        setIsBumping(true);
-        setTimeout(() => setIsBumping(false), 500);
+        incrementVisitors(5);
         scheduleNext();
       }, randomDelay);
     };
@@ -459,11 +450,7 @@ export default function Footer({
             })}
           </div>
 
-          <img
-            className="footer-payment-strip order-3"
-            src="/assets/footer/payment-strip.png"
-            alt="Accepted payment methods"
-          />
+          <PaymentMethodsStrip variant="footer" className="order-3 font-sans" />
         </div>
       </div>
     </footer>

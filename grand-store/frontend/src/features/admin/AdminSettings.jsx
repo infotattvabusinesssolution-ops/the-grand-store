@@ -269,6 +269,7 @@ export default function AdminSettings() {
             <div className="space-y-6">
               <FeeRow label="VAT Rate" field="vatPct" note="Value Added Tax (Deducted from vendor)" />
               <FeeRow label="Marketplace Commission" field="marketplaceCommissionPct" note="The Grand Store's cut on shop product sales" />
+              <FeeRow label="International Vendor Case Discount" field="internationalCaseDiscountPct" note="Automatic percentage discount when ordering a full Case of Bottles from international vendors (local vendors excluded)" />
               <FeeRow label="Standard Shipping Fee (ZAR)" field="shippingFee" isAmount={true} note="Fallback flat-rate delivery fee charged to customer" />
             </div>
           </div>

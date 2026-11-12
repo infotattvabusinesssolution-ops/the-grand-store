@@ -6,6 +6,7 @@ const PlatformSettings = require('../models/PlatformSettings');
 const { getNextSequence } = require('../utils/sequenceGenerator');
 const Transaction = require('../models/Transaction');
 const Wallet = require('../models/Wallet');
+const { resolveCaseItemPricing } = require('../utils/casePricing');
 
 // @desc    Create new order (Pending Payment)
 // @route   POST /api/orders
@@ -136,6 +137,18 @@ const addOrderItems = async (req, res) => {
     const gatewayFeePct = settings.gatewayFeePct || 2.5;
 
     // === VALIDATE AND RECONSTRUCT ACCOUNTING FROM DATABASE (PRICE INTEGRITY) ===
+    const Vendor = require('../models/Vendor');
+    const vendorTypeCache = new Map();
+    const getProductVendorType = async (vId) => {
+      if (!vId) return 'local';
+      const key = vId.toString();
+      if (vendorTypeCache.has(key)) return vendorTypeCache.get(key);
+      const v = await Vendor.findOne({ userId: vId }).select('vendorType').lean().catch(() => null);
+      const vt = v?.vendorType || 'local';
+      vendorTypeCache.set(key, vt);
+      return vt;
+    };
+
     let calculatedServerSubtotal = 0;
     for (const shp of quote.shipments) {
       let shipmentSubtotal = 0;
@@ -155,16 +168,26 @@ const addOrderItems = async (req, res) => {
           if (!product) {
             return res.status(404).json({ message: `Product not found in catalog: ${item.name || productId}` });
           }
-          const authoritativePrice = Number(product.price);
+          const productVendorType = await getProductVendorType(product.vendorId);
+          const casePricing = resolveCaseItemPricing(item, product, {
+            vendorType: productVendorType,
+            internationalCaseDiscountPct: settings.internationalCaseDiscountPct
+          });
+          const authoritativePrice = Number(casePricing.unitPrice);
           if (isNaN(authoritativePrice) || authoritativePrice < 0) {
             return res.status(400).json({ message: `Invalid catalog price for ${product.name}` });
           }
-          // Enforce authoritative catalog price on item
+          // Enforce authoritative catalog price and case metadata on item
           item.price = authoritativePrice;
-          const qty = Number(item.quantity) || 1;
-          if (product.stock !== undefined && product.stock !== null && product.stock < qty) {
+          item.isCase = casePricing.isCase;
+          item.bottlesPerCase = casePricing.bottlesPerCase;
+          const qty = Math.max(1, Number(item.quantity) || 1);
+          const requiredBottles = qty * casePricing.bottlesPerCase;
+          if (product.stock !== undefined && product.stock !== null && product.stock < requiredBottles) {
             return res.status(400).json({ 
-              message: `Insufficient stock for product ${product.name}. Available: ${product.stock}, requested: ${qty}` 
+              message: casePricing.isCase
+                ? `Insufficient stock for ${product.name} (${qty} case × ${casePricing.bottlesPerCase} bottles = ${requiredBottles} bottles). Available: ${product.stock}`
+                : `Insufficient stock for product ${product.name}. Available: ${product.stock}, requested: ${qty}`
             });
           }
           const lineSubtotal = parseFloat((authoritativePrice * qty).toFixed(2));
@@ -647,6 +670,8 @@ const addOrderItems = async (req, res) => {
         quantity: Number(it.quantity || 1),
         price: Number(it.price || 0),
         option: it.option || '',
+        isCase: Boolean(it.isCase),
+        bottlesPerCase: Math.max(1, Number(it.bottlesPerCase || 1)),
         image: it.image || '',
         country: it.country || shp.originCountry || 'South Africa',
         hsCode: it.shipping?.hs_code || (shp.isInternational ? '2204.21' : '2208.30')

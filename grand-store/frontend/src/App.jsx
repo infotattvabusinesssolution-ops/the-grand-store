@@ -332,19 +332,46 @@ function App() {
           if (!matched) {
             return cartItem; // Never drop un-matched items!
           }
+          const resolvedOption = cartItem.option || matched.options?.[0] || "Single bottle";
+          const isCaseItem = Boolean(
+            cartItem.isCase ||
+            /^case\s+of\s+/i.test(String(resolvedOption).trim())
+          );
+          const optCaseMatch = String(resolvedOption || '').trim().match(/^case\s+of\s+(\d+)\b/i);
+          const optionBottles = optCaseMatch ? Math.max(1, parseInt(optCaseMatch[1], 10)) : null;
+          const productDefaultBpc = Math.max(1, Number(matched.bottlesPerCase || matched.channelSettings?.trade?.bottlesPerCase || 6));
+          const resolvedBottlesPerCase = isCaseItem
+            ? Math.max(1, Number(optionBottles || cartItem.bottlesPerCase || productDefaultBpc))
+            : 1;
+          const isDefaultProductCase = resolvedBottlesPerCase === productDefaultBpc;
+          const resolvedPrice = isCaseItem
+            ? (isDefaultProductCase && matched.effectiveCasePrice && Number(matched.effectiveCasePrice) > 0
+                ? Number(matched.effectiveCasePrice)
+                : (cartItem.price && Number(cartItem.price) > 0
+                    ? Number(cartItem.price)
+                    : (isDefaultProductCase && matched.casePrice && Number(matched.casePrice) > 0
+                        ? Number(matched.casePrice)
+                        : Math.round(Number(matched.price || 0) * resolvedBottlesPerCase * (1 - (Number(matched.caseDiscountPct) || 0) / 100)))))
+            : (cartItem.price || matched.price);
+
           return {
             ...matched,
             ...cartItem,
             name: matched.name || cartItem.name,
             fullName: matched.name || cartItem.fullName || cartItem.name,
-            price: cartItem.price || matched.price,
+            price: resolvedPrice,
+            isCase: isCaseItem,
+            bottlesPerCase: resolvedBottlesPerCase,
+            shipping: isCaseItem && cartItem.shipping ? cartItem.shipping : (matched.shipping || cartItem.shipping),
             image: matched.image || cartItem.image,
             storeId: matched.storeId || matched.vendorId || cartItem.storeId || "admin",
             storeName: matched.storeName || cartItem.storeName || "The Grand Store",
+            vendorType: matched.vendorType || cartItem.vendorType || "local",
+            dispatchOrigin: matched.dispatchOrigin || cartItem.dispatchOrigin,
             brand: matched.brand || cartItem.brand,
             category: matched.category || cartItem.category,
             quantity: cartItem.quantity,
-            option: cartItem.option || matched.options?.[0] || "Single bottle",
+            option: resolvedOption,
           };
         });
         saveCartToStorage(enriched);

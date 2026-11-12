@@ -52,6 +52,7 @@ import api from '../../api';
 import CountryCodeSelect from '../../components/CountryCodeSelect';
 import DestinationCountrySelect from '../../components/DestinationCountrySelect';
 import { PHONE_COUNTRIES, getCheckoutPhone, splitPhoneNumber } from '../../utils/phoneNumbers';
+import { analyzeCartScopeConflict, getCartItemOriginInfo } from '../../utils/cartScope';
 
 const POPULAR_INTERNATIONAL_COUNTRIES = [
   { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
@@ -139,6 +140,33 @@ export default function CheckoutPage({
   const [applyRewards, setApplyRewards] = useState(false);
   const [useSuperCoins, setUseSuperCoins] = useState(true);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+  const [showMixedCartModal, setShowMixedCartModal] = useState(false);
+  const [mixedCartWarningKey, setMixedCartWarningKey] = useState(0);
+  const [hasTriggeredMixedWarning, setHasTriggeredMixedWarning] = useState(false);
+  const summaryPanelRef = useRef(null);
+
+  const cartScopeAnalysis = useMemo(
+    () => analyzeCartScopeConflict(vendorCartItems, destinationMode),
+    [vendorCartItems, destinationMode]
+  );
+
+  useEffect(() => {
+    if (!showMixedCartModal) return undefined;
+    const timer = setTimeout(() => {
+      setShowMixedCartModal(false);
+    }, 5500);
+    return () => clearTimeout(timer);
+  }, [showMixedCartModal, mixedCartWarningKey]);
+
+  useEffect(() => {
+    if (!cartScopeAnalysis.hasConflict && hasTriggeredMixedWarning) {
+      setHasTriggeredMixedWarning(false);
+      setShowMixedCartModal(false);
+      if (vendorCartItems.length > 0 && onNotify) {
+        onNotify('Ready — you can now click "Continue to Courier Service".');
+      }
+    }
+  }, [cartScopeAnalysis.hasConflict, hasTriggeredMixedWarning, vendorCartItems.length]);
   const [isAgeConfirmed, setIsAgeConfirmed] = useState(false);
   // Guest 18+ KYC and Document Verification state
   const [guestIdType, setGuestIdType] = useState('national_id');
@@ -785,6 +813,8 @@ export default function CheckoutPage({
           name: item.fullName || item.name,
           quantity: item.quantity,
           option: item.option,
+          isCase: Boolean(item.isCase || /^case\s+of\s+/i.test(String(item.option || '').trim())),
+          bottlesPerCase: item.bottlesPerCase,
           image: item.image
         })),
         shippingAddress: {
@@ -1053,6 +1083,14 @@ export default function CheckoutPage({
   const handleProceedToDeliveryMethod = async (e, storeOverride = null) => {
     if (e && e.preventDefault) e.preventDefault();
 
+    if (cartScopeAnalysis.hasConflict) {
+      setHasTriggeredMixedWarning(true);
+      setMixedCartWarningKey((k) => k + 1);
+      setShowMixedCartModal(true);
+      setMobileSummaryOpen(true);
+      return;
+    }
+
     const errors = validateAllStep1Fields(storeOverride);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -1111,8 +1149,8 @@ export default function CheckoutPage({
       return;
     }
 
-    // Commercial Export Invoice & DAP Customs Modal strictly for International orders
-    if (destinationMode === 'international_aramex' && (!dutiesAccepted || !commercialInvoiceAcknowledged)) {
+    // Commercial Export Invoice & DAP Customs Modal for cross-border shipments
+    if ((destinationMode === 'international_aramex' || quote?.hasInternational) && (!dutiesAccepted || !commercialInvoiceAcknowledged)) {
       setShowCommercialInvoiceModal(true);
       return;
     }
@@ -1383,8 +1421,8 @@ export default function CheckoutPage({
         <div className="flex flex-col lg:flex-row-reverse lg:items-start gap-8 w-full md:gap-12 xl:gap-16">
           {/* Right Column - Itemised Order Summary */}
           {checkoutStep !== 4 && (
-            <div className="w-full lg:w-[420px] xl:w-[450px] checkout-sidebar-sticky lg:sticky lg:top-6 lg:self-start shrink-0 z-30">
-              <div className="w-full bg-[#0d0d0d] border border-white/10 rounded-2xl p-5 md:p-6 shadow-2xl relative overflow-hidden">
+            <div ref={summaryPanelRef} className="w-full lg:w-[420px] xl:w-[450px] checkout-sidebar-sticky lg:sticky lg:top-6 lg:self-start shrink-0 z-30">
+              <div className={`w-full bg-[#0d0d0d] border rounded-2xl p-5 md:p-6 shadow-2xl relative overflow-hidden transition-colors ${hasTriggeredMixedWarning && cartScopeAnalysis.hasConflict ? 'border-amber-400/60' : 'border-white/10'}`}>
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-gold)] to-transparent opacity-60"></div>
                 <div className="flex items-center justify-between gap-4 mb-4">
                   <div>
@@ -1406,16 +1444,46 @@ export default function CheckoutPage({
                   {mobileSummaryOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
 
+                {/* Cart Scope Conflict Notice inside Summary after warning triggered */}
+                {hasTriggeredMixedWarning && cartScopeAnalysis.hasConflict && (
+                  <div className="mb-3.5 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3.5 py-2.5 text-[11px] text-amber-200 flex items-start gap-2">
+                    <AlertTriangle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                    <span>
+                      {cartScopeAnalysis.conflictReason === 'intl_in_domestic' ? (
+                        <>
+                          International products require <strong>International Delivery</strong>. Click{' '}
+                          <strong>Remove</strong> below or switch delivery mode to International Delivery.
+                        </>
+                      ) : (
+                        <>
+                          Please click <strong>Remove</strong> on the highlighted{' '}
+                          {cartScopeAnalysis.recommendedRemoveScope === 'international' ? 'International' : 'Local (SA)'}{' '}
+                          item(s) below so all items match one order type.
+                        </>
+                      )}
+                    </span>
+                  </div>
+                )}
+
                 {/* Items List */}
                 <div className={`${mobileSummaryOpen ? 'block' : 'hidden'} md:block space-y-3 border-b border-white/10 pb-4`}>
                   {vendorCartItems.map((item) => {
                     const itemId = item.id || item._id;
                     const unitPrice = getProductPrice(item.price);
                     const itemTotal = unitPrice * item.quantity;
+                    const originInfo = getCartItemOriginInfo(item);
+                    const isConflictingItem =
+                      hasTriggeredMixedWarning &&
+                      cartScopeAnalysis.hasConflict &&
+                      originInfo.scope === cartScopeAnalysis.recommendedRemoveScope;
                     return (
                       <div
                         key={`${itemId}-${item.option || ''}`}
-                        className="bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 hover:border-white/10 p-3 rounded-xl transition-all space-y-2.5"
+                        className={`p-3 rounded-xl transition-all space-y-2.5 border ${
+                          isConflictingItem
+                            ? 'bg-amber-500/[0.07] border-amber-400/60 shadow-[0_0_16px_rgba(245,158,11,0.12)]'
+                            : 'bg-white/[0.02] hover:bg-white/[0.04] border-white/5 hover:border-white/10'
+                        }`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -1436,6 +1504,21 @@ export default function CheckoutPage({
                                   </span>
                                 )}
                               </div>
+                              {(originInfo.isInternational || isConflictingItem) && (
+                                <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                  {originInfo.isInternational && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wider border bg-sky-500/10 text-sky-300 border-sky-400/30">
+                                      <Globe size={9} />
+                                      {`International · ${originInfo.originLabel}`}
+                                    </span>
+                                  )}
+                                  {isConflictingItem && (
+                                    <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-300">
+                                      Remove to continue
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="text-right shrink-0">
@@ -1473,7 +1556,11 @@ export default function CheckoutPage({
                             type="button"
                             onClick={() => handleRemoveItem(item)}
                             aria-label={`Remove ${item.fullName || item.name}`}
-                            className="flex items-center gap-1 text-[11px] text-white/40 hover:text-rose-400 transition-colors py-1 px-2 rounded hover:bg-rose-500/10"
+                            className={`flex items-center gap-1 text-[11px] transition-colors py-1 px-2.5 rounded ${
+                              isConflictingItem
+                                ? 'text-rose-200 bg-rose-500/20 border border-rose-400/40 hover:bg-rose-500/30 font-semibold'
+                                : 'text-white/40 hover:text-rose-400 hover:bg-rose-500/10'
+                            }`}
                           >
                             <Trash2 size={12} />
                             <span>Remove</span>
@@ -1640,32 +1727,6 @@ export default function CheckoutPage({
                   </span>
                 </div>
 
-                {/* Commercial Invoice & DAP Customs Information Pill (International Orders Only) */}
-                {destinationMode === 'international_aramex' && (
-                  <div className="mt-3.5 pt-3 border-t border-white/10">
-                    <button
-                      type="button"
-                      onClick={() => setShowCommercialInvoiceModal(true)}
-                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 hover:border-[var(--color-gold)]/40 transition-all text-left text-xs group cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-6 h-6 rounded-lg bg-[var(--color-gold)]/15 text-[var(--color-gold)] flex items-center justify-center shrink-0">
-                          <FileText size={13} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[11px] font-semibold text-white truncate group-hover:text-[var(--color-gold)] transition-colors">
-                            Commercial Invoice & Customs Notice
-                          </p>
-                          <p className="text-[10px] text-white/50 truncate">
-                            DAP Terms • Attached Documentation & Duties
-                          </p>
-                        </div>
-                      </div>
-                      <ArrowRight size={13} className="text-white/40 group-hover:text-[var(--color-gold)] group-hover:translate-x-0.5 transition-all shrink-0 ml-1.5" />
-                    </button>
-                  </div>
-                )}
-
                 {/* Potential Super Coins Earned Banner */}
                 {quote?.superCoins?.potentialCoinsToEarn > 0 && (
                   <div className="mt-4 rounded-xl border border-[var(--color-gold)]/20 bg-[var(--color-gold)]/5 p-3 text-[11px] text-[var(--color-ivory)] flex items-center gap-2.5">
@@ -1728,7 +1789,7 @@ export default function CheckoutPage({
                       }`}
                     >
                       <span className="text-base leading-none">🇿🇦</span>
-                      <span>South Africa (Domestic)</span>
+                      <span>South Africa (National)</span>
                     </button>
 
                     {/* Tab 2: International Delivery */}
@@ -2965,32 +3026,39 @@ export default function CheckoutPage({
 
                   {quote?.shipments.map((shp, shpIndex) => {
                     const vendorName = (shp.vendorName || '').toLowerCase();
-                    const itemNames = (shp.items || []).map(i => `${i.name || ''} ${i.brand || ''} ${i.country || ''}`).join(' ').toLowerCase();
+                    const itemNames = (shp.items || []).map(i => `${i.name || ''} ${i.brand || ''}`).join(' ').toLowerCase();
+                    const isLocalShipmentOrigin =
+                      shp.vendorType === 'local' ||
+                      shp.vendorType === 'flagship' ||
+                      (!shp.vendorId && !shp.isInternational) ||
+                      (!shp.isInternational && (shp.originCountry || '').toLowerCase().includes('south africa'));
 
                     let detectedOrigin = shp.originCountry;
-                    if (
-                      vendorName.includes('dogliotti') || 
-                      vendorName.includes('cantina del conte') || 
-                      vendorName.includes('giuliani') || 
-                      itemNames.includes('dogliotti') || 
-                      itemNames.includes('cantina del conte') || 
-                      itemNames.includes('giuliani') ||
-                      itemNames.includes('ital')
-                    ) {
-                      detectedOrigin = 'Italy';
-                    } else if (
-                      vendorName.includes('bruno andreu') || 
-                      vendorName.includes('dobbé') || 
-                      vendorName.includes('dobbe') || 
-                      itemNames.includes('bruno andreu') || 
-                      itemNames.includes('franc')
-                    ) {
-                      detectedOrigin = 'France';
-                    } else if (
-                      (!detectedOrigin || detectedOrigin.toLowerCase().includes('south africa') || detectedOrigin.toLowerCase() === 'za') &&
-                      shp.items && shp.items[0]?.country && !['south africa', 'za', 'rsa'].includes(shp.items[0].country.toLowerCase())
-                    ) {
-                      detectedOrigin = shp.items[0].country;
+                    if (!isLocalShipmentOrigin) {
+                      if (
+                        vendorName.includes('dogliotti') ||
+                        vendorName.includes('cantina del conte') ||
+                        vendorName.includes('giuliani') ||
+                        itemNames.includes('dogliotti') ||
+                        itemNames.includes('cantina del conte') ||
+                        itemNames.includes('giuliani')
+                      ) {
+                        detectedOrigin = 'Italy';
+                      } else if (
+                        vendorName.includes('bruno andreu') ||
+                        vendorName.includes('dobbé') ||
+                        vendorName.includes('dobbe') ||
+                        itemNames.includes('bruno andreu') ||
+                        itemNames.includes('dobbé') ||
+                        itemNames.includes('dobbe')
+                      ) {
+                        detectedOrigin = 'France';
+                      } else if (
+                        (!detectedOrigin || detectedOrigin.toLowerCase().includes('south africa') || detectedOrigin.toLowerCase() === 'za') &&
+                        shp.items && shp.items[0]?.country && !['south africa', 'za', 'rsa'].includes(shp.items[0].country.toLowerCase())
+                      ) {
+                        detectedOrigin = shp.items[0].country;
+                      }
                     }
 
                     if (!detectedOrigin) {
@@ -3034,22 +3102,33 @@ export default function CheckoutPage({
                           </div>
                         </div>
                         <span className="text-[11px] font-mono text-white/70 self-start sm:self-center bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
-                          {shp.items?.reduce((s, i) => s + (Number(i.quantity) || 1), 0) || 1} bottle(s)
+                          {shp.totalBottles || shp.items?.reduce((s, i) => {
+                            const qty = Number(i.quantity) || 1;
+                            const isCaseItem = Boolean(i.isCase || /^case\s+of\s+/i.test(String(i.option || '').trim()));
+                            const perCase = isCaseItem ? Math.max(1, Number(i.bottlesPerCase) || 6) : 1;
+                            return s + qty * perCase;
+                          }, 0) || 1} bottle(s)
                         </span>
                       </div>
 
                       {/* Items in this parcel */}
                       {Array.isArray(shp.items) && shp.items.length > 0 && (
                         <div className="flex flex-wrap gap-2 pt-0.5">
-                          {shp.items.map((item, itIdx) => (
-                            <div key={itIdx} className="inline-flex items-center gap-1.5 text-[11px] text-white/70 bg-white/5 border border-white/5 rounded-lg px-2 py-1">
-                              {item.image && (
-                                <img src={item.image} alt={item.name} className="w-4 h-4 object-contain rounded" />
-                              )}
-                              <span className="font-bold text-[var(--color-gold)]">{item.quantity}×</span>
-                              <span className="truncate max-w-[150px] sm:max-w-[220px]" title={item.name}>{item.name}</span>
-                            </div>
-                          ))}
+                          {shp.items.map((item, itIdx) => {
+                            const isCaseItem = Boolean(item.isCase || /^case\s+of\s+/i.test(String(item.option || '').trim()));
+                            const perCase = isCaseItem ? Math.max(1, Number(item.bottlesPerCase) || 6) : 1;
+                            return (
+                              <div key={itIdx} className="inline-flex items-center gap-1.5 text-[11px] text-white/70 bg-white/5 border border-white/5 rounded-lg px-2 py-1">
+                                {item.image && (
+                                  <img src={item.image} alt={item.name} className="w-4 h-4 object-contain rounded" />
+                                )}
+                                <span className="font-bold text-[var(--color-gold)]">
+                                  {item.quantity}×{isCaseItem ? ` Case (${perCase} btls) ·` : ''}
+                                </span>
+                                <span className="truncate max-w-[150px] sm:max-w-[220px]" title={item.name}>{item.name}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                       
@@ -3131,8 +3210,8 @@ export default function CheckoutPage({
                 
 
 
-                {/* 📄 International Customs & Export Notice (Clean & Minimal - International Only) */}
-                {destinationMode === 'international_aramex' && (
+                {/* 📄 International Customs & Export Notice (Cross-border Shipments) */}
+                {(destinationMode === 'international_aramex' || quote?.hasInternational) && (
                   <div className="p-4 sm:p-5 rounded-2xl border border-[var(--color-gold)]/30 bg-[#0d0d0d] space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                       <div className="flex items-center gap-3 min-w-0">
@@ -3726,6 +3805,33 @@ export default function CheckoutPage({
                 <CheckCircle2 size={16} /> I Understand & Agree — Continue to Payment
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* COMPACT CENTERED CART SCOPE WARNING POPUP (AUTO-HIDES IN 5.5s) */}
+      {showMixedCartModal && cartScopeAnalysis.hasConflict && (
+        <div
+          key={mixedCartWarningKey}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+        >
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="pointer-events-auto w-fit max-w-[92vw] bg-[#111111]/95 backdrop-blur-md border border-amber-400/60 rounded-2xl px-4 py-3 shadow-[0_14px_45px_rgba(0,0,0,0.88)] flex items-center gap-3 animate-fadeIn"
+          >
+            <AlertTriangle size={18} className="text-amber-400 shrink-0" />
+            <p className="text-xs sm:text-[13px] text-white font-medium leading-snug">
+              {cartScopeAnalysis.warningMessage}
+            </p>
+            <button
+              type="button"
+              aria-label="Dismiss warning"
+              onClick={() => setShowMixedCartModal(false)}
+              className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors cursor-pointer shrink-0"
+            >
+              <X size={15} />
+            </button>
           </div>
         </div>
       )}

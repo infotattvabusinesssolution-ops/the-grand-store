@@ -1,5 +1,8 @@
 const Product = require('../models/Product');
 const Vendor = require('../models/Vendor');
+const EstateProfile = require('../models/EstateProfile');
+const PlatformSettings = require('../models/PlatformSettings');
+const { computeCaseSummary, DEFAULT_INTERNATIONAL_CASE_DISCOUNT_PCT } = require('../utils/casePricing');
 const { normalizeProduct } = require('../utils/productNormalization');
 const { slugify } = require('../utils/slugify');
 
@@ -27,6 +30,60 @@ const mergeIdentity = (derivedIdentity, identity) => {
 const cleanImageList = (images) => [...new Set(images
   .map((value) => String(value || '').trim())
   .filter(Boolean))].slice(0, 5);
+
+const getInternationalCaseDiscountPct = async () => {
+  const doc = await PlatformSettings.findOne().select('internationalCaseDiscountPct').lean().catch(() => null);
+  return doc && doc.internationalCaseDiscountPct !== undefined
+    ? Number(doc.internationalCaseDiscountPct)
+    : DEFAULT_INTERNATIONAL_CASE_DISCOUNT_PCT;
+};
+
+const attachStoreMeta = (product, vendor, estate = null, intlCaseDiscountPct = DEFAULT_INTERNATIONAL_CASE_DISCOUNT_PCT) => {
+  if (!product) return product;
+  if (!product.vendorId) {
+    const caseSummary = computeCaseSummary(product, 'local', intlCaseDiscountPct);
+    return {
+      ...product,
+      storeId: 'admin',
+      storeName: 'The Grand Store',
+      vendorType: 'local',
+      dispatchOrigin: 'South Africa',
+      estateSlug: null,
+      estateName: null,
+      vendorUrl: '/store/admin',
+      regularCasePrice: caseSummary.regularCasePrice,
+      effectiveCasePrice: caseSummary.effectiveCasePrice,
+      caseDiscountAmount: 0,
+      caseDiscountPct: 0,
+    };
+  }
+  if (!vendor && !estate) return product;
+  const vendorType = vendor?.vendorType || (
+    product.country && !['south africa', 'za', 'rsa'].includes(String(product.country).trim().toLowerCase())
+      ? 'international'
+      : 'local'
+  );
+  const dispatchOrigin = vendorType === 'international'
+    ? (product.country || vendor?.shippingProfile?.pickupAddress?.country || 'International')
+    : 'South Africa';
+  const estateSlug = estate?.slug || null;
+  const storeName = vendor?.businessInfo?.tradingName || vendor?.businessInfo?.legalName || estate?.estateName || 'Unknown Store';
+  const caseSummary = computeCaseSummary(product, vendorType, intlCaseDiscountPct);
+  return {
+    ...product,
+    storeId: vendor?.userId || product.vendorId,
+    storeName,
+    vendorType,
+    dispatchOrigin,
+    estateSlug,
+    estateName: estate?.estateName || null,
+    vendorUrl: estateSlug ? `/estate/${estateSlug}` : `/store/${vendor?.userId || product.vendorId}`,
+    regularCasePrice: caseSummary.regularCasePrice,
+    effectiveCasePrice: caseSummary.effectiveCasePrice,
+    caseDiscountAmount: caseSummary.caseDiscountAmount,
+    caseDiscountPct: caseSummary.caseDiscountPct,
+  };
+};
 
 const getOrderedImages = ({ imageOrder, uploadedImages = [], existingImages = [], suppliedImages = [] }) => {
   const order = parseJsonValue(imageOrder, null);
@@ -83,26 +140,28 @@ const getProducts = async (req, res) => {
     const products = await Product.find(query).sort({ createdAt: -1 }).lean();
     
     const vendorIds = [...new Set(products.filter(p => p.vendorId).map(p => p.vendorId.toString()))];
-    const vendors = await Vendor.find({ userId: { $in: vendorIds } }).lean();
-    
+    const [vendors, estates, intlCaseDiscountPct] = await Promise.all([
+      Vendor.find({ userId: { $in: vendorIds } }).lean(),
+      EstateProfile.find({ vendorId: { $in: vendorIds }, isPublished: true })
+        .select('vendorId slug estateName')
+        .lean(),
+      getInternationalCaseDiscountPct()
+    ]);
+
+    const estateByVendor = new Map(estates.map(e => [e.vendorId.toString(), e]));
+
     const productsWithStore = products.reduce((acc, product) => {
       if (!product.vendorId) {
         // Internal product (like Accessories) managed by Admin
-        acc.push({
-          ...product,
-          storeId: 'admin',
-          storeName: 'The Grand Store'
-        });
+        acc.push(attachStoreMeta(product, null, null, intlCaseDiscountPct));
         return acc;
       }
-      
-      const vendor = vendors.find(v => v.userId.toString() === product.vendorId.toString());
+
+      const vendorKey = product.vendorId.toString();
+      const vendor = vendors.find(v => v.userId.toString() === vendorKey);
+      const estate = estateByVendor.get(vendorKey) || null;
       if (vendor && vendor.status === 'approved' && vendor.paymentStatus === 'paid') {
-        acc.push({
-          ...product,
-          storeId: vendor.userId,
-          storeName: vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || 'Unknown Store'
-        });
+        acc.push(attachStoreMeta(product, vendor, estate, intlCaseDiscountPct));
       }
       // If vendor is not approved or not paid, skip this product
       return acc;
@@ -132,17 +191,12 @@ const getProductById = async (req, res) => {
       product = await Product.findById(req.params.id).lean();
     }
     if (product) {
-      if (!product.vendorId) {
-        product.storeId = 'admin';
-        product.storeName = 'The Grand Store';
-      } else {
-        const vendor = await Vendor.findOne({ userId: product.vendorId }).lean();
-        if (vendor) {
-          product.storeId = vendor.userId;
-          product.storeName = vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || 'Unknown Store';
-        }
-      }
-      res.json(product);
+      const [intlCaseDiscountPct, vendor, estate] = await Promise.all([
+        getInternationalCaseDiscountPct(),
+        product.vendorId ? Vendor.findOne({ userId: product.vendorId }).lean() : null,
+        product.vendorId ? EstateProfile.findOne({ vendorId: product.vendorId, isPublished: true }).select('vendorId slug estateName').lean() : null
+      ]);
+      res.json(attachStoreMeta(product, vendor, estate, intlCaseDiscountPct));
     } else {
       res.status(404).json({ message: 'Product not found' });
     }
@@ -158,17 +212,12 @@ const getProductBySlug = async (req, res) => {
   try {
     const product = await Product.findOne({ slug: req.params.slug }).lean();
     if (product) {
-      if (!product.vendorId) {
-        product.storeId = 'admin';
-        product.storeName = 'The Grand Store';
-      } else {
-        const vendor = await Vendor.findOne({ userId: product.vendorId }).lean();
-        if (vendor) {
-          product.storeId = vendor.userId;
-          product.storeName = vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || 'Unknown Store';
-        }
-      }
-      res.json(product);
+      const [intlCaseDiscountPct, vendor, estate] = await Promise.all([
+        getInternationalCaseDiscountPct(),
+        product.vendorId ? Vendor.findOne({ userId: product.vendorId }).lean() : null,
+        product.vendorId ? EstateProfile.findOne({ vendorId: product.vendorId, isPublished: true }).select('vendorId slug estateName').lean() : null
+      ]);
+      res.json(attachStoreMeta(product, vendor, estate, intlCaseDiscountPct));
     } else {
       res.status(404).json({ message: 'Product not found' });
     }

@@ -5,6 +5,7 @@ import { CountryFlag } from './CountryCodeSelect';
 
 // Recommended popular cross-border destinations
 const POPULAR_DESTINATION_CODES = [
+  'ZA', // South Africa
   'GB', // United Kingdom
   'US', // United States
   'AE', // United Arab Emirates
@@ -36,10 +37,9 @@ export default function DestinationCountrySelect({
   const containerRef = useRef(null);
   const searchInputRef = useRef(null);
 
-  // All international countries list (filtered to exclude South Africa which is handled by domestic mode)
+  // All supported destination countries list (includes South Africa for international imports)
   const allCountries = useMemo(() => {
     return rawCountries
-      .filter((c) => c.country !== 'ZA')
       .map((c) => ({
         ...c,
         flagCode: c.country,

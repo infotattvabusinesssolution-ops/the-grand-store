@@ -358,7 +358,12 @@ export default function ConfirmCheckoutModal({
                     <button
                       type="button"
                       onClick={() => setQuantity(quantity + 1)}
-                      className="w-8 h-8 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                      disabled={
+                        product?.stock !== undefined &&
+                        product?.stock !== null &&
+                        (quantity + 1) * (product?.isCase ? Math.max(1, Number(product?.bottlesPerCase || 6)) : 1) > product.stock
+                      }
+                      className="w-8 h-8 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
                       <Plus size={13} />
                     </button>

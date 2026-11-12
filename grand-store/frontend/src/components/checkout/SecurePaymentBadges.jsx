@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShieldCheck, Lock, CreditCard, Banknote } from 'lucide-react';
+import PaymentMethodsStrip from '../PaymentMethodsStrip';
 
 export default function SecurePaymentBadges({ compact = false }) {
   return (
@@ -40,11 +41,7 @@ export default function SecurePaymentBadges({ compact = false }) {
               
               {/* Item 1: Payment Logos */}
               <div className="flex items-center">
-                <img 
-                  src="/assets/footer/payment-strip.png" 
-                  alt="Accepted Payments" 
-                  className={`${compact ? 'h-9' : 'h-12 md:h-14'} w-auto object-contain opacity-90`}
-                />
+                <PaymentMethodsStrip variant="checkout" />
               </div>
 
               {/* Item 2: SSL Encryption */}

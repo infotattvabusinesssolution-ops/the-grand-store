@@ -1,4 +1,5 @@
 const PlatformSettings = require("../models/PlatformSettings");
+const { clearCache } = require("../utils/cache");
 
 // @desc  Get platform settings (public - fees only)
 // @route GET /api/settings/public
@@ -26,6 +27,7 @@ const getPublicSettings = async (req, res) => {
     res.json({
       shippingFee: settings.shippingFee,
       marketplaceCommissionPct: settings.marketplaceCommissionPct,
+      internationalCaseDiscountPct: settings.internationalCaseDiscountPct !== undefined ? settings.internationalCaseDiscountPct : 3,
       auctionCommissionPct: settings.auctionCommissionPct,
       buyerPremiumPct: settings.buyerPremiumPct,
       barChargePct: settings.barChargePct,
@@ -179,6 +181,7 @@ const updateSettings = async (req, res) => {
     const {
       shippingFee,
       marketplaceCommissionPct,
+      internationalCaseDiscountPct,
       auctionCommissionPct,
       buyerPremiumPct,
       barChargePct,
@@ -216,6 +219,12 @@ const updateSettings = async (req, res) => {
 
     if (shippingFee !== undefined) settings.shippingFee = shippingFee;
     if (marketplaceCommissionPct !== undefined) settings.marketplaceCommissionPct = marketplaceCommissionPct;
+    if (internationalCaseDiscountPct !== undefined) {
+      const pct = Number(internationalCaseDiscountPct);
+      if (Number.isFinite(pct)) {
+        settings.internationalCaseDiscountPct = Math.min(90, Math.max(0, pct));
+      }
+    }
     if (auctionCommissionPct !== undefined) settings.auctionCommissionPct = auctionCommissionPct;
     if (buyerPremiumPct !== undefined) settings.buyerPremiumPct = buyerPremiumPct;
     if (barChargePct !== undefined) settings.barChargePct = barChargePct;
@@ -403,6 +412,8 @@ const updateSettings = async (req, res) => {
     if (marginBlockedThresholdPct !== undefined) settings.marginBlockedThresholdPct = Math.max(0, Number(marginBlockedThresholdPct) || 10);
 
     await settings.save();
+    clearCache('products_');
+    clearCache('estates_');
     res.json({ message: "Settings updated successfully", settings });
   } catch (error) {
     console.error("Update Settings Error:", error);

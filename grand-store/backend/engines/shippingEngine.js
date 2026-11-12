@@ -28,38 +28,47 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
     const destCountry = customerAddress.country || 'South Africa';
     const destSA = isSouthAfrica(destCountry);
 
-    let originCountry = options.originCountry 
-      || vendor?.shippingProfile?.pickupAddress?.country 
-      || vendor?.businessInfo?.address?.country 
-      || null;
+    const explicitVendorType = String(options.vendorType || vendor?.vendorType || '').trim().toLowerCase();
+    const isExplicitLocalVault = !vendorId || explicitVendorType === 'local' || explicitVendorType === 'flagship';
 
-    // Check if items or vendor belong to an international origin (France, Italy, UK, etc.)
+    let originCountry = options.originCountry || null;
     let isInternationalOrigin = false;
-    if (originCountry && !isSouthAfrica(originCountry)) {
-      isInternationalOrigin = true;
-    }
 
-    if (!isInternationalOrigin && options.items && Array.isArray(options.items) && options.items.length > 0) {
-      const intlItem = options.items.find(it => {
-        const c = (it.country || it.originCountry || '').trim().toLowerCase();
-        return c && !isSouthAfrica(c);
-      });
-      if (intlItem) {
-        originCountry = intlItem.country || intlItem.originCountry;
-        isInternationalOrigin = true;
+    if (explicitVendorType === 'international') {
+      isInternationalOrigin = true;
+      const pickupC = vendor?.shippingProfile?.pickupAddress?.country || vendor?.businessInfo?.address?.country;
+      if (originCountry && !isSouthAfrica(originCountry)) {
+        // use explicit non-SA origin
+      } else if (pickupC && !isSouthAfrica(pickupC) && !pickupC.toLowerCase().includes('south africa')) {
+        originCountry = pickupC;
+      } else if (Array.isArray(options.items) && options.items[0]?.country && !isSouthAfrica(options.items[0].country)) {
+        originCountry = options.items[0].country;
       } else {
-        const itemBrandOrName = options.items.map(it => (it.name || '') + ' ' + (it.brand || '')).join(' ').toLowerCase();
-        if (itemBrandOrName.includes('dogliotti') || itemBrandOrName.includes('cantina del conte') || itemBrandOrName.includes('giuliani')) {
-          originCountry = 'Italy';
-          isInternationalOrigin = true;
-        } else if (itemBrandOrName.includes('bruno andreu') || itemBrandOrName.includes('dobbé') || itemBrandOrName.includes('dobbe')) {
-          originCountry = 'France';
-          isInternationalOrigin = true;
-        }
+        originCountry = 'International';
+      }
+    } else if (originCountry && !isSouthAfrica(originCountry)) {
+      isInternationalOrigin = true;
+    } else if (!isExplicitLocalVault && vendor) {
+      const pickupC = vendor.shippingProfile?.pickupAddress?.country || vendor.businessInfo?.address?.country;
+      if (pickupC && !isSouthAfrica(pickupC) && !pickupC.toLowerCase().includes('south africa')) {
+        originCountry = pickupC;
+        isInternationalOrigin = true;
       }
     }
 
-    // Domestic South African local inventory dispatches from South Africa
+    // Fallback for legacy callers without vendor/vendorType metadata: match explicit international vendor items only
+    if (!isInternationalOrigin && !isExplicitLocalVault && Array.isArray(options.items) && options.items.length > 0) {
+      const itemBrandOrName = options.items.map(it => (it.name || '') + ' ' + (it.brand || '')).join(' ').toLowerCase();
+      if (itemBrandOrName.includes('dogliotti') || itemBrandOrName.includes('cantina del conte') || itemBrandOrName.includes('giuliani')) {
+        originCountry = 'Italy';
+        isInternationalOrigin = true;
+      } else if (itemBrandOrName.includes('bruno andreu') || itemBrandOrName.includes('dobbé') || itemBrandOrName.includes('dobbe')) {
+        originCountry = 'France';
+        isInternationalOrigin = true;
+      }
+    }
+
+    // Domestic South African & Flagship Vault inventory always dispatches from South Africa
     if (!isInternationalOrigin) {
       originCountry = 'South Africa';
     }

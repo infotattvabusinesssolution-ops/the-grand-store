@@ -32,6 +32,75 @@ import { isCigarProduct, getCigarQuotationMailto } from "../../utils/cigarUtils"
 import api from "../../api";
 import ConfirmCheckoutModal from "../../components/modals/ConfirmCheckoutModal";
 
+const KNOWN_ESTATE_VENDORS = [
+  { match: 'cantina del conte', name: 'Cantina del Conte', slug: 'cantina-del-conte', vendorType: 'international' },
+  { match: 'dogliotti', name: 'Dogliotti 1870', slug: 'dogliotti-1870', vendorType: 'international' },
+  { match: 'giuliani', name: 'Giuliani Vini', slug: 'giulianivini', vendorType: 'international' },
+  { match: 'bruno andreu', name: 'Bruno Andreu', slug: 'bruno-andreu', vendorType: 'international' },
+  { match: 'maison dobb', name: 'Maison Dobbé Cognac', slug: 'maison-dobbe', vendorType: 'international' },
+  { match: 'dobbe', name: 'Maison Dobbé Cognac', slug: 'maison-dobbe', vendorType: 'international' },
+  { match: 'dobbé', name: 'Maison Dobbé Cognac', slug: 'maison-dobbe', vendorType: 'international' },
+  { match: 'tesselaarsdal', name: 'Tesselaarsdal Wines', slug: 'tesselaarsdal-wines', vendorType: 'local' },
+  { match: 'long dog', name: 'Long Dog Wines', slug: 'long-dog-wines', vendorType: 'local' },
+  { match: 'mont rochelle', name: 'Mont Rochelle Reserve Estates', slug: 'mont-rochelle-reserve-estates', vendorType: 'local' },
+];
+
+const resolveVendorLinkInfo = (product) => {
+  if (!product) return null;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+
+  if (product.estateSlug) {
+    const path = `/estate/${product.estateSlug}`;
+    return {
+      isEstate: true,
+      name: product.estateName || product.storeName || product.brand || 'Partner Wine Estate',
+      path,
+      fullUrl: `${origin}${path}`,
+    };
+  }
+
+  if (product.vendorUrl && String(product.vendorUrl).startsWith('/estate/')) {
+    const path = String(product.vendorUrl);
+    return {
+      isEstate: true,
+      name: product.estateName || product.storeName || product.brand || 'Partner Wine Estate',
+      path,
+      fullUrl: `${origin}${path}`,
+    };
+  }
+
+  const haystack = `${product.storeName || ''} ${product.brand || ''} ${product.name || ''} ${product.fullName || ''}`.toLowerCase();
+  const matchedEstate = KNOWN_ESTATE_VENDORS.find((v) => haystack.includes(v.match));
+  if (matchedEstate) {
+    const path = `/estate/${matchedEstate.slug}`;
+    return {
+      isEstate: true,
+      name: product.storeName && product.storeName !== 'The Grand Store' ? product.storeName : matchedEstate.name,
+      path,
+      fullUrl: `${origin}${path}`,
+    };
+  }
+
+  if (product.vendorId || (product.storeId && product.storeId !== 'admin')) {
+    const storeId = product.storeId || product.vendorId;
+    const path = product.vendorUrl || `/store/${storeId}`;
+    return {
+      isEstate: false,
+      name: product.storeName || product.brand || 'Partner Vendor',
+      path,
+      fullUrl: `${origin}${path}`,
+    };
+  }
+
+  const path = '/store/admin';
+  return {
+    isEstate: false,
+    name: product.storeName || 'The Grand Store',
+    path,
+    fullUrl: `${origin}${path}`,
+  };
+};
+
 const preparedVendorImages = {
   '/uploads/images-1787292711461.png': '/assets/products/vendor/whisky-tona-full.png',
 };
@@ -143,12 +212,25 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomOrigin, setZoomOrigin] = useState("50% 50%");
   const [showCertificate, setShowCertificate] = useState(false);
-  const [purchaseUnit, setPurchaseUnit] = useState('bottle'); // 'bottle' | 'case' (Dynamic Case of Bottle Selector)
+  const [purchaseUnit, setPurchaseUnit] = useState('bottle'); // 'bottle' | 'case6' | 'case12' (Dynamic Case of Bottle Selector)
 
   const [reviews, setReviews] = useState([]);
   const [reviewSummary, setReviewSummary] = useState({ averageRating: 0, reviewCount: 0 });
   const [expertReview, setExpertReview] = useState(null);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [intlCaseDiscountPct, setIntlCaseDiscountPct] = useState(3);
+
+  useEffect(() => {
+    let active = true;
+    api.get('/settings/public')
+      .then((res) => {
+        if (active && res.data && res.data.internationalCaseDiscountPct !== undefined) {
+          setIntlCaseDiscountPct(Math.min(90, Math.max(0, Number(res.data.internationalCaseDiscountPct) || 0)));
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (!product) return;
@@ -251,6 +333,7 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
     `${product.category || ''} ${product.type || ''} ${product.name || ''}`
   );
   const isCigar = isCigarProduct(product);
+  const vendorLinkInfo = resolveVendorLinkInfo(product);
 
   // Case of Bottle Analysis (Section 4 of International Vendor Specification)
   // Only applies to bottle beverages (Wine, Spirits, Champagne), NOT for everyone (e.g. cigars, accessories)
@@ -261,37 +344,125 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
     )
   );
 
-  const bottlesPerCase = Math.max(
+  const defaultProductCaseBottles = Math.max(
     1,
     Number(product.bottlesPerCase || product.channelSettings?.trade?.bottlesPerCase || 6)
   );
   const bottleSize = identity.bottleSize || product.bottleSize || product.size || "750ml";
-  const caseConfigText = product.caseConfiguration || `${bottlesPerCase} × ${bottleSize} Case`;
-
   const singleBottlePrice = Number(product.price) || 0;
-  const singleCasePrice = product.casePrice && Number(product.casePrice) > 0
-    ? Number(product.casePrice)
-    : Math.round(singleBottlePrice * bottlesPerCase);
 
-  const activeUnitPrice = isBottleProduct && purchaseUnit === 'case' ? singleCasePrice : singleBottlePrice;
-  const activeEffectiveBottlePrice = isBottleProduct && purchaseUnit === 'case'
-    ? (singleCasePrice / bottlesPerCase).toFixed(2)
-    : singleBottlePrice.toFixed(2);
+  const vendorHaystack = `${product.storeName || ''} ${product.brand || ''} ${product.name || ''} ${product.fullName || ''}`.toLowerCase();
+  const matchedEstateVendor = KNOWN_ESTATE_VENDORS.find((v) => vendorHaystack.includes(v.match));
+  const isInternationalVendor = product.vendorType
+    ? String(product.vendorType).trim().toLowerCase() === 'international'
+    : matchedEstateVendor?.vendorType === 'international';
+
+  const customCasePrice = Number(product.casePrice);
+  const buildCaseOption = (count) => {
+    const regularPrice = Math.round(singleBottlePrice * count);
+    const isDefaultSize = count === defaultProductCaseBottles;
+    let effectivePrice = regularPrice;
+
+    if (isInternationalVendor) {
+      if (isDefaultSize && Number.isFinite(customCasePrice) && customCasePrice > 0 && customCasePrice < regularPrice) {
+        effectivePrice = customCasePrice;
+      } else if (intlCaseDiscountPct > 0) {
+        effectivePrice = Math.round(regularPrice * (1 - intlCaseDiscountPct / 100));
+      }
+    } else if (isDefaultSize && Number.isFinite(customCasePrice) && customCasePrice > 0) {
+      effectivePrice = customCasePrice;
+    }
+
+    const discountAmount = isInternationalVendor ? Math.max(0, regularPrice - effectivePrice) : 0;
+    const discountPct = isInternationalVendor && regularPrice > 0 && discountAmount > 0
+      ? Number(((discountAmount / regularPrice) * 100).toFixed(1))
+      : 0;
+
+    return {
+      bottles: count,
+      configText: isDefaultSize && product.caseConfiguration ? product.caseConfiguration : `${count} × ${bottleSize} Case`,
+      regularPrice,
+      effectivePrice,
+      discountAmount,
+      discountPct,
+      effectiveBottlePrice: Number((effectivePrice / count).toFixed(2)),
+    };
+  };
+
+  const case6Option = buildCaseOption(6);
+  const case12Option = buildCaseOption(12);
+  const isCaseSelected = isBottleProduct && (purchaseUnit === 'case6' || purchaseUnit === 'case12');
+  const selectedCase = purchaseUnit === 'case12' ? case12Option : case6Option;
+
+  const bottlesPerCase = isCaseSelected ? selectedCase.bottles : defaultProductCaseBottles;
+  const caseConfigText = isCaseSelected
+    ? selectedCase.configText
+    : (product.caseConfiguration || `${defaultProductCaseBottles} × ${bottleSize} Case`);
+  const regularCasePrice = selectedCase.regularPrice;
+  const singleCasePrice = selectedCase.effectivePrice;
+  const caseDiscountAmount = selectedCase.discountAmount;
+  const caseDiscountPct = selectedCase.discountPct;
+
+  const activeUnitPrice = isCaseSelected ? singleCasePrice : singleBottlePrice;
+  const caseEffectiveBottlePrice = selectedCase.effectiveBottlePrice;
+  const activeBottlesPerSelection = isCaseSelected ? selectedCase.bottles : 1;
+
+  const hasStockLimit = product.stock !== undefined && product.stock !== null;
+  const requiredBottlesForQty = quantity * activeBottlesPerSelection;
+  const isOutOfStock = product.stock === 0;
+  const isInsufficientStockForSelection = hasStockLimit && Number(product.stock) > 0 && Number(product.stock) < requiredBottlesForQty;
+  const canIncrementQty = !isOutOfStock && (!hasStockLimit || (quantity + 1) * activeBottlesPerSelection <= Number(product.stock));
+  const canPurchaseSelection = !isOutOfStock && !isInsufficientStockForSelection;
+
+  const selectPurchaseUnit = (nextUnit) => {
+    setPurchaseUnit(nextUnit);
+    if (hasStockLimit && Number(product.stock) > 0) {
+      const nextBps = nextUnit === 'case12' ? 12 : nextUnit === 'case6' ? 6 : 1;
+      const maxUnits = Math.max(1, Math.floor(Number(product.stock) / nextBps));
+      setQuantity((q) => Math.min(q, maxUnits));
+    }
+  };
+
+  const matchesDefaultCaseMeta = bottlesPerCase === defaultProductCaseBottles;
 
   // Dynamic Case Weight & Dimensions for Shipping Logistics Card
-  const dynamicPkgWeight = isBottleProduct && purchaseUnit === 'case'
-    ? (product.caseWeight ? `${product.caseWeight} kg` : `${((pkgWeight ? Number(pkgWeight) : 1.5) * bottlesPerCase + 0.4).toFixed(2)} kg`)
+  const dynamicPkgWeight = isCaseSelected
+    ? (matchesDefaultCaseMeta && product.caseWeight ? `${product.caseWeight} kg` : `${((pkgWeight ? Number(pkgWeight) : 1.5) * bottlesPerCase + 0.4).toFixed(2)} kg`)
     : (pkgWeight ? `${pkgWeight} kg` : '1.85 kg');
 
-  const dynamicPkgBox = isBottleProduct && purchaseUnit === 'case'
+  const dynamicPkgBox = isCaseSelected
     ? `Certified Case Shipper (${bottlesPerCase} Bottles)`
     : (pkgBox || 'Standard Luxury Box');
 
-  const dynamicPkgDims = isBottleProduct && purchaseUnit === 'case'
-    ? (product.caseDimensions?.length_cm 
-        ? `${product.caseDimensions.length_cm} × ${product.caseDimensions.width_cm} × ${product.caseDimensions.height_cm} cm` 
+  const dynamicPkgDims = isCaseSelected
+    ? (matchesDefaultCaseMeta && product.caseDimensions?.length_cm
+        ? `${product.caseDimensions.length_cm} × ${product.caseDimensions.width_cm} × ${product.caseDimensions.height_cm} cm`
         : (bottlesPerCase >= 12 ? '38 × 30 × 35 cm' : '32 × 26 × 35 cm'))
     : (pkgLength && pkgWidth && pkgHeight ? `${pkgLength} × ${pkgWidth} × ${pkgHeight} cm` : '12 × 12 × 34 cm');
+
+  const activeCheckoutOption = isCaseSelected
+    ? `Case of ${bottlesPerCase} (${caseConfigText})`
+    : (selectedOption || product.options?.[0] || '750ml');
+
+  const activeCheckoutProduct = isCaseSelected
+    ? {
+        ...product,
+        price: singleCasePrice,
+        unitPrice: singleCasePrice,
+        isCase: true,
+        bottlesPerCase,
+        caseConfiguration: caseConfigText,
+        weight_kg: parseFloat(dynamicPkgWeight),
+        shipping: {
+          ...(product.shipping || {}),
+          box_type: dynamicPkgBox,
+          weight_kg: parseFloat(dynamicPkgWeight),
+          length_cm: (matchesDefaultCaseMeta && product.caseDimensions?.length_cm) || (bottlesPerCase >= 12 ? 38 : 32),
+          width_cm: (matchesDefaultCaseMeta && product.caseDimensions?.width_cm) || (bottlesPerCase >= 12 ? 30 : 26),
+          height_cm: (matchesDefaultCaseMeta && product.caseDimensions?.height_cm) || 35
+        }
+      }
+    : product;
 
   const identityItems = [
     { label: "Type", value: identity.type },
@@ -643,25 +814,41 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                     <div className="text-[clamp(2rem,10vw,3rem)] font-semibold leading-none text-[#e1bd70]">
                       <Price amount={activeUnitPrice * quantity} presentation="product" />
                     </div>
+                    {isCaseSelected && caseDiscountAmount > 0 && (
+                      <del className="text-base sm:text-lg font-mono text-white/40">
+                        <Price amount={regularCasePrice * quantity} presentation="badge" />
+                      </del>
+                    )}
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-2.5 py-1 text-xs font-mono text-[var(--color-gold)] font-medium">
                       Incl. 15% VAT
                     </span>
-                    {isBottleProduct && purchaseUnit === 'case' && (
+                    {isCaseSelected && (
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-950/50 px-2.5 py-1 text-xs font-mono text-emerald-400 font-medium">
-                        📦 Case of {bottlesPerCase}
+                        📦 Case of {bottlesPerCase}{caseDiscountPct > 0 ? ` · Save ${caseDiscountPct}%` : ''}
                       </span>
                     )}
                   </div>
 
                   {isBottleProduct && (
                     <div className="mt-2 text-xs font-mono text-[#c9a35b]">
-                      {purchaseUnit === 'case' ? (
+                      {isCaseSelected ? (
                         <span>
-                          R{activeEffectiveBottlePrice} per bottle <span className="text-white/40">•</span> {caseConfigText}
+                          <Price amount={caseEffectiveBottlePrice} presentation="badge" /> per bottle <span className="text-white/40">•</span> {caseConfigText}
+                          {caseDiscountAmount > 0 && (
+                            <>
+                              {' '}<span className="text-white/40">•</span>{' '}
+                              <span className="text-emerald-400">
+                                Save <Price amount={caseDiscountAmount * quantity} presentation="badge" />
+                              </span>
+                            </>
+                          )}
                         </span>
                       ) : (
                         <span>
-                          Single bottle price <span className="text-white/40">•</span> Case of {bottlesPerCase} available below
+                          Single bottle price <span className="text-white/40">•</span>{' '}
+                          {case6Option.discountPct > 0
+                            ? `Case of 6 & Case of 12 available below (${case6Option.discountPct}% off)`
+                            : 'Case of 6 & Case of 12 available below'}
                         </span>
                       )}
                     </div>
@@ -702,6 +889,36 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
             </button>
           </div>
 
+          {/* Vendor / Join Wine Farm Estate Direct URL */}
+          {vendorLinkInfo && (
+            <Link
+              to={vendorLinkInfo.path}
+              className="group mb-7 flex items-center justify-between gap-4 border border-[#c9a35b]/30 bg-gradient-to-r from-[#15120d] to-[#0d0c09] px-5 py-3.5 transition-all hover:border-[#c9a35b]/70 hover:bg-[#1a1610] sm:mb-8"
+              title={`Visit ${vendorLinkInfo.name}`}
+            >
+              <div className="min-w-0 flex items-center gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#c9a35b]/35 bg-[#c9a35b]/10 text-[#e1bd70]">
+                  <Link2 size={16} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#918a7f]">
+                    {vendorLinkInfo.isEstate ? 'Join Wine Farm · Estate Vendor' : 'Official Storefront'}
+                  </p>
+                  <p className="mt-0.5 truncate font-serif text-sm font-semibold text-[#eee8dd] transition-colors group-hover:text-[#e1bd70]">
+                    {vendorLinkInfo.name}
+                  </p>
+                  <p className="truncate font-mono text-[11px] text-[#c9a35b]/85 transition-colors group-hover:text-[#e1bd70]">
+                    {vendorLinkInfo.fullUrl}
+                  </p>
+                </div>
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#c9a35b]/35 bg-[#c9a35b]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#e1bd70] transition-all group-hover:bg-[#c9a35b] group-hover:text-[#0b0a08]">
+                <span className="hidden sm:inline">{vendorLinkInfo.isEstate ? 'Visit Estate' : 'Visit Store'}</span>
+                <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </Link>
+          )}
+
           {/* Bottle identity — the key facts customers need at a glance. */}
           <div className="mb-8 border border-[#c9a35b]/25 bg-[#11100d] p-5 sm:p-6">
             <div className="mb-5 flex flex-col items-start gap-3 border-b border-white/10 pb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
@@ -729,37 +946,37 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
             </dl>
           </div>
 
-          {/* Dynamic Case of Bottle Selector — ONLY for bottle products (not for cigars / accessories) */}
+          {/* Dynamic Case of Bottle Selector — Single Bottle, Case of 6, and Case of 12 */}
           {isBottleProduct && (
             <div className="mb-6 p-4 rounded-xl border border-[#c9a35b]/30 bg-gradient-to-b from-[#16130e] to-[#0e0d0a] shadow-lg">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                 <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#dfbd72] flex items-center gap-2">
                   <Package size={15} className="text-[#c9a35b]" />
                   Purchase Format
                 </span>
                 <span className="text-[10px] text-[#918a7f] uppercase tracking-wider font-mono">
-                  Standard Case: {caseConfigText}
+                  Selected: {isCaseSelected ? `Case of ${bottlesPerCase}` : 'Single Bottle'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 {/* Option 1: Single Bottle */}
                 <button
                   type="button"
-                  onClick={() => setPurchaseUnit('bottle')}
-                  className={`p-3.5 rounded-lg border text-left transition-all relative flex flex-col justify-between ${
+                  onClick={() => selectPurchaseUnit('bottle')}
+                  className={`p-3 rounded-lg border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
                     purchaseUnit === 'bottle'
                       ? 'border-[#c9a35b] bg-[#c9a35b]/15 shadow-[0_0_15px_rgba(201,163,91,0.2)] ring-1 ring-[#c9a35b]'
                       : 'border-white/10 bg-black/40 hover:border-white/25 text-[#918a7f]'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className={`text-xs font-bold uppercase tracking-wider ${purchaseUnit === 'bottle' ? 'text-white' : 'text-[#eee8dd]'}`}>
+                  <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                    <span className={`text-[11px] font-bold uppercase tracking-wider ${purchaseUnit === 'bottle' ? 'text-white' : 'text-[#eee8dd]'}`}>
                       🍾 Single Bottle
                     </span>
-                    <span className="text-[10px] text-[#918a7f] font-mono">1 × {bottleSize}</span>
+                    <span className="text-[10px] text-[#918a7f] font-mono shrink-0">1 × {bottleSize}</span>
                   </div>
-                  <div className="flex items-baseline justify-between mt-1">
+                  <div className="flex items-baseline justify-between mt-1 gap-1.5">
                     <span className="text-sm font-bold text-[#dfbd72] font-mono">
                       <Price amount={singleBottlePrice} presentation="badge" />
                     </span>
@@ -767,33 +984,56 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                   </div>
                 </button>
 
-                {/* Option 2: Case of N Bottles */}
-                <button
-                  type="button"
-                  onClick={() => setPurchaseUnit('case')}
-                  className={`p-3.5 rounded-lg border text-left transition-all relative flex flex-col justify-between ${
-                    purchaseUnit === 'case'
-                      ? 'border-[#c9a35b] bg-[#c9a35b]/15 shadow-[0_0_15px_rgba(201,163,91,0.2)] ring-1 ring-[#c9a35b]'
-                      : 'border-white/10 bg-black/40 hover:border-white/25 text-[#918a7f]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className={`text-xs font-bold uppercase tracking-wider ${purchaseUnit === 'case' ? 'text-white' : 'text-[#eee8dd]'}`}>
-                      📦 Case of {bottlesPerCase} Bottles
-                    </span>
-                    <span className="text-[10px] text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30 font-mono">
-                      {caseConfigText}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between mt-1">
-                    <span className="text-sm font-bold text-[#dfbd72] font-mono">
-                      <Price amount={singleCasePrice} presentation="badge" />
-                    </span>
-                    <span className="text-[10px] text-[#c9a35b] font-mono">
-                      R{activeEffectiveBottlePrice} / btl
-                    </span>
-                  </div>
-                </button>
+                {/* Options 2 & 3: Case of 6 & Case of 12 Bottles */}
+                {[
+                  { unit: 'case6', opt: case6Option },
+                  { unit: 'case12', opt: case12Option },
+                ].map(({ unit, opt }) => {
+                  const isActive = purchaseUnit === unit;
+                  const lowStockForCase = hasStockLimit && Number(product.stock) > 0 && Number(product.stock) < opt.bottles;
+                  return (
+                    <button
+                      key={unit}
+                      type="button"
+                      onClick={() => selectPurchaseUnit(unit)}
+                      className={`p-3 rounded-lg border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
+                        isActive
+                          ? 'border-[#c9a35b] bg-[#c9a35b]/15 shadow-[0_0_15px_rgba(201,163,91,0.2)] ring-1 ring-[#c9a35b]'
+                          : 'border-white/10 bg-black/40 hover:border-white/25 text-[#918a7f]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                        <span className={`text-[11px] font-bold uppercase tracking-wider ${isActive ? 'text-white' : 'text-[#eee8dd]'}`}>
+                          📦 Case of {opt.bottles}
+                        </span>
+                        {opt.discountPct > 0 ? (
+                          <span className="text-[9.5px] text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30 font-mono shrink-0">
+                            Save {opt.discountPct}%
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-[#918a7f] font-mono shrink-0">
+                            {opt.bottles} × {bottleSize}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-baseline justify-between mt-1 gap-1.5 flex-wrap">
+                        <span className="text-sm font-bold text-[#dfbd72] font-mono flex items-baseline gap-1">
+                          <Price amount={opt.effectivePrice} presentation="badge" />
+                          {opt.discountAmount > 0 && (
+                            <del className="text-[10px] font-normal text-white/40">
+                              <Price amount={opt.regularPrice} presentation="badge" />
+                            </del>
+                          )}
+                        </span>
+                        <span className={`text-[10px] font-mono ${lowStockForCase ? 'text-amber-400' : 'text-[#c9a35b]'}`}>
+                          {lowStockForCase
+                            ? `Only ${product.stock} in stock`
+                            : <><Price amount={opt.effectiveBottlePrice} presentation="badge" /> / btl</>}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -844,12 +1084,12 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
           ) : (
             <div className="mb-6 grid grid-cols-[minmax(0,1fr)_52px] items-stretch gap-3 sm:flex sm:flex-wrap sm:gap-4">
               {/* Quantity Selector */}
-              <div className={`order-1 flex h-[52px] w-full items-center border border-white/20 sm:w-auto ${product.stock === 0 ? 'opacity-50 pointer-events-none' : ''}`}>
+              <div className={`order-1 flex h-[52px] w-full items-center border border-white/20 sm:w-auto ${!canPurchaseSelection ? 'opacity-50 pointer-events-none' : ''}`}>
                 <button
                   type="button"
                   className="w-12 h-full flex items-center justify-center text-[#918a7f] hover:text-gold-gradient transition-colors"
                   onClick={() => setQuantity((value) => Math.max(1, value - 1))}
-                  disabled={product.stock === 0}
+                  disabled={!canPurchaseSelection}
                 >
                   <Minus size={14} />
                 </button>
@@ -858,78 +1098,43 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                 </span>
                 <button
                   type="button"
-                  className="w-12 h-full flex items-center justify-center text-[#918a7f] hover:text-gold-gradient transition-colors"
+                  className="w-12 h-full flex items-center justify-center text-[#918a7f] hover:text-gold-gradient transition-colors disabled:opacity-40"
                   onClick={() => setQuantity((value) => value + 1)}
-                  disabled={product.stock === 0 || quantity >= product.stock}
+                  disabled={!canIncrementQty}
                 >
                   <Plus size={14} />
                 </button>
               </div>
 
               <button
-                className={`order-3 col-span-2 h-[52px] w-full min-w-0 border border-[#eee8dd] bg-transparent text-xs font-bold uppercase tracking-[0.12em] text-[#eee8dd] sm:order-2 sm:flex-1 sm:min-w-[140px] ${product.stock === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-white/5 transition-colors'}`}
+                className={`order-3 col-span-2 h-[52px] w-full min-w-0 border border-[#eee8dd] bg-transparent text-xs font-bold uppercase tracking-[0.12em] text-[#eee8dd] sm:order-2 sm:flex-1 sm:min-w-[140px] ${!canPurchaseSelection ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-white/5 transition-colors'}`}
                 type="button"
                 onClick={() => {
-                  if (product.stock === 0 || !onAdd) return;
-                  if (isBottleProduct && purchaseUnit === 'case') {
-                    const caseProduct = {
-                      ...product,
-                      price: singleCasePrice,
-                      unitPrice: singleCasePrice,
-                      isCase: true,
-                      bottlesPerCase,
-                      caseConfiguration: caseConfigText,
-                      weight_kg: parseFloat(dynamicPkgWeight),
-                      shipping: {
-                        ...(product.shipping || {}),
-                        box_type: dynamicPkgBox,
-                        weight_kg: parseFloat(dynamicPkgWeight),
-                        length_cm: product.caseDimensions?.length_cm || (bottlesPerCase >= 12 ? 38 : 32),
-                        width_cm: product.caseDimensions?.width_cm || (bottlesPerCase >= 12 ? 30 : 26),
-                        height_cm: product.caseDimensions?.height_cm || 35
-                      }
-                    };
-                    onAdd(caseProduct, quantity, `Case of ${bottlesPerCase} (${caseConfigText})`);
-                  } else {
-                    onAdd(product, quantity, selectedOption);
-                  }
+                  if (!canPurchaseSelection || !onAdd) return;
+                  onAdd(activeCheckoutProduct, quantity, activeCheckoutOption);
                 }}
-                disabled={product.stock === 0}
+                disabled={!canPurchaseSelection}
               >
-                {product.stock === 0 ? 'Out of Stock' : (isBottleProduct && purchaseUnit === 'case' ? `Add Case to Cart (${quantity})` : 'Add To Cart')}
+                {isOutOfStock
+                  ? 'Out of Stock'
+                  : isInsufficientStockForSelection
+                  ? `Only ${product.stock} Bottles Left`
+                  : isCaseSelected
+                  ? `Add Case of ${bottlesPerCase} to Cart (${quantity})`
+                  : 'Add To Cart'}
               </button>
 
               <button
-                className={`order-4 col-span-2 h-[52px] w-full min-w-0 border border-[#222] bg-[#222] text-xs font-bold uppercase tracking-[0.12em] text-[#eee8dd] sm:order-3 sm:flex-1 sm:min-w-[140px] ${product.stock === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-[#333] transition-colors'}`}
+                className={`order-4 col-span-2 h-[52px] w-full min-w-0 border border-[#222] bg-[#222] text-xs font-bold uppercase tracking-[0.12em] text-[#eee8dd] sm:order-3 sm:flex-1 sm:min-w-[140px] ${!canPurchaseSelection ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-[#333] transition-colors'}`}
                 type="button"
                 onClick={() => {
-                  if (product.stock !== 0) {
-                    if (isBottleProduct && purchaseUnit === 'case' && onAdd) {
-                      const caseProduct = {
-                        ...product,
-                        price: singleCasePrice,
-                        unitPrice: singleCasePrice,
-                        isCase: true,
-                        bottlesPerCase,
-                        caseConfiguration: caseConfigText,
-                        weight_kg: parseFloat(dynamicPkgWeight),
-                        shipping: {
-                          ...(product.shipping || {}),
-                          box_type: dynamicPkgBox,
-                          weight_kg: parseFloat(dynamicPkgWeight),
-                          length_cm: product.caseDimensions?.length_cm || (bottlesPerCase >= 12 ? 38 : 32),
-                          width_cm: product.caseDimensions?.width_cm || (bottlesPerCase >= 12 ? 30 : 26),
-                          height_cm: product.caseDimensions?.height_cm || 35
-                        }
-                      };
-                      onAdd(caseProduct, quantity, `Case of ${bottlesPerCase} (${caseConfigText})`, false);
-                    }
+                  if (canPurchaseSelection) {
                     setIsCheckoutModalOpen(true);
                   }
                 }}
-                disabled={product.stock === 0}
+                disabled={!canPurchaseSelection}
               >
-                {isBottleProduct && purchaseUnit === 'case' ? 'Buy Case Now' : 'Buy Now'}
+                {isCaseSelected ? `Buy Case (${bottlesPerCase} Btls)` : 'Buy Now'}
               </button>
 
               <button
@@ -1045,8 +1250,8 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                 </div>
                 <div className="bg-black/40 p-2 border border-white/5">
                   <span className="text-[9px] uppercase tracking-wider text-[#918a7f] block">Protection</span>
-                  <span className={purchaseUnit === 'case' ? "text-emerald-400 font-medium" : "text-rose-400 font-medium"}>
-                    {purchaseUnit === 'case' ? `Reinforced ${bottlesPerCase}-Bottle Cellar Shipper` : 'Fragile Glass (Insured)'}
+                  <span className={isCaseSelected ? "text-emerald-400 font-medium" : "text-rose-400 font-medium"}>
+                    {isCaseSelected ? `Reinforced ${bottlesPerCase}-Bottle Cellar Shipper` : 'Fragile Glass (Insured)'}
                   </span>
                 </div>
               </div>
@@ -1369,9 +1574,9 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
       <ConfirmCheckoutModal 
         isOpen={isCheckoutModalOpen} 
         onClose={() => setIsCheckoutModalOpen(false)} 
-        product={product}
+        product={activeCheckoutProduct}
         initialQuantity={quantity || 1}
-        selectedOption={selectedOption || product.options?.[0] || '750ml'}
+        selectedOption={activeCheckoutOption}
         onAddToCart={(prod, qty, opt, openCart) => {
           if (onAdd) onAdd(prod, qty, opt, openCart);
         }}

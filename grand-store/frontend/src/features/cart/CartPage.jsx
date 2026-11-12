@@ -131,8 +131,8 @@ export default function CartPage({ cartItems, onUpdateQuantity, onRemove, onClea
               <h2>Cart Total</h2>
               <dl>
                 {cartItems.map((item, idx) => (
-                  <div key={item.id || item._id || `${item.name}-${idx}`}>
-                    <dt className="truncate max-w-[200px] xl:max-w-[250px]" title={item.fullName || item.name}>
+                  <div key={`${item.id || item._id || item.name}-${item.option || idx}`}>
+                    <dt className="truncate max-w-[200px] xl:max-w-[250px]" title={`${item.fullName || item.name}${item.option ? ` (${item.option})` : ''}`}>
                       {item.quantity} &times; {item.fullName || item.name}
                     </dt>
                     <dd>

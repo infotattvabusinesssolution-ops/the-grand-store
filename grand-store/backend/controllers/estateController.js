@@ -1,6 +1,9 @@
 const EstateProfile = require('../models/EstateProfile');
 const Product = require('../models/Product');
 const User = require('../models/User');
+const Vendor = require('../models/Vendor');
+const PlatformSettings = require('../models/PlatformSettings');
+const { computeCaseSummary, DEFAULT_INTERNATIONAL_CASE_DISCOUNT_PCT } = require('../utils/casePricing');
 const mongoose = require('mongoose');
 
 const { getCache, setCache } = require('../utils/cache');
@@ -62,9 +65,45 @@ exports.getEstate = async (req, res) => {
     if (!estate) return res.status(404).json({ message: 'Estate not found' });
 
     // Return all active products from this estate vendor (wines, grappe, spirits, etc.)
-    const products = await Product.find({ 
+    const rawProducts = await Product.find({
       vendorId: estate.vendorId._id
     }).lean();
+
+    const [vendor, settingsDoc] = await Promise.all([
+      Vendor.findOne({ userId: estate.vendorId._id }).lean(),
+      PlatformSettings.findOne().select('internationalCaseDiscountPct').lean().catch(() => null)
+    ]);
+    const intlCaseDiscountPct = settingsDoc && settingsDoc.internationalCaseDiscountPct !== undefined
+      ? Number(settingsDoc.internationalCaseDiscountPct)
+      : DEFAULT_INTERNATIONAL_CASE_DISCOUNT_PCT;
+
+    const vendorType = vendor?.vendorType || (
+      estate.country && !['south africa', 'za', 'rsa'].includes(estate.country.toLowerCase().trim())
+        ? 'international'
+        : 'local'
+    );
+    const dispatchOrigin = vendorType === 'international'
+      ? (estate.country || vendor?.shippingProfile?.pickupAddress?.country || 'International')
+      : 'South Africa';
+    const storeName = vendor?.businessInfo?.tradingName || vendor?.businessInfo?.legalName || estate.estateName;
+
+    const products = rawProducts.map((p) => {
+      const caseSummary = computeCaseSummary(p, vendorType, intlCaseDiscountPct);
+      return {
+        ...p,
+        storeId: vendor?.userId || estate.vendorId._id,
+        storeName,
+        vendorType,
+        dispatchOrigin,
+        estateSlug: estate.slug,
+        estateName: estate.estateName,
+        vendorUrl: `/estate/${estate.slug}`,
+        regularCasePrice: caseSummary.regularCasePrice,
+        effectiveCasePrice: caseSummary.effectiveCasePrice,
+        caseDiscountAmount: caseSummary.caseDiscountAmount,
+        caseDiscountPct: caseSummary.caseDiscountPct
+      };
+    });
 
     res.json({ estate, products });
   } catch (err) {

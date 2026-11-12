@@ -4,6 +4,7 @@ const PlatformSettings = require('../models/PlatformSettings');
 const { calculateTax } = require('../engines/taxEngine');
 const { getShippingQuotes } = require('../engines/shippingEngine');
 const { findNearestPostnetStores } = require('../services/postnetLocator');
+const { resolveCaseItemPricing } = require('../utils/casePricing');
 
 // @desc    Generate a checkout quote (locked price)
 // @route   POST /api/checkout/quote
@@ -57,7 +58,21 @@ const generateQuote = async (req, res) => {
       }
     }
 
-    // 1. Enqueue products and group by vendor
+    // 1. Enqueue products and group by vendor + dispatch vault
+    const isSA = (c) => Boolean(c && ['south africa', 'za', 'rsa'].includes(String(c).trim().toLowerCase()));
+    const vendorCache = new Map();
+    const resolveVendorDoc = async (vendorId) => {
+      if (!vendorId) return null;
+      const key = vendorId.toString();
+      if (vendorCache.has(key)) return vendorCache.get(key);
+      let doc = await Vendor.findOne({ userId: vendorId }).lean().catch(() => null);
+      if (!doc && /^[0-9a-fA-F]{24}$/.test(key)) {
+        doc = await Vendor.findById(vendorId).lean().catch(() => null);
+      }
+      vendorCache.set(key, doc || null);
+      return doc || null;
+    };
+
     const vendorGroups = {};
     let globalSubtotal = 0;
 
@@ -72,23 +87,45 @@ const generateQuote = async (req, res) => {
         return res.status(404).json({ message: `Product not found: ${item.name}` });
       }
 
-      const prodCountry = (product.country || product.originCountry || '').trim().toLowerCase();
-      const isIntlProd = prodCountry && !['south africa', 'za', 'rsa'].includes(prodCountry);
-      const vId = product.vendorId ? product.vendorId.toString() : 'unknown_vendor';
-      const groupKey = `${vId}_${isIntlProd ? (product.country || product.originCountry) : 'za'}`;
+      const vendorDoc = await resolveVendorDoc(product.vendorId);
+      const isInternationalVendor = vendorDoc?.vendorType === 'international';
+      const vId = product.vendorId ? product.vendorId.toString() : 'grand_store_vault';
+
+      let dispatchOrigin = 'South Africa';
+      if (isInternationalVendor) {
+        const pickupC = vendorDoc?.shippingProfile?.pickupAddress?.country || vendorDoc?.businessInfo?.address?.country || '';
+        const prodC = product.country || product.originCountry || '';
+        if (pickupC && !isSA(pickupC) && !pickupC.toLowerCase().includes('south africa')) {
+          dispatchOrigin = pickupC;
+        } else if (prodC && !isSA(prodC)) {
+          dispatchOrigin = prodC;
+        } else {
+          dispatchOrigin = 'International';
+        }
+      }
+
+      const groupKey = `${vId}_${isInternationalVendor ? dispatchOrigin : 'za'}`;
 
       if (!vendorGroups[groupKey]) {
         vendorGroups[groupKey] = {
           vendorId: product.vendorId,
-          originCountry: isIntlProd ? (product.country || product.originCountry) : 'South Africa',
+          vendorDoc,
+          vendorType: isInternationalVendor ? 'international' : 'local',
+          originCountry: dispatchOrigin,
           items: [],
           subtotal: 0,
-          totalWeightKg: 0
+          totalWeightKg: 0,
+          totalBottles: 0
         };
       }
 
-      const itemPrice = product.price; // Enforce server-side pricing
-      const itemSubtotal = itemPrice * item.quantity;
+      const qty = Math.max(1, Number(item.quantity) || 1);
+      const casePricing = resolveCaseItemPricing(item, product, {
+        vendorType: isInternationalVendor ? 'international' : 'local',
+        internationalCaseDiscountPct: settings.internationalCaseDiscountPct
+      });
+      const itemPrice = casePricing.unitPrice; // Enforce authoritative server-side price (bottle or discounted international case)
+      const itemSubtotal = parseFloat((itemPrice * qty).toFixed(2));
       
       const resolvedImage = product.image || (Array.isArray(product.gallery) && product.gallery[0]) || product.imageSourceUrl || item.image || item.product_image || '';
       const isSuperCoinEligible = !(product.isSuperCoinEligible === false || product.isSuperCoinEligible === 'false' || product.isSuperCoinEligible === 0 || product.isSuperCoinEligible === '0');
@@ -96,14 +133,18 @@ const generateQuote = async (req, res) => {
       const isReferralEligible = !(product.isReferralEligible === false || product.isReferralEligible === 'false' || product.isReferralEligible === 0 || product.isReferralEligible === '0');
       const referralDiscountPct = Number(product.referralDiscountPct !== undefined ? product.referralDiscountPct : 5);
 
-      const prodWeight = Number(product.shipping?.weight_kg || product.weight_kg || 1.85);
-      const prodLength = Number(product.shipping?.length_cm || product.length_cm || 12);
-      const prodWidth = Number(product.shipping?.width_cm || product.width_cm || 12);
-      const prodHeight = Number(product.shipping?.height_cm || product.height_cm || 34);
+      const prodWeight = casePricing.unitWeightKg;
+      const prodLength = casePricing.dimensions.length_cm;
+      const prodWidth = casePricing.dimensions.width_cm;
+      const prodHeight = casePricing.dimensions.height_cm;
 
       vendorGroups[groupKey].items.push({
         ...item,
-        price: itemPrice, // overriding with server price
+        quantity: qty,
+        price: itemPrice, // overriding with authoritative bottle or case price
+        isCase: casePricing.isCase,
+        bottlesPerCase: casePricing.bottlesPerCase,
+        totalBottles: casePricing.bottlesPerCase * qty,
         image: resolvedImage,
         name: product.name || item.name,
         product: product.id || product._id || item.product,
@@ -121,14 +162,15 @@ const generateQuote = async (req, res) => {
           length_cm: prodLength,
           width_cm: prodWidth,
           height_cm: prodHeight,
-          box_type: product.shipping?.box_type || 'Standard Box',
+          box_type: casePricing.dimensions.box_type,
           is_fragile: product.shipping?.is_fragile !== undefined ? product.shipping.is_fragile : true,
           aramexServiceType: product.shipping?.aramexServiceType || 'ONP'
         }
       });
-      vendorGroups[groupKey].subtotal += itemSubtotal;
-      vendorGroups[groupKey].totalWeightKg += (prodWeight * item.quantity); 
-      globalSubtotal += itemSubtotal;
+      vendorGroups[groupKey].subtotal = parseFloat((vendorGroups[groupKey].subtotal + itemSubtotal).toFixed(2));
+      vendorGroups[groupKey].totalWeightKg = parseFloat((vendorGroups[groupKey].totalWeightKg + (prodWeight * qty)).toFixed(2));
+      vendorGroups[groupKey].totalBottles += (casePricing.bottlesPerCase * qty);
+      globalSubtotal = parseFloat((globalSubtotal + itemSubtotal).toFixed(2));
     }
 
     // 2. Generate Shipment Quotes per Vendor
@@ -142,23 +184,24 @@ const generateQuote = async (req, res) => {
       const group = vendorGroups[vId];
       
       let vendorName = 'The Grand Store';
-      let vendorDoc = null;
-      if (group.vendorId) {
-        vendorDoc = await Vendor.findOne({ userId: group.vendorId }).catch(() => null);
-        if (!vendorDoc && /^[0-9a-fA-F]{24}$/.test(group.vendorId.toString())) {
-          vendorDoc = await Vendor.findById(group.vendorId).catch(() => null);
-        }
-        if (vendorDoc) {
-          vendorName = vendorDoc.businessInfo?.tradingName || vendorDoc.businessInfo?.legalName || 'Unknown Vendor';
-        }
+      const vendorDoc = group.vendorDoc || (group.vendorId ? await resolveVendorDoc(group.vendorId) : null);
+      if (vendorDoc) {
+        vendorName = vendorDoc.businessInfo?.tradingName || vendorDoc.businessInfo?.legalName || 'Unknown Vendor';
       }
 
       const shippingData = await getShippingQuotes(
-        group.vendorId, 
-        shippingAddress, 
-        group.subtotal, 
+        group.vendorId,
+        shippingAddress,
+        group.subtotal,
         group.totalWeightKg,
-        { postnetLookup, settings, items: group.items, vendor: vendorDoc, originCountry: group.originCountry }
+        {
+          postnetLookup,
+          settings,
+          items: group.items,
+          vendor: vendorDoc,
+          originCountry: group.originCountry,
+          vendorType: group.vendorType
+        }
       );
 
       if (shippingData.isInternational) hasInternational = true;
@@ -218,8 +261,10 @@ const generateQuote = async (req, res) => {
       shipments.push({
         vendorId: group.vendorId,
         vendorName: vendorName,
+        vendorType: group.vendorType,
         items: group.items,
         subtotal: group.subtotal,
+        totalBottles: group.totalBottles,
         originCountry: shippingData.originCountry,
         destCountry: shippingData.destCountry,
         isInternational: shippingData.isInternational,

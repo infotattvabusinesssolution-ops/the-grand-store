@@ -52,6 +52,8 @@ const orderSchema = new mongoose.Schema({
       quantity: { type: Number, required: true },
       price: { type: Number, required: true },
       option: { type: String },
+      isCase: { type: Boolean, default: false },
+      bottlesPerCase: { type: Number, default: 1 },
       image: { type: String }
     }
   ],

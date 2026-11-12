@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { FacebookIcon, TwitterIcon, InstagramIcon, YoutubeIcon, PinterestIcon, TiktokIcon } from './SocialIcons'
+import PaymentMethodsStrip from './PaymentMethodsStrip'
 
 export default function Footer() {
   const [newsletterStatus, setNewsletterStatus] = useState('')
@@ -20,10 +21,10 @@ export default function Footer() {
   const [displayCount, setDisplayCount] = useState(visitorCount)
   const [isBumping, setIsBumping] = useState(false)
 
-  // Handle click on Total Visitors to add +5
-  const handleVisitorClick = () => {
+  // Increment visitor count consistently by +5
+  const incrementVisitors = (amount = 5) => {
     setVisitorCount((prev) => {
-      const next = prev + 5
+      const next = prev + amount
       try {
         localStorage.setItem('tgs_total_visitors', String(next))
       } catch {}
@@ -33,10 +34,26 @@ export default function Footer() {
     setTimeout(() => setIsBumping(false), 500)
   }
 
+  // Handle click on Total Visitors to add +5
+  const handleVisitorClick = () => {
+    incrementVisitors(5)
+  }
+
   // Smooth roll-up on initial mount
   useEffect(() => {
-    const startValue = Math.max(BASE_VISITORS, visitorCount - 15)
-    const endValue = visitorCount
+    let initialTarget = visitorCount
+    try {
+      const hasCounted = sessionStorage.getItem('tgs_session_counted')
+      if (!hasCounted) {
+        sessionStorage.setItem('tgs_session_counted', 'true')
+        initialTarget = visitorCount + 5
+        setVisitorCount(initialTarget)
+        localStorage.setItem('tgs_total_visitors', String(initialTarget))
+      }
+    } catch {}
+
+    const startValue = Math.max(BASE_VISITORS, initialTarget - 15)
+    const endValue = initialTarget
     const duration = 900
     const startTime = performance.now()
 
@@ -59,39 +76,13 @@ export default function Footer() {
     return () => cancelAnimationFrame(animationFrameId)
   }, [])
 
-  // Count new visitor once per browser session (+5 as requested)
-  useEffect(() => {
-    try {
-      const hasCounted = sessionStorage.getItem('tgs_session_counted')
-      if (!hasCounted) {
-        sessionStorage.setItem('tgs_session_counted', 'true')
-        setVisitorCount((prev) => {
-          const next = prev + 5
-          try {
-            localStorage.setItem('tgs_total_visitors', String(next))
-          } catch {}
-          return next
-        })
-      }
-    } catch {}
-  }, [])
-
-  // Periodically increment dynamically to simulate active live visitors
+  // Periodically increment dynamically (+5 per tick)
   useEffect(() => {
     let timerId
     const scheduleNext = () => {
       const randomDelay = Math.floor(Math.random() * 4000) + 4500
       timerId = setTimeout(() => {
-        setVisitorCount((prev) => {
-          const increment = Math.random() < 0.2 ? 2 : 1
-          const next = prev + increment
-          try {
-            localStorage.setItem('tgs_total_visitors', String(next))
-          } catch {}
-          return next
-        })
-        setIsBumping(true)
-        setTimeout(() => setIsBumping(false), 500)
+        incrementVisitors(5)
         scheduleNext()
       }, randomDelay)
     }
@@ -261,31 +252,31 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-[#e1bd70]/20 bg-[#070706]">
-        <div className="max-w-[1240px] mx-auto px-6 flex flex-col lg:flex-row items-center justify-between min-h-[86px] py-6 lg:py-0 gap-6 text-[#d6cec0] font-serif text-[16px]">
-          <p className="m-0 text-center lg:text-left text-[14px] sm:text-[15px] text-[#f2ede4]/80 order-2 lg:order-1">
+        <div className="max-w-[1380px] mx-auto px-6 flex flex-col lg:flex-row items-center justify-between min-h-[86px] py-5 gap-4 xl:gap-6 text-[#d6cec0] font-serif text-[16px]">
+          <p className="m-0 shrink-0 whitespace-nowrap text-center lg:text-left text-[13px] xl:text-[14px] text-[#f2ede4]/80 order-2 lg:order-1">
             Copyright © {new Date().getFullYear()} <Link className="text-[var(--color-gold)] font-medium no-underline transition-colors hover:brightness-125 mx-1" to="/">The Grand Store</Link>. All Rights Reserved.
           </p>
 
-          <div className="flex items-center gap-[12px] order-1 lg:order-2" aria-label="Follow The Grand Store on Social Media">
+          <div className="flex items-center gap-2 shrink-0 order-1 lg:order-2" aria-label="Follow The Grand Store on Social Media">
             {socialLinks.map((social) => {
               const IconComponent = social.Icon
               return (
-                <a 
+                <a
                   key={social.label}
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="grid place-items-center w-[38px] h-[38px] rounded-full bg-[#1c1d1d] text-[#f5d77f] border border-[#d4af37]/40 shadow-[0_4px_12px_rgba(0,0,0,0.5)] hover:border-[#ffd700] hover:bg-gradient-to-tr hover:from-[#ffd700] hover:to-[#d4af37] hover:text-[#0b0c0c] hover:scale-110 hover:shadow-[0_0_18px_rgba(212,175,55,0.5)] active:scale-95 transition-all duration-200 cursor-pointer"
+                  className="grid place-items-center w-[34px] h-[34px] rounded-full bg-[#1c1d1d] text-[#f5d77f] border border-[#d4af37]/40 shadow-[0_4px_12px_rgba(0,0,0,0.5)] hover:border-[#ffd700] hover:bg-gradient-to-tr hover:from-[#ffd700] hover:to-[#d4af37] hover:text-[#0b0c0c] hover:scale-110 hover:shadow-[0_0_18px_rgba(212,175,55,0.5)] active:scale-95 transition-all duration-200 cursor-pointer"
                   aria-label={`Visit The Grand Store on ${social.label}`}
                   title={social.label}
                 >
-                  <IconComponent size={social.label === 'YouTube' ? 19 : 16} />
+                  <IconComponent size={social.label === 'YouTube' ? 17 : 14} />
                 </a>
               )
             })}
           </div>
 
-          <img className="h-9 lg:h-11 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity order-3" src="/assets/footer/payment-strip.png" alt="Accepted payment methods" />
+          <PaymentMethodsStrip variant="footer" className="order-3 font-sans max-w-full" />
         </div>
       </div>
     </footer>
