@@ -349,7 +349,7 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
     Number(product.bottlesPerCase || product.channelSettings?.trade?.bottlesPerCase || 6)
   );
   const bottleSize = identity.bottleSize || product.bottleSize || product.size || "750ml";
-  const singleBottlePrice = Number(product.price) || 0;
+  const singleBottlePrice = Math.round(Number(product.price) || 0);
 
   const vendorHaystack = `${product.storeName || ''} ${product.brand || ''} ${product.name || ''} ${product.fullName || ''}`.toLowerCase();
   const matchedEstateVendor = KNOWN_ESTATE_VENDORS.find((v) => vendorHaystack.includes(v.match));
@@ -462,7 +462,11 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
           height_cm: (matchesDefaultCaseMeta && product.caseDimensions?.height_cm) || 35
         }
       }
-    : product;
+    : {
+        ...product,
+        price: singleBottlePrice,
+        unitPrice: singleBottlePrice,
+      };
 
   const identityItems = [
     { label: "Type", value: identity.type },

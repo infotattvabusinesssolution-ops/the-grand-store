@@ -46,7 +46,7 @@ const computeCaseSummary = (
     ? parsedRequested
     : defaultBottlesPerCase;
 
-  const singleBottlePrice = Number(product?.price || 0);
+  const singleBottlePrice = Math.round(Number(product?.price || 0));
   const regularCasePrice = Math.round(singleBottlePrice * bottlesPerCase);
   const matchesDefaultCaseSize = bottlesPerCase === defaultBottlesPerCase;
   const customCasePrice = matchesDefaultCaseSize ? Number(product?.casePrice) : NaN;
@@ -92,11 +92,12 @@ const resolveCaseItemPricing = (item, product, options = {}) => {
   const isCase = isCaseOrderItem(item, product);
 
   if (!isCase) {
+    const roundedBottlePrice = Math.round(Number(product.price || 0));
     return {
       isCase: false,
       bottlesPerCase: 1,
-      unitPrice: Number(product.price || 0),
-      regularCasePrice: Number(product.price || 0),
+      unitPrice: roundedBottlePrice,
+      regularCasePrice: roundedBottlePrice,
       caseDiscountAmount: 0,
       caseDiscountPct: 0,
       unitWeightKg: Number(product.shipping?.weight_kg || product.weight_kg || 1.85),

@@ -340,15 +340,16 @@ function App() {
             ? Math.max(1, Number(optionBottles || cartItem.bottlesPerCase || productDefaultBpc))
             : 1;
           const isDefaultProductCase = resolvedBottlesPerCase === productDefaultBpc;
+          const matchedBottlePrice = Math.round(Number(matched.price || 0));
           const resolvedPrice = isCaseItem
             ? (isDefaultProductCase && matched.effectiveCasePrice && Number(matched.effectiveCasePrice) > 0
-                ? Number(matched.effectiveCasePrice)
+                ? Math.round(Number(matched.effectiveCasePrice))
                 : (cartItem.price && Number(cartItem.price) > 0
-                    ? Number(cartItem.price)
+                    ? Math.round(Number(cartItem.price))
                     : (isDefaultProductCase && matched.casePrice && Number(matched.casePrice) > 0
-                        ? Number(matched.casePrice)
-                        : Math.round(Number(matched.price || 0) * resolvedBottlesPerCase * (1 - (Number(matched.caseDiscountPct) || 0) / 100)))))
-            : (cartItem.price || matched.price);
+                        ? Math.round(Number(matched.casePrice))
+                        : Math.round(matchedBottlePrice * resolvedBottlesPerCase * (1 - (Number(matched.caseDiscountPct) || 0) / 100)))))
+            : (matchedBottlePrice > 0 ? matchedBottlePrice : Math.round(Number(cartItem.price || 0)));
 
           return {
             ...matched,
@@ -422,6 +423,11 @@ function App() {
     redirect = true,
   ) => {
     const prodId = product.id || product._id;
+    const rawUnitNum = parseFloat(String(product.price ?? 0).replace(/[^0-9.-]/g, ''));
+    const normalizedUnitPrice = Number.isFinite(rawUnitNum) ? Math.round(rawUnitNum) : product.price;
+    const normalizedProduct = normalizedUnitPrice !== undefined && normalizedUnitPrice !== product.price
+      ? { ...product, price: normalizedUnitPrice }
+      : product;
     setCartItems((items) => {
       const existingItem = items.find(
         (item) => (item.id || item._id) === prodId && item.option === option,
@@ -430,11 +436,11 @@ function App() {
       if (existingItem) {
         updated = items.map((item) =>
           (item.id || item._id) === prodId && item.option === option
-            ? { ...item, ...product, quantity: item.quantity + quantity }
+            ? { ...item, ...normalizedProduct, quantity: item.quantity + quantity }
             : item,
         );
       } else {
-        updated = [...items, { ...product, quantity, option }];
+        updated = [...items, { ...normalizedProduct, quantity, option }];
       }
       saveCartToStorage(updated);
       return updated;
