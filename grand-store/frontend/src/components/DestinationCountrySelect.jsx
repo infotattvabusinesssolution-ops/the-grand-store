@@ -30,6 +30,7 @@ export default function DestinationCountrySelect({
   error = '',
   placeholder = 'Select destination country...',
   disabled = false,
+  disableSouthAfricaReason = '',
   id = 'destination-country-select',
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -199,15 +200,20 @@ export default function DestinationCountrySelect({
               <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
                 {popularCountries.map((c) => {
                   const isPopSelected = selectedCountry?.country === c.country;
+                  const isZablocked = Boolean(disableSouthAfricaReason && c.country === 'ZA');
                   return (
                     <button
                       key={`pop-${c.country}`}
                       type="button"
-                      onClick={() => handleSelect(c)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer ${
-                        isPopSelected
-                          ? 'bg-[var(--color-gold)] text-black font-semibold shadow-sm'
-                          : 'bg-white/5 hover:bg-white/10 text-white/80 border border-white/5'
+                      disabled={isZablocked}
+                      title={isZablocked ? disableSouthAfricaReason : undefined}
+                      onClick={() => !isZablocked && handleSelect(c)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all ${
+                        isZablocked
+                          ? 'bg-white/[0.03] text-white/30 border border-white/5 cursor-not-allowed opacity-60'
+                          : isPopSelected
+                          ? 'bg-[var(--color-gold)] text-black font-semibold shadow-sm cursor-pointer'
+                          : 'bg-white/5 hover:bg-white/10 text-white/80 border border-white/5 cursor-pointer'
                       }`}
                     >
                       <CountryFlag iso={c.country} />
@@ -232,15 +238,20 @@ export default function DestinationCountrySelect({
             ) : (
               filteredCountries.map((c) => {
                 const isSelected = selectedCountry?.country === c.country;
+                const isZablocked = Boolean(disableSouthAfricaReason && c.country === 'ZA');
                 return (
                   <button
                     key={c.country}
                     type="button"
-                    onClick={() => handleSelect(c)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer text-left ${
-                      isSelected
-                        ? 'bg-[var(--color-gold)]/20 text-[var(--color-gold)] font-semibold border border-[var(--color-gold)]/30'
-                        : 'hover:bg-white/5 text-white/90'
+                    disabled={isZablocked}
+                    title={isZablocked ? disableSouthAfricaReason : undefined}
+                    onClick={() => !isZablocked && handleSelect(c)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors text-left ${
+                      isZablocked
+                        ? 'opacity-45 cursor-not-allowed text-white/40'
+                        : isSelected
+                        ? 'bg-[var(--color-gold)]/20 text-[var(--color-gold)] font-semibold border border-[var(--color-gold)]/30 cursor-pointer'
+                        : 'hover:bg-white/5 text-white/90 cursor-pointer'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -248,7 +259,11 @@ export default function DestinationCountrySelect({
                       <span className="truncate">{c.name}</span>
                       <span className="text-[10px] text-white/30 font-mono">({c.country})</span>
                     </div>
-                    {isSelected && <Check size={14} className="text-[var(--color-gold)] shrink-0 ml-2" />}
+                    {isZablocked ? (
+                      <span className="text-[9.5px] text-amber-300/80 font-mono shrink-0 ml-2">Use SA (National)</span>
+                    ) : (
+                      isSelected && <Check size={14} className="text-[var(--color-gold)] shrink-0 ml-2" />
+                    )}
                   </button>
                 );
               })

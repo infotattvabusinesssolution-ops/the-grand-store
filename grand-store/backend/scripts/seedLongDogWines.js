@@ -64,9 +64,6 @@ const PRODUCT_DATA = {
   image: ASSETS.blendBottle,
   gallery: [
     ASSETS.blendBottle,
-    ASSETS.bottleHero,
-    ASSETS.dogPackVineyard,
-    ASSETS.vineyardLandscape,
   ],
   options: ['750ml'],
   bottlesPerCase: 6,

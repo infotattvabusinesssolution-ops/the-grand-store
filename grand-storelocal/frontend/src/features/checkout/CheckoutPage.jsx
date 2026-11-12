@@ -146,8 +146,8 @@ export default function CheckoutPage({
   const summaryPanelRef = useRef(null);
 
   const cartScopeAnalysis = useMemo(
-    () => analyzeCartScopeConflict(vendorCartItems, destinationMode),
-    [vendorCartItems, destinationMode]
+    () => analyzeCartScopeConflict(vendorCartItems, destinationMode, formData.country),
+    [vendorCartItems, destinationMode, formData.country]
   );
 
   useEffect(() => {
@@ -830,6 +830,7 @@ export default function CheckoutPage({
           lng: shippingAddress.lng
         },
         deliveryPreference,
+        destinationMode,
         selectedLocker: deliveryPreference === 'pudo' ? preferredLocker : null,
         preferredPostnetStore: deliveryPreference === 'postnet' ? effectiveStore : null,
         selectedPostnetStore: deliveryPreference === 'postnet' ? effectiveStore : null
@@ -1453,6 +1454,11 @@ export default function CheckoutPage({
                         <>
                           International products require <strong>International Delivery</strong>. Click{' '}
                           <strong>Remove</strong> below or switch delivery mode to International Delivery.
+                        </>
+                      ) : cartScopeAnalysis.conflictReason === 'local_sa_in_intl' ? (
+                        <>
+                          Local SA products delivered within South Africa must use{' '}
+                          <strong>South Africa (National)</strong>. Switch delivery mode above or pick another country.
                         </>
                       ) : (
                         <>
@@ -2233,6 +2239,11 @@ export default function CheckoutPage({
                         ) : (
                           <DestinationCountrySelect
                             value={formData.country}
+                            disableSouthAfricaReason={
+                              cartScopeAnalysis.internationalItems.length === 0 && cartScopeAnalysis.localItems.length > 0
+                                ? 'Local SA products shipped within South Africa must use South Africa (National)'
+                                : ''
+                            }
                             onChange={(countryName, countryObj) => {
                               clearFieldError('country');
                               setFormData((current) => ({
@@ -2248,6 +2259,22 @@ export default function CheckoutPage({
                           />
                         )}
                       </div>
+                      {destinationMode === 'international_aramex' &&
+                        cartScopeAnalysis.internationalItems.length === 0 &&
+                        cartScopeAnalysis.localItems.length > 0 && (
+                        <div className="sm:col-span-2 rounded-xl border border-amber-400/30 bg-amber-500/[0.06] px-3.5 py-2.5 text-[11px] text-amber-200/90 flex flex-wrap items-center justify-between gap-2">
+                          <span>
+                            Delivering these Local SA bottles inside South Africa? Use <strong>South Africa (National)</strong> above.
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => selectDeliveryMode('domestic_home')}
+                            className="px-2.5 py-1 rounded-lg bg-[var(--color-gold)]/20 hover:bg-[var(--color-gold)]/30 border border-[var(--color-gold)]/50 text-[var(--color-gold)] font-semibold text-[11px] cursor-pointer transition-colors"
+                          >
+                            Switch to South Africa (National)
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

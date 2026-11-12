@@ -15,7 +15,7 @@ const generateQuote = async (req, res) => {
     if (!settings) settings = await PlatformSettings.create({});
     const platformVatPct = settings.vatPct !== undefined ? settings.vatPct : 15;
 
-    const { cartItems, shippingAddress, deliveryPreference = 'best' } = req.body;
+    const { cartItems, shippingAddress, deliveryPreference = 'best', destinationMode = null } = req.body;
 
     if (!cartItems || cartItems.length === 0) {
       return res.status(400).json({ message: 'Cart is empty' });
@@ -275,6 +275,17 @@ const generateQuote = async (req, res) => {
         selectedCourier: availableQuotes[0] || null,
         selectedPickupStore: selectedPickupStoreObj,
         selectedLocker: selectedLockerObj
+      });
+    }
+
+    if (
+      destinationMode === 'international_aramex' &&
+      isSouthAfricanDestination &&
+      shipments.length > 0 &&
+      shipments.every((shp) => !shp.isInternational && shp.vendorType !== 'international')
+    ) {
+      return res.status(400).json({
+        message: 'Local South African products delivered within South Africa must use South Africa (National).'
       });
     }
 

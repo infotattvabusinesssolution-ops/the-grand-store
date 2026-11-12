@@ -115,7 +115,11 @@ export const getCartItemOriginInfo = (item) => {
  * Evaluates whether the checkout cart mixes Local and International products and identifies
  * which items conflict with the customer's selected delivery mode.
  */
-export const analyzeCartScopeConflict = (cartItems = [], destinationMode = 'domestic_sa') => {
+export const analyzeCartScopeConflict = (
+  cartItems = [],
+  destinationMode = 'domestic_sa',
+  destinationCountry = ''
+) => {
   const localItems = [];
   const internationalItems = [];
 
@@ -134,13 +138,20 @@ export const analyzeCartScopeConflict = (cartItems = [], destinationMode = 'dome
     destinationMode === 'domestic_sa' &&
     localItems.length === 0 &&
     internationalItems.length > 0;
-  const hasConflict = hasMixedItems || hasIntlInDomesticMode;
+  const hasLocalSaToSaInIntlMode =
+    destinationMode === 'international_aramex' &&
+    internationalItems.length === 0 &&
+    localItems.length > 0 &&
+    isSouthAfricaCountry(destinationCountry);
+  const hasConflict = hasMixedItems || hasIntlInDomesticMode || hasLocalSaToSaInIntlMode;
 
   const conflictReason = hasMixedItems
     ? 'mixed'
     : hasIntlInDomesticMode
       ? 'intl_in_domestic'
-      : null;
+      : hasLocalSaToSaInIntlMode
+        ? 'local_sa_in_intl'
+        : null;
 
   const recommendedRemoveScope =
     hasMixedItems
@@ -150,7 +161,7 @@ export const analyzeCartScopeConflict = (cartItems = [], destinationMode = 'dome
         : null;
 
   const conflictingItems = hasConflict
-    ? (recommendedRemoveScope === 'international' ? internationalItems : localItems)
+    ? (recommendedRemoveScope === 'international' ? internationalItems : recommendedRemoveScope === 'local' ? localItems : [])
     : [];
   const keepingItems = hasMixedItems
     ? (recommendedRemoveScope === 'international' ? localItems : internationalItems)
@@ -160,6 +171,9 @@ export const analyzeCartScopeConflict = (cartItems = [], destinationMode = 'dome
   if (conflictReason === 'intl_in_domestic') {
     warningMessage =
       'International products require International Delivery — remove the highlighted item from Summary or switch to International Delivery.';
+  } else if (conflictReason === 'local_sa_in_intl') {
+    warningMessage =
+      'Local South African products delivered within South Africa must use South Africa (National) — please switch to South Africa (National) above.';
   } else if (conflictReason === 'mixed') {
     warningMessage =
       recommendedRemoveScope === 'international'
@@ -172,6 +186,7 @@ export const analyzeCartScopeConflict = (cartItems = [], destinationMode = 'dome
     conflictReason,
     hasMixedItems,
     hasIntlInDomesticMode,
+    hasLocalSaToSaInIntlMode,
     localItems,
     internationalItems,
     recommendedRemoveScope,
