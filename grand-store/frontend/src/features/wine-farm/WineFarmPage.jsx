@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import api from '../../api'
+import { resolveImageUrl } from '../../utils/imageUtils'
 import wineFarmStyles from './wine-farm.css?inline'
 
 const liveBase = ''
@@ -86,6 +87,14 @@ const FALLBACK_FARMS = [
     region: 'Hemel-en-Aarde Ridge, Overberg, South Africa',
     image: '/assets/estate/tesselaarsdal/vineyard_hero.jpg',
     copy: 'Founded in 2015 by long-standing Hamilton Russell Vineyards employee Berene Sauls. Classically styled small-production Pinot Noir and Chardonnay crafted in clay amphorae and neutral oak, expressing the cool, maritime Hemel-en-Aarde Ridge.',
+  },
+  {
+    name: 'Long Dog Wines',
+    vendor: 'Dennis & Jackie Lamberti',
+    slug: 'long-dog-wines',
+    region: 'Simonsberg, Stellenbosch, South Africa',
+    image: '/assets/estate/long-dog-wines/hero_vineyard.jpg',
+    copy: 'Tucked beneath the Simonsberg mountain in Stellenbosch on one of South Africa’s smallest registered wine farms, Long Dog Wines combines handcrafted small-batch Cabernet Franc & Tannat aged 24 months in French oak with a working sanctuary for long-bodied rescue dogs.',
   },
   {
     name: 'Maison Dobbé Cognac',
@@ -475,11 +484,14 @@ function Farms() {
             <article className="farm-card" key={estate._id}>
               <div className="farm-image">
                 {estate.heroImageUrl ? (
-                  <img src={estate.heroImageUrl} alt={estate.estateName} />
+                  <img src={resolveImageUrl(estate.heroImageUrl)} alt={estate.estateName} />
                 ) : (
                   <div style={{ width: '100%', height: '100%', background: 'var(--paper-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>🍷</div>
                 )}
-                <span>{String(index + 1).padStart(2, '0')} / {estate.region || 'Featured estate'}</span>
+                <span>
+                  {String(index + 1).padStart(2, '0')} / {estate.region || 'Featured estate'}
+                  {estate.country && !String(estate.region || '').toLowerCase().includes(estate.country.toLowerCase()) ? ` · ${estate.country}` : ''}
+                </span>
               </div>
               <div className="farm-copy">
                 <p className="farm-vendor">Vendor : {estate.estateName}</p>

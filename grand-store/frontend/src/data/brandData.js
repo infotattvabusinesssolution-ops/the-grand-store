@@ -306,6 +306,28 @@ export const brandData = {
     signatureStyles: ['Pinot Noir 2024 (10th Anniversary Vintage)', 'Chardonnay 2024', 'Amphorae Maturation'],
     seoTitle: 'Buy Tesselaarsdal Wines Online — Hemel-en-Aarde Ridge Pinot Noir & Chardonnay',
     metaDescription: 'Shop authentic Tesselaarsdal Wines Pinot Noir & Chardonnay crafted by Berene Sauls from the Hemel-en-Aarde Ridge. Cellar-direct provenance at The Grand Store.'
+  },
+  'long-dog-wines': {
+    slug: 'long-dog-wines',
+    brandName: 'Long Dog Wines',
+    category: 'South African Boutique Red Blend',
+    country: 'South Africa',
+    region: 'Simonsberg, Stellenbosch, Western Cape',
+    foundedYear: 2017,
+    heroImage: '/assets/estate/long-dog-wines/hero_vineyard.jpg',
+    tagline: 'Where character runs deep, and legacy walks on four legs.',
+    heritageStory: [
+      'Founded in 2017 by Dennis and Jackie Lamberti on Farm 103 beneath the Simonsberg mountain in Stellenbosch—one of South Africa’s smallest registered wine farms—Long Dog Wines pairs hand-tended, basket-pressed viticulture with a working rescue sanctuary for long-bodied dogs.',
+      'Crafted from just 1.5 acres (1 acre Cabernet Franc and half an acre of Tannat) and matured for 24 months in French oak barrels, the flagship Long Dog Blend 2023 has captured Gold at Michelangelo 2025, Vitis Vinifera 2026, and the Vine & Spirit Awards 2026.'
+    ],
+    tastingProfile: {
+      nose: 'Aromatic redcurrant, ripe black plum, crushed vineyard herbs, and lifted violet blossom.',
+      palate: 'Rich dark berry core layered with dark chocolate, supple leather, gentle baking spice, and fine French oak structure.',
+      finish: 'Velvety, well-integrated tannins leading to a clean, earthy Simonsberg mineral lingering warmth.'
+    },
+    signatureStyles: ['Long Dog Blend 2023 (50% Cabernet Franc / 50% Tannat)', '24 Months French Oak Maturation', 'Single Bottle & Case of 6 Allocations'],
+    seoTitle: 'Buy Long Dog Wines Online — Stellenbosch Simonsberg Cabernet Franc & Tannat',
+    metaDescription: 'Shop authentic Long Dog Blend 2023 handcrafted by Dennis & Jackie Lamberti in Stellenbosch, South Africa. Single bottle and Case of 6 cellar-direct at The Grand Store.'
   }
 };
 

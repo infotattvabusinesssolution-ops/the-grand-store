@@ -64,7 +64,7 @@ const getWineCategory = (product) => {
   return 'varietal';
 };
 
-export default function EstateDetail() {
+export default function EstateDetail({ onNotify, onAdd }) {
   const { slug } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -126,12 +126,78 @@ export default function EstateDetail() {
   const { estate, products = [] } = data;
   const { story = {}, vineyard = {}, hospitality = {}, contact = {} } = estate;
 
-  // Determine whether this is Bruno Andreu, Dogliotti 1870, Cantina del Conte, Tesselaarsdal, or another estate (like Giuliani Vini / Maison Dobbé)
+  // Determine whether this is Bruno Andreu, Dogliotti 1870, Cantina del Conte, Tesselaarsdal, Long Dog Wines, or another estate
   const isBrunoAndreu = estate.slug === 'bruno-andreu' || slug === 'bruno-andreu' || estate.estateName?.toLowerCase().includes('bruno');
   const isDogliotti = estate.slug === 'dogliotti-1870' || slug === 'dogliotti-1870' || estate.estateName?.toLowerCase().includes('dogliotti');
   const isCantinaDelConte = estate.slug === 'cantina-del-conte' || slug === 'cantina-del-conte' || estate.estateName?.toLowerCase().includes('conte') || estate.estateName?.toLowerCase().includes('cantina');
   const isTesselaarsdal = estate.slug === 'tesselaarsdal-wines' || slug === 'tesselaarsdal-wines' || estate.estateName?.toLowerCase().includes('tesselaarsdal');
+  const isLongDog = estate.slug === 'long-dog-wines' || slug === 'long-dog-wines' || estate.estateName?.toLowerCase().includes('long dog');
   const isDobbe = estate.slug === 'maison-dobbe' || estate.slug === 'stellenbosch-hills-wine-estate' || slug === 'maison-dobbe' || slug === 'stellenbosch-hills-wine-estate' || estate.estateName?.toLowerCase().includes('dobb') || estate.estateName?.toLowerCase().includes('dobbe');
+
+  const LONG_DOG_PACK = [
+    {
+      name: 'Sam',
+      breed: 'Purebred German Shepherd',
+      role: 'Vineyard Manager',
+      bio: 'The guardian of the vines and calm leader of the pack. Always surefooted, keeping every vineyard row and rock in order.',
+      quote: 'Stay grounded. Stay alert. And never forget where you left your rock.',
+      image: '/assets/estate/long-dog-wines/dog_sam.jpg',
+    },
+    {
+      name: 'Dino',
+      breed: 'Dachshund–Rottweiler Cross',
+      role: 'Winemaker',
+      bio: 'Bold in the cellar and charming in the courtyard, Dino is our flavour master with a nose for perfection during every harvest crush.',
+      quote: 'Wine is about instinct, balance, and a good bit of digging around.',
+      image: '/assets/estate/long-dog-wines/dog_dino.jpg',
+    },
+    {
+      name: 'Enzo',
+      breed: 'Long Dog Mix (Every Kind)',
+      role: 'Farm Manager',
+      bio: 'Bakkie boss and all-round fixer. Practical, endlessly positive, and usually guarding his morning biscuit between equipment checks.',
+      quote: "If it's broken, I'll fix it. If it's mine, don't touch my biscuit.",
+      image: '/assets/estate/long-dog-wines/dog_enzo.jpg',
+    },
+    {
+      name: 'Noodle',
+      breed: 'Dachshund–Chihuahua Cross',
+      role: 'Head of Security',
+      bio: 'Small stature, commanding presence. Stock control, gate checks, and courier dispatch schedules run strictly under his watchful eye.',
+      quote: 'Trust is earned. Inventory is counted.',
+      image: '/assets/estate/long-dog-wines/dog_noodle.jpg',
+    },
+    {
+      name: 'Nibby',
+      breed: 'Afrikaner & Great Dane Cross',
+      role: 'Enthusiastic Intern',
+      bio: 'Pure joy on four long legs—helpful, hopeful, and everywhere at once across the cellar floor, courtyard, and picnic lawns.',
+      quote: "Need help? No? I'll help anyway!",
+      image: '/assets/estate/long-dog-wines/dog_nibby.jpg',
+    },
+    {
+      name: 'Ziggy',
+      breed: 'Mixed Breed Marvel',
+      role: 'Marketing Manager',
+      bio: 'Glamorous, expressive, and the undisputed voice of Long Dog Wines—able to charm the cork from any bottle with one tail wag.',
+      quote: "If you're not turning heads, darling, you're doing it wrong.",
+      image: '/assets/estate/long-dog-wines/dog_ziggy.jpg',
+    },
+    {
+      name: 'Lassy',
+      breed: 'Pure Dachshund',
+      role: 'Retired Wine Taster',
+      bio: 'The grand dame of Lamberti Winery, reigning over the hearth rug and storytelling circuit with an abiding fondness for deep reds.',
+      quote: 'Reading by the fire, sharing vintage stories, sneaking extra sips.',
+      image: '/assets/estate/long-dog-wines/dog_lassy.jpg',
+    },
+  ];
+
+  const longDogTastings = [
+    '/assets/estate/long-dog-wines/wine_glass_pour.jpg',
+    '/assets/estate/long-dog-wines/vineyard_simonsberg.jpg',
+    '/assets/estate/long-dog-wines/cellar_barrels.jpg',
+  ];
 
   // Authentic tasting images for Maison Dobbé Cognac fallback
   const dobbePdfTastings = [
@@ -175,15 +241,17 @@ export default function EstateDetail() {
       if (t.name) {
         const fallbackImg = isDobbe
           ? dobbePdfTastings[idx % dobbePdfTastings.length]
-          : isTesselaarsdal
-            ? tesselaarsdalPdfTastings[idx % tesselaarsdalPdfTastings.length]
-            : isCantinaDelConte
-              ? cantinaPdfTastings[idx % cantinaPdfTastings.length]
-              : isDogliotti
-                ? dogliottiPdfTastings[idx % dogliottiPdfTastings.length]
-                : isBrunoAndreu 
-                  ? authenticPdfTastings[idx % authenticPdfTastings.length] 
-                  : resolveImageUrl(hospitality.tastingsImageUrl) || 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
+          : isLongDog
+            ? longDogTastings[idx % longDogTastings.length]
+            : isTesselaarsdal
+              ? tesselaarsdalPdfTastings[idx % tesselaarsdalPdfTastings.length]
+              : isCantinaDelConte
+                ? cantinaPdfTastings[idx % cantinaPdfTastings.length]
+                : isDogliotti
+                  ? dogliottiPdfTastings[idx % dogliottiPdfTastings.length]
+                  : isBrunoAndreu 
+                    ? authenticPdfTastings[idx % authenticPdfTastings.length] 
+                    : resolveImageUrl(hospitality.tastingsImageUrl) || 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
 
         const computedType = t.type || (isDobbe || t.name?.toLowerCase().includes('cognac') || t.name?.toLowerCase().includes('paradis')
           ? (t.name?.toLowerCase().includes('masterclass') ? 'Cognac Masterclass' : t.name?.toLowerCase().includes('vault') ? 'Paradis Vault Tasting' : 'Cognac Tasting')
@@ -219,7 +287,7 @@ export default function EstateDetail() {
         '@id': `${estateCanonicalUrl}#winery`,
         name: estate.estateName,
         description: estate.tagline || story.headline || `Discover luxury wines and tastings at ${estate.estateName}, ${estate.region || estate.country || 'our estate'}.`,
-        image: estate.heroImageUrl || (isTesselaarsdal ? '/assets/estate/tesselaarsdal/vineyard_hero.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80'),
+        image: estate.heroImageUrl || (isLongDog ? '/assets/estate/long-dog-wines/hero_vineyard.jpg' : isTesselaarsdal ? '/assets/estate/tesselaarsdal/vineyard_hero.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80'),
         url: estateCanonicalUrl,
         ...(contact.phone ? { telephone: contact.phone } : {}),
         ...(contact.email ? { email: contact.email } : {}),
@@ -274,18 +342,20 @@ export default function EstateDetail() {
     <div className="min-h-screen font-sans bg-white selection:bg-[#c9a35b]/30">
       <SEO
         title={
-          isTesselaarsdal
-            ? `${estate.estateName} — Hemel-en-Aarde Ridge, Overberg, South Africa | The Grand Store`
-            : isCantinaDelConte
-              ? `${estate.estateName} — Grinzane Cavour, Langhe, Piedmont, Italy | The Grand Store`
-              : isDogliotti
-                ? `${estate.estateName} — Castagnole delle Lanze, Piedmont, Italy | The Grand Store`
-                : isBrunoAndreu 
-                  ? `${estate.estateName} — ${estate.region || 'Languedoc-Roussillon'}, France | The Grand Store`
-                  : `${estate.estateName} — ${estate.region || 'Wine Estate'}, ${estate.country || 'South Africa'} | The Grand Store`
+          isLongDog
+            ? `${estate.estateName} — Simonsberg, Stellenbosch, South Africa | The Grand Store`
+            : isTesselaarsdal
+              ? `${estate.estateName} — Hemel-en-Aarde Ridge, Overberg, South Africa | The Grand Store`
+              : isCantinaDelConte
+                ? `${estate.estateName} — Grinzane Cavour, Langhe, Piedmont, Italy | The Grand Store`
+                : isDogliotti
+                  ? `${estate.estateName} — Castagnole delle Lanze, Piedmont, Italy | The Grand Store`
+                  : isBrunoAndreu 
+                    ? `${estate.estateName} — ${estate.region || 'Languedoc-Roussillon'}, France | The Grand Store`
+                    : `${estate.estateName} — ${estate.region || 'Wine Estate'}, ${estate.country || 'South Africa'} | The Grand Store`
         }
         description={estate.tagline || story.headline || `Explore ${estate.estateName} in ${estate.region || estate.country || 'our wine estate'}. Browse award-winning wines, book cellar tastings, and order directly.`}
-        image={estate.heroImageUrl || (isTesselaarsdal ? '/assets/estate/tesselaarsdal/vineyard_hero.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')}
+        image={estate.heroImageUrl || (isLongDog ? '/assets/estate/long-dog-wines/hero_vineyard.jpg' : isTesselaarsdal ? '/assets/estate/tesselaarsdal/vineyard_hero.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')}
         url={`/estate/${estate.slug || slug}`}
         type="business.business"
         schema={winerySchema}
@@ -293,34 +363,36 @@ export default function EstateDetail() {
       
       {/* ════════════════════════════════════════════
           HERO SECTION
-          (Bruno Andreu / Dogliotti 1870 / Cantina del Conte / Tesselaarsdal Wines custom design vs. Original Estate Design)
+          (Bruno Andreu / Dogliotti 1870 / Cantina del Conte / Tesselaarsdal / Long Dog Wines custom design)
       ════════════════════════════════════════════ */}
       <section className="relative w-full min-h-[92vh] sm:min-h-screen overflow-hidden flex flex-col justify-between">
         
         {/* Full Hero Background Image */}
         <div className="absolute inset-0 w-full h-full z-0 overflow-hidden">
           <img 
-            src={resolveImageUrl(estate.heroImageUrl) || (isTesselaarsdal ? '/assets/estate/tesselaarsdal/vineyard_hero.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')} 
+            src={resolveImageUrl(estate.heroImageUrl) || (isLongDog ? '/assets/estate/long-dog-wines/hero_vineyard.jpg' : isTesselaarsdal ? '/assets/estate/tesselaarsdal/vineyard_hero.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')} 
             alt={estate.estateName}
             onError={(e) => {
               e.currentTarget.onerror = null;
-              e.currentTarget.src = isTesselaarsdal
-                ? '/assets/estate/tesselaarsdal/vineyard_hero.jpg'
-                : isCantinaDelConte
-                  ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg'
-                  : isDogliotti 
-                    ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg'
-                    : isBrunoAndreu 
-                      ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' 
-                      : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
+              e.currentTarget.src = isLongDog
+                ? '/assets/estate/long-dog-wines/hero_vineyard.jpg'
+                : isTesselaarsdal
+                  ? '/assets/estate/tesselaarsdal/vineyard_hero.jpg'
+                  : isCantinaDelConte
+                    ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg'
+                    : isDogliotti 
+                      ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg'
+                      : isBrunoAndreu 
+                        ? '/assets/estate/bruno-andreu/domaine_villa_hero.png' 
+                        : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
             }}
             className="w-full h-full object-cover object-center scale-100"
           />
-          {isBrunoAndreu || isDogliotti || isCantinaDelConte || isTesselaarsdal ? (
+          {isBrunoAndreu || isDogliotti || isCantinaDelConte || isTesselaarsdal || isLongDog ? (
             <>
               {/* Subtle warm luxury vignette to preserve scenery & cellar architecture */}
-              <div className="absolute inset-0 bg-black/40" />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-black/65 pointer-events-none" />
+              <div className={isLongDog ? 'absolute inset-0 bg-black/50' : 'absolute inset-0 bg-black/40'} />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/75 pointer-events-none" />
             </>
           ) : (
             <>
@@ -491,6 +563,37 @@ export default function EstateDetail() {
 
               <p className="font-serif italic text-white text-base sm:text-2xl md:text-3xl mt-5 sm:mt-8 tracking-wide drop-shadow-[0_3px_12px_rgba(0,0,0,0.9)] select-none">
                 "Small-Batch Pinot Noir & Chardonnay Handcrafted by Berene Sauls"
+              </p>
+            </>
+          ) : isLongDog ? (
+            /* Long Dog Wines Specific Simonsberg Stellenbosch South Africa Hero */
+            <>
+              <div className="flex items-center gap-2 mb-3 select-none">
+                <div className="h-[1px] w-6 sm:w-12 bg-[#e1bd70]" />
+                <span className="font-sans font-bold uppercase tracking-[0.25em] sm:tracking-[0.35em] text-[#e1bd70] text-[10px] sm:text-xs drop-shadow-md">
+                  EST. 2017 • SIMONSBERG MOUNTAIN, STELLENBOSCH
+                </span>
+                <div className="h-[1px] w-6 sm:w-12 bg-[#e1bd70]" />
+              </div>
+
+              <div className="flex flex-col items-center justify-center my-2 max-w-xl w-full px-4 select-none">
+                <img
+                  src={resolveImageUrl(estate.logoUrl) || '/assets/estate/long-dog-wines/long_dog_logo.png'}
+                  alt="Long Dog Wines Logo"
+                  className="max-h-24 sm:max-h-32 md:max-h-40 w-auto object-contain filter drop-shadow-[0_12px_28px_rgba(0,0,0,0.95)]"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/assets/estate/long-dog-wines/long_dog_logo.png';
+                  }}
+                />
+              </div>
+
+              <span className="text-white/95 uppercase tracking-[0.4em] sm:tracking-[0.55em] text-xs sm:text-sm font-light mt-2 drop-shadow-md select-none">
+                LAMBERTI WINERY FARM 103 • STELLENBOSCH, SOUTH AFRICA
+              </span>
+
+              <p className="font-serif italic text-white text-base sm:text-2xl md:text-3xl mt-5 sm:mt-8 tracking-wide drop-shadow-[0_3px_12px_rgba(0,0,0,0.9)] select-none max-w-3xl">
+                "Where character runs deep, and legacy walks on four legs."
               </p>
             </>
           ) : (
@@ -883,6 +986,97 @@ export default function EstateDetail() {
                 )}
               </div>
             </div>
+          ) : isLongDog ? (
+            /* Long Dog Wines Specific Heritage Story Layout — Clean, Breathable & Full-Bottle Framing */
+            <div className="max-w-[1300px] mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-center gap-10 lg:gap-14">
+              <div className="flex-1 w-full max-w-xl">
+                <div className="grid grid-cols-2 gap-3.5 p-3.5 bg-[#fcfaf6] border border-[#e8e2d5] rounded-sm shadow-sm">
+                  {/* Photo 1: Wood-fire braai & bottle in vineyard (300x400 portrait) */}
+                  <div className="relative aspect-[3/4] overflow-hidden group bg-[#f4efe6] rounded-xs shadow-xs">
+                    <img
+                      src={resolveImageUrl(story.images?.[0]) || '/assets/estate/long-dog-wines/dog_pack_vineyard.jpg'}
+                      alt="Long Dog Blend 2023 by the Simonsberg braai fire"
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/long-dog-wines/dog_pack_vineyard.jpg'; }}
+                      className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent opacity-90 pointer-events-none" />
+                    <span className="absolute bottom-2.5 left-2.5 text-[9px] uppercase tracking-wider text-white font-medium bg-black/65 px-2.5 py-1 backdrop-blur-md rounded-xs border border-white/10">
+                      Braai &amp; Bottle • Stellenbosch
+                    </span>
+                  </div>
+
+                  {/* Photo 2: Estate cottages & Simonsberg vines (267x400 portrait) */}
+                  <div className="relative aspect-[3/4] overflow-hidden group bg-[#f4efe6] rounded-xs shadow-xs">
+                    <img
+                      src={resolveImageUrl(story.images?.[1]) || '/assets/estate/long-dog-wines/estate_terrace.jpg'}
+                      alt="Lamberti Winery Estate Rows"
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/long-dog-wines/estate_terrace.jpg'; }}
+                      className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent opacity-90 pointer-events-none" />
+                    <span className="absolute bottom-2.5 left-2.5 text-[9px] uppercase tracking-wider text-white font-medium bg-black/65 px-2.5 py-1 backdrop-blur-md rounded-xs border border-white/10">
+                      Simonsberg Farm 103
+                    </span>
+                  </div>
+
+                  {/* Photo 3: Terrace pour with berries — Full uncropped portrait bottle (265x400) */}
+                  <div className="relative aspect-[3/4] overflow-hidden group bg-[#f4efe6] rounded-xs shadow-xs">
+                    <img
+                      src={resolveImageUrl(story.images?.[2]) || '/assets/estate/long-dog-wines/vineyard_landscape.jpg'}
+                      alt="Long Dog Red Blend Terrace Pour"
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/estate/long-dog-wines/vineyard_landscape.jpg'; }}
+                      className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent opacity-90 pointer-events-none" />
+                    <span className="absolute bottom-2.5 left-2.5 text-[9px] uppercase tracking-wider text-white font-medium bg-black/65 px-2.5 py-1 backdrop-blur-md rounded-xs border border-white/10">
+                      Handcrafted Red Blend
+                    </span>
+                  </div>
+
+                  {/* Photo 4: Bottle cradled in vine leaves (300x400 portrait) */}
+                  <div className="relative aspect-[3/4] overflow-hidden group bg-[#f4efe6] rounded-xs shadow-xs">
+                    <img
+                      src="/assets/estate/long-dog-wines/bottle_hero.jpg"
+                      alt="Long Dog 2023 Harvest Bottle in Vines"
+                      className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent opacity-90 pointer-events-none" />
+                    <span className="absolute bottom-2.5 left-2.5 text-[9px] uppercase tracking-wider text-white font-medium bg-black/65 px-2.5 py-1 backdrop-blur-md rounded-xs border border-white/10">
+                      Grown by Hand
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 w-full flex flex-col items-start text-left p-2 sm:p-4">
+                <span className="text-[11px] uppercase tracking-[0.25em] text-[#c9a35b] font-semibold mb-2 flex items-center gap-1.5">
+                  <Sparkles size={13} />
+                  Simonsberg Sanctuary • Since 2017
+                </span>
+                <h2 className="font-serif text-[30px] sm:text-[38px] lg:text-[42px] text-ink font-normal leading-[1.15] mb-5 tracking-wide">
+                  A Boutique Winery with a Soul
+                </h2>
+                <div className="w-16 h-[2px] bg-[#c9a35b] mb-6" />
+                <div className="text-gray-600 text-sm sm:text-base leading-[1.85] font-light space-y-4 max-w-xl">
+                  <p>
+                    {story.history || 'In 2017, Jackie and Dennis Lamberti settled beneath the Simonsberg mountain in Stellenbosch on one of South Africa’s smallest registered wine farms: Dennis would craft small-batch wine, and Jackie would run a sanctuary for rescued dogs.'}
+                  </p>
+                  {story.philosophy && (
+                    <blockquote className="border-l-2 border-[#c9a35b] pl-4 italic text-ink/80 text-sm sm:text-base my-3">
+                      "{story.philosophy}"
+                    </blockquote>
+                  )}
+                  <div className="pt-2">
+                    <span className="font-serif text-lg text-ink font-medium block">
+                      {story.founders || 'Dennis & Jackie Lamberti'}
+                    </span>
+                    <span className="text-xs uppercase tracking-wider text-[#c9a35b] block">
+                      Founders &amp; Custodians • Stellenbosch
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           ) : (
             /* Original Dynamic Story Layout for Giuliani Vini and other estates */
             <div className="max-w-[1400px] mx-auto px-4 flex flex-col lg:flex-row items-stretch gap-8 lg:gap-0">
@@ -945,6 +1139,61 @@ export default function EstateDetail() {
       )}
 
       {/* ════════════════════════════════════════════
+          MEET THE LONG DOGS — SANCTUARY PACK (Exclusive to Long Dog Wines)
+      ════════════════════════════════════════════ */}
+      {isLongDog && (
+        <section id="meet-the-pack" className="py-16 md:py-24 bg-[#121110] text-white relative overflow-hidden border-b border-[#c9a35b]/25">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="text-center mb-12 sm:mb-16 max-w-3xl mx-auto">
+              <span className="text-[11px] uppercase tracking-[0.3em] text-[#e1bd70] font-semibold mb-3 block">
+                Working Rescue Dog Sanctuary • Farm 103
+              </span>
+              <h2 className="font-serif text-[32px] sm:text-[44px] text-white font-normal leading-[1.15] mb-4">
+                Meet The Long Dogs
+              </h2>
+              <p className="text-white/70 text-sm sm:text-base leading-relaxed font-light">
+                The team behind the bark &amp; the bottle. Every rescue dog at Lamberti Winery brings heart, loyalty, and unapologetic character to the vineyard rows, cellar floor, and courtyard gate.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
+              {LONG_DOG_PACK.map((dog, idx) => (
+                <div
+                  key={dog.name}
+                  className={`flex flex-col bg-[#1b1917] border border-white/10 hover:border-[#e1bd70]/60 transition-all duration-300 overflow-hidden group ${
+                    idx === LONG_DOG_PACK.length - 1 ? 'sm:col-span-2 lg:col-span-2 lg:flex-row' : ''
+                  }`}
+                >
+                  <div className={`${idx === LONG_DOG_PACK.length - 1 ? 'lg:w-1/2 h-72 lg:h-auto' : 'w-full aspect-square'} relative overflow-hidden bg-black`}>
+                    <img
+                      src={dog.image}
+                      alt={`${dog.name} — ${dog.role}`}
+                      className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                    <span className="absolute top-3 left-3 text-[9px] uppercase tracking-[0.2em] font-bold px-2.5 py-1 bg-black/75 text-[#e1bd70] border border-[#e1bd70]/40 backdrop-blur-md">
+                      {dog.role}
+                    </span>
+                  </div>
+
+                  <div className={`p-5 sm:p-6 flex flex-col flex-1 ${idx === LONG_DOG_PACK.length - 1 ? 'lg:w-1/2 justify-center' : ''}`}>
+                    <h3 className="font-serif text-xl sm:text-2xl text-white font-medium mb-0.5">{dog.name}</h3>
+                    <span className="text-[11px] uppercase tracking-wider text-[#e1bd70]/85 mb-3 block">{dog.breed}</span>
+                    <p className="text-xs sm:text-[13px] text-white/70 leading-relaxed mb-4 flex-1 font-light">
+                      {dog.bio}
+                    </p>
+                    <blockquote className="pt-3 border-t border-white/10 text-[11px] italic text-white/85 font-serif">
+                      “{dog.quote}”
+                    </blockquote>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ════════════════════════════════════════════
           SHOP OUR WINES
       ════════════════════════════════════════════ */}
       {products.length > 0 && (
@@ -954,43 +1203,91 @@ export default function EstateDetail() {
             {/* Section Header */}
             <div className="text-center mb-12 sm:mb-16 max-w-3xl mx-auto">
               <span className="text-xs font-bold uppercase tracking-widest text-ink/40 mb-3 block">
-                {isTesselaarsdal
-                  ? 'Hemel-en-Aarde Ridge Portfolio'
-                  : isCantinaDelConte 
-                    ? 'Grinzane Cavour Barolo, Barbaresco & Grappe Portfolio' 
-                    : isDogliotti 
-                      ? 'Piedmont Fine Wine & Vermouth Portfolio' 
-                      : isBrunoAndreu 
-                        ? 'The Estate Cellar' 
-                        : 'From the Cellar'}
+                {isLongDog
+                  ? 'Simonsberg Small-Batch Cellar'
+                  : isTesselaarsdal
+                    ? 'Hemel-en-Aarde Ridge Portfolio'
+                    : isCantinaDelConte 
+                      ? 'Grinzane Cavour Barolo, Barbaresco & Grappe Portfolio' 
+                      : isDogliotti 
+                        ? 'Piedmont Fine Wine & Vermouth Portfolio' 
+                        : isBrunoAndreu 
+                          ? 'The Estate Cellar' 
+                          : 'From the Cellar'}
               </span>
               <h2 className="font-serif text-[34px] sm:text-[44px] text-ink font-normal leading-[1.15] mb-3">
-                {isTesselaarsdal
-                  ? 'The Tesselaarsdal Cellar'
-                  : isCantinaDelConte 
-                    ? 'The Cantina del Conte Cellar' 
-                    : isDogliotti 
-                      ? 'The Dogliotti 1870 Cellar' 
-                      : isBrunoAndreu 
-                        ? 'Shop The Wine Collections' 
-                        : 'Shop Our Wines'}
+                {isLongDog
+                  ? 'The Long Dog Allocation'
+                  : isTesselaarsdal
+                    ? 'The Tesselaarsdal Cellar'
+                    : isCantinaDelConte 
+                      ? 'The Cantina del Conte Cellar' 
+                      : isDogliotti 
+                        ? 'The Dogliotti 1870 Cellar' 
+                        : isBrunoAndreu 
+                          ? 'Shop The Wine Collections' 
+                          : 'Shop Our Wines'}
               </h2>
               <p className="text-ink/60 text-base sm:text-lg">
-                {isTesselaarsdal
-                  ? 'Discover the 10th Anniversary Vintage Pinot Noir and clay amphorae Chardonnay handcrafted in limited allocations by Berene Sauls on the extreme cool-climate Hemel-en-Aarde Ridge.'
-                  : isCantinaDelConte
-                    ? 'Discover 12 exceptional artisan wines and grappe from Azienda Pelissero in Grinzane Cavour, rooted in Count Cavour’s historic vineyards. Monumental Barolo Riserva, Barolo Gabutti, Barbaresco, Roero Arneis, and aged single-variety grappe.'
-                    : isDogliotti
-                      ? 'Explore 28 signature vintages, Moscato d’Asti, Barolo DOCG, Barbera d’Asti, and botanical Vermouth di Torino crafted across five generations in Langhe & Monferrato.'
-                      : isBrunoAndreu 
-                        ? 'Discover 35 authentic cuvées from Bruno Andreu. Each bottle reflects Mediterranean terroir and craft.' 
-                        : 'Discover our exceptional selection of handcrafted wines.'
+                {isLongDog
+                  ? 'Crafted in tiny parcels from one acre of Cabernet Franc and half an acre of Tannat beneath the Simonsberg peak—matured 24 months in French oak barrels and bottled with intent.'
+                  : isTesselaarsdal
+                    ? 'Discover the 10th Anniversary Vintage Pinot Noir and clay amphorae Chardonnay handcrafted in limited allocations by Berene Sauls on the extreme cool-climate Hemel-en-Aarde Ridge.'
+                    : isCantinaDelConte
+                      ? 'Discover 12 exceptional artisan wines and grappe from Azienda Pelissero in Grinzane Cavour, rooted in Count Cavour’s historic vineyards. Monumental Barolo Riserva, Barolo Gabutti, Barbaresco, Roero Arneis, and aged single-variety grappe.'
+                      : isDogliotti
+                        ? 'Explore 28 signature vintages, Moscato d’Asti, Barolo DOCG, Barbera d’Asti, and botanical Vermouth di Torino crafted across five generations in Langhe & Monferrato.'
+                        : isBrunoAndreu 
+                          ? 'Discover 35 authentic cuvées from Bruno Andreu. Each bottle reflects Mediterranean terroir and craft.' 
+                          : 'Discover our exceptional selection of handcrafted wines.'
                 }
               </p>
             </div>
 
             {/* Product Grid */}
-            {isBrunoAndreu || isDogliotti || isCantinaDelConte || isTesselaarsdal ? (
+            {isLongDog ? (
+              /* Clean Editorial Showcase matching Maison Dobbé & Giuliani Vini (Simple, Uncropped Bottle, No Price/Cart Clutter) */
+              <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 ${products.length === 1 ? 'max-w-md mx-auto !grid-cols-1' : products.length === 2 ? 'max-w-4xl mx-auto !lg:grid-cols-2' : ''}`}>
+                {products.map(p => {
+                  const prodSlug = p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                  return (
+                    <div key={p._id || p.id} className="flex flex-col bg-white border border-ink/10 hover:border-[#c9a35b]/60 transition-all duration-300 group h-full shadow-xs">
+                      {/* Full Uncropped Bottle Image Container */}
+                      <Link to={`/product/${prodSlug}`} className="block w-full h-96 relative overflow-hidden bg-[#f7f4ee] p-5">
+                        <img
+                          src={resolveImageUrl(p.image || p.gallery?.[0]) || '/assets/estate/long-dog-wines/long_dog_blend_2023.webp'}
+                          alt={p.name}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/assets/estate/long-dog-wines/long_dog_blend_2023.webp';
+                          }}
+                          className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105 drop-shadow-md"
+                        />
+                      </Link>
+
+                      {/* Simple Clean Content Area */}
+                      <div className="p-6 md:p-8 flex flex-col flex-1 text-center">
+                        <Link to={`/product/${prodSlug}`}>
+                          <h3 className="font-serif text-2xl text-ink font-medium hover:text-[#7b263c] transition-colors mb-3">
+                            {p.name}
+                          </h3>
+                        </Link>
+                        <p className="text-sm text-ink/70 leading-relaxed mb-6 flex-1 line-clamp-3">
+                          {p.description || 'Crafted by hand in small batches beneath the Simonsberg mountain in Stellenbosch.'}
+                        </p>
+                        <Link
+                          to={`/product/${prodSlug}`}
+                          className="inline-flex items-center justify-center gap-2 text-xs uppercase tracking-[0.18em] font-semibold text-ink hover:text-[#8a2232] transition-colors mt-auto pt-4 border-t border-ink/10"
+                        >
+                          <span>Explore Wine</span>
+                          <span>→</span>
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : isBrunoAndreu || isDogliotti || isCantinaDelConte || isTesselaarsdal ? (
               /* Studio Showcase for Dogliotti 1870, Bruno Andreu, Cantina del Conte and Tesselaarsdal Wines */
               <div className={`grid grid-cols-1 sm:grid-cols-2 ${products.length === 2 ? 'max-w-4xl mx-auto' : 'lg:grid-cols-3'} gap-6 sm:gap-8`}>
                 {products.map(p => {
@@ -1235,14 +1532,17 @@ export default function EstateDetail() {
             </div>
             
             {/* Right Vineyard Photo */}
-            {(vineyard.imageUrl || isBrunoAndreu || isDogliotti || isCantinaDelConte || isTesselaarsdal) && (
+            {(vineyard.imageUrl || isBrunoAndreu || isDogliotti || isCantinaDelConte || isTesselaarsdal || isLongDog) && (
               <div className="flex-1 w-full max-w-lg">
                 <div className="w-full aspect-[4/3] overflow-hidden shadow-lg border border-gray-200 relative group bg-gray-100">
                   <img 
-                    src={resolveImageUrl(vineyard.imageUrl) || (isTesselaarsdal ? '/assets/estate/tesselaarsdal/tesselaarsdal_vineyard_ridge.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_terroir_vineyard_map.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_vineyard_panorama.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_pure_barrels.png' : '')} 
+                    src={resolveImageUrl(vineyard.imageUrl) || (isLongDog ? '/assets/estate/long-dog-wines/wine_glass_pour.jpg' : isTesselaarsdal ? '/assets/estate/tesselaarsdal/tesselaarsdal_vineyard_ridge.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_terroir_vineyard_map.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_vineyard_panorama.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_pure_barrels.png' : '')} 
                     alt="Terroir and Vineyard" 
                     onError={(e) => {
-                      if (isTesselaarsdal) {
+                      if (isLongDog) {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = '/assets/estate/long-dog-wines/wine_glass_pour.jpg';
+                      } else if (isTesselaarsdal) {
                         e.currentTarget.onerror = null;
                         e.currentTarget.src = '/assets/estate/tesselaarsdal/tesselaarsdal_vineyard_ridge.jpg';
                       } else if (isCantinaDelConte) {
@@ -1331,7 +1631,7 @@ export default function EstateDetail() {
                           <p className="text-xs text-ink font-medium">{card.capacity} guests</p>
                         </div>
                       )}
-                      {!isBrunoAndreu && !isDogliotti && !isCantinaDelConte && card.priceStr && (
+                      {!isBrunoAndreu && !isDogliotti && !isCantinaDelConte && !isLongDog && card.priceStr && (
                         <div className="col-span-2 pt-2 border-t border-gray-50 flex items-center justify-between">
                           <p className="text-[9px] uppercase tracking-widest text-gray-400 font-medium">Price</p>
                           <p className="text-sm font-semibold text-[#8a2232]">{card.priceStr}</p>
@@ -1540,24 +1840,26 @@ export default function EstateDetail() {
         {/* Top Banner for Contact/Visit */}
         <div className="relative h-[240px] sm:h-[280px] flex items-center justify-center overflow-hidden">
           <img 
-            src={resolveImageUrl(estate.heroImageUrl) || (isTesselaarsdal ? '/assets/estate/tesselaarsdal/tesselaarsdal_bottles_candlelight.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_cellar_barrels.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')}
+            src={resolveImageUrl(estate.heroImageUrl) || (isLongDog ? '/assets/estate/long-dog-wines/dog_pack_vineyard.jpg' : isTesselaarsdal ? '/assets/estate/tesselaarsdal/tesselaarsdal_bottles_candlelight.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_cellar_barrels.png' : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')}
             alt={estate.estateName}
             onError={(e) => {
               e.currentTarget.onerror = null;
-              e.currentTarget.src = isTesselaarsdal
-                ? '/assets/estate/tesselaarsdal/tesselaarsdal_bottles_candlelight.jpg'
-                : isCantinaDelConte
-                  ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg'
-                  : isDogliotti 
-                    ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' 
-                    : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
+              e.currentTarget.src = isLongDog
+                ? '/assets/estate/long-dog-wines/dog_pack_vineyard.jpg'
+                : isTesselaarsdal
+                  ? '/assets/estate/tesselaarsdal/tesselaarsdal_bottles_candlelight.jpg'
+                  : isCantinaDelConte
+                    ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg'
+                    : isDogliotti 
+                      ? '/assets/estate/dogliotti-1870/dogliotti_langhe_monferrato_hero.jpg' 
+                      : 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
             }}
             className="absolute inset-0 w-full h-full object-cover object-center"
           />
           <div className="absolute inset-0 bg-black/70" />
           <div className="relative z-10 flex flex-col items-center gap-3 text-center px-4">
             <span className="text-[10px] uppercase tracking-[0.3em] text-[#e1bd70]">
-              {isTesselaarsdal ? 'Hemel-en-Aarde Ridge Private Allocations' : isCantinaDelConte || isDogliotti ? 'Direct Cellar & Export Allocations' : isBrunoAndreu ? 'Private Cellar Allocations' : 'Estate Allocations'}
+              {isLongDog ? 'Simonsberg Sanctuary & Boutique Allocations' : isTesselaarsdal ? 'Hemel-en-Aarde Ridge Private Allocations' : isCantinaDelConte || isDogliotti ? 'Direct Cellar & Export Allocations' : isBrunoAndreu ? 'Private Cellar Allocations' : 'Estate Allocations'}
             </span>
             <h2 className="font-serif text-3xl sm:text-4xl text-white">Experience The Wines</h2>
             {contact.phone && (
@@ -1605,16 +1907,16 @@ export default function EstateDetail() {
             <div className="flex-1 bg-[#24211f] p-6 sm:p-8 border border-white/5">
               <h4 className="text-[10px] uppercase tracking-[0.25em] text-[#e1bd70] mb-4 font-semibold">Visit Us</h4>
               <p className="text-xs text-white/80 leading-relaxed mb-4 font-light whitespace-pre-line">
-                {hospitality.restaurant?.openingHours || (isCantinaDelConte ? 'Monday – Saturday: 9:00 – 19:00\nCellar tours & tastings by appointment' : isDogliotti ? 'Monday – Saturday: 9:00 – 18:30\nCellar tours & tastings by appointment' : isBrunoAndreu ? 'Monday – Friday: 9:00 – 18:00\nSaturday: By sommelier appointment' : 'Contact us for opening hours')}
+                {hospitality.restaurant?.openingHours || (isLongDog ? 'Monday – Saturday: By Appointment\nPrivate Simonsberg Tastings & Dog Sanctuary Visits' : isCantinaDelConte ? 'Monday – Saturday: 9:00 – 19:00\nCellar tours & tastings by appointment' : isDogliotti ? 'Monday – Saturday: 9:00 – 18:30\nCellar tours & tastings by appointment' : isBrunoAndreu ? 'Monday – Friday: 9:00 – 18:00\nSaturday: By sommelier appointment' : 'Contact us for opening hours')}
               </p>
               {contact.address && (
                 <p className="text-xs text-white/50 mb-5 leading-relaxed font-light">
                   {contact.address}
                 </p>
               )}
-              {(contact.mapLink || isBrunoAndreu || isDogliotti || isCantinaDelConte) && (
+              {(contact.mapLink || isBrunoAndreu || isDogliotti || isCantinaDelConte || isLongDog) && (
                 <a 
-                  href={contact.mapLink || (isCantinaDelConte ? 'https://maps.google.com/?q=Via+Castello+13,+12060+Grinzane+Cavour+CN,+Italy' : isDogliotti ? 'https://maps.google.com/?q=Castagnole+delle+Lanze,Asti,Piedmont,Italy' : isBrunoAndreu ? 'https://maps.google.com/?q=Montblanc,Languedoc,France' : '')} 
+                  href={contact.mapLink || (isLongDog ? 'https://maps.google.com/?q=Lamberti+Winery,Farm+103,Stellenbosch,7600,South+Africa' : isCantinaDelConte ? 'https://maps.google.com/?q=Via+Castello+13,+12060+Grinzane+Cavour+CN,+Italy' : isDogliotti ? 'https://maps.google.com/?q=Castagnole+delle+Lanze,Asti,Piedmont,Italy' : isBrunoAndreu ? 'https://maps.google.com/?q=Montblanc,Languedoc,France' : '')} 
                   target="_blank" 
                   rel="noreferrer" 
                   className="inline-block px-5 py-2 border border-[#e1bd70]/60 text-[10px] uppercase tracking-[0.2em] text-[#e1bd70] hover:bg-[#e1bd70] hover:text-black transition-colors"
@@ -1628,17 +1930,19 @@ export default function EstateDetail() {
           {/* Right Side Follow Estate */}
           <div className="flex-1 relative overflow-hidden p-8 flex items-center justify-center text-center border border-white/10 min-h-[260px]">
             <img 
-              src={isTesselaarsdal ? '/assets/estate/tesselaarsdal/tesselaarsdal_berene_cellar.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_cask_barrel_hall.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_bruno_elixir_magnum.png' : (resolveImageUrl(estate.heroImageUrl) || 'https://images.unsplash.com/photo-1565922336365-1d44eb37a06a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80')}
+              src={isLongDog ? '/assets/estate/long-dog-wines/wine_glass_pour.jpg' : isTesselaarsdal ? '/assets/estate/tesselaarsdal/tesselaarsdal_berene_cellar.jpg' : isCantinaDelConte ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg' : isDogliotti ? '/assets/estate/dogliotti-1870/dogliotti_cask_barrel_hall.jpg' : isBrunoAndreu ? '/assets/estate/bruno-andreu/ba_bruno_elixir_magnum.png' : (resolveImageUrl(estate.heroImageUrl) || 'https://images.unsplash.com/photo-1565922336365-1d44eb37a06a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80')}
               alt={estate.estateName}
               onError={(e) => {
                 e.currentTarget.onerror = null;
-                e.currentTarget.src = isTesselaarsdal
-                  ? '/assets/estate/tesselaarsdal/tesselaarsdal_berene_cellar.jpg'
-                  : isCantinaDelConte
-                    ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg'
-                    : isDogliotti 
-                      ? '/assets/estate/dogliotti-1870/dogliotti_cask_barrel_hall.jpg'
-                      : 'https://images.unsplash.com/photo-1565922336365-1d44eb37a06a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
+                e.currentTarget.src = isLongDog
+                  ? '/assets/estate/long-dog-wines/wine_glass_pour.jpg'
+                  : isTesselaarsdal
+                    ? '/assets/estate/tesselaarsdal/tesselaarsdal_berene_cellar.jpg'
+                    : isCantinaDelConte
+                      ? '/assets/estate/cantina-del-conte/cantina_hero_castello.jpg'
+                      : isDogliotti 
+                        ? '/assets/estate/dogliotti-1870/dogliotti_cask_barrel_hall.jpg'
+                        : 'https://images.unsplash.com/photo-1565922336365-1d44eb37a06a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
               }}
               className="absolute inset-0 w-full h-full object-cover"
             />
