@@ -65,7 +65,7 @@ const luxuryShowcaseSchema = new mongoose.Schema(
     },
     offerPrice: {
       type: Number,
-      default: 795,
+      default: 850,
     },
     stock: {
       type: Number,

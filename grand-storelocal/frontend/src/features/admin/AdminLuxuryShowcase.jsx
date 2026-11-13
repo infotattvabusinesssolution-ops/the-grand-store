@@ -36,7 +36,7 @@ export default function AdminLuxuryShowcase() {
       finish: 'Enduring Crystalline Minerality & Fine Persistent Bead',
     },
     price: 850,
-    offerPrice: 795,
+    offerPrice: 850,
     bottleImage: '/assets/mcollection/mcollection-brut.png',
     ctaText: 'Reserve Allocation',
   });

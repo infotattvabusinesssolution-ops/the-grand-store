@@ -31,7 +31,7 @@ const DEFAULT_SHOWCASE = {
     finish: "Enduring Crystalline Minerality & Fine Persistent Bead",
   },
   price: 850,
-  offerPrice: 795,
+  offerPrice: 850,
   stock: 50,
   bottleImage: "/assets/mcollection/mcollection-brut.png",
   productRefId: "mcollection-brut-reserve",
