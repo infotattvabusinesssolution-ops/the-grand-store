@@ -171,7 +171,7 @@ export default function ConfirmCheckoutModal({
 
   const modalContent = (
     <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-xl transition-all duration-300 animate-in fade-in"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/45 backdrop-blur-[2px] transition-all duration-300 animate-in fade-in"
       onClick={onClose}
     >
       <div 
