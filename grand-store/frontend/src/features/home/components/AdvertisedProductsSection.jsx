@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ExternalLink, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../../api';
+import Price from '../../../components/ui/Price';
 
 const ProductCard = ({ product }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -21,37 +22,52 @@ const ProductCard = ({ product }) => {
   };
 
   return (
-    <div className="group relative flex flex-col h-full bg-[#11100d] border border-white/5 hover:border-[#e1bd70]/30 transition-all duration-700 overflow-hidden">
+    <div className="group relative flex flex-col h-full bg-[#11100d]/90 backdrop-blur-md border border-white/10 hover:border-[#e1bd70]/50 transition-all duration-700 overflow-hidden rounded-xl shadow-2xl hover:-translate-y-1">
       
-      {/* Image Carousel */}
-      <div className="relative h-[280px] overflow-hidden bg-[#0a0907] group/carousel flex items-center justify-center">
+      {/* Image Carousel with Black Transparent Studio Backlight */}
+      <div className="relative h-[280px] overflow-hidden bg-black/60 group/carousel flex items-center justify-center">
+        {/* Subtle Ambient Radial Gold Glow Spotlight */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity duration-700"
+          style={{
+            background:
+              'radial-gradient(ellipse at center, rgba(225, 189, 112, 0.22) 0%, rgba(201, 163, 91, 0.08) 42%, transparent 75%)',
+          }}
+        />
+
+        {/* Ambient Floor Glow */}
+        <div
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 w-3/5 h-5 rounded-full pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity duration-700"
+          style={{
+            background: 'rgba(219, 166, 73, 0.25)',
+            filter: 'blur(14px)',
+          }}
+        />
+
         {images.length > 0 ? (
           <img 
             src={images[currentIndex]} 
             alt={product.title}
-            className="w-full h-full object-contain p-8 transition-transform duration-1000 group-hover:scale-105"
+            className="w-full h-full object-contain p-6 transition-transform duration-700 group-hover:scale-105 drop-shadow-[0_15px_30px_rgba(0,0,0,0.95)] relative z-10"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-white/30 text-xs bg-[#0a0907]">
+          <div className="w-full h-full flex items-center justify-center text-white/30 text-xs bg-black/60 relative z-10">
             No Image Available
           </div>
         )}
-        
-        {/* Elegant Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent pointer-events-none opacity-80"></div>
         
         {/* Carousel Controls */}
         {images.length > 1 && (
           <>
             <button 
               onClick={prevImage}
-              className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-black/40 backdrop-blur-sm text-white rounded-full opacity-0 group-hover/carousel:opacity-100 hover:bg-[#e1bd70] hover:text-black transition-all duration-300 z-20"
+              className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 backdrop-blur-md text-white rounded-full opacity-0 group-hover/carousel:opacity-100 hover:bg-[#e1bd70] hover:text-black transition-all duration-300 z-20"
             >
               <ChevronLeft size={16} />
             </button>
             <button 
               onClick={nextImage}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-black/40 backdrop-blur-sm text-white rounded-full opacity-0 group-hover/carousel:opacity-100 hover:bg-[#e1bd70] hover:text-black transition-all duration-300 z-20"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 backdrop-blur-md text-white rounded-full opacity-0 group-hover/carousel:opacity-100 hover:bg-[#e1bd70] hover:text-black transition-all duration-300 z-20"
             >
               <ChevronRight size={16} />
             </button>
@@ -71,12 +87,12 @@ const ProductCard = ({ product }) => {
         {/* Badges */}
         <div className="absolute top-4 left-4 flex flex-col gap-2 z-10 pointer-events-none">
           {product.category && (
-            <div className="bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1 text-[9px] text-[#e1bd70] uppercase tracking-[0.2em] font-bold">
+            <div className="bg-black/70 backdrop-blur-md border border-[#e1bd70]/30 px-3 py-1 text-[9px] text-[#e1bd70] uppercase tracking-[0.2em] font-bold rounded-sm">
               {product.category}
             </div>
           )}
-          {product.brand && !product.category && (
-            <div className="bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1 text-[9px] text-white uppercase tracking-[0.2em] font-bold">
+          {product.brand && (
+            <div className="bg-black/70 backdrop-blur-md border border-white/10 px-3 py-1 text-[9px] text-white uppercase tracking-[0.2em] font-bold rounded-sm">
               {product.brand}
             </div>
           )}
@@ -84,11 +100,15 @@ const ProductCard = ({ product }) => {
       </div>
 
       {/* Content Area */}
-      <div className="p-6 flex-1 flex flex-col relative bg-[#11100d]">
+      <div className="p-6 flex-1 flex flex-col relative bg-[#11100d]/90">
         {/* Price Tag positioned beautifully overlapping the image line */}
         {product.price && (
-          <div className="absolute -top-5 right-6 bg-[#e1bd70] text-black px-3 py-2 text-xs font-bold tracking-wider rounded-sm shadow-2xl">
-            {product.price}
+          <div className="absolute -top-5 right-6 bg-[#e1bd70] text-black px-3.5 py-1.5 text-xs font-bold tracking-wider rounded-sm shadow-2xl flex items-center">
+            {typeof product.price === 'number' || !isNaN(Number(product.price)) ? (
+              <Price amount={product.price} />
+            ) : (
+              product.price
+            )}
           </div>
         )}
 

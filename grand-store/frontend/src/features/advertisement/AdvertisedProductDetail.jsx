@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ExternalLink, ChevronLeft, ChevronRight, Tag, ArrowLeft } from 'lucide-react';
 import api from '../../api';
+import Price from '../../components/ui/Price';
 
 export default function AdvertisedProductDetail() {
   const { id } = useParams();
@@ -134,8 +135,12 @@ export default function AdvertisedProductDetail() {
             )}
 
             {product.price && (
-              <div className="text-3xl text-white font-light mb-8">
-                {product.price}
+              <div className="text-3xl text-[#e1bd70] font-sans font-bold mb-8">
+                {typeof product.price === 'number' || !isNaN(Number(product.price)) ? (
+                  <Price amount={product.price} />
+                ) : (
+                  product.price
+                )}
               </div>
             )}
 
