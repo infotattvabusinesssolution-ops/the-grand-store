@@ -450,23 +450,14 @@ export default function ConfirmCheckoutModal({
                 )}
               </button>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleInstantCheckoutFromAdd}
-                  className="flex-1 py-2.5 rounded-full border border-[var(--color-gold)]/50 hover:border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20 text-[var(--color-gold)] text-xs uppercase tracking-wider font-semibold transition-colors text-center cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <CreditCard size={13} />
-                  <span>Instant Checkout</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 py-2.5 rounded-full border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] text-white/50 hover:text-white text-xs uppercase tracking-wider transition-colors text-center cursor-pointer"
-                >
-                  Continue Shopping
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleInstantCheckoutFromAdd}
+                className="w-full py-2.5 rounded-full border border-[var(--color-gold)]/40 hover:border-[var(--color-gold)] bg-[var(--color-gold)]/5 hover:bg-[var(--color-gold)]/15 text-[var(--color-gold)] text-xs uppercase tracking-wider font-semibold transition-colors text-center cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <CreditCard size={13} />
+                <span>Instant Checkout</span>
+              </button>
             </div>
           ) : (
             <div className="space-y-2.5 pt-3 border-t border-white/10">
