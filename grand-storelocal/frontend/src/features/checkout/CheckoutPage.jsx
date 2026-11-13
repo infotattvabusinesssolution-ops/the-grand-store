@@ -144,29 +144,6 @@ export default function CheckoutPage({
   const [mixedCartWarningKey, setMixedCartWarningKey] = useState(0);
   const [hasTriggeredMixedWarning, setHasTriggeredMixedWarning] = useState(false);
   const summaryPanelRef = useRef(null);
-
-  const cartScopeAnalysis = useMemo(
-    () => analyzeCartScopeConflict(vendorCartItems, destinationMode, formData.country),
-    [vendorCartItems, destinationMode, formData.country]
-  );
-
-  useEffect(() => {
-    if (!showMixedCartModal) return undefined;
-    const timer = setTimeout(() => {
-      setShowMixedCartModal(false);
-    }, 5500);
-    return () => clearTimeout(timer);
-  }, [showMixedCartModal, mixedCartWarningKey]);
-
-  useEffect(() => {
-    if (!cartScopeAnalysis.hasConflict && hasTriggeredMixedWarning) {
-      setHasTriggeredMixedWarning(false);
-      setShowMixedCartModal(false);
-      if (vendorCartItems.length > 0 && onNotify) {
-        onNotify('Ready — you can now click "Continue to Courier Service".');
-      }
-    }
-  }, [cartScopeAnalysis.hasConflict, hasTriggeredMixedWarning, vendorCartItems.length]);
   const [isAgeConfirmed, setIsAgeConfirmed] = useState(false);
   // Guest 18+ KYC and Document Verification state
   const [guestIdType, setGuestIdType] = useState('national_id');
@@ -327,6 +304,29 @@ export default function CheckoutPage({
       lng: null
     };
   });
+
+  const cartScopeAnalysis = useMemo(
+    () => analyzeCartScopeConflict(vendorCartItems, destinationMode, formData?.country || ''),
+    [vendorCartItems, destinationMode, formData?.country]
+  );
+
+  useEffect(() => {
+    if (!showMixedCartModal) return undefined;
+    const timer = setTimeout(() => {
+      setShowMixedCartModal(false);
+    }, 5500);
+    return () => clearTimeout(timer);
+  }, [showMixedCartModal, mixedCartWarningKey]);
+
+  useEffect(() => {
+    if (!cartScopeAnalysis.hasConflict && hasTriggeredMixedWarning) {
+      setHasTriggeredMixedWarning(false);
+      setShowMixedCartModal(false);
+      if (vendorCartItems.length > 0 && onNotify) {
+        onNotify('Ready — you can now click "Continue to Courier Service".');
+      }
+    }
+  }, [cartScopeAnalysis.hasConflict, hasTriggeredMixedWarning, vendorCartItems.length]);
 
   const [postnetPreview, setPostnetPreview] = useState({
     loading: false,
