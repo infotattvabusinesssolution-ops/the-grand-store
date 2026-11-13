@@ -166,22 +166,22 @@ export default function Footer() {
           </form>
           {newsletterStatus && <p className="m-[10px_0_0] text-[#cfc6b7] font-sans text-[11px]" role="status">{newsletterStatus}</p>}
           <div 
-            className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-[26px] pb-[20px] border-b border-[#d99d39]/70 select-none"
+            className="flex items-baseline flex-wrap gap-2.5 mt-[26px] pb-[20px] border-b border-[#d99d39]/70 select-none"
             aria-label={`Total Visitors: ${visitorCount.toLocaleString()}`}
           >
             <span className="text-[#d99d39] font-serif text-[22px] lg:text-[24px] font-medium tracking-tight">
-              Total Visitors :
+              Total Visitors:
             </span>
             <span className="font-['Montserrat',sans-serif] font-bold text-[22px] lg:text-[24px] tracking-wider text-[#ffd700] tabular-nums">
               {visitorCount.toLocaleString()}
             </span>
           </div>
-          <div className="flex flex-row items-center mt-[22px] sm:mt-[26px] gap-3 sm:gap-3.5 max-w-full" aria-label="Download The Grand Store mobile app">
-            <a className="inline-block transition-all duration-200 hover:opacity-85 hover:-translate-y-0.5 shrink-0" href="https://apps.apple.com/in/app/grand-store/id6449220111" target="_blank" rel="noopener noreferrer">
-              <img className="w-auto h-[38px] sm:h-[42px] object-contain" src="/assets/footer/app-store.svg" alt="Download on the App Store" />
+          <div className="flex flex-row items-center justify-between w-full mt-[22px] sm:mt-[26px] gap-2" aria-label="Download The Grand Store mobile app">
+            <a className="inline-flex items-center justify-center max-w-[48%] transition-all duration-200 hover:opacity-85 hover:-translate-y-0.5 shrink-0" href="https://apps.apple.com/in/app/grand-store/id6449220111" target="_blank" rel="noopener noreferrer">
+              <img className="w-auto h-[40px] sm:h-[44px] lg:h-[46px] max-w-full object-contain" src="/assets/footer/app-store.svg" alt="Download on the App Store" />
             </a>
-            <a className="inline-block transition-all duration-200 hover:opacity-85 hover:-translate-y-0.5 shrink-0" href="https://play.google.com/store/apps/details?id=com.grandstore" target="_blank" rel="noopener noreferrer">
-              <img className="w-auto h-[38px] sm:h-[42px] object-contain" src="/assets/footer/google-play.svg" alt="Get it on Google Play" />
+            <a className="inline-flex items-center justify-center max-w-[50%] transition-all duration-200 hover:opacity-85 hover:-translate-y-0.5 shrink-0" href="https://play.google.com/store/apps/details?id=com.grandstore" target="_blank" rel="noopener noreferrer">
+              <img className="w-auto h-[40px] sm:h-[44px] lg:h-[46px] max-w-full object-contain" src="/assets/footer/google-play.svg" alt="Get it on Google Play" />
             </a>
           </div>
         </div>
