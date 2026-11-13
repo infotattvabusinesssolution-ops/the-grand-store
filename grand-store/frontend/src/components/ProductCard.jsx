@@ -233,6 +233,7 @@ export default function ProductCard({
   const { country_code, country_name } = (typeof useGeoLocation === 'function' ? useGeoLocation() : {}) || {};
   const navigate = useNavigate();
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [checkoutModalMode, setCheckoutModalMode] = useState('checkout');
   const productId = product.id || product._id;
   const productPath = `/product/${product.slug || productId}`;
   const { isWishlisted } = useWishlist();
@@ -393,7 +394,8 @@ export default function ProductCard({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        onAdd(product);
+                        setCheckoutModalMode('add');
+                        setIsCheckoutModalOpen(true);
                       }}
                       aria-label={`Add ${productName} to bag`}
                       style={{ 
@@ -431,6 +433,7 @@ export default function ProductCard({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
+                      setCheckoutModalMode('checkout');
                       setIsCheckoutModalOpen(true);
                     }}
                     style={{ 
@@ -476,6 +479,7 @@ export default function ProductCard({
           product={product}
           initialQuantity={1}
           selectedOption={product.options?.[0] || "Pack of 1"}
+          mode={checkoutModalMode}
           onAddToCart={(prod, qty, opt, openCart) => {
             if (onAdd) onAdd(prod, qty, opt, openCart);
           }}

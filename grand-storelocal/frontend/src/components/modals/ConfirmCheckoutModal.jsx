@@ -51,6 +51,7 @@ export default function ConfirmCheckoutModal({
   product = null, 
   initialQuantity = 1,
   selectedOption: externalOption = null,
+  mode = "checkout", // "checkout" | "add"
   onProceed = null,
   onAddToCart = null
 }) {
@@ -61,6 +62,7 @@ export default function ConfirmCheckoutModal({
     externalOption || product?.options?.[0] || 'Pack of 1'
   );
   const [imageError, setImageError] = useState(false);
+  const [isAdded, setIsAdded] = useState(false);
 
   // 3D Perspective & Cursor Tracking state
   const stageRef = useRef(null);
@@ -73,9 +75,11 @@ export default function ConfirmCheckoutModal({
       setQuantity(initialQuantity || 1);
       setSelectedOption(externalOption || product?.options?.[0] || 'Pack of 1');
       setImageError(false);
+      setIsAdded(false);
       setRotate({ x: 0, y: 0 });
       document.body.style.overflow = 'hidden';
     } else {
+      setIsAdded(false);
       document.body.style.overflow = 'unset';
     }
     return () => {
@@ -142,6 +146,29 @@ export default function ConfirmCheckoutModal({
     onClose();
   };
 
+  const handleConfirmAddToCart = () => {
+    if (onAddToCart) {
+      onAddToCart(product, quantity, selectedOption, false);
+    }
+    setIsAdded(true);
+    setTimeout(() => {
+      setIsAdded(false);
+      onClose();
+    }, 850);
+  };
+
+  const handleInstantCheckoutFromAdd = () => {
+    if (onProceed) {
+      onProceed(product, quantity, selectedOption);
+    } else {
+      if (onAddToCart) {
+        onAddToCart(product, quantity, selectedOption, false);
+      }
+      navigate('/customer/checkout?mode=domestic_sa');
+    }
+    onClose();
+  };
+
   const modalContent = (
     <div 
       className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-xl transition-all duration-300 animate-in fade-in"
@@ -168,7 +195,15 @@ export default function ConfirmCheckoutModal({
           {/* Top Stage Badges */}
           <div className="w-full flex items-center justify-between z-20">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono tracking-widest uppercase bg-[var(--color-gold)]/10 text-[var(--color-gold)] border border-[var(--color-gold)]/30 shadow-sm">
-              <Sparkles size={11} className="animate-pulse" /> Authentic Allocation
+              {mode === 'add' ? (
+                <>
+                  <ShoppingBag size={11} className="animate-pulse" /> Add to Selection
+                </>
+              ) : (
+                <>
+                  <Sparkles size={11} className="animate-pulse" /> Authentic Allocation
+                </>
+              )}
             </span>
             <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-400 bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-500/25">
               Available
@@ -394,25 +429,66 @@ export default function ConfirmCheckoutModal({
           </div>
 
           {/* Action CTAs */}
-          <div className="space-y-2.5 pt-3 border-t border-white/10">
-            <button
-              type="button"
-              onClick={handleConfirmCheckout}
-              className="w-full py-3.5 rounded-full bg-gold-gradient text-black font-bold text-xs uppercase tracking-widest hover:opacity-95 hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <CreditCard size={15} />
-              <span>Proceed to Instant Checkout</span>
-              <ArrowRight size={14} className="ml-1" />
-            </button>
+          {mode === 'add' ? (
+            <div className="space-y-2.5 pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={handleConfirmAddToCart}
+                disabled={isAdded}
+                className="w-full py-3.5 rounded-full bg-gold-gradient text-black font-bold text-xs uppercase tracking-widest hover:opacity-95 hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-90"
+              >
+                {isAdded ? (
+                  <>
+                    <Check size={16} className="text-black stroke-[3]" />
+                    <span>Added {quantity} to Bag!</span>
+                  </>
+                ) : (
+                  <>
+                    <ShoppingBag size={15} />
+                    <span>Add to Bag ({quantity} {quantity === 1 ? 'Bottle' : 'Bottles'})</span>
+                  </>
+                )}
+              </button>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full py-2.5 rounded-full border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] text-white/50 hover:text-white text-xs uppercase tracking-wider transition-colors text-center cursor-pointer"
-            >
-              Cancel
-            </button>
-          </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleInstantCheckoutFromAdd}
+                  className="flex-1 py-2.5 rounded-full border border-[var(--color-gold)]/50 hover:border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20 text-[var(--color-gold)] text-xs uppercase tracking-wider font-semibold transition-colors text-center cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <CreditCard size={13} />
+                  <span>Instant Checkout</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-2.5 rounded-full border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] text-white/50 hover:text-white text-xs uppercase tracking-wider transition-colors text-center cursor-pointer"
+                >
+                  Continue Shopping
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2.5 pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={handleConfirmCheckout}
+                className="w-full py-3.5 rounded-full bg-gold-gradient text-black font-bold text-xs uppercase tracking-widest hover:opacity-95 hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <CreditCard size={15} />
+                <span>Proceed to Instant Checkout</span>
+                <ArrowRight size={14} className="ml-1" />
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-2.5 rounded-full border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] text-white/50 hover:text-white text-xs uppercase tracking-wider transition-colors text-center cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
