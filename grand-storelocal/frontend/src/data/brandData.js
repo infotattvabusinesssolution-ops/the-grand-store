@@ -50,7 +50,7 @@ export const brandData = {
     country: 'France',
     region: 'Cognac (Charente)',
     foundedYear: 1765,
-    heroImage: 'https://images.unsplash.com/photo-1569529465841-dfecdab7503b?q=80&w=2070&auto=format&fit=crop',
+    heroImage: '/assets/brands/hennessy-hero.jpg',
     tagline: 'Crafting the World’s Preeminent Cognacs for Over 250 Years',
     heritageStory: [
       'Founded in 1765 by Irish military officer Richard Hennessy, Maison Hennessy has defined the art of Cognac for over eight generations. Guided by the prestigious Fillioux family of master blenders, Hennessy commands the largest and most prized reserves of aged eaux-de-vie in the world.',
