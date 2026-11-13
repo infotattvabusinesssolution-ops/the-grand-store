@@ -6,7 +6,7 @@ export const brandData = {
     country: 'Scotland',
     region: 'Speyside',
     foundedYear: 1887,
-    heroImage: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1794567404/grandstore-uploads/brands/glenfiddich-distillery-hero.jpg',
+    heroImage: '/assets/brands/glenfiddich-hero.jpg',
     tagline: 'The World’s Most Awarded Single Malt Scotch Whisky',
     heritageStory: [
       'Founded in 1887 by William Grant with the help of his nine children, Glenfiddich—Gaelic for "Valley of the Deer"—stands as one of the few single malt distilleries to remain entirely family-owned. Nestled along the Robbie Dhu spring in Dufftown, Speyside, its pioneering spirit led to the global rise of single malt Scotch whisky in the 1960s.',
