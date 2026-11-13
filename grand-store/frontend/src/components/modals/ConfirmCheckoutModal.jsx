@@ -1,49 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   X, ShoppingBag, CreditCard, ArrowRight, ShieldCheck, 
-  Sparkles, Plus, Minus, Check, Rotate3d, Truck, Lock 
+  Sparkles, Plus, Minus, Check, Truck 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Price from '../ui/Price';
 import { useGeoLocation } from '../../context/LocationContext';
-
-const preparedVendorImages = {
-  "/uploads/images-1787292711461.png": "/assets/products/vendor/whisky-tona-full.png",
-};
-
-const resolveImageUrl = (src) => {
-  if (!src) return "";
-  const normalizedSrc = String(src).replace(/\\/g, "/");
-
-  const prepared = Object.entries(preparedVendorImages).find(([uploadPath]) =>
-    normalizedSrc.includes(uploadPath),
-  )?.[1];
-  if (prepared) return prepared;
-
-  if (normalizedSrc.startsWith("http://") || normalizedSrc.startsWith("https://")) {
-    if (
-      normalizedSrc.includes("res.cloudinary.com") &&
-      normalizedSrc.includes("/grandstore-uploads/") &&
-      normalizedSrc.includes("/image/upload/") &&
-      !normalizedSrc.includes("/e_trim")
-    ) {
-      return normalizedSrc.replace(
-        "/image/upload/",
-        "/image/upload/e_trim:10/",
-      );
-    }
-    return normalizedSrc;
-  }
-
-  if (normalizedSrc.includes("uploads/")) {
-    const apiUrl = (import.meta.env.VITE_API_URL || "http://localhost:5015").replace(/\/$/, "");
-    const cleanPath = normalizedSrc.substring(normalizedSrc.indexOf("uploads/"));
-    return `${apiUrl}/${cleanPath}`;
-  }
-
-  return normalizedSrc.startsWith("/") ? normalizedSrc : `/${normalizedSrc}`;
-};
+import { resolveImageUrl } from '../../utils/imageUtils';
 
 export default function ConfirmCheckoutModal({ 
   isOpen, 
@@ -64,11 +28,6 @@ export default function ConfirmCheckoutModal({
   const [imageError, setImageError] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
 
-  // 3D Perspective & Cursor Tracking state
-  const stageRef = useRef(null);
-  const [rotate, setRotate] = useState({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = useState(false);
-
   // Synchronize initial state when opening
   useEffect(() => {
     if (isOpen) {
@@ -76,7 +35,6 @@ export default function ConfirmCheckoutModal({
       setSelectedOption(externalOption || product?.options?.[0] || 'Pack of 1');
       setImageError(false);
       setIsAdded(false);
-      setRotate({ x: 0, y: 0 });
       document.body.style.overflow = 'hidden';
     } else {
       setIsAdded(false);
@@ -100,38 +58,33 @@ export default function ConfirmCheckoutModal({
 
   if (!isOpen) return null;
 
-  // 3D Interactive Tilt Handlers
-  const handleMouseMove = (e) => {
-    if (!stageRef.current) return;
-    const rect = stageRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    // Normalize coordinates (-0.5 to 0.5)
-    const normalizedX = (x / rect.width) - 0.5;
-    const normalizedY = (y / rect.height) - 0.5;
-
-    // Smooth tilt angles
-    const rotX = -normalizedY * 26; // deg
-    const rotY = normalizedX * 26;  // deg
-
-    setRotate({ x: rotX, y: rotY });
-    setIsHovered(true);
-  };
-
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-    setRotate({ x: 0, y: 0 });
-  };
-
   const unitPrice = parseFloat(product?.price || product?.currentPrice || 0);
   const totalPrice = (unitPrice * quantity).toFixed(2);
-  const resolvedImg = resolveImageUrl(
+
+  // Resolve the proper bottle image with deep candidate resolution
+  const candidateImg = 
     product?.image || 
-    (Array.isArray(product?.gallery) && product?.gallery[0]) || 
+    product?.imageUrl || 
+    (Array.isArray(product?.images) && (typeof product.images[0] === 'string' ? product.images[0] : product.images[0]?.url)) ||
+    (Array.isArray(product?.gallery) && (typeof product.gallery[0] === 'string' ? product.gallery[0] : product.gallery[0]?.url)) || 
     product?.imageSourceUrl || 
-    ''
-  );
+    product?.bottle_image ||
+    product?.bottleImage ||
+    product?.picture ||
+    product?.thumbnail ||
+    '';
+  const resolvedImg = resolveImageUrl(candidateImg);
+
+  const handleImageError = () => {
+    // If primary failed, try second gallery image if available
+    if (Array.isArray(product?.gallery) && product.gallery.length > 1) {
+      const altCandidate = typeof product.gallery[1] === 'string' ? product.gallery[1] : product.gallery[1]?.url;
+      if (altCandidate && resolveImageUrl(altCandidate) !== resolvedImg) {
+        return;
+      }
+    }
+    setImageError(true);
+  };
 
   const handleConfirmCheckout = () => {
     if (onProceed) {
@@ -140,7 +93,6 @@ export default function ConfirmCheckoutModal({
       if (onAddToCart) {
         onAddToCart(product, quantity, selectedOption, false);
       }
-      // Default to South Africa (Domestic). International customers switch manually on checkout
       navigate('/customer/checkout?mode=domestic_sa');
     }
     onClose();
@@ -151,10 +103,6 @@ export default function ConfirmCheckoutModal({
       onAddToCart(product, quantity, selectedOption, false);
     }
     setIsAdded(true);
-    setTimeout(() => {
-      setIsAdded(false);
-      onClose();
-    }, 850);
   };
 
   const handleInstantCheckoutFromAdd = () => {
@@ -171,37 +119,47 @@ export default function ConfirmCheckoutModal({
 
   const modalContent = (
     <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/45 backdrop-blur-[2px] transition-all duration-300 animate-in fade-in"
+      className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(0, 0, 0, 0.82)',
+        margin: 0,
+        boxSizing: 'border-box'
+      }}
       onClick={onClose}
     >
       <div 
-        className="relative w-full max-w-4xl bg-[#0d0c0a] border border-[var(--color-gold)]/35 rounded-2xl sm:rounded-3xl shadow-[0_25px_90px_rgba(0,0,0,0.9),0_0_60px_rgba(212,175,55,0.12)] overflow-hidden flex flex-col md:flex-row max-h-[92vh] md:max-h-[86vh]"
+        className="relative w-full max-w-3xl bg-[#0e0d0b] border border-[var(--color-gold)]/40 rounded-2xl shadow-[0_25px_90px_rgba(0,0,0,0.95),0_0_50px_rgba(201,163,91,0.15)] overflow-hidden flex flex-col md:flex-row my-auto mx-auto"
         onClick={(e) => e.stopPropagation()}
+        style={{
+          maxHeight: '92vh',
+          margin: 'auto'
+        }}
       >
         {/* Luxury Background Glow Orbs */}
-        <div className="absolute -top-32 -left-32 w-80 h-80 bg-[var(--color-gold)]/10 rounded-full blur-[100px] pointer-events-none"></div>
-        <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-[var(--color-gold)]/10 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute -top-32 -left-32 w-80 h-80 bg-[var(--color-gold)]/10 rounded-full blur-[90px] pointer-events-none" />
+        <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-[var(--color-gold)]/10 rounded-full blur-[90px] pointer-events-none" />
 
         {/* ============================================================ */}
-        {/* LEFT COLUMN: INTERACTIVE 3D PERSPECTIVE SHOWCASE             */}
+        {/* LEFT COLUMN: THE PROPER BOTTLE SHOWCASE                      */}
         {/* ============================================================ */}
-        <div 
-          ref={stageRef}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          className="w-full md:w-[48%] bg-gradient-to-b from-[#171510] via-[#0f0e0b] to-[#070605] border-b md:border-b-0 md:border-r border-white/10 p-6 sm:p-8 flex flex-col items-center justify-between relative overflow-hidden select-none cursor-grab active:cursor-grabbing"
-          style={{ perspective: '1100px' }}
-        >
+        <div className="w-full md:w-[46%] bg-gradient-to-b from-[#181612] via-[#0f0e0b] to-[#080706] border-b md:border-b-0 md:border-r border-white/10 p-6 sm:p-8 flex flex-col items-center justify-between relative overflow-hidden select-none">
           {/* Top Stage Badges */}
           <div className="w-full flex items-center justify-between z-20">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono tracking-widest uppercase bg-[var(--color-gold)]/10 text-[var(--color-gold)] border border-[var(--color-gold)]/30 shadow-sm">
               {mode === 'add' ? (
                 <>
-                  <ShoppingBag size={11} className="animate-pulse" /> Add to Selection
+                  <ShoppingBag size={11} className="text-[var(--color-gold)]" /> Add to Selection
                 </>
               ) : (
                 <>
-                  <Sparkles size={11} className="animate-pulse" /> Authentic Allocation
+                  <Sparkles size={11} className="text-[var(--color-gold)]" /> Authentic Allocation
                 </>
               )}
             </span>
@@ -210,82 +168,53 @@ export default function ConfirmCheckoutModal({
             </span>
           </div>
 
-          {/* 3D Floating Stage Centerpiece */}
-          <div 
-            className="my-auto py-8 sm:py-12 relative flex items-center justify-center w-full"
-            style={{ transformStyle: 'preserve-3d' }}
-          >
-            {/* Concentric 3D Gold Pedestal */}
-            <div 
-              className="absolute -bottom-2 flex items-center justify-center pointer-events-none"
-              style={{
-                transform: `rotateX(68deg) translateZ(-20px)`,
-                transformStyle: 'preserve-3d'
-              }}
-            >
-              {/* Outer halo */}
-              <div className="w-56 sm:w-64 h-56 sm:h-64 rounded-full border border-[var(--color-gold)]/20 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.25)_0%,rgba(212,175,55,0.03)_60%,transparent_100%)] blur-[1px]"></div>
-              {/* Mid ring */}
-              <div className="absolute w-40 sm:w-48 h-40 sm:h-48 rounded-full border border-[var(--color-gold)]/40 shadow-[0_0_25px_rgba(212,175,55,0.3)]"></div>
-              {/* Core disc */}
-              <div className="absolute w-24 sm:w-28 h-24 sm:h-28 rounded-full bg-[radial-gradient(circle,rgba(212,175,55,0.45)_0%,transparent_80%)]"></div>
-            </div>
+          {/* Central Bottle Display Frame */}
+          <div className="my-auto py-6 sm:py-8 relative flex flex-col items-center justify-center w-full min-h-[250px] sm:min-h-[300px]">
+            {/* Ambient Gold Aura Behind Bottle */}
+            <div className="absolute w-44 sm:w-56 h-44 sm:h-56 rounded-full bg-[radial-gradient(circle,rgba(212,175,55,0.22)_0%,rgba(212,175,55,0.03)_65%,transparent_100%)] pointer-events-none" />
 
-            {/* The 3D Floating Bottle Card */}
-            <div 
-              className="relative flex flex-col items-center justify-center transition-transform duration-200 ease-out"
-              style={{
-                transform: `rotateX(${rotate.x}deg) rotateY(${rotate.y}deg) translateZ(40px)`,
-                transformStyle: 'preserve-3d',
-                filter: 'drop-shadow(0 18px 28px rgba(0,0,0,0.85))'
-              }}
-            >
-              {resolvedImg && !imageError ? (
+            {/* The Proper Bottle Image */}
+            {resolvedImg && !imageError ? (
+              <div className="relative z-10 flex flex-col items-center">
                 <img 
                   src={resolvedImg} 
-                  alt={product?.name || "Product preview"} 
-                  onError={() => setImageError(true)}
-                  className="max-h-56 sm:max-h-72 w-auto object-contain pointer-events-none transition-all duration-300"
+                  alt={product?.name || "Product bottle"} 
+                  onError={handleImageError}
+                  className="max-h-60 sm:max-h-76 w-auto object-contain select-none"
                   style={{
-                    transform: 'translateZ(50px)'
+                    imageRendering: '-webkit-optimize-contrast',
+                    filter: 'drop-shadow(0 14px 24px rgba(0,0,0,0.85))'
                   }}
+                  decoding="sync"
                 />
-              ) : (
-                <div 
-                  className="w-36 h-52 sm:w-44 sm:h-64 rounded-xl bg-black/70 border border-[var(--color-gold)]/40 flex flex-col items-center justify-center p-4 text-center shadow-[0_15px_35px_rgba(0,0,0,0.9)]"
-                  style={{ transform: 'translateZ(30px)' }}
-                >
-                  <ShoppingBag size={42} className="text-[var(--color-gold)] mb-3 opacity-80" />
-                  <span className="font-serif text-white text-sm line-clamp-2">
-                    {product?.name || product?.title || 'Luxury Spirit'}
-                  </span>
-                  <span className="text-[10px] text-[var(--color-gold)]/80 uppercase font-mono tracking-widest mt-2">
-                    {product?.category || 'Grand Store'}
-                  </span>
-                </div>
-              )}
-
-              {/* Dynamic contact shadow directly under the bottle */}
-              <div 
-                className="w-32 h-6 bg-black/80 rounded-full blur-md -mt-3 pointer-events-none transition-transform duration-300"
-                style={{
-                  transform: `translateZ(-15px) scale(${isHovered ? 1.15 : 1})`
-                }}
-              ></div>
-            </div>
+                {/* Contact Shadow & Gold Pedestal Line */}
+                <div className="w-32 sm:w-40 h-3.5 bg-black/85 rounded-full blur-[3px] -mt-1.5 pointer-events-none" />
+                <div className="w-44 sm:w-52 h-[1px] bg-gradient-to-r from-transparent via-[var(--color-gold)]/40 to-transparent mt-1" />
+              </div>
+            ) : (
+              <div className="w-36 h-52 sm:w-44 sm:h-64 rounded-xl bg-black/70 border border-[var(--color-gold)]/40 flex flex-col items-center justify-center p-4 text-center shadow-[0_15px_35px_rgba(0,0,0,0.9)] z-10">
+                <ShoppingBag size={42} className="text-[var(--color-gold)] mb-3 opacity-80" />
+                <span className="font-serif text-white text-sm line-clamp-2">
+                  {product?.name || product?.title || 'Luxury Spirit'}
+                </span>
+                <span className="text-[10px] text-[var(--color-gold)]/80 uppercase font-mono tracking-widest mt-2">
+                  {product?.category || 'Grand Store'}
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Interactive Hint Bar */}
-          <div className="flex items-center justify-center gap-1.5 text-[10px] text-white/40 tracking-wider uppercase font-mono z-20">
-            <Rotate3d size={13} className="text-[var(--color-gold)]/80 animate-pulse" />
-            <span>Interactive 3D Stage • Move cursor to inspect</span>
+          {/* Bottom Provenance Guarantee */}
+          <div className="flex items-center justify-center gap-1.5 text-[10px] text-white/45 tracking-wider uppercase font-mono z-20">
+            <ShieldCheck size={13} className="text-[var(--color-gold)]" />
+            <span>Guaranteed Cellar Provenance</span>
           </div>
         </div>
 
         {/* ============================================================ */}
         {/* RIGHT COLUMN: LUXURY ORDER DETAILS & CHECKOUT ACTIONS        */}
         {/* ============================================================ */}
-        <div className="w-full md:w-[52%] p-6 sm:p-8 flex flex-col justify-between overflow-y-auto custom-scrollbar bg-[#0d0c0a]/90">
+        <div className="w-full md:w-[54%] p-6 sm:p-8 flex flex-col justify-between overflow-y-auto custom-scrollbar bg-[#0e0d0b]">
           <div>
             {/* Top Bar with Dismiss Button */}
             <div className="flex items-start justify-between gap-4 mb-2">
@@ -308,7 +237,7 @@ export default function ConfirmCheckoutModal({
             </div>
 
             {/* Product Metadata Badges */}
-            <div className="flex flex-wrap items-center gap-2 mb-5">
+            <div className="flex flex-wrap items-center gap-2 mb-4">
               {product?.category && (
                 <span className="text-[10px] uppercase tracking-wider text-white/70 bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full">
                   {product.category}
@@ -333,8 +262,8 @@ export default function ConfirmCheckoutModal({
 
             {/* Packaging / Option Selection (if options available) */}
             {Array.isArray(product?.options) && product.options.length > 1 && (
-              <div className="mb-5">
-                <label className="block text-[10px] uppercase font-mono tracking-widest text-white/50 mb-2">
+              <div className="mb-4">
+                <label className="block text-[10px] uppercase font-mono tracking-widest text-white/50 mb-1.5">
                   Bottle & Packaging Option:
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -357,7 +286,7 @@ export default function ConfirmCheckoutModal({
             )}
 
             {/* Price & Quantity Selector */}
-            <div className="bg-black/50 border border-white/10 rounded-xl p-4 mb-5">
+            <div className="bg-black/50 border border-white/10 rounded-xl p-4 mb-4">
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-[10px] uppercase tracking-widest font-mono text-white/40 block">
@@ -382,7 +311,7 @@ export default function ConfirmCheckoutModal({
                     <button
                       type="button"
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      disabled={quantity <= 1}
+                      disabled={quantity <= 1 || isAdded}
                       className="w-8 h-8 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
                       <Minus size={13} />
@@ -394,9 +323,10 @@ export default function ConfirmCheckoutModal({
                       type="button"
                       onClick={() => setQuantity(quantity + 1)}
                       disabled={
-                        product?.stock !== undefined &&
+                        isAdded ||
+                        (product?.stock !== undefined &&
                         product?.stock !== null &&
-                        (quantity + 1) * (product?.isCase ? Math.max(1, Number(product?.bottlesPerCase || 6)) : 1) > product.stock
+                        (quantity + 1) * (product?.isCase ? Math.max(1, Number(product?.bottlesPerCase || 6)) : 1) > product.stock)
                       }
                       className="w-8 h-8 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
@@ -416,38 +346,67 @@ export default function ConfirmCheckoutModal({
             </div>
 
             {/* Assurance Guarantees */}
-            <div className="grid grid-cols-2 gap-2 mb-6">
-              <div className="flex items-center gap-2 p-2.5 bg-white/[0.02] border border-white/5 rounded-lg">
-                <ShieldCheck size={15} className="text-[var(--color-gold)] shrink-0" />
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="flex items-center gap-2 p-2 bg-white/[0.02] border border-white/5 rounded-lg">
+                <ShieldCheck size={14} className="text-[var(--color-gold)] shrink-0" />
                 <span className="text-[10px] text-white/70 leading-tight">100% Verified Authentic Bottle</span>
               </div>
-              <div className="flex items-center gap-2 p-2.5 bg-white/[0.02] border border-white/5 rounded-lg">
-                <Truck size={15} className="text-[var(--color-gold)] shrink-0" />
+              <div className="flex items-center gap-2 p-2 bg-white/[0.02] border border-white/5 rounded-lg">
+                <Truck size={14} className="text-[var(--color-gold)] shrink-0" />
                 <span className="text-[10px] text-white/70 leading-tight">Insured Door / PostNet Transit</span>
               </div>
             </div>
           </div>
 
           {/* Action CTAs */}
-          {mode === 'add' ? (
+          {isAdded ? (
+            /* Post-Addition Success Confirmation */
+            <div className="pt-3 border-t border-white/10 space-y-2.5">
+              <div className="p-3 bg-emerald-950/30 border border-emerald-500/35 rounded-xl flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                  <Check size={18} className="stroke-[3]" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white uppercase tracking-wider">Added to your Bag!</div>
+                  <div className="text-[11px] text-white/60 font-mono mt-0.5">
+                    {quantity} {quantity === 1 ? 'bottle' : 'bottles'} • <Price amount={totalPrice} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate('/customer/cart');
+                  }}
+                  className="flex-1 py-3 rounded-full bg-gold-gradient text-black font-bold text-xs uppercase tracking-widest hover:opacity-95 shadow-[0_0_20px_rgba(212,175,55,0.35)] flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <ShoppingBag size={14} />
+                  <span>View Bag & Checkout</span>
+                  <ArrowRight size={13} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="py-3 px-5 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs uppercase tracking-wider font-semibold transition-colors text-center cursor-pointer"
+                >
+                  Continue Shopping
+                </button>
+              </div>
+            </div>
+          ) : mode === 'add' ? (
+            /* Initial Add Mode CTAs */
             <div className="space-y-2.5 pt-3 border-t border-white/10">
               <button
                 type="button"
                 onClick={handleConfirmAddToCart}
-                disabled={isAdded}
-                className="w-full py-3.5 rounded-full bg-gold-gradient text-black font-bold text-xs uppercase tracking-widest hover:opacity-95 hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-90"
+                className="w-full py-3.5 rounded-full bg-gold-gradient text-black font-bold text-xs uppercase tracking-widest hover:opacity-95 hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                {isAdded ? (
-                  <>
-                    <Check size={16} className="text-black stroke-[3]" />
-                    <span>Added {quantity} to Bag!</span>
-                  </>
-                ) : (
-                  <>
-                    <ShoppingBag size={15} />
-                    <span>Add to Bag ({quantity} {quantity === 1 ? 'Bottle' : 'Bottles'})</span>
-                  </>
-                )}
+                <ShoppingBag size={15} />
+                <span>Add to Bag ({quantity} {quantity === 1 ? 'Bottle' : 'Bottles'})</span>
               </button>
 
               <button
@@ -460,6 +419,7 @@ export default function ConfirmCheckoutModal({
               </button>
             </div>
           ) : (
+            /* Initial Checkout Mode CTAs */
             <div className="space-y-2.5 pt-3 border-t border-white/10">
               <button
                 type="button"
