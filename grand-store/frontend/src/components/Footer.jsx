@@ -6,7 +6,7 @@ import PaymentMethodsStrip from './PaymentMethodsStrip'
 export default function Footer() {
   const [newsletterStatus, setNewsletterStatus] = useState('')
 
-  // Dynamic Visitor Counter (starting baseline: 545,462)
+  // Dynamic Visitor Counter (baseline 545,462 or stored)
   const BASE_VISITORS = 545462
   const [visitorCount, setVisitorCount] = useState(() => {
     try {
@@ -18,83 +18,23 @@ export default function Footer() {
     } catch {}
     return BASE_VISITORS
   })
-  const [displayCount, setDisplayCount] = useState(visitorCount)
-  const [isBumping, setIsBumping] = useState(false)
 
-  // Increment visitor count consistently by +5
-  const incrementVisitors = (amount = 5) => {
-    setVisitorCount((prev) => {
-      const next = prev + amount
-      try {
-        localStorage.setItem('tgs_total_visitors', String(next))
-      } catch {}
-      return next
-    })
-    setIsBumping(true)
-    setTimeout(() => setIsBumping(false), 500)
-  }
-
-  // Handle click on Total Visitors to add +5
-  const handleVisitorClick = () => {
-    incrementVisitors(5)
-  }
-
-  // Smooth roll-up on initial mount
+  // Count new visitor once per browser session (smooth, non-dropping)
   useEffect(() => {
-    let initialTarget = visitorCount
     try {
       const hasCounted = sessionStorage.getItem('tgs_session_counted')
       if (!hasCounted) {
         sessionStorage.setItem('tgs_session_counted', 'true')
-        initialTarget = visitorCount + 5
-        setVisitorCount(initialTarget)
-        localStorage.setItem('tgs_total_visitors', String(initialTarget))
+        setVisitorCount((prev) => {
+          const next = prev + 1
+          try {
+            localStorage.setItem('tgs_total_visitors', String(next))
+          } catch {}
+          return next
+        })
       }
     } catch {}
-
-    const startValue = Math.max(BASE_VISITORS, initialTarget - 15)
-    const endValue = initialTarget
-    const duration = 900
-    const startTime = performance.now()
-
-    let animationFrameId
-    const updateCounter = (currentTime) => {
-      const elapsed = currentTime - startTime
-      const progress = Math.min(elapsed / duration, 1)
-      const ease = 1 - Math.pow(1 - progress, 3)
-      const current = Math.floor(startValue + (endValue - startValue) * ease)
-      setDisplayCount(current)
-
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(updateCounter)
-      } else {
-        setDisplayCount(endValue)
-      }
-    }
-
-    animationFrameId = requestAnimationFrame(updateCounter)
-    return () => cancelAnimationFrame(animationFrameId)
   }, [])
-
-  // Periodically increment dynamically (+5 per tick)
-  useEffect(() => {
-    let timerId
-    const scheduleNext = () => {
-      const randomDelay = Math.floor(Math.random() * 4000) + 4500
-      timerId = setTimeout(() => {
-        incrementVisitors(5)
-        scheduleNext()
-      }, randomDelay)
-    }
-
-    scheduleNext()
-    return () => clearTimeout(timerId)
-  }, [])
-
-  // Sync display with visitor count when it increments
-  useEffect(() => {
-    setDisplayCount(visitorCount)
-  }, [visitorCount])
 
   const handleNewsletterSignup = async (event) => {
     event.preventDefault()
@@ -225,28 +165,23 @@ export default function Footer() {
             </button>
           </form>
           {newsletterStatus && <p className="m-[10px_0_0] text-[#cfc6b7] font-sans text-[11px]" role="status">{newsletterStatus}</p>}
-          <strong 
-            onClick={handleVisitorClick}
-            className="block mt-[28px] pb-[22px] border-b border-[#d99d39]/70 text-[#d99d39] font-serif text-[23px] font-medium cursor-pointer select-none transition-transform active:scale-[0.98] group"
-            title="Click to increment total visitors (+5)"
+          <div 
+            className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-[26px] pb-[20px] border-b border-[#d99d39]/70 select-none"
+            aria-label={`Total Visitors: ${visitorCount.toLocaleString()}`}
           >
-            Total Visitors <span className="px-[5px]">:</span>
-            <span 
-              className={`inline-block ml-1 font-['Montserrat',sans-serif] font-bold text-[24px] lg:text-[25px] tracking-wider tabular-nums transition-all duration-300 ${
-                isBumping 
-                  ? 'text-[#fff4b8] scale-110 drop-shadow-[0_0_16px_rgba(255,215,0,0.9)]' 
-                  : 'text-[#ffd700] drop-shadow-[0_2px_8px_rgba(212,175,55,0.35)] group-hover:brightness-110'
-              }`}
-            >
-              {displayCount.toLocaleString()}
+            <span className="text-[#d99d39] font-serif text-[22px] lg:text-[24px] font-medium tracking-tight">
+              Total Visitors :
             </span>
-          </strong>
-          <div className="flex flex-row items-center mt-[24px] sm:mt-[28px] gap-[10px] sm:gap-[16px]" aria-label="Download The Grand Store mobile app">
-            <a className="transition-all duration-[180ms] ease hover:opacity-85 hover:-translate-y-[2px] shrink-0" href="https://apps.apple.com/in/app/grand-store/id6449220111" target="_blank" rel="noopener noreferrer">
-              <img className="w-auto h-[42px] sm:h-[48px] lg:h-[54px] object-contain" src="/assets/footer/app-store.svg" alt="Download on the App Store" />
+            <span className="font-['Montserrat',sans-serif] font-bold text-[22px] lg:text-[24px] tracking-wider text-[#ffd700] tabular-nums">
+              {visitorCount.toLocaleString()}
+            </span>
+          </div>
+          <div className="flex flex-row items-center mt-[22px] sm:mt-[26px] gap-3 sm:gap-3.5 max-w-full" aria-label="Download The Grand Store mobile app">
+            <a className="inline-block transition-all duration-200 hover:opacity-85 hover:-translate-y-0.5 shrink-0" href="https://apps.apple.com/in/app/grand-store/id6449220111" target="_blank" rel="noopener noreferrer">
+              <img className="w-auto h-[38px] sm:h-[42px] object-contain" src="/assets/footer/app-store.svg" alt="Download on the App Store" />
             </a>
-            <a className="transition-all duration-[180ms] ease hover:opacity-85 hover:-translate-y-[2px] shrink-0" href="https://play.google.com/store/apps/details?id=com.grandstore" target="_blank" rel="noopener noreferrer">
-              <img className="w-auto h-[42px] sm:h-[48px] lg:h-[54px] object-contain" src="/assets/footer/google-play.svg" alt="Get it on Google Play" />
+            <a className="inline-block transition-all duration-200 hover:opacity-85 hover:-translate-y-0.5 shrink-0" href="https://play.google.com/store/apps/details?id=com.grandstore" target="_blank" rel="noopener noreferrer">
+              <img className="w-auto h-[38px] sm:h-[42px] object-contain" src="/assets/footer/google-play.svg" alt="Get it on Google Play" />
             </a>
           </div>
         </div>
