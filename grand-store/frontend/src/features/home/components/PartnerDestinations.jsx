@@ -128,9 +128,9 @@ export default function PartnerDestinations() {
               key={destination.title}
               aria-label={`${destination.label} (opens in a new tab)`}
             >
-              <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden border-b border-[#d8b56c]/20 bg-[#0c0a08]">
+              <div className="relative w-full aspect-[4/3] overflow-hidden border-b border-[#d8b56c]/20 bg-[#0c0a08]">
                 <img
-                  className="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
+                  className="block w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.015]"
                   src={destination.image}
                   alt={destination.title}
                   loading="lazy"
