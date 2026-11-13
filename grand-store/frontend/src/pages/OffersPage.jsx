@@ -592,7 +592,7 @@ export default function OffersPage({ onAdd, onWish, onCompare, onNotify }) {
                     >
                       {isAdded ? (
                         <>
-                          <Check size={11} />
+                          <ShoppingBag size={11} />
                           <span>Added</span>
                         </>
                       ) : (

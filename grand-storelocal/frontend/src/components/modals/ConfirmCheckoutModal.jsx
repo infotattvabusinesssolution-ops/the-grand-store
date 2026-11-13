@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   X, ShoppingBag, CreditCard, ArrowRight, ShieldCheck, 
-  Sparkles, Plus, Minus, Check, Truck 
+  Sparkles, Plus, Minus, Truck 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Price from '../ui/Price';
@@ -26,7 +26,6 @@ export default function ConfirmCheckoutModal({
     externalOption || product?.options?.[0] || 'Pack of 1'
   );
   const [imageError, setImageError] = useState(false);
-  const [isAdded, setIsAdded] = useState(false);
 
   // Synchronize initial state when opening
   useEffect(() => {
@@ -34,10 +33,8 @@ export default function ConfirmCheckoutModal({
       setQuantity(initialQuantity || 1);
       setSelectedOption(externalOption || product?.options?.[0] || 'Pack of 1');
       setImageError(false);
-      setIsAdded(false);
       document.body.style.overflow = 'hidden';
     } else {
-      setIsAdded(false);
       document.body.style.overflow = 'unset';
     }
     return () => {
@@ -102,11 +99,7 @@ export default function ConfirmCheckoutModal({
     if (onAddToCart) {
       onAddToCart(product, quantity, selectedOption, false);
     }
-    setIsAdded(true);
-    setTimeout(() => {
-      setIsAdded(false);
-      onClose();
-    }, 850);
+    onClose();
   };
 
   const handleInstantCheckoutFromAdd = () => {
@@ -147,10 +140,7 @@ export default function ConfirmCheckoutModal({
         {/* LEFT COLUMN: CRISP LUXURY BOTTLE SHOWCASE (100% SHARP 2D)    */}
         {/* ============================================================ */}
         <div 
-          className="w-full md:w-[46%] border-b md:border-b-0 md:border-r border-white/10 p-6 sm:p-8 flex flex-col items-center justify-between relative overflow-hidden select-none"
-          style={{
-            background: 'radial-gradient(circle at 50% 48%, rgba(212,175,55,0.16) 0%, rgba(20,18,14,0.7) 60%, #0d0c0a 100%)'
-          }}
+          className="w-full md:w-[46%] border-b md:border-b-0 md:border-r border-white/10 p-6 sm:p-8 flex flex-col items-center justify-between relative overflow-hidden select-none bg-[#12110e]"
         >
           {/* Top Stage Badges */}
           <div className="w-full flex items-center justify-between z-10">
@@ -178,15 +168,12 @@ export default function ConfirmCheckoutModal({
                   src={resolvedImg} 
                   alt={product?.name || "Product bottle"} 
                   onError={handleImageError}
-                  className="max-h-60 sm:max-h-76 w-auto object-contain select-none"
-                  style={{
-                    imageRendering: '-webkit-optimize-contrast',
-                    filter: 'drop-shadow(0 14px 22px rgba(0,0,0,0.85))'
-                  }}
-                  decoding="sync"
+                  className="max-h-64 sm:max-h-80 w-auto object-contain select-none"
+                  loading="eager"
+                  decoding="async"
                 />
                 {/* Crisp Vector Pedestal Platform */}
-                <div className="w-36 sm:w-44 h-3 rounded-[50%] bg-black/90 -mt-1.5 pointer-events-none" />
+                <div className="w-36 sm:w-44 h-2.5 rounded-[50%] bg-black/80 -mt-1 pointer-events-none" />
                 <div className="w-48 sm:w-56 h-[1.5px] bg-gradient-to-r from-transparent via-[var(--color-gold)]/50 to-transparent mt-0.5" />
               </div>
             ) : (
@@ -336,8 +323,9 @@ export default function ConfirmCheckoutModal({
               {/* VAT & Tax Transparency */}
               <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center justify-between text-[10px] text-white/40 font-mono">
                 <span>Inclusive of 15% South African VAT</span>
-                <span className="text-emerald-400 flex items-center gap-1">
-                  <Check size={11} /> Ready for Dispatch
+                <span className="text-emerald-400 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
+                  <span>Ready for Immediate Dispatch</span>
                 </span>
               </div>
             </div>
@@ -361,20 +349,10 @@ export default function ConfirmCheckoutModal({
               <button
                 type="button"
                 onClick={handleConfirmAddToCart}
-                disabled={isAdded}
-                className="w-full py-3.5 rounded-full bg-gold-gradient text-black font-bold text-xs uppercase tracking-widest hover:opacity-95 hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-90"
+                className="w-full py-3.5 rounded-full bg-gold-gradient text-black font-bold text-xs uppercase tracking-widest hover:opacity-95 hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                {isAdded ? (
-                  <>
-                    <Check size={16} className="text-black stroke-[3]" />
-                    <span>Added {quantity} to Bag!</span>
-                  </>
-                ) : (
-                  <>
-                    <ShoppingBag size={15} />
-                    <span>Add to Bag ({quantity} {quantity === 1 ? 'Bottle' : 'Bottles'})</span>
-                  </>
-                )}
+                <ShoppingBag size={15} />
+                <span>Add to Bag ({quantity} {quantity === 1 ? 'Bottle' : 'Bottles'})</span>
               </button>
 
               <button
