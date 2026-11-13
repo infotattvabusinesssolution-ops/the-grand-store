@@ -6,7 +6,7 @@ export const brandData = {
     country: 'Scotland',
     region: 'Speyside',
     foundedYear: 1887,
-    heroImage: 'https://images.unsplash.com/photo-1527281400683-1aae777175f8?q=80&w=2070&auto=format&fit=crop',
+    heroImage: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1794567404/grandstore-uploads/brands/glenfiddich-distillery-hero.jpg',
     tagline: 'The World’s Most Awarded Single Malt Scotch Whisky',
     heritageStory: [
       'Founded in 1887 by William Grant with the help of his nine children, Glenfiddich—Gaelic for "Valley of the Deer"—stands as one of the few single malt distilleries to remain entirely family-owned. Nestled along the Robbie Dhu spring in Dufftown, Speyside, its pioneering spirit led to the global rise of single malt Scotch whisky in the 1960s.',
@@ -138,7 +138,7 @@ export const brandData = {
     country: 'Poland',
     region: 'Żyrardów',
     foundedYear: 1910,
-    heroImage: 'https://images.unsplash.com/photo-1527281400683-1aae777175f8?q=80&w=2070&auto=format&fit=crop',
+    heroImage: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?q=80&w=2070&auto=format&fit=crop',
     tagline: 'The Definitive Super-Premium Polish Rye Vodka',
     heritageStory: [
       'Named after the Belweder Presidential Palace in Warsaw, Belvedere is produced in the Polish town of Żyrardów in a distillery operating since 1910. Guided by 600 years of Polish vodka-making tradition, Belvedere is made exclusively from Polska Diamond Dankowskie Rye and purified artesian well water.',
@@ -182,7 +182,7 @@ export const brandData = {
     country: 'South Africa',
     region: 'Wellington, Cape Winelands',
     foundedYear: 1999,
-    heroImage: 'https://images.unsplash.com/photo-1527281400683-1aae777175f8?q=80&w=2070&auto=format&fit=crop',
+    heroImage: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2070&auto=format&fit=crop',
     tagline: 'World’s Best Single Grain Whisky — Born in the Bainskloof Pass',
     heritageStory: [
       'Crafted at The James Sedgwick Distillery in Wellington, Bain’s Cape Mountain Whisky is inspired by Andrew Geddes Bain, the engineer who carved the historic Bainskloof Pass in 1853. As Africa’s only commercial whisky distillery, Sedgwick combines Scottish distilling principles with South Africa’s unique warm climate.',
