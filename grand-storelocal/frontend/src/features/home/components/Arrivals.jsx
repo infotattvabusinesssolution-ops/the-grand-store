@@ -498,7 +498,7 @@ export default function Arrivals({ onAdd, onWish, onCompare, compareItems }) {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          if (onAdd) onAdd(product);
+                          handleOpenCheckout(product);
                         }}
                         className="flex-1 py-2 px-2.5 rounded bg-white/5 hover:bg-white/15 border border-white/15 hover:border-[#caa458]/50 text-white text-[10.5px] font-semibold tracking-wider uppercase transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer"
                         title={`Add ${product.name} to bag`}
@@ -513,7 +513,10 @@ export default function Arrivals({ onAdd, onWish, onCompare, compareItems }) {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          handleOpenCheckout(product);
+                          if (onAdd) {
+                            onAdd(product, 1, product.options?.[0] || "Pack of 1", false);
+                          }
+                          navigate('/customer/checkout?mode=domestic_sa');
                         }}
                         className="flex-1 py-2 px-2.5 rounded bg-[#caa458] hover:bg-[#d8b566] border border-[#caa458] text-black font-bold text-[10.5px] tracking-wider uppercase transition-all duration-200 flex items-center justify-center gap-1.5 shadow-[0_2px_12px_rgba(202,164,88,0.35)] hover:shadow-[0_3px_15px_rgba(202,164,88,0.5)] cursor-pointer"
                         title={`Instant checkout for ${product.name}`}
@@ -544,6 +547,7 @@ export default function Arrivals({ onAdd, onWish, onCompare, compareItems }) {
           product={activeCheckoutProduct}
           initialQuantity={1}
           selectedOption={activeCheckoutProduct.options?.[0] || "Pack of 1"}
+          mode="add"
           onAddToCart={(prod, qty, opt, openCart) => {
             if (onAdd) onAdd(prod, qty, opt, openCart);
             setActiveCheckoutProduct(null);
@@ -551,7 +555,7 @@ export default function Arrivals({ onAdd, onWish, onCompare, compareItems }) {
           onProceed={(prod, qty, opt) => {
             if (onAdd) onAdd(prod, qty, opt, false);
             setActiveCheckoutProduct(null);
-            navigate('/customer/checkout');
+            navigate('/customer/checkout?mode=domestic_sa');
           }}
         />
       )}

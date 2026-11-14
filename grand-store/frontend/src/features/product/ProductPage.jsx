@@ -1133,7 +1133,12 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                 type="button"
                 onClick={() => {
                   if (canPurchaseSelection) {
-                    setIsCheckoutModalOpen(true);
+                    if (onAdd) {
+                      onAdd(activeCheckoutProduct, quantity, activeCheckoutOption, false);
+                    }
+                    const isIntl = (activeCheckoutProduct?.country && !['south africa', 'za', 'rsa'].includes(activeCheckoutProduct.country.toLowerCase().trim())) || (product?.country && !['south africa', 'za', 'rsa'].includes(product.country.toLowerCase().trim()));
+                    const targetCountry = (activeCheckoutProduct?.country || product?.country) ? `&country=${encodeURIComponent(activeCheckoutProduct?.country || product?.country)}` : '';
+                    navigate(isIntl ? `/customer/checkout?mode=international_aramex${targetCountry}` : '/customer/checkout?mode=domestic_sa');
                   }
                 }}
                 disabled={!canPurchaseSelection}
