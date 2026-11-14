@@ -7,7 +7,7 @@ import {
   TrendingUp, Package, DollarSign, Activity, AlertCircle, ShoppingBag, 
   Lightbulb, Calendar, Gavel, CreditCard, Clock, ShieldCheck, CheckCheck, 
   Bell, Check, RefreshCw, X, ExternalLink, ShieldAlert, AlertTriangle,
-  Copy, Upload, Landmark, FileText, ArrowRight, CheckCircle
+  Copy, Upload, Landmark, FileText, ArrowRight, CheckCircle, Globe
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatCartPrice } from '../../data';
@@ -320,6 +320,12 @@ export default function VendorDashboard() {
               className="flex items-center gap-2 px-6 py-3 bg-[#c9a35b] hover:bg-[#e1bd70] text-black font-semibold rounded-lg transition-colors"
             >
               <Package size={20} /> Add Auction Lot
+            </button>
+            <button
+              onClick={() => navigate('/vendor/trade-rfqs')}
+              className="flex items-center gap-2 px-6 py-3 bg-[#11100d] border border-[#c9a35b]/40 hover:bg-[#c9a35b]/20 text-[#e1bd70] font-semibold rounded-lg transition-colors"
+            >
+              <Globe size={20} /> Global Trade RFQs
             </button>
           </div>
         </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
-import { Building2, Package, UploadCloud, CheckCircle2, AlertCircle, PlusCircle, User, Coins, Gift } from 'lucide-react';
+import { Building2, Package, UploadCloud, CheckCircle2, AlertCircle, PlusCircle, User, Coins, Gift, Truck, Layers, X } from 'lucide-react';
 import { useCategories } from '../../context/CategoryContext';
 import DynamicIcon from '../../components/DynamicIcon';
 import CatalogHierarchyFields from '../../components/CatalogHierarchyFields';
@@ -48,6 +48,12 @@ export default function EditProduct({ onNotify }) {
     tradePrice: '',
     minOrderQuantity: '',
     exportReady: false,
+    bottlesPerCase: '6',
+    casesPerPallet: '56',
+    hsCode: '2204.21',
+    palletsPer20ft: '10',
+    palletsPer40ft: '20',
+    leadTimeDays: '14',
     isSuperCoinEligible: true,
     maxSuperCoinDiscountPct: 10,
     isReferralEligible: true,
@@ -61,8 +67,46 @@ export default function EditProduct({ onNotify }) {
     aramexServiceType: 'ONP',
     barcode: '',
     cartonBarcode: '',
-    barcodeImage: ''
+    barcodeImage: '',
+    volumeTiers: []
   });
+
+  const handleAddTier = () => {
+    setFormData(prev => ({
+      ...prev,
+      volumeTiers: [
+        ...(prev.volumeTiers || []),
+        { minCases: '', maxCases: '', pricePerCase: '', notes: '' }
+      ]
+    }));
+  };
+
+  const handleRemoveTier = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      volumeTiers: (prev.volumeTiers || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleTierChange = (index, field, value) => {
+    setFormData(prev => {
+      const nextTiers = [...(prev.volumeTiers || [])];
+      nextTiers[index] = { ...nextTiers[index], [field]: value };
+      return { ...prev, volumeTiers: nextTiers };
+    });
+  };
+
+  const handleLoadPresetTiers = () => {
+    const casePrice = Number(formData.tradePrice) || (Number(formData.price) ? Number(formData.price) * (Number(formData.bottlesPerCase) || 6) * 0.75 : 1200);
+    setFormData(prev => ({
+      ...prev,
+      volumeTiers: [
+        { minCases: '10', maxCases: '49', pricePerCase: Math.round(casePrice).toString(), notes: '10-49 Cases Standard Wholesale' },
+        { minCases: '50', maxCases: '99', pricePerCase: Math.round(casePrice * 0.92).toString(), notes: 'Pallet Allocation (8% Volume Rebate)' },
+        { minCases: '100', maxCases: '', pricePerCase: Math.round(casePrice * 0.85).toString(), notes: 'Direct Export FOB / Container Load (15% Bulk Rebate)' }
+      ]
+    }));
+  };
   
   const [imageEntries, setImageEntries] = useState([]);
   const [barcodeFile, setBarcodeFile] = useState(null);
@@ -116,9 +160,23 @@ export default function EditProduct({ onNotify }) {
             flavorProfile: product.flavorProfile || [],
             foodPairing: product.foodPairing || [],
             stock: product.stock !== undefined ? product.stock.toString() : '0',
-            tradePrice: product.tradePrice || '',
-            minOrderQuantity: product.minOrderQuantity || '',
-            exportReady: product.exportReady || false,
+            tradePrice: product.tradePrice || product.channelSettings?.trade?.volumePricingTiers?.[0]?.pricePerBottle || '',
+            minOrderQuantity: product.minOrderQuantity || product.channelSettings?.trade?.minimumOrderQuantityBottles || '',
+            exportReady: product.channelSettings?.trade?.enabled || product.exportReady || false,
+            bottlesPerCase: (product.channelSettings?.trade?.bottlesPerCase || 6).toString(),
+            casesPerPallet: (product.channelSettings?.trade?.casesPerPallet || 56).toString(),
+            hsCode: product.channelSettings?.trade?.hsCode || '2204.21',
+            palletsPer20ft: (product.channelSettings?.trade?.palletsPer20ftContainer || 10).toString(),
+            palletsPer40ft: (product.channelSettings?.trade?.palletsPer40ftContainer || 20).toString(),
+            leadTimeDays: (product.channelSettings?.trade?.leadTimeDays || 14).toString(),
+            volumeTiers: (product.channelSettings?.trade?.volumeTiers && Array.isArray(product.channelSettings.trade.volumeTiers) && product.channelSettings.trade.volumeTiers.length > 0)
+              ? product.channelSettings.trade.volumeTiers.map(vt => ({
+                  minCases: vt.minCases !== undefined && vt.minCases !== null ? vt.minCases.toString() : '',
+                  maxCases: vt.maxCases !== undefined && vt.maxCases !== null ? vt.maxCases.toString() : '',
+                  pricePerCase: vt.pricePerCase !== undefined && vt.pricePerCase !== null ? vt.pricePerCase.toString() : '',
+                  notes: vt.notes || ''
+                }))
+              : [],
             isSuperCoinEligible: product.isSuperCoinEligible !== undefined ? product.isSuperCoinEligible : true,
             maxSuperCoinDiscountPct: product.maxSuperCoinDiscountPct !== undefined ? product.maxSuperCoinDiscountPct : 10,
             isReferralEligible: product.isReferralEligible !== undefined ? product.isReferralEligible : true,
@@ -249,9 +307,43 @@ export default function EditProduct({ onNotify }) {
       
       payload.append('options', JSON.stringify([formData.options]));
 
-      if (formData.tradePrice) payload.append('tradePrice', formData.tradePrice);
-      if (formData.minOrderQuantity) payload.append('minOrderQuantity', formData.minOrderQuantity);
-      payload.append('exportReady', formData.exportReady);
+      const validVolumeTiers = (formData.volumeTiers || [])
+        .filter(t => (t.minCases !== '' && t.minCases !== undefined) && t.pricePerCase)
+        .map(t => ({
+          minCases: Number(t.minCases) || 0,
+          maxCases: t.maxCases !== '' && t.maxCases !== null && t.maxCases !== undefined ? Number(t.maxCases) : null,
+          pricePerCase: Number(t.pricePerCase) || 0,
+          notes: t.notes || ''
+        }));
+
+      const channelSettings = {
+        retail: {
+          enabled: true,
+          minOrderQuantity: 1,
+          maxOrderQuantity: 120
+        },
+        trade: {
+          enabled: Boolean(formData.exportReady || formData.tradePrice || validVolumeTiers.length > 0),
+          minimumOrderQuantityBottles: Number(formData.minOrderQuantity) || (validVolumeTiers[0]?.minCases ? validVolumeTiers[0].minCases * (Number(formData.bottlesPerCase) || 6) : 60),
+          bottlesPerCase: Number(formData.bottlesPerCase) || 6,
+          casesPerPallet: Number(formData.casesPerPallet) || 56,
+          palletsPer20ftContainer: Number(formData.palletsPer20ft) || 10,
+          palletsPer40ftContainer: Number(formData.palletsPer40ft) || 20,
+          leadTimeDays: Number(formData.leadTimeDays) || 14,
+          hsCode: formData.hsCode || '2204.21',
+          volumeTiers: validVolumeTiers,
+          volumePricingTiers: validVolumeTiers.length > 0
+            ? validVolumeTiers.map(vt => ({
+                minQuantity: vt.minCases * (Number(formData.bottlesPerCase) || 6),
+                pricePerBottle: Math.round(vt.pricePerCase / (Number(formData.bottlesPerCase) || 6)),
+                currency: 'ZAR'
+              }))
+            : (formData.tradePrice ? [
+                { minQuantity: Number(formData.minOrderQuantity) || 60, pricePerBottle: Number(formData.tradePrice), currency: 'ZAR' }
+              ] : [])
+        }
+      };
+      payload.append('channelSettings', JSON.stringify(channelSettings));
       payload.append('isSuperCoinEligible', formData.isSuperCoinEligible);
       payload.append('maxSuperCoinDiscountPct', formData.maxSuperCoinDiscountPct);
       payload.append('isReferralEligible', formData.isReferralEligible);
@@ -687,6 +779,174 @@ export default function EditProduct({ onNotify }) {
                   Advanced Channels
                 </h2>
 
+                <div className="border-b border-white/10 pb-6">
+                  <h3 className="text-lg font-serif text-[var(--color-ivory)] mb-6">Wholesale & Trade Pricing</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
+                    <div className="relative z-0 w-full group">
+                      <input 
+                        type="number" 
+                        name="tradePrice" 
+                        id="tradePrice"
+                        value={formData.tradePrice} 
+                        onChange={handleChange} 
+                        min="0"
+                        className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
+                        placeholder=" " 
+                      />
+                      <label 
+                        htmlFor="tradePrice" 
+                        className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
+                      >
+                        Trade Price (ZAR)
+                      </label>
+                    </div>
+                    <div className="relative z-0 w-full group">
+                      <input 
+                        type="number" 
+                        name="minOrderQuantity" 
+                        id="minOrderQuantity"
+                        value={formData.minOrderQuantity} 
+                        onChange={handleChange} 
+                        min="0"
+                        className="block py-3 px-0 w-full text-base text-[var(--color-ivory)] bg-transparent border-0 border-b border-white/20 appearance-none focus:outline-none focus:ring-0 focus:border-[var(--color-gold)] peer" 
+                        placeholder=" " 
+                      />
+                      <label 
+                        htmlFor="minOrderQuantity" 
+                        className="peer-focus:font-medium absolute text-xs uppercase tracking-widest text-[var(--color-ivory-muted)] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 peer-focus:text-[#e1bd70] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
+                      >
+                        Min. Order Quantity (Wholesale)
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Multi-Tier Volume Pricing (B2B Bulk Export Tiers) */}
+                  <div className="mt-8 pt-6 border-t border-white/[0.08]">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                      <div>
+                        <h4 className="text-sm font-serif font-bold text-[var(--color-ivory)] flex items-center gap-2">
+                          <Layers size={16} className="text-[#e1bd70]" />
+                          B2B Multi-Tier Volume Pricing (Cases)
+                        </h4>
+                        <p className="text-xs text-[var(--color-ivory-muted)] font-light mt-0.5">
+                          Define tiered case pricing bands for international distributors, importers, and bulk trade buyers.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleLoadPresetTiers}
+                          className="px-3 py-1.5 text-[11px] font-semibold text-[#e1bd70] border border-[#e1bd70]/30 hover:border-[#e1bd70] bg-[#e1bd70]/5 rounded-lg transition-colors cursor-pointer"
+                        >
+                          Load Preset Tiers
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddTier}
+                          className="px-3 py-1.5 text-[11px] font-semibold text-black bg-[#e1bd70] hover:bg-[#d6a03f] rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <PlusCircle size={13} /> Add Tier
+                        </button>
+                      </div>
+                    </div>
+
+                    {(!formData.volumeTiers || formData.volumeTiers.length === 0) ? (
+                      <div className="p-6 border border-dashed border-white/10 rounded-xl text-center bg-white/[0.01]">
+                        <p className="text-xs text-[var(--color-ivory-muted)]">No volume discount tiers specified yet.</p>
+                        <button
+                          type="button"
+                          onClick={handleAddTier}
+                          className="mt-2 text-xs text-[#e1bd70] hover:underline cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <PlusCircle size={12} /> Add your first pricing tier (e.g. 10 - 49 cases)
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-xl border border-white/10 bg-black/30">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-white/[0.04] text-[var(--color-ivory-muted)] uppercase tracking-wider font-semibold border-b border-white/10">
+                            <tr>
+                              <th className="px-4 py-3">Min Cases</th>
+                              <th className="px-4 py-3">Max Cases</th>
+                              <th className="px-4 py-3">Price / Case (ZAR)</th>
+                              <th className="px-4 py-3">Equivalent / Bottle</th>
+                              <th className="px-4 py-3">Notes & Terms</th>
+                              <th className="px-3 py-3 text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {formData.volumeTiers.map((tier, idx) => {
+                              const bpc = Number(formData.bottlesPerCase) || 6;
+                              const price = Number(tier.pricePerCase) || 0;
+                              const perBottle = price > 0 ? (price / bpc).toFixed(2) : '-';
+                              return (
+                                <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                                  <td className="px-4 py-2.5">
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      placeholder="10"
+                                      value={tier.minCases}
+                                      onChange={(e) => handleTierChange(idx, 'minCases', e.target.value)}
+                                      className="w-24 bg-black/50 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#e1bd70]"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-2.5">
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      placeholder="49 (or blank for +)"
+                                      value={tier.maxCases}
+                                      onChange={(e) => handleTierChange(idx, 'maxCases', e.target.value)}
+                                      className="w-28 bg-black/50 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#e1bd70]"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-2.5">
+                                    <div className="relative">
+                                      <span className="absolute left-2.5 top-1.5 text-white/40 text-xs">R</span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="950.00"
+                                        value={tier.pricePerCase}
+                                        onChange={(e) => handleTierChange(idx, 'pricePerCase', e.target.value)}
+                                        className="w-32 bg-black/50 border border-white/15 rounded-lg pl-6 pr-2.5 py-1.5 text-xs text-white font-mono font-bold focus:outline-none focus:border-[#e1bd70]"
+                                      />
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-2.5 font-mono text-[var(--color-ivory-muted)]">
+                                    {price > 0 ? `R ${perBottle}` : '—'}
+                                  </td>
+                                  <td className="px-4 py-2.5">
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Pallet tier / FOB Cape Town"
+                                      value={tier.notes}
+                                      onChange={(e) => handleTierChange(idx, 'notes', e.target.value)}
+                                      className="w-full min-w-[160px] bg-black/50 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#e1bd70]"
+                                    />
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveTier(idx)}
+                                      className="p-1.5 text-red-400/80 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-colors cursor-pointer"
+                                      title="Remove Tier"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="py-6 border-b border-white/10 flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-serif text-[var(--color-ivory)] mb-1">International Export</h3>
@@ -697,6 +957,102 @@ export default function EditProduct({ onNotify }) {
                     <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#c9a35b]"></div>
                   </label>
                 </div>
+
+                {formData.exportReady && (
+                  <div className="p-5 rounded-xl bg-black/40 border border-[#c9a35b]/30 space-y-4 animate-in fade-in">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-[#e1bd70] uppercase tracking-wider">
+                      <Truck size={16} /> Container Loading & Export Packing Specifications
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-widest text-[#bdb5a6] font-bold mb-1.5">
+                          Bottles Per Case
+                        </label>
+                        <select
+                          name="bottlesPerCase"
+                          value={formData.bottlesPerCase}
+                          onChange={handleChange}
+                          className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                        >
+                          <option value="6">6 bottles / case (Standard)</option>
+                          <option value="12">12 bottles / case (Full Dozen)</option>
+                          <option value="3">3 bottles / case (Magnums/Presents)</option>
+                          <option value="1">1 bottle / case (Single Gift)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-widest text-[#bdb5a6] font-bold mb-1.5">
+                          Cases Per Pallet
+                        </label>
+                        <input
+                          type="number"
+                          name="casesPerPallet"
+                          value={formData.casesPerPallet}
+                          onChange={handleChange}
+                          className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                          placeholder="56"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-widest text-[#bdb5a6] font-bold mb-1.5">
+                          HS Tariff Code
+                        </label>
+                        <input
+                          type="text"
+                          name="hsCode"
+                          value={formData.hsCode}
+                          onChange={handleChange}
+                          className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                          placeholder="2204.21"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-widest text-[#bdb5a6] font-bold mb-1.5">
+                          Pallets per 20ft Container
+                        </label>
+                        <input
+                          type="number"
+                          name="palletsPer20ft"
+                          value={formData.palletsPer20ft}
+                          onChange={handleChange}
+                          className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                          placeholder="10"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-widest text-[#bdb5a6] font-bold mb-1.5">
+                          Pallets per 40ft Container
+                        </label>
+                        <input
+                          type="number"
+                          name="palletsPer40ft"
+                          value={formData.palletsPer40ft}
+                          onChange={handleChange}
+                          className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                          placeholder="20"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-widest text-[#bdb5a6] font-bold mb-1.5">
+                          Dispatch Lead Time (Days)
+                        </label>
+                        <input
+                          type="number"
+                          name="leadTimeDays"
+                          value={formData.leadTimeDays}
+                          onChange={handleChange}
+                          className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a35b]"
+                          placeholder="14"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Packaging & Courier Logistics Specs */}

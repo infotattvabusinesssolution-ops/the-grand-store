@@ -18,6 +18,12 @@
   font-family: 'Inter', Arial, sans-serif;
 }
 
+.trade-portal.trade-portal--dark {
+  background: #080705 !important;
+  color: #eee8dd;
+}
+
+
 .trade-portal p,
 .trade-portal li,
 .trade-portal a,
@@ -105,8 +111,8 @@
 /* No gradients outside the animated hero. */
 .trade-portal .trade-page > section:not(.trade-hero),
 .trade-portal .trade-page > section:not(.trade-hero) *:not(img),
-.trade-portal .trade-subpage,
-.trade-portal .trade-subpage *:not(img) {
+.trade-portal .trade-subpage:not(.trade-catalogue-page),
+.trade-portal .trade-subpage:not(.trade-catalogue-page) *:not(img) {
   background-image: none !important;
 }
 
@@ -328,7 +334,7 @@
 }
 
 /* Inner Trade routes. */
-.trade-portal .trade-subpage {
+.trade-portal .trade-subpage:not(.trade-catalogue-page) {
   min-height: 100vh;
   padding: 132px 0 68px;
   color: var(--trade-heading) !important;

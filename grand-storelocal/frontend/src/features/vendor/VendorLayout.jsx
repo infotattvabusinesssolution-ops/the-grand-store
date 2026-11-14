@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Building2, Package, PlusCircle, User, LayoutDashboard, Wallet, Landmark, Megaphone, GraduationCap, Menu, X, ShoppingBag, Calendar, Settings, Truck, LogOut, Store, Gavel, MapPin, Home, ArrowLeft } from 'lucide-react';
+import { Building2, Package, PlusCircle, User, LayoutDashboard, Wallet, Landmark, Megaphone, GraduationCap, Menu, X, ShoppingBag, Calendar, Settings, Truck, LogOut, Store, Gavel, MapPin, Home, ArrowLeft, Globe } from 'lucide-react';
 import NotificationBell from '../../components/NotificationBell';
 
 export default function VendorLayout() {
@@ -207,6 +207,14 @@ export default function VendorLayout() {
                 </div>
               </button>
             )}
+            <div className="text-[10px] text-[var(--color-ivory-muted)] uppercase tracking-widest mb-2 mt-4 pl-2">Global Trade & Export</div>
+            <button onClick={() => handleNavigate('/vendor/trade-rfqs')} className={navItemClass('/vendor/trade-rfqs')}>
+              <Globe size={16} /> Global Trade RFQs
+            </button>
+            <button onClick={() => handleNavigate('/vendor/export-profile')} className={navItemClass('/vendor/export-profile')}>
+              <Truck size={16} /> Export Profile & Logistics
+            </button>
+
             <div className="mt-6 pt-6 border-t border-white/[0.05]">
               <button onClick={() => handleNavigate('/vendor/shipping')} className={navItemClass('/vendor/shipping')}>
                 <Truck size={16} /> Shipping Profile

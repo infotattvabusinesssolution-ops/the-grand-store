@@ -10,8 +10,10 @@ export default function TradeLayout() {
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [location.pathname])
 
+  const isCatalogue = location.pathname.includes('/trade/catalogue')
+
   return (
-    <div className="trade-portal">
+    <div className={`trade-portal ${isCatalogue ? 'trade-portal--dark' : ''}`}>
       <TradeNavbar />
       {/* Outlet renders the matched child route, e.g., TradePage or TradeAbout */}
       <Outlet />

@@ -5,6 +5,7 @@ import './TradeNavbar.css'
 
 const links = [
   { to: '/trade', label: 'Home', exact: true },
+  { to: '/trade/catalogue', label: 'Catalogue & RFQ' },
   { to: '/trade/about-us', label: 'About' },
   { to: '/trade/trade-export', label: 'Export' },
   { to: '/trade/trade-procedures', label: 'Procedures' },
