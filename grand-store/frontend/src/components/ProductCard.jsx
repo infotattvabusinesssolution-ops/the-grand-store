@@ -233,7 +233,6 @@ export default function ProductCard({
   const { country_code, country_name } = (typeof useGeoLocation === 'function' ? useGeoLocation() : {}) || {};
   const navigate = useNavigate();
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
-  const [checkoutModalMode, setCheckoutModalMode] = useState('checkout');
   const productId = product.id || product._id;
   const productPath = `/product/${product.slug || productId}`;
   const { isWishlisted } = useWishlist();
@@ -394,7 +393,6 @@ export default function ProductCard({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        setCheckoutModalMode('add');
                         setIsCheckoutModalOpen(true);
                       }}
                       aria-label={`Add ${productName} to bag`}
@@ -430,11 +428,19 @@ export default function ProductCard({
                     </button>
                   )}
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      setCheckoutModalMode('checkout');
-                      setIsCheckoutModalOpen(true);
+                      if (onAdd) {
+                        onAdd(product, 1, product.options?.[0] || "Pack of 1", false);
+                      }
+                      const isIntl = country_code && country_code !== 'ZA';
+                      if (isIntl) {
+                        navigate(`/customer/checkout?mode=international_aramex${country_name ? `&country=${encodeURIComponent(country_name)}` : ''}`);
+                      } else {
+                        navigate('/customer/checkout?mode=domestic_sa');
+                      }
                     }}
                     style={{ 
                       flex: '1 1 80px', 
@@ -479,14 +485,18 @@ export default function ProductCard({
           product={product}
           initialQuantity={1}
           selectedOption={product.options?.[0] || "Pack of 1"}
-          mode={checkoutModalMode}
+          mode="add"
           onAddToCart={(prod, qty, opt, openCart) => {
             if (onAdd) onAdd(prod, qty, opt, openCart);
           }}
           onProceed={(prod, qty, opt) => {
             if (onAdd) onAdd(prod, qty, opt, false);
-            // Default to South Africa (Domestic). International customers switch manually on checkout
-            navigate('/customer/checkout?mode=domestic_sa');
+            const isIntl = country_code && country_code !== 'ZA';
+            if (isIntl) {
+              navigate(`/customer/checkout?mode=international_aramex${country_name ? `&country=${encodeURIComponent(country_name)}` : ''}`);
+            } else {
+              navigate('/customer/checkout?mode=domestic_sa');
+            }
           }}
         />
       </article>
