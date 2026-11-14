@@ -82,6 +82,23 @@ exports.uploadProofOfPayment = async (req, res) => {
       console.warn('Error syncing proofUrl to AuctionLot:', lotErr.message);
     }
 
+    // Alert store admin mailbox that proof of payment has been uploaded
+    try {
+      const { sendEmail, getAdminEmail } = require('../utils/emailService');
+      const { proofOfPaymentAdminNotificationTemplate } = require('../utils/emailTemplates');
+      const adminEmail = (typeof getAdminEmail === 'function' ? getAdminEmail() : null) || process.env.ORDERS_ADMIN_EMAIL || process.env.ADMIN_EMAIL || process.env.INFO_SMTP_USER || 'info@grandstoreglobal.com';
+      if (adminEmail) {
+        await sendEmail({
+          to: adminEmail,
+          type: 'billing',
+          subject: `🧾 [PROOF OF PAYMENT] Order #${order.invoiceNumber || order.orderId || order._id} Awaiting Verification`,
+          html: proofOfPaymentAdminNotificationTemplate(order, proofUrl)
+        });
+      }
+    } catch (proofEmailErr) {
+      console.warn('Failed to send proof of payment notification to admin:', proofEmailErr.message);
+    }
+
     res.json({ message: 'Proof of payment uploaded successfully. Awaiting admin approval.', order });
   } catch (error) {
     console.error('Error uploading proof of payment:', error);

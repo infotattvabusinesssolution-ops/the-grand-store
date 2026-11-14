@@ -217,15 +217,17 @@ export default function ShippingAndCartDrawer({
                                 <div className="qty-selector">
                                   <button
                                     type="button"
-                                    onClick={() => onUpdateQty(item.id, (item.qty || 1) - 1)}
+                                    disabled={(item.quantity || item.qty || 1) <= 1}
+                                    onClick={() => onUpdateQty(item.id || item._id, Math.max(1, (item.quantity || item.qty || 1) - 1))}
                                     aria-label="Decrease quantity"
+                                    className={(item.quantity || item.qty || 1) <= 1 ? "opacity-30 cursor-not-allowed" : ""}
                                   >
                                     <Minus size={14} />
                                   </button>
-                                  <span>{item.qty || 1}</span>
+                                  <span>{item.quantity || item.qty || 1}</span>
                                   <button
                                     type="button"
-                                    onClick={() => onUpdateQty(item.id, (item.qty || 1) + 1)}
+                                    onClick={() => onUpdateQty(item.id || item._id, (item.quantity || item.qty || 1) + 1)}
                                     aria-label="Increase quantity"
                                   >
                                     <Plus size={14} />

@@ -16,7 +16,13 @@ import {
   RefreshCw,
   MessageSquare,
   BadgeCheck,
-  Edit3
+  Edit3,
+  Plus,
+  Trash2,
+  X,
+  KeyRound,
+  Mail,
+  Lock
 } from "lucide-react";
 import api from "../../api";
 import VendorPayoutModal from "./VendorPayoutModal";
@@ -86,6 +92,55 @@ export default function AdminVendors() {
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [payoutModalOpen, setPayoutModalOpen] = useState(false);
 
+  // Add Vendor State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addingVendor, setAddingVendor] = useState(false);
+  const [addError, setAddError] = useState("");
+  const [addForm, setAddForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    storeName: "",
+    vendorType: "local",
+    sellingCapabilities: "domestic",
+    phone: "",
+    commissionRate: "10",
+    status: "approved"
+  });
+
+  // Delete Vendor State
+  const [vendorToDelete, setVendorToDelete] = useState(null);
+  const [deleteOption, setDeleteOption] = useState("permanent");
+  const [deleteProducts, setDeleteProducts] = useState(false);
+  const [deletingVendor, setDeletingVendor] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  // Toggle Active State
+  const [togglingVendorId, setTogglingVendorId] = useState(null);
+
+  // Password Reset State
+  const [vendorForPasswordReset, setVendorForPasswordReset] = useState(null);
+  const [passwordResetMode, setPasswordResetMode] = useState("email");
+  const [resetPasswordValue, setResetPasswordValue] = useState("");
+  const [resetPasswordWorking, setResetPasswordWorking] = useState(false);
+  const [resetPasswordError, setResetPasswordError] = useState("");
+
+  // Quick Edit Vendor State
+  const [vendorForQuickEdit, setVendorForQuickEdit] = useState(null);
+  const [editForm, setEditForm] = useState({
+    storeName: "",
+    name: "",
+    phone: "",
+    commissionRate: "10",
+    vendorType: "local",
+    sellingCapabilities: "domestic",
+  });
+  const [editingVendorWorking, setEditingVendorWorking] = useState(false);
+  const [editVendorError, setEditVendorError] = useState("");
+
+  // Notification Toast
+  const [toastMessage, setToastMessage] = useState(null);
+
   const formatMoney = (amount) => {
     return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(amount || 0);
   };
@@ -132,6 +187,197 @@ export default function AdminVendors() {
     setPayouts((prev) =>
       prev.map((p) => (p._id === updatedTxn._id ? { ...p, ...updatedTxn } : p))
     );
+  };
+
+  const generateRandomPassword = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+    let pass = "";
+    for (let i = 0; i < 12; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setAddForm(prev => ({ ...prev, password: pass }));
+  };
+
+  const handleCreateVendor = async (e) => {
+    e.preventDefault();
+    setAddError("");
+    if (!addForm.storeName.trim() || !addForm.name.trim() || !addForm.email.trim() || !addForm.password.trim()) {
+      setAddError("Store name, owner name, email, and password are required.");
+      return;
+    }
+    if (addForm.password.length < 6) {
+      setAddError("Password must be at least 6 characters.");
+      return;
+    }
+
+    try {
+      setAddingVendor(true);
+      const { data } = await api.post("/admin/vendors", {
+        storeName: addForm.storeName.trim(),
+        name: addForm.name.trim(),
+        email: addForm.email.trim(),
+        password: addForm.password,
+        vendorType: addForm.vendorType,
+        sellingCapabilities: addForm.sellingCapabilities,
+        phone: addForm.phone.trim(),
+        commissionRate: Number(addForm.commissionRate) || 10,
+        status: addForm.status,
+      });
+
+      setIsAddModalOpen(false);
+      setAddForm({
+        name: "",
+        email: "",
+        password: "",
+        storeName: "",
+        vendorType: "local",
+        sellingCapabilities: "domestic",
+        phone: "",
+        commissionRate: "10",
+        status: "approved"
+      });
+      setToastMessage({
+        type: "success",
+        text: data.message || `Vendor "${addForm.storeName}" created successfully!`
+      });
+      fetchVendors();
+      setTimeout(() => setToastMessage(null), 5000);
+    } catch (err) {
+      setAddError(err.response?.data?.message || err.message || "Failed to create vendor.");
+    } finally {
+      setAddingVendor(false);
+    }
+  };
+
+  const handleDeleteVendor = async () => {
+    if (!vendorToDelete) return;
+    setDeleteError("");
+    try {
+      setDeletingVendor(true);
+      const { data } = await api.delete(`/admin/vendors/${vendorToDelete._id}`, {
+        data: {
+          deleteOption,
+          deleteProducts,
+        }
+      });
+
+      setVendorToDelete(null);
+      setToastMessage({
+        type: "success",
+        text: data.message || "Vendor removed successfully."
+      });
+      fetchVendors();
+      setTimeout(() => setToastMessage(null), 5000);
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || err.message || "Failed to remove vendor.");
+    } finally {
+      setDeletingVendor(false);
+    }
+  };
+
+  const handleToggleActive = async (vendor) => {
+    try {
+      setTogglingVendorId(vendor._id);
+      const isCurrentlyActive = vendor.status === "approved";
+      const { data } = await api.put(`/admin/vendors/${vendor._id}/toggle-active`, {
+        isActive: !isCurrentlyActive
+      });
+
+      setVendors((prev) =>
+        prev.map((v) => (v._id === vendor._id ? (data.vendor || { ...v, status: !isCurrentlyActive ? "approved" : "suspended" }) : v))
+      );
+      setToastMessage({
+        type: "success",
+        text: data.message || `Vendor status updated.`
+      });
+      setTimeout(() => setToastMessage(null), 5000);
+    } catch (err) {
+      setToastMessage({
+        type: "error",
+        text: err.response?.data?.message || err.message || "Failed to update vendor status."
+      });
+      setTimeout(() => setToastMessage(null), 5000);
+    } finally {
+      setTogglingVendorId(null);
+    }
+  };
+
+  const openPasswordReset = (vendor) => {
+    setVendorForPasswordReset(vendor);
+    setPasswordResetMode("email");
+    setResetPasswordValue("");
+    setResetPasswordError("");
+  };
+
+  const handleResetPassword = async (e) => {
+    if (e) e.preventDefault();
+    if (!vendorForPasswordReset) return;
+    setResetPasswordError("");
+
+    if (passwordResetMode === "manual") {
+      if (!resetPasswordValue || resetPasswordValue.length < 6) {
+        setResetPasswordError("Password must be at least 6 characters.");
+        return;
+      }
+    }
+
+    try {
+      setResetPasswordWorking(true);
+      const { data } = await api.post(`/admin/vendors/${vendorForPasswordReset._id}/reset-password`, {
+        action: passwordResetMode === "manual" ? "set_manual" : "send_email",
+        password: resetPasswordValue
+      });
+
+      setToastMessage({
+        type: "success",
+        text: data.message || "Password action completed successfully."
+      });
+      setVendorForPasswordReset(null);
+      setResetPasswordValue("");
+      setTimeout(() => setToastMessage(null), 6000);
+    } catch (err) {
+      setResetPasswordError(err.response?.data?.message || err.message || "Failed to reset password.");
+    } finally {
+      setResetPasswordWorking(false);
+    }
+  };
+
+  const openQuickEdit = (vendor) => {
+    setVendorForQuickEdit(vendor);
+    setEditVendorError("");
+    setEditForm({
+      storeName: vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || "",
+      name: vendor.userId?.name || "",
+      phone: vendor.userId?.phone || vendor.userId?.phoneNumber || "",
+      commissionRate: String(vendor.tradeTerms?.commissionRate ?? "10"),
+      vendorType: vendor.vendorType || "local",
+      sellingCapabilities: vendor.sellingCapabilities || "domestic",
+    });
+  };
+
+  const handleSaveQuickEdit = async (e) => {
+    e.preventDefault();
+    if (!vendorForQuickEdit) return;
+    setEditVendorError("");
+
+    try {
+      setEditingVendorWorking(true);
+      const { data } = await api.put(`/admin/vendors/${vendorForQuickEdit._id}/basic-info`, editForm);
+
+      setVendors((prev) =>
+        prev.map((v) => (v._id === vendorForQuickEdit._id ? (data.vendor || { ...v, ...editForm }) : v))
+      );
+      setToastMessage({
+        type: "success",
+        text: data.message || "Vendor details updated successfully."
+      });
+      setVendorForQuickEdit(null);
+      setTimeout(() => setToastMessage(null), 5000);
+    } catch (err) {
+      setEditVendorError(err.response?.data?.message || err.message || "Failed to update vendor details.");
+    } finally {
+      setEditingVendorWorking(false);
+    }
   };
 
   // Filtered Applications
@@ -186,6 +432,26 @@ export default function AdminVendors() {
   return (
     <div className="min-h-full bg-[#090909] px-4 py-6 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
+
+        {/* TOAST NOTIFICATION */}
+        {toastMessage && (
+          <div className={`p-4 rounded-xl border flex items-center justify-between gap-3 text-sm font-medium ${
+            toastMessage.type === "success"
+              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+              : "bg-red-500/10 border-red-500/30 text-red-300"
+          }`}>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={18} className="shrink-0" />
+              <span>{toastMessage.text}</span>
+            </div>
+            <button
+              onClick={() => setToastMessage(null)}
+              className="text-white/40 hover:text-white transition cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
         
         {/* Page Header */}
         <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
@@ -224,6 +490,17 @@ export default function AdminVendors() {
               className="p-2.5 rounded-lg border border-white/10 bg-[#121212] text-white/60 hover:text-white hover:border-white/20 transition-colors cursor-pointer self-end sm:self-auto"
             >
               <RefreshCw size={16} className={(loadingVendors || loadingPayouts) ? "animate-spin" : ""} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAddError("");
+                setIsAddModalOpen(true);
+              }}
+              className="flex items-center justify-center gap-2 rounded-lg bg-[#c9a35b] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-black shadow-[0_0_15px_rgba(201,163,91,0.25)] hover:bg-[#d8b76f] transition-all cursor-pointer whitespace-nowrap self-stretch sm:self-auto"
+            >
+              <Plus size={16} /> Add Vendor
             </button>
           </div>
         </header>
@@ -347,7 +624,7 @@ export default function AdminVendors() {
                       <th className="px-5 py-4 font-medium">Progress</th>
                       <th className="px-5 py-4 font-medium">Next Fee Due</th>
                       <th className="px-5 py-4 font-medium">Submitted</th>
-                      <th className="px-5 py-4 text-right font-medium">Review</th>
+                      <th className="px-5 py-4 text-right font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/[0.07]">
@@ -377,8 +654,25 @@ export default function AdminVendors() {
                               {vendor.businessInfo?.registrationNumber || "No registration number"}
                             </div>
                           </td>
-                          <td className="px-5 py-4">
-                            <StatusBadge status={vendor.status} />
+                          <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-2.5">
+                              <button
+                                type="button"
+                                disabled={togglingVendorId === vendor._id}
+                                onClick={() => handleToggleActive(vendor)}
+                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                  vendor.status === "approved" ? "bg-emerald-500" : "bg-white/20"
+                                } ${togglingVendorId === vendor._id ? "opacity-50" : ""}`}
+                                title={vendor.status === "approved" ? "Click to Pause (Deactivate)" : "Click to Activate"}
+                              >
+                                <span
+                                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                    vendor.status === "approved" ? "translate-x-4" : "translate-x-0"
+                                  }`}
+                                />
+                              </button>
+                              <StatusBadge status={vendor.status} />
+                            </div>
                           </td>
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
@@ -441,16 +735,43 @@ export default function AdminVendors() {
                               : "—"}
                           </td>
                           <td className="px-5 py-4 text-right">
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                navigate(`/admin/vendors/${vendor._id}`);
-                              }}
-                              className="inline-flex items-center gap-2 rounded-md border border-[#c9a35b]/35 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#d8b76f] transition hover:border-[#c9a35b] hover:bg-[#c9a35b]/10 cursor-pointer"
-                            >
-                              View application <ArrowRight size={14} />
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/admin/vendors/${vendor._id}`)}
+                                title="View Application Details"
+                                className="inline-flex items-center gap-1 rounded-md border border-[#c9a35b]/35 px-2.5 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-[#d8b76f] transition hover:border-[#c9a35b] hover:bg-[#c9a35b]/10 cursor-pointer"
+                              >
+                                View <ArrowRight size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openPasswordReset(vendor)}
+                                title="Reset Vendor Password"
+                                className="inline-flex items-center justify-center rounded-md border border-amber-500/30 bg-amber-500/10 p-1.5 text-amber-300 hover:bg-amber-500/20 hover:border-amber-500/50 transition cursor-pointer"
+                              >
+                                <KeyRound size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openQuickEdit(vendor)}
+                                title="Quick Edit Vendor Details"
+                                className="inline-flex items-center justify-center rounded-md border border-white/10 bg-white/5 p-1.5 text-white/70 hover:bg-white/10 hover:border-white/20 hover:text-white transition cursor-pointer"
+                              >
+                                <Edit3 size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDeleteError("");
+                                  setVendorToDelete(vendor);
+                                }}
+                                title="Remove Vendor"
+                                className="inline-flex items-center justify-center rounded-md border border-red-500/30 bg-red-500/10 p-1.5 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-300 transition cursor-pointer"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -655,6 +976,645 @@ export default function AdminVendors() {
                 </div>
               )}
             </section>
+          </div>
+        )}
+
+        {/* ADD VENDOR MODAL */}
+        {isAddModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+            <div className="relative w-full max-w-xl my-8 rounded-2xl border border-[#c9a35b]/30 bg-[#121212] p-6 sm:p-8 shadow-2xl text-left">
+              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#c9a35b]/10 border border-[#c9a35b]/30 flex items-center justify-center text-[#c9a35b]">
+                    <Store size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-serif font-bold text-white">Add New Vendor</h3>
+                    <p className="text-xs text-white/40">Directly onboard an authorized marketplace vendor</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {addError && (
+                <div className="mt-4 flex items-center gap-2 p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-xs text-red-300">
+                  <AlertCircle size={15} className="shrink-0" />
+                  <span>{addError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleCreateVendor} className="mt-5 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                      Store / Brand Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Cape Cellars Winery"
+                      value={addForm.storeName}
+                      onChange={(e) => setAddForm({ ...addForm, storeName: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 focus:border-[#c9a35b] outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                      Owner / Contact Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Jean-Luc Picard"
+                      value={addForm.name}
+                      onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 focus:border-[#c9a35b] outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                      Email Address (Login) *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="vendor@brand.com"
+                      value={addForm.email}
+                      onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 focus:border-[#c9a35b] outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+                        Password *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={generateRandomPassword}
+                        className="text-[10px] uppercase font-bold tracking-wider text-[#c9a35b] hover:underline cursor-pointer"
+                      >
+                        Generate
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      placeholder="At least 6 characters"
+                      value={addForm.password}
+                      onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2.5 text-sm font-mono text-white placeholder:text-white/25 focus:border-[#c9a35b] outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                      Vendor Classification
+                    </label>
+                    <select
+                      value={addForm.vendorType}
+                      onChange={(e) => setAddForm({ ...addForm, vendorType: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2.5 text-sm text-white focus:border-[#c9a35b] outline-none"
+                    >
+                      <option value="local">Domestic South Africa (Local)</option>
+                      <option value="international">Global International Partner</option>
+                      <option value="flagship">Flagship / Premier Estate</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                      Selling Scope
+                    </label>
+                    <select
+                      value={addForm.sellingCapabilities}
+                      onChange={(e) => setAddForm({ ...addForm, sellingCapabilities: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2.5 text-sm text-white focus:border-[#c9a35b] outline-none"
+                    >
+                      <option value="domestic">Domestic Fulfillment Only</option>
+                      <option value="international">Cross-Border International Only</option>
+                      <option value="both">Both Domestic & Cross-Border</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                      Commission (%)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={addForm.commissionRate}
+                      onChange={(e) => setAddForm({ ...addForm, commissionRate: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2.5 text-sm text-white focus:border-[#c9a35b] outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                      Contact Phone
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="+27..."
+                      value={addForm.phone}
+                      onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 focus:border-[#c9a35b] outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                      Initial Status
+                    </label>
+                    <select
+                      value={addForm.status}
+                      onChange={(e) => setAddForm({ ...addForm, status: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2.5 text-sm text-white focus:border-[#c9a35b] outline-none"
+                    >
+                      <option value="approved">Pre-Approved (Active)</option>
+                      <option value="pending_approval">Pending Review</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex items-center justify-end gap-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddModalOpen(false)}
+                    className="px-4 py-2.5 rounded-lg border border-white/10 text-xs font-semibold text-white/70 hover:bg-white/5 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={addingVendor}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#c9a35b] text-black text-xs font-bold uppercase tracking-wider hover:bg-[#d8b76f] transition shadow-[0_0_15px_rgba(201,163,91,0.25)] disabled:opacity-50 cursor-pointer"
+                  >
+                    {addingVendor ? (
+                      <>
+                        <RefreshCw size={14} className="animate-spin" />
+                        <span>Creating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={14} />
+                        <span>Create Vendor</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* REMOVE VENDOR CONFIRMATION MODAL */}
+        {vendorToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="relative w-full max-w-md rounded-2xl border border-red-500/30 bg-[#141414] p-6 shadow-2xl text-left">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400">
+                  <Trash2 size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-serif font-bold text-white">Remove Vendor</h3>
+                  <p className="text-xs text-white/40">Modify vendor status or revoke marketplace access</p>
+                </div>
+              </div>
+
+              <div className="mt-4 p-3 rounded-lg border border-white/5 bg-white/[0.02]">
+                <div className="text-sm font-medium text-white">
+                  {vendorToDelete.businessInfo?.tradingName || vendorToDelete.businessInfo?.legalName || "Vendor"}
+                </div>
+                <div className="text-xs text-white/40 mt-0.5">
+                  {vendorToDelete.userId?.email || "No email available"}
+                </div>
+              </div>
+
+              {deleteError && (
+                <div className="mt-3 flex items-center gap-2 p-2.5 rounded-lg border border-red-500/30 bg-red-500/10 text-xs text-red-300">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+
+              <div className="mt-4 space-y-3">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50">
+                  Removal Action
+                </label>
+                
+                <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${
+                  deleteOption === "permanent"
+                    ? "border-red-500/50 bg-red-500/10 text-white"
+                    : "border-white/10 bg-[#181818] text-white/70 hover:border-white/20"
+                }`}>
+                  <input
+                    type="radio"
+                    name="deleteOption"
+                    value="permanent"
+                    checked={deleteOption === "permanent"}
+                    onChange={(e) => setDeleteOption(e.target.value)}
+                    className="mt-1 accent-red-500"
+                  />
+                  <div>
+                    <div className="text-xs font-bold text-red-300">Permanent Removal</div>
+                    <div className="text-[11px] text-white/40 mt-0.5">
+                      Permanently removes the vendor account and deactivates all their products.
+                    </div>
+                  </div>
+                </label>
+
+                <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${
+                  deleteOption === "soft"
+                    ? "border-amber-500/50 bg-amber-500/10 text-white"
+                    : "border-white/10 bg-[#181818] text-white/70 hover:border-white/20"
+                }`}>
+                  <input
+                    type="radio"
+                    name="deleteOption"
+                    value="soft"
+                    checked={deleteOption === "soft"}
+                    onChange={(e) => setDeleteOption(e.target.value)}
+                    className="mt-1 accent-amber-500"
+                  />
+                  <div>
+                    <div className="text-xs font-bold text-amber-300">Soft Deactivation (Suspend)</div>
+                    <div className="text-[11px] text-white/40 mt-0.5">
+                      Suspends the vendor account and hides products from the storefront, keeping records safe.
+                    </div>
+                  </div>
+                </label>
+
+                {deleteOption === "permanent" && (
+                  <label className="flex items-center gap-2.5 pt-1 text-xs text-white/60 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={deleteProducts}
+                      onChange={(e) => setDeleteProducts(e.target.checked)}
+                      className="rounded accent-red-500"
+                    />
+                    <span>Also permanently delete all products of this vendor</span>
+                  </label>
+                )}
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setVendorToDelete(null)}
+                  className="px-4 py-2 rounded-lg border border-white/10 text-xs font-semibold text-white/70 hover:bg-white/5 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={deletingVendor}
+                  onClick={handleDeleteVendor}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-red-700 transition disabled:opacity-50 cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+                >
+                  {deletingVendor ? (
+                    <>
+                      <RefreshCw size={13} className="animate-spin" />
+                      <span>Removing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={13} />
+                      <span>Confirm Remove</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* RESET PASSWORD MODAL */}
+        {vendorForPasswordReset && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="relative w-full max-w-md rounded-2xl border border-amber-500/30 bg-[#141414] p-6 shadow-2xl text-left">
+              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <KeyRound size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-serif font-bold text-white">Reset Password</h3>
+                    <p className="text-xs text-white/40">Manage authentication for this vendor</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setVendorForPasswordReset(null)}
+                  className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="mt-4 p-3 rounded-lg border border-white/5 bg-white/[0.02]">
+                <div className="text-sm font-medium text-white">
+                  {vendorForPasswordReset.businessInfo?.tradingName || vendorForPasswordReset.businessInfo?.legalName || "Vendor"}
+                </div>
+                <div className="text-xs text-white/40 mt-0.5">
+                  {vendorForPasswordReset.userId?.email || "No email available"}
+                </div>
+              </div>
+
+              {resetPasswordError && (
+                <div className="mt-3 flex items-center gap-2 p-2.5 rounded-lg border border-red-500/30 bg-red-500/10 text-xs text-red-300">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>{resetPasswordError}</span>
+                </div>
+              )}
+
+              {/* Tabs */}
+              <div className="mt-5 grid grid-cols-2 gap-2 bg-black/40 p-1 rounded-xl border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setPasswordResetMode("email")}
+                  className={`py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition cursor-pointer ${
+                    passwordResetMode === "email"
+                      ? "bg-[#c9a35b] text-black shadow"
+                      : "text-white/60 hover:text-white"
+                  }`}
+                >
+                  Email Reset Link
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPasswordResetMode("manual");
+                    if (!resetPasswordValue) {
+                      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+                      let pass = "";
+                      for (let i = 0; i < 10; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+                      setResetPasswordValue(pass);
+                    }
+                  }}
+                  className={`py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition cursor-pointer ${
+                    passwordResetMode === "manual"
+                      ? "bg-[#c9a35b] text-black shadow"
+                      : "text-white/60 hover:text-white"
+                  }`}
+                >
+                  Set Temporary Password
+                </button>
+              </div>
+
+              {passwordResetMode === "email" ? (
+                <div className="mt-5 space-y-4">
+                  <p className="text-xs text-white/60 leading-5">
+                    Clicking below will dispatch a secure, 1-hour password reset link to <strong>{vendorForPasswordReset.userId?.email}</strong>.
+                  </p>
+                  <div className="pt-2 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setVendorForPasswordReset(null)}
+                      className="px-4 py-2 rounded-lg border border-white/10 text-xs font-semibold text-white/70 hover:bg-white/5 transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={resetPasswordWorking}
+                      onClick={handleResetPassword}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#c9a35b] text-black text-xs font-bold uppercase tracking-wider hover:bg-[#d8b76f] transition disabled:opacity-50 cursor-pointer shadow-[0_0_15px_rgba(201,163,91,0.2)]"
+                    >
+                      {resetPasswordWorking ? (
+                        <>
+                          <RefreshCw size={13} className="animate-spin" />
+                          <span>Sending...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Mail size={14} />
+                          <span>Send Reset Email</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleResetPassword} className="mt-5 space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+                        New Temporary Password
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+                          let pass = "";
+                          for (let i = 0; i < 10; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+                          setResetPasswordValue(pass);
+                        }}
+                        className="text-[10px] uppercase font-bold tracking-wider text-[#c9a35b] hover:underline cursor-pointer"
+                      >
+                        Regenerate
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={resetPasswordValue}
+                      onChange={(e) => setResetPasswordValue(e.target.value)}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2.5 text-sm font-mono text-white placeholder:text-white/25 focus:border-[#c9a35b] outline-none"
+                    />
+                    <p className="mt-2 text-[11px] text-white/40 flex items-center gap-1.5">
+                      <Lock size={12} className="text-emerald-400" />
+                      <span>Vendor must change this upon their next login.</span>
+                    </p>
+                  </div>
+
+                  <div className="pt-2 flex justify-end gap-3 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setVendorForPasswordReset(null)}
+                      className="px-4 py-2 rounded-lg border border-white/10 text-xs font-semibold text-white/70 hover:bg-white/5 transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={resetPasswordWorking}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#c9a35b] text-black text-xs font-bold uppercase tracking-wider hover:bg-[#d8b76f] transition disabled:opacity-50 cursor-pointer shadow-[0_0_15px_rgba(201,163,91,0.2)]"
+                    >
+                      {resetPasswordWorking ? (
+                        <>
+                          <RefreshCw size={13} className="animate-spin" />
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <KeyRound size={14} />
+                          <span>Set Password</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* QUICK EDIT VENDOR MODAL */}
+        {vendorForQuickEdit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+            <div className="relative w-full max-w-lg my-8 rounded-2xl border border-white/15 bg-[#141414] p-6 shadow-2xl text-left">
+              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[#c9a35b]">
+                    <Edit3 size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-serif font-bold text-white">Edit Vendor Profile</h3>
+                    <p className="text-xs text-white/40">{vendorForQuickEdit.userId?.email}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setVendorForQuickEdit(null)}
+                  className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {editVendorError && (
+                <div className="mt-4 flex items-center gap-2 p-2.5 rounded-lg border border-red-500/30 bg-red-500/10 text-xs text-red-300">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>{editVendorError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveQuickEdit} className="mt-5 space-y-4">
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                    Store / Brand Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.storeName}
+                    onChange={(e) => setEditForm({ ...editForm, storeName: e.target.value })}
+                    className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2 text-sm text-white focus:border-[#c9a35b] outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                      Owner Name
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2 text-sm text-white focus:border-[#c9a35b] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                      Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2 text-sm text-white focus:border-[#c9a35b] outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                      Commission (%)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={editForm.commissionRate}
+                      onChange={(e) => setEditForm({ ...editForm, commissionRate: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2 text-sm text-white focus:border-[#c9a35b] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                      Classification
+                    </label>
+                    <select
+                      value={editForm.vendorType}
+                      onChange={(e) => setEditForm({ ...editForm, vendorType: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2 text-sm text-white focus:border-[#c9a35b] outline-none"
+                    >
+                      <option value="local">Domestic Local</option>
+                      <option value="international">International</option>
+                      <option value="flagship">Flagship Partner</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                      Scope
+                    </label>
+                    <select
+                      value={editForm.sellingCapabilities}
+                      onChange={(e) => setEditForm({ ...editForm, sellingCapabilities: e.target.value })}
+                      className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2 text-sm text-white focus:border-[#c9a35b] outline-none"
+                    >
+                      <option value="domestic">Domestic</option>
+                      <option value="international">International</option>
+                      <option value="both">Both</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex items-center justify-end gap-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setVendorForQuickEdit(null)}
+                    className="px-4 py-2 rounded-lg border border-white/10 text-xs font-semibold text-white/70 hover:bg-white/5 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editingVendorWorking}
+                    className="flex items-center gap-2 px-5 py-2 rounded-lg bg-[#c9a35b] text-black text-xs font-bold uppercase tracking-wider hover:bg-[#d8b76f] transition disabled:opacity-50 cursor-pointer shadow-[0_0_15px_rgba(201,163,91,0.2)]"
+                  >
+                    {editingVendorWorking ? (
+                      <>
+                        <RefreshCw size={13} className="animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <span>Save Changes</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 

@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const Vendor = require("../models/Vendor");
+const Product = require("../models/Product");
 const Order = require("../models/Order");
 const AuctionLot = require("../models/AuctionLot");
 const Booking = require("../models/Booking");
@@ -8,11 +9,13 @@ const Transaction = require("../models/Transaction");
 const Wallet = require("../models/Wallet");
 const { createInAppNotification } = require("./notificationController");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 const { sendEmail } = require("../utils/emailService");
 const {
   generateEmailTemplate,
   vendorApprovalTemplate,
   genericNotificationTemplate,
+  passwordResetTemplate,
 } = require("../utils/emailTemplates");
 
 const STAFF_ROLES = ["accountant", "product_manager", "admin"];
@@ -1004,6 +1007,376 @@ const updateVendorBanking = async (req, res) => {
   }
 };
 
+// @desc    Directly create a new vendor account from Super Admin
+// @route   POST /api/admin/vendors
+// @access  Private/SuperAdmin
+const createVendor = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      password,
+      storeName,
+      vendorType = 'local',
+      sellingCapabilities,
+      phone = '',
+      commissionRate = 10,
+      status = 'approved',
+      registrationFee = 0,
+    } = req.body;
+
+    if (!name || !email || !password || !storeName) {
+      return res.status(400).json({ message: "Vendor name, email, password, and store name are required" });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters long" });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    let user = await User.findOne({ email: cleanEmail });
+
+    if (user) {
+      const existingVendor = await Vendor.findOne({ userId: user._id });
+      if (existingVendor) {
+        return res.status(409).json({ message: `A vendor account already exists for ${cleanEmail}` });
+      }
+
+      user.role = status === 'approved' ? 'vendor_active' : 'vendor_pending';
+      user.customerTier = 'vendor';
+      if (phone) {
+        user.phone = phone.trim();
+        user.phoneNumber = phone.trim();
+      }
+      await user.save();
+    } else {
+      const hashedPassword = await bcrypt.hash(password, 12);
+      user = await User.create({
+        name: name.trim(),
+        email: cleanEmail,
+        password: hashedPassword,
+        phone: phone.trim(),
+        phoneNumber: phone.trim(),
+        role: status === 'approved' ? 'vendor_active' : 'vendor_pending',
+        customerTier: 'vendor',
+        isEmailVerified: true,
+        isAgeVerified: true,
+      });
+    }
+
+    const capabilities = sellingCapabilities || (vendorType === 'international' ? 'international' : 'domestic');
+
+    const newVendor = await Vendor.create({
+      userId: user._id,
+      vendorType: vendorType,
+      sellingCapabilities: capabilities,
+      status: status,
+      onboardingStep: vendorType === 'international' ? 9 : 10,
+      registrationFee: Number(registrationFee) || 0,
+      paymentStatus: status === 'approved' ? 'paid' : 'unpaid',
+      businessInfo: {
+        legalName: storeName.trim(),
+        tradingName: storeName.trim(),
+        businessType: vendorType === 'international' ? 'distillery' : 'winery',
+        address: '',
+      },
+      tradeTerms: {
+        commissionRate: Number(commissionRate) || 10,
+        paymentTerms: 'standard',
+      },
+      agreements: {
+        termsAccepted: true,
+        informationAccurate: true,
+      },
+      exportProfile: vendorType === 'international' ? {
+        approvalStatus: 'approved',
+        isExportApproved: 'approved',
+        businessType: 'distillery',
+      } : undefined,
+      createdBy: req.user?._id,
+    });
+
+    const populatedVendor = await Vendor.findById(newVendor._id).populate('userId', 'name email');
+
+    res.status(201).json({
+      success: true,
+      message: `Vendor "${storeName.trim()}" created successfully`,
+      vendor: populatedVendor,
+    });
+  } catch (error) {
+    console.error('Admin Create Vendor Error:', error);
+    res.status(500).json({ message: "Server error creating vendor", error: error.message });
+  }
+};
+
+// @desc    Delete or soft-remove a vendor account
+// @route   DELETE /api/admin/vendors/:id
+// @access  Private/SuperAdmin
+const deleteVendor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { deleteOption = 'permanent', deleteProducts = false } = req.body || {};
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid vendor ID" });
+    }
+
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
+
+    const vendorUserId = vendor.userId;
+    const vendorName = vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || 'Vendor';
+
+    if (deleteOption === 'soft') {
+      vendor.status = 'suspended';
+      vendor.isFrozen = true;
+      vendor.freezeReason = 'Suspended by Super Admin';
+      await vendor.save();
+
+      if (vendorUserId) {
+        await User.findByIdAndUpdate(vendorUserId, { role: 'customer', customerTier: 'retail' });
+        await Product.updateMany(
+          { vendorId: vendorUserId },
+          { isActive: false, status: 'inactive' }
+        );
+      }
+
+      return res.json({
+        success: true,
+        message: `Vendor "${vendorName}" has been suspended and their products deactivated.`,
+      });
+    }
+
+    // Permanent removal
+    if (vendorUserId) {
+      if (deleteProducts) {
+        await Product.deleteMany({ vendorId: vendorUserId });
+      } else {
+        await Product.updateMany(
+          { vendorId: vendorUserId },
+          { isActive: false, status: 'inactive' }
+        );
+      }
+
+      const customerOrdersCount = await Order.countDocuments({ user: vendorUserId });
+      if (customerOrdersCount > 0) {
+        await User.findByIdAndUpdate(vendorUserId, { role: 'customer', customerTier: 'retail' });
+      } else {
+        await User.findByIdAndDelete(vendorUserId);
+      }
+    }
+
+    await Vendor.findByIdAndDelete(id);
+
+    res.json({
+      success: true,
+      message: `Vendor "${vendorName}" has been permanently removed.`,
+    });
+  } catch (error) {
+    console.error('Admin Delete Vendor Error:', error);
+    res.status(500).json({ message: "Server error deleting vendor", error: error.message });
+  }
+};
+
+// @desc    Toggle vendor between active (approved) and inactive (suspended)
+// @route   PUT /api/admin/vendors/:id/toggle-active
+// @access  Private/SuperAdmin
+const toggleVendorActive = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid vendor ID" });
+    }
+
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
+
+    const shouldBeActive = typeof isActive === 'boolean' ? isActive : vendor.status !== 'approved';
+    const storeName = vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || 'Vendor';
+
+    if (shouldBeActive) {
+      vendor.status = 'approved';
+      vendor.isFrozen = false;
+      vendor.freezeReason = '';
+      await vendor.save();
+
+      if (vendor.userId) {
+        const user = await User.findById(vendor.userId);
+        if (user) {
+          user.role = vendor.paymentStatus === 'unpaid' ? 'vendor_approved_unpaid' : 'vendor_active';
+          user.customerTier = 'vendor';
+          await user.save();
+        }
+        await Product.updateMany({ vendorId: vendor.userId }, { isActive: true });
+      }
+
+      const populated = await Vendor.findById(vendor._id).populate('userId', 'name email');
+      return res.json({
+        success: true,
+        message: `Vendor "${storeName}" is now Active and visible.`,
+        vendor: populated,
+      });
+    } else {
+      vendor.status = 'suspended';
+      vendor.isFrozen = true;
+      vendor.freezeReason = 'Suspended via Admin Toggle';
+      await vendor.save();
+
+      if (vendor.userId) {
+        const user = await User.findById(vendor.userId);
+        if (user) {
+          user.role = 'customer';
+          user.customerTier = 'retail';
+          await user.save();
+        }
+        await Product.updateMany({ vendorId: vendor.userId }, { isActive: false });
+      }
+
+      const populated = await Vendor.findById(vendor._id).populate('userId', 'name email');
+      return res.json({
+        success: true,
+        message: `Vendor "${storeName}" has been Paused (Inactive). Products are hidden.`,
+        vendor: populated,
+      });
+    }
+  } catch (error) {
+    console.error('Toggle Vendor Active Error:', error);
+    res.status(500).json({ message: "Server error toggling vendor status", error: error.message });
+  }
+};
+
+// @desc    Reset vendor password (via email link or direct temporary password)
+// @route   POST /api/admin/vendors/:id/reset-password
+// @access  Private/SuperAdmin
+const resetVendorPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action = 'send_email', password } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid vendor ID" });
+    }
+
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
+
+    const user = await User.findById(vendor.userId);
+    if (!user) {
+      return res.status(404).json({ message: "Associated user account not found" });
+    }
+
+    if (action === 'set_manual') {
+      if (!password || password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters long" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 12);
+      user.password = hashedPassword;
+      user.mustChangePassword = true;
+      await user.save();
+
+      return res.json({
+        success: true,
+        message: `Password updated for ${user.email}. Temporary credentials set.`,
+      });
+    } else {
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+      user.resetPasswordExpire = Date.now() + 60 * 60 * 1000;
+      await user.save();
+
+      const rawOrigin = req.headers.origin || (req.headers.referer ? (() => { try { return new URL(req.headers.referer).origin; } catch (_) { return null; } })() : null);
+      const frontendUrl = (rawOrigin || process.env.FRONTEND_URL || 'https://grandstoreglobal.com').replace(/\/$/, '');
+      const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
+
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: 'Password Reset - The Grand Store Vendor Portal',
+          html: passwordResetTemplate(user.name || vendor.businessInfo?.tradingName || 'Vendor Partner', resetUrl)
+        });
+      } catch (mailErr) {
+        console.error('Failed to dispatch reset email:', mailErr);
+      }
+
+      return res.json({
+        success: true,
+        message: `Password reset link dispatched to ${user.email}.`,
+        resetUrl: process.env.NODE_ENV !== 'production' ? resetUrl : undefined
+      });
+    }
+  } catch (error) {
+    console.error('Reset Vendor Password Error:', error);
+    res.status(500).json({ message: "Server error resetting vendor password", error: error.message });
+  }
+};
+
+// @desc    Quick edit basic vendor details (store name, owner name, commission, phone, classification)
+// @route   PUT /api/admin/vendors/:id/basic-info
+// @access  Private/SuperAdmin
+const updateVendorBasicInfo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { storeName, name, phone, commissionRate, vendorType, sellingCapabilities } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid vendor ID" });
+    }
+
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
+
+    if (storeName) {
+      if (!vendor.businessInfo) vendor.businessInfo = {};
+      vendor.businessInfo.tradingName = storeName.trim();
+      vendor.businessInfo.legalName = storeName.trim();
+    }
+    if (commissionRate !== undefined) {
+      if (!vendor.tradeTerms) vendor.tradeTerms = {};
+      vendor.tradeTerms.commissionRate = Number(commissionRate) || 0;
+    }
+    if (vendorType) {
+      vendor.vendorType = vendorType;
+    }
+    if (sellingCapabilities) {
+      vendor.sellingCapabilities = sellingCapabilities;
+    }
+    await vendor.save();
+
+    if (vendor.userId && (name || phone)) {
+      const user = await User.findById(vendor.userId);
+      if (user) {
+        if (name) user.name = name.trim();
+        if (phone !== undefined) {
+          user.phone = phone.trim();
+          user.phoneNumber = phone.trim();
+        }
+        await user.save();
+      }
+    }
+
+    const populated = await Vendor.findById(vendor._id).populate('userId', 'name email');
+    res.json({
+      success: true,
+      message: 'Vendor details updated successfully',
+      vendor: populated,
+    });
+  } catch (error) {
+    console.error('Update Vendor Basic Info Error:', error);
+    res.status(500).json({ message: "Server error updating vendor details", error: error.message });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getAllUsers,
@@ -1024,5 +1397,10 @@ module.exports = {
   updateVendorPayoutStatus,
   updateVendorBanking,
   deleteUser,
+  createVendor,
+  deleteVendor,
+  toggleVendorActive,
+  resetVendorPassword,
+  updateVendorBasicInfo,
 };
 

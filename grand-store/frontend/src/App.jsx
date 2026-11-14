@@ -458,20 +458,18 @@ function App() {
   };
 
   const updateCartQuantity = (productId, option, quantity) => {
+    // Quantity cannot drop below 1 when using quantity controls; item removal must be explicit via removeFromCart
+    const safeQuantity = Math.max(1, Number(quantity) || 1);
+    const targetId = String(productId || '');
     setCartItems((items) => {
-      let updated;
-      if (quantity < 1) {
-        updated = items.filter(
-          (item) =>
-            !((item.id || item._id) === productId && item.option === option),
-        );
-      } else {
-        updated = items.map((item) =>
-          (item.id || item._id) === productId && item.option === option
-            ? { ...item, quantity }
-            : item,
-        );
-      }
+      const updated = items.map((item) => {
+        const itemId = String(item.id || item._id || '');
+        const itemOption = item.option || "Single bottle";
+        const targetOption = option || "Single bottle";
+        return (itemId === targetId && itemOption === targetOption)
+          ? { ...item, quantity: safeQuantity }
+          : item;
+      });
       saveCartToStorage(updated);
       return updated;
     });

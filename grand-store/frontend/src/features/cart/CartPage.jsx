@@ -112,9 +112,25 @@ export default function CartPage({ cartItems, onUpdateQuantity, onRemove, onClea
                             </div>
                             <div className="cart-item-controls">
                             <div className="cart-quantity-picker" aria-label={`Quantity for ${item.name}`}>
-                              <button type="button" onClick={() => onUpdateQuantity(item.id, item.option, item.quantity - 1)} aria-label={`Decrease ${item.name} quantity`}><Minus size={15} /></button>
+                              <button
+                                type="button"
+                                disabled={item.quantity <= 1}
+                                onClick={() => onUpdateQuantity(item.id || item._id, item.option, Math.max(1, item.quantity - 1))}
+                                aria-label={`Decrease ${item.name} quantity`}
+                                className={item.quantity <= 1 ? "opacity-30 cursor-not-allowed" : "cursor-pointer"}
+                                title={item.quantity <= 1 ? "Minimum quantity is 1. Click Remove to delete item." : "Decrease quantity"}
+                              >
+                                <Minus size={15} />
+                              </button>
                               <span>{item.quantity}</span>
-                              <button type="button" onClick={() => onUpdateQuantity(item.id, item.option, item.quantity + 1)} aria-label={`Increase ${item.name} quantity`}><Plus size={15} /></button>
+                              <button
+                                type="button"
+                                onClick={() => onUpdateQuantity(item.id || item._id, item.option, item.quantity + 1)}
+                                aria-label={`Increase ${item.name} quantity`}
+                                className="cursor-pointer"
+                              >
+                                <Plus size={15} />
+                              </button>
                             </div>
                             <button className="cart-remove-button" type="button" onClick={() => onRemove(item)}><Trash2 size={15} /> Remove</button>
                           </div>

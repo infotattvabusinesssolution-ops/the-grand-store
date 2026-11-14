@@ -1164,6 +1164,7 @@ export default function CheckoutPage({
   const [createdOrderId, setCreatedOrderId] = useState(null);
   const [createdOrderDepositRef, setCreatedOrderDepositRef] = useState(null);
   const [createdOrderGuestToken, setCreatedOrderGuestToken] = useState(null);
+  const [createdOrderCustomerName, setCreatedOrderCustomerName] = useState('');
   const [uploadingProof, setUploadingProof] = useState(false);
   const [proofUrl, setProofUrl] = useState('');
 
@@ -1283,6 +1284,17 @@ export default function CheckoutPage({
       setCreatedOrderId(data._id);
       const resolvedRef = data.depositReference || (data.orderId ? 'GS-' + data.orderId.split('-').pop() : (data._id ? `GS-${String(data._id).slice(-6).toUpperCase()}` : ''));
       setCreatedOrderDepositRef(resolvedRef);
+      const finalCustomerName = (
+        formData.fullName || 
+        `${formData.firstName || ''} ${formData.lastName || ''}`.trim() || 
+        userFullName || 
+        activeUser?.name || 
+        guestName || 
+        data.shippingAddress?.fullName || 
+        data.shippingAddress?.name || 
+        ''
+      ).trim();
+      setCreatedOrderCustomerName(finalCustomerName);
       if (data.guestAccessToken) {
         setCreatedOrderGuestToken(data.guestAccessToken);
         try {
@@ -1539,9 +1551,11 @@ export default function CheckoutPage({
                           <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-lg p-0.5">
                             <button
                               type="button"
-                              onClick={() => handleUpdateQuantity(itemId, item.option, item.quantity - 1)}
+                              disabled={item.quantity <= 1}
+                              onClick={() => handleUpdateQuantity(itemId, item.option, Math.max(1, item.quantity - 1))}
                               aria-label={`Decrease ${item.fullName || item.name} quantity`}
-                              className="w-6 h-6 rounded flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                              className="w-6 h-6 rounded flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                              title={item.quantity <= 1 ? "Minimum quantity is 1" : "Decrease quantity"}
                             >
                               <Minus size={11} />
                             </button>
@@ -3663,18 +3677,15 @@ export default function CheckoutPage({
                 <div className="w-14 h-14 mx-auto rounded-full bg-[var(--color-gold)] text-black flex items-center justify-center mb-4">
                   <CheckCircle2 size={28} />
                 </div>
+                {(createdOrderCustomerName || formData.fullName || userFullName || activeUser?.name) && (
+                  <h4 className="text-base sm:text-lg font-serif text-white font-medium mb-1">
+                    {(createdOrderCustomerName || formData.fullName || userFullName || activeUser?.name || '').trim()}
+                  </h4>
+                )}
                 <h3 className="text-xl font-serif text-[var(--color-gold)] mb-2">Order Created Successfully!</h3>
                 <p className="text-sm text-[var(--color-ivory-muted)] mb-6 max-w-md mx-auto">
                   Order <span className="text-white font-mono font-bold">{createdOrderDepositRef || createdOrderId}</span> is awaiting payment. Please transfer exactly <strong className="text-white font-serif"><Price amount={displayedTotal} /></strong> to our official bank account.
                 </p>
-
-                <StoreBankDetailsCard
-                  reference={createdOrderDepositRef || (createdOrderId ? `GS-${String(createdOrderId).slice(-6).toUpperCase()}` : '')}
-                  referenceLabel="Deposit Reference"
-                  title="Nivarp International Account"
-                  className="max-w-xl mx-auto mb-6"
-                  onNotify={onNotify}
-                />
 
                 <form onSubmit={handleUploadProof} className="max-w-sm mx-auto text-left space-y-3">
                   <label className="block text-xs uppercase tracking-widest text-[var(--color-ivory-muted)]">

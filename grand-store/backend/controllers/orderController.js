@@ -841,13 +841,18 @@ const addOrderItems = async (req, res) => {
       }
     }
 
-    // Send emails based on payment method
+    // Send emails based on checkout creation
     try {
-      const { sendEmail } = require('../utils/emailService');
-      const { bankTransferInstructionsTemplate } = require('../utils/emailTemplates');
+      const { sendEmail, getAdminEmail } = require('../utils/emailService');
+      const {
+        bankTransferInstructionsTemplate,
+        newOrderAdminNotificationTemplate
+      } = require('../utils/emailTemplates');
       const { getOrderDepositReference } = require('../utils/referenceHelper');
       const recipientEmail = user ? user.email : guestEmail;
+      const adminEmail = (typeof getAdminEmail === 'function' ? getAdminEmail() : null) || process.env.ORDERS_ADMIN_EMAIL || process.env.ADMIN_EMAIL || process.env.INFO_SMTP_USER || 'info@grandstoreglobal.com';
 
+      // 1. If Bank Transfer: Send payment instructions to customer + BCC admin
       if (recipientEmail && paymentMethod === 'Bank Transfer') {
         const depositRef = getOrderDepositReference(createdOrder);
         const resolvedBankDetails = {
@@ -860,12 +865,28 @@ const addOrderItems = async (req, res) => {
         };
         await sendEmail({
           to: recipientEmail,
+          bcc: adminEmail,
+          type: 'billing',
           subject: `Payment Instructions - Order ${depositRef} (The Grand Store)`,
           html: bankTransferInstructionsTemplate(createdOrder, resolvedBankDetails)
         });
       }
+
+      // 2. Dedicated New Order Alert dispatched directly to the store admin mailbox
+      if (adminEmail) {
+        try {
+          await sendEmail({
+            to: adminEmail,
+            type: 'billing',
+            subject: `🔔 [NEW ORDER] #${createdOrder.invoiceNumber || createdOrder.orderId || createdOrder._id} - ${paymentMethod} (${createdOrder.isPaid ? 'PAID' : 'Awaiting Payment'})`,
+            html: newOrderAdminNotificationTemplate(createdOrder, paymentMethod)
+          });
+        } catch (adminErr) {
+          console.warn('Failed to send new order alert to admin:', adminErr.message);
+        }
+      }
     } catch (err) {
-      console.error('Failed to send bank transfer email:', err);
+      console.error('Failed to send checkout email:', err);
     }
 
     res.status(201).json(createdOrder);
@@ -1034,13 +1055,19 @@ const processOrderPayment = async (orderId) => {
 
   // Send Order Confirmation Email
   try {
-    const { sendEmail } = require('../utils/emailService');
-    const { orderConfirmationTemplate } = require('../utils/emailTemplates');
+    const { sendEmail, getAdminEmail } = require('../utils/emailService');
+    const {
+      orderConfirmationTemplate,
+      orderPaidAdminNotificationTemplate,
+      giftOrderAdminNotificationTemplate
+    } = require('../utils/emailTemplates');
     const { generateOrderReceiptBuffer } = require('../utils/pdfService');
     // We need user email, so let's populate user if not already
     const User = require('../models/User');
     const user = order.user ? await User.findById(order.user) : null;
     const recipientEmail = user ? user.email : order.guestInfo?.email;
+    const adminEmail = (typeof getAdminEmail === 'function' ? getAdminEmail() : null) || process.env.ORDERS_ADMIN_EMAIL || process.env.ADMIN_EMAIL || process.env.INFO_SMTP_USER || 'info@grandstoreglobal.com';
+
     if (recipientEmail) {
       const customerMock = user || {
         name: order.guestInfo?.name || 'Customer',
@@ -1050,6 +1077,8 @@ const processOrderPayment = async (orderId) => {
       const pdfBuffer = await generateOrderReceiptBuffer(order, customerMock);
       await sendEmail({
         to: recipientEmail,
+        bcc: adminEmail,
+        type: 'billing',
         subject: `Payment Receipt #${order.invoiceNumber || order.orderId || order._id}`,
         html: orderConfirmationTemplate(order),
         attachments: [
@@ -1061,25 +1090,43 @@ const processOrderPayment = async (orderId) => {
         ]
       });
 
-      // Send admin gift packaging alert if this order is a gift
-      if (order.isGift) {
+      // Dedicated payment confirmation alert dispatched to store admin mailbox
+      if (adminEmail) {
         try {
-          const { giftOrderAdminNotificationTemplate } = require('../utils/emailTemplates');
-          const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
-          if (adminEmail) {
-            await sendEmail({
-              to: adminEmail,
-              subject: `🎁 [GIFT DISPATCH READY] Order #${order.invoiceNumber || order.orderId || order._id} Paid - Prepare Gift Packaging`,
-              html: giftOrderAdminNotificationTemplate(order),
-              attachments: [
-                {
-                  filename: `Receipt-${order.invoiceNumber || order._id}.pdf`,
-                  content: pdfBuffer,
-                  contentType: 'application/pdf'
-                }
-              ]
-            });
-          }
+          await sendEmail({
+            to: adminEmail,
+            type: 'billing',
+            subject: `💰 [PAYMENT RECEIVED] Order #${order.invoiceNumber || order.orderId || order._id} Paid (${order.paymentMethod || 'Online'})`,
+            html: orderPaidAdminNotificationTemplate(order),
+            attachments: [
+              {
+                filename: `Receipt-${order.invoiceNumber || order._id}.pdf`,
+                content: pdfBuffer,
+                contentType: 'application/pdf'
+              }
+            ]
+          });
+        } catch (adminPaidErr) {
+          console.warn('Failed to send paid order alert to admin:', adminPaidErr.message);
+        }
+      }
+
+      // Send admin gift packaging alert if this order is a gift
+      if (order.isGift && adminEmail) {
+        try {
+          await sendEmail({
+            to: adminEmail,
+            type: 'billing',
+            subject: `🎁 [GIFT DISPATCH READY] Order #${order.invoiceNumber || order.orderId || order._id} Paid - Prepare Gift Packaging`,
+            html: giftOrderAdminNotificationTemplate(order),
+            attachments: [
+              {
+                filename: `Receipt-${order.invoiceNumber || order._id}.pdf`,
+                content: pdfBuffer,
+                contentType: 'application/pdf'
+              }
+            ]
+          });
         } catch (adminGiftErr) {
           console.warn('Failed to send paid gift alert to admin:', adminGiftErr.message);
         }

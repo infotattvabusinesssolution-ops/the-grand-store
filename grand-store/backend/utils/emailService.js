@@ -134,6 +134,19 @@ const resolveChannel = ({ type, channel, subject }) => {
 };
 
 /**
+ * Get the designated store admin notification mailbox address.
+ */
+const getAdminEmail = () => {
+  return (
+    process.env.ORDERS_ADMIN_EMAIL ||
+    process.env.ADMIN_EMAIL ||
+    process.env.INFO_SMTP_USER ||
+    process.env.SMTP_USER ||
+    "info@grandstoreglobal.com"
+  ).trim();
+};
+
+/**
  * Send an email with automatic or explicit routing to the designated Hostinger channel.
  * Each channel utilizes its own authenticated SMTP transporter to strictly satisfy
  * Hostinger's anti-spoofing policy (From address must match authenticated mailbox).
@@ -185,10 +198,24 @@ const sendEmail = async ({
     const plainText = text || (typeof html === "string" ? html.replace(/<[^>]+>/g, "\n").replace(/\n\s*\n/g, "\n").trim() : "");
     const emailPayload = skipBranding ? { html, attachments: attachments || [] } : prepareEmailBranding(html, attachments);
 
+    // Auto-BCC store designated admin mailbox for customer billing / checkout / order emails so store never misses an order
+    const adminMailbox = getAdminEmail().toLowerCase();
+    let effectiveBcc = bcc;
+    if (selectedChannel === "billing" && adminMailbox) {
+      const recipientStr = String(to || "").toLowerCase();
+      if (!recipientStr.includes(adminMailbox)) {
+        if (!effectiveBcc) {
+          effectiveBcc = adminMailbox;
+        } else if (!String(effectiveBcc).toLowerCase().includes(adminMailbox)) {
+          effectiveBcc = `${effectiveBcc}, ${adminMailbox}`;
+        }
+      }
+    }
+
     const mailOptions = {
       from: effectiveFrom,
       to,
-      ...(bcc ? { bcc } : {}),
+      ...(effectiveBcc ? { bcc: effectiveBcc } : {}),
       replyTo: effectiveReplyTo,
       subject,
       text: plainText,
@@ -228,6 +255,7 @@ const sendMarketingEmail = (options) => sendEmail({ ...options, type: "marketing
 
 module.exports = {
   sendEmail,
+  getAdminEmail,
   sendBillingEmail,
   sendInfoEmail,
   sendVendorEmail,

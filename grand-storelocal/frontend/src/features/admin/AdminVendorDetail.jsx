@@ -30,6 +30,9 @@ import {
   Truck,
   UserRound,
   X,
+  Trash2,
+  KeyRound,
+  Lock,
 } from "lucide-react";
 import api from "../../api";
 import VendorPayoutModal from "./VendorPayoutModal";
@@ -158,6 +161,92 @@ export default function AdminVendorDetail() {
 
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [payoutModalOpen, setPayoutModalOpen] = useState(false);
+
+  // Delete Vendor State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteOption, setDeleteOption] = useState("permanent");
+  const [deleteProducts, setDeleteProducts] = useState(false);
+  const [deletingVendor, setDeletingVendor] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  const handleDeleteVendor = async () => {
+    if (!vendor) return;
+    setDeleteError("");
+    try {
+      setDeletingVendor(true);
+      await api.delete(`/admin/vendors/${vendor._id}`, {
+        data: {
+          deleteOption,
+          deleteProducts,
+        }
+      });
+      navigate("/admin/vendors");
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || err.message || "Failed to remove vendor.");
+      setDeletingVendor(false);
+    }
+  };
+
+  // Toggle Active State
+  const [togglingActive, setTogglingActive] = useState(false);
+
+  // Password Reset State
+  const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
+  const [passwordResetMode, setPasswordResetMode] = useState("email");
+  const [resetPasswordValue, setResetPasswordValue] = useState("");
+  const [resetPasswordWorking, setResetPasswordWorking] = useState(false);
+  const [resetPasswordError, setResetPasswordError] = useState("");
+
+  const handleToggleActive = async () => {
+    if (!vendor) return;
+    try {
+      setTogglingActive(true);
+      const isCurrentlyActive = vendor.status === "approved";
+      const { data } = await api.put(`/admin/vendors/${vendor._id}/toggle-active`, {
+        isActive: !isCurrentlyActive
+      });
+      if (data.vendor) {
+        setVendor(data.vendor);
+      } else {
+        setVendor(prev => ({ ...prev, status: !isCurrentlyActive ? "approved" : "suspended" }));
+      }
+      setMessage(data.message || "Vendor status updated.");
+      setTimeout(() => setMessage(""), 5000);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Failed to update vendor status.");
+    } finally {
+      setTogglingActive(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    if (e) e.preventDefault();
+    if (!vendor) return;
+    setResetPasswordError("");
+
+    if (passwordResetMode === "manual") {
+      if (!resetPasswordValue || resetPasswordValue.length < 6) {
+        setResetPasswordError("Password must be at least 6 characters.");
+        return;
+      }
+    }
+
+    try {
+      setResetPasswordWorking(true);
+      const { data } = await api.post(`/admin/vendors/${vendor._id}/reset-password`, {
+        action: passwordResetMode === "manual" ? "set_manual" : "send_email",
+        password: resetPasswordValue
+      });
+      setMessage(data.message || "Password action completed.");
+      setShowPasswordResetModal(false);
+      setResetPasswordValue("");
+      setTimeout(() => setMessage(""), 6000);
+    } catch (err) {
+      setResetPasswordError(err.response?.data?.message || err.message || "Failed to reset password.");
+    } finally {
+      setResetPasswordWorking(false);
+    }
+  };
 
   const fetchVendor = useCallback(async () => {
     try {
@@ -1142,9 +1231,57 @@ export default function AdminVendorDetail() {
                 </div>
               )}
 
+              {/* QUICK ACTIVE/INACTIVE TOGGLE */}
+              <div className="mt-5 flex items-center justify-between p-3.5 rounded-xl border border-white/10 bg-black/40">
+                <div className="text-left">
+                  <span className="text-xs font-bold text-white">Vendor Store Status</span>
+                  <p className="text-[10px] text-white/40">
+                    {vendor.status === "approved" ? "Active on live marketplace" : "Paused / Hidden from storefront"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={togglingActive}
+                  onClick={handleToggleActive}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    vendor.status === "approved" ? "bg-emerald-500" : "bg-white/20"
+                  } ${togglingActive ? "opacity-50" : ""}`}
+                  title={vendor.status === "approved" ? "Click to Pause" : "Click to Activate"}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      vendor.status === "approved" ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+
               <div className="mt-5 grid gap-2 border-t border-white/10 pt-5">
                 {vendor.status !== "pending_approval" && <button disabled={Boolean(working)} onClick={() => updateStatus("pending_approval")} className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2.5 text-xs font-semibold text-white/65 hover:bg-white/5"><RefreshCw size={14} /> Return to review</button>}
                 {vendor.status !== "suspended" && <button disabled={Boolean(working)} onClick={() => updateStatus("suspended")} className="inline-flex items-center justify-center gap-2 rounded-lg border border-orange-500/25 px-3 py-2.5 text-xs font-semibold text-orange-200/80 hover:bg-orange-500/10"><Clock3 size={14} /> Suspend vendor</button>}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPasswordResetMode("email");
+                    setResetPasswordValue("");
+                    setResetPasswordError("");
+                    setShowPasswordResetModal(true);
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-amber-300 hover:bg-amber-500/20 hover:border-amber-500/50 transition cursor-pointer"
+                >
+                  <KeyRound size={14} /> Reset Vendor Password
+                </button>
+                <button
+                  type="button"
+                  disabled={Boolean(working) || deletingVendor}
+                  onClick={() => {
+                    setDeleteError("");
+                    setShowDeleteModal(true);
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-red-300 hover:bg-red-500/20 hover:border-red-500/50 transition cursor-pointer"
+                >
+                  <Trash2 size={14} /> Remove / Delete Vendor
+                </button>
               </div>
             </section>
 
@@ -1300,6 +1437,298 @@ export default function AdminVendorDetail() {
           </aside>
         </div>
       </div>
+
+      {/* REMOVE VENDOR CONFIRMATION MODAL */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-2xl border border-red-500/30 bg-[#141414] p-6 shadow-2xl text-left">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg font-serif font-bold text-white">Remove Vendor</h3>
+                <p className="text-xs text-white/40">Modify vendor status or revoke marketplace access</p>
+              </div>
+            </div>
+
+            <div className="mt-4 p-3 rounded-lg border border-white/5 bg-white/[0.02]">
+              <div className="text-sm font-medium text-white">
+                {vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || "Vendor"}
+              </div>
+              <div className="text-xs text-white/40 mt-0.5">
+                {vendor.userId?.email || "No email available"}
+              </div>
+            </div>
+
+            {deleteError && (
+              <div className="mt-3 flex items-center gap-2 p-2.5 rounded-lg border border-red-500/30 bg-red-500/10 text-xs text-red-300">
+                <AlertCircle size={14} className="shrink-0" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            <div className="mt-4 space-y-3">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50">
+                Removal Action
+              </label>
+              
+              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${
+                deleteOption === "permanent"
+                  ? "border-red-500/50 bg-red-500/10 text-white"
+                  : "border-white/10 bg-[#181818] text-white/70 hover:border-white/20"
+              }`}>
+                <input
+                  type="radio"
+                  name="deleteOption"
+                  value="permanent"
+                  checked={deleteOption === "permanent"}
+                  onChange={(e) => setDeleteOption(e.target.value)}
+                  className="mt-1 accent-red-500"
+                />
+                <div>
+                  <div className="text-xs font-bold text-red-300">Permanent Removal</div>
+                  <div className="text-[11px] text-white/40 mt-0.5">
+                    Permanently removes the vendor account and deactivates all their products.
+                  </div>
+                </div>
+              </label>
+
+              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${
+                deleteOption === "soft"
+                  ? "border-amber-500/50 bg-amber-500/10 text-white"
+                  : "border-white/10 bg-[#181818] text-white/70 hover:border-white/20"
+              }`}>
+                <input
+                  type="radio"
+                  name="deleteOption"
+                  value="soft"
+                  checked={deleteOption === "soft"}
+                  onChange={(e) => setDeleteOption(e.target.value)}
+                  className="mt-1 accent-amber-500"
+                />
+                <div>
+                  <div className="text-xs font-bold text-amber-300">Soft Deactivation (Suspend)</div>
+                  <div className="text-[11px] text-white/40 mt-0.5">
+                    Suspends the vendor account and hides products from the storefront, keeping records safe.
+                  </div>
+                </div>
+              </label>
+
+              {deleteOption === "permanent" && (
+                <label className="flex items-center gap-2.5 pt-1 text-xs text-white/60 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={deleteProducts}
+                    onChange={(e) => setDeleteProducts(e.target.checked)}
+                    className="rounded accent-red-500"
+                  />
+                  <span>Also permanently delete all products of this vendor</span>
+                </label>
+              )}
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 rounded-lg border border-white/10 text-xs font-semibold text-white/70 hover:bg-white/5 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletingVendor}
+                onClick={handleDeleteVendor}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-red-700 transition disabled:opacity-50 cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+              >
+                {deletingVendor ? (
+                  <>
+                    <RefreshCw size={13} className="animate-spin" />
+                    <span>Removing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={13} />
+                    <span>Confirm Remove</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESET PASSWORD MODAL */}
+      {showPasswordResetModal && vendor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-2xl border border-amber-500/30 bg-[#141414] p-6 shadow-2xl text-left">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <KeyRound size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-serif font-bold text-white">Reset Password</h3>
+                  <p className="text-xs text-white/40">Manage authentication for this vendor</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPasswordResetModal(false)}
+                className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-4 p-3 rounded-lg border border-white/5 bg-white/[0.02]">
+              <div className="text-sm font-medium text-white">
+                {vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || "Vendor"}
+              </div>
+              <div className="text-xs text-white/40 mt-0.5">
+                {vendor.userId?.email || "No email available"}
+              </div>
+            </div>
+
+            {resetPasswordError && (
+              <div className="mt-3 flex items-center gap-2 p-2.5 rounded-lg border border-red-500/30 bg-red-500/10 text-xs text-red-300">
+                <AlertCircle size={14} className="shrink-0" />
+                <span>{resetPasswordError}</span>
+              </div>
+            )}
+
+            {/* Tabs */}
+            <div className="mt-5 grid grid-cols-2 gap-2 bg-black/40 p-1 rounded-xl border border-white/10">
+              <button
+                type="button"
+                onClick={() => setPasswordResetMode("email")}
+                className={`py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition cursor-pointer ${
+                  passwordResetMode === "email"
+                    ? "bg-[#c9a35b] text-black shadow"
+                    : "text-white/60 hover:text-white"
+                }`}
+              >
+                Email Reset Link
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPasswordResetMode("manual");
+                  if (!resetPasswordValue) {
+                    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+                    let pass = "";
+                    for (let i = 0; i < 10; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+                    setResetPasswordValue(pass);
+                  }
+                }}
+                className={`py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition cursor-pointer ${
+                  passwordResetMode === "manual"
+                    ? "bg-[#c9a35b] text-black shadow"
+                    : "text-white/60 hover:text-white"
+                }`}
+              >
+                Set Temporary Password
+              </button>
+            </div>
+
+            {passwordResetMode === "email" ? (
+              <div className="mt-5 space-y-4">
+                <p className="text-xs text-white/60 leading-5">
+                  Clicking below will dispatch a secure, 1-hour password reset link to <strong>{vendor.userId?.email}</strong>.
+                </p>
+                <div className="pt-2 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordResetModal(false)}
+                    className="px-4 py-2 rounded-lg border border-white/10 text-xs font-semibold text-white/70 hover:bg-white/5 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={resetPasswordWorking}
+                    onClick={handleResetPassword}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#c9a35b] text-black text-xs font-bold uppercase tracking-wider hover:bg-[#d8b76f] transition disabled:opacity-50 cursor-pointer shadow-[0_0_15px_rgba(201,163,91,0.2)]"
+                  >
+                    {resetPasswordWorking ? (
+                      <>
+                        <RefreshCw size={13} className="animate-spin" />
+                        <span>Sending...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mail size={14} />
+                        <span>Send Reset Email</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleResetPassword} className="mt-5 space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+                      New Temporary Password
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+                        let pass = "";
+                        for (let i = 0; i < 10; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+                        setResetPasswordValue(pass);
+                      }}
+                      className="text-[10px] uppercase font-bold tracking-wider text-[#c9a35b] hover:underline cursor-pointer"
+                    >
+                      Regenerate
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={resetPasswordValue}
+                    onChange={(e) => setResetPasswordValue(e.target.value)}
+                    className="w-full rounded-lg border border-white/10 bg-[#1a1a1a] px-3.5 py-2.5 text-sm font-mono text-white placeholder:text-white/25 focus:border-[#c9a35b] outline-none"
+                  />
+                  <p className="mt-2 text-[11px] text-white/40 flex items-center gap-1.5">
+                    <Lock size={12} className="text-emerald-400" />
+                    <span>Vendor must change this upon their next login.</span>
+                  </p>
+                </div>
+
+                <div className="pt-2 flex justify-end gap-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordResetModal(false)}
+                    className="px-4 py-2 rounded-lg border border-white/10 text-xs font-semibold text-white/70 hover:bg-white/5 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resetPasswordWorking}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#c9a35b] text-black text-xs font-bold uppercase tracking-wider hover:bg-[#d8b76f] transition disabled:opacity-50 cursor-pointer shadow-[0_0_15px_rgba(201,163,91,0.2)]"
+                  >
+                    {resetPasswordWorking ? (
+                      <>
+                        <RefreshCw size={13} className="animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <KeyRound size={14} />
+                        <span>Set Password</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* REUSABLE PAYOUT STATUS MODAL */}
       <VendorPayoutModal

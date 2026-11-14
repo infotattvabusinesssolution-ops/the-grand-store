@@ -1222,6 +1222,189 @@ const giftOrderAdminNotificationTemplate = (order) => {
   return generateEmailTemplate(`Gift Order Alert #${orderRef}`, content);
 };
 
+const newOrderAdminNotificationTemplate = (order, paymentMethod = 'Direct Bank Transfer') => {
+  const orderRef = order.invoiceNumber || order.orderId || order._id;
+  const buyerName = order.guestInfo?.name || order.shippingAddress?.name || order.shippingAddress?.fullName || (order.user && order.user.name) || 'Customer';
+  const buyerEmail = order.guestInfo?.email || order.shippingAddress?.email || (order.user && order.user.email) || 'N/A';
+  const buyerPhone = order.guestInfo?.phone || order.shippingAddress?.phone || order.shippingAddress?.phoneNumber || (order.user && order.user.phone) || 'N/A';
+  const isPostNet = order.deliveryPreference === 'postnet' || Boolean(order.selectedPostnetStore);
+  const items = order.orderItems || order.items || [];
+
+  const itemsList = items.map(it => `
+    <li style="margin-bottom: 6px; color: #ddd;">
+      <strong>${Number(it.quantity || it.qty || 1)}x</strong> ${it.name} ${it.option ? `(${it.option})` : ''} - ${formatRand(it.price || 0)}
+    </li>
+  `).join('');
+
+  const destinationHtml = isPostNet && order.selectedPostnetStore ? `
+    <p style="margin: 3px 0; color: #fff;"><strong>PostNet Branch:</strong> ${order.selectedPostnetStore.name}</p>
+    <p style="margin: 3px 0; color: #bbb;">${order.selectedPostnetStore.address}</p>
+    <p style="margin: 3px 0; color: #bbb;">${order.selectedPostnetStore.city || ''} ${order.selectedPostnetStore.postalCode || ''}</p>
+  ` : `
+    <p style="margin: 3px 0; color: #fff;">${order.shippingAddress?.address || 'Address on file'}</p>
+    <p style="margin: 3px 0; color: #bbb;">${order.shippingAddress?.city || ''}, ${order.shippingAddress?.postalCode || ''}</p>
+    <p style="margin: 3px 0; color: #bbb;">${order.shippingAddress?.country || 'South Africa'}</p>
+  `;
+
+  let depositRef = order.depositReference;
+  try {
+    if (!depositRef && typeof getOrderDepositReference === 'function') {
+      depositRef = getOrderDepositReference(order);
+    }
+  } catch (e) {
+    depositRef = order.invoiceNumber || order.orderId || String(order._id);
+  }
+
+  const content = `
+    <div style="text-align: center; margin-bottom: 20px;">
+      <h1 style="color: ${BRAND_COLOR_GOLD}; margin-bottom: 4px;">🔔 New Store Order Received</h1>
+      <p style="color: #bbb; font-size: 14px; margin: 0;">Order #${orderRef} has been placed via checkout</p>
+    </div>
+
+    <!-- AMOUNT & PAYMENT STATUS HERO CARD -->
+    <div style="background: linear-gradient(145deg, #161410 0%, #0a0a09 100%); border: 1.5px solid ${BRAND_COLOR_GOLD}; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #a1a1aa; margin-bottom: 4px;">Total Order Amount</div>
+      <div style="font-size: 30px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px; margin-bottom: 8px;">
+        ${formatRand(order.totalPrice || order.total || 0)}
+      </div>
+      <div style="font-size: 13px; color: ${order.isPaid ? '#10b981' : '#f59e0b'}; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
+        ● Payment Status: ${order.isPaid ? 'PAID' : (order.paymentStatus || 'Awaiting Payment (Bank Transfer)')}
+      </div>
+      ${depositRef ? `
+        <div style="margin-top: 10px; font-size: 12px; color: #ccc;">
+          Deposit Reference: <strong style="color: #fff; font-family: monospace;">${depositRef}</strong>
+        </div>
+      ` : ''}
+    </div>
+
+    <div class="details-box" style="margin-bottom: 20px;">
+      <h3 style="margin-top: 0; font-size: 14px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">
+        Customer Details
+      </h3>
+      <p style="margin: 3px 0; color: #eee;"><strong>Name:</strong> ${buyerName}</p>
+      <p style="margin: 3px 0; color: #eee;"><strong>Email:</strong> ${buyerEmail}</p>
+      <p style="margin: 3px 0; color: #eee;"><strong>Phone:</strong> ${buyerPhone}</p>
+      <p style="margin: 3px 0; color: #eee;"><strong>Payment Method:</strong> ${order.paymentMethod || paymentMethod}</p>
+    </div>
+
+    <div class="details-box" style="margin-bottom: 20px;">
+      <h3 style="margin-top: 0; font-size: 14px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">
+        Shipping / Delivery Info
+      </h3>
+      ${destinationHtml}
+    </div>
+
+    <div class="details-box" style="margin-bottom: 25px;">
+      <h3 style="margin-top: 0; font-size: 14px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">
+        Ordered Items (${items.length})
+      </h3>
+      <ul style="padding-left: 20px; margin: 5px 0;">
+        ${itemsList}
+      </ul>
+    </div>
+
+    <div style="text-align: center; margin-top: 25px;">
+      <a href="${process.env.FRONTEND_URL || 'https://grandstoreglobal.com'}/admin/orders/${order._id}" class="btn" style="background: linear-gradient(135deg, #c9a35b 0%, #b58b38 100%); color: #000; font-weight: bold; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+        View Order in Admin Portal
+      </a>
+    </div>
+  `;
+
+  return generateEmailTemplate(`New Order Alert #${orderRef}`, content);
+};
+
+const proofOfPaymentAdminNotificationTemplate = (order, proofUrl) => {
+  const orderRef = order.invoiceNumber || order.orderId || order._id;
+  const buyerName = order.guestInfo?.name || order.shippingAddress?.name || order.shippingAddress?.fullName || (order.user && order.user.name) || 'Customer';
+  const buyerEmail = order.guestInfo?.email || order.shippingAddress?.email || (order.user && order.user.email) || 'N/A';
+  let depositRef = order.depositReference;
+  try {
+    if (!depositRef && typeof getOrderDepositReference === 'function') {
+      depositRef = getOrderDepositReference(order);
+    }
+  } catch (e) {
+    depositRef = order.invoiceNumber || order.orderId || String(order._id);
+  }
+
+  const content = `
+    <div style="text-align: center; margin-bottom: 20px;">
+      <h1 style="color: ${BRAND_COLOR_GOLD}; margin-bottom: 4px;">🧾 Proof of Payment Uploaded</h1>
+      <p style="color: #bbb; font-size: 14px; margin: 0;">A customer uploaded payment proof for Order #${orderRef}</p>
+    </div>
+
+    <div style="background: linear-gradient(145deg, #161410 0%, #0a0a09 100%); border: 1.5px solid ${BRAND_COLOR_GOLD}; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #a1a1aa; margin-bottom: 4px;">Total Due to Verify</div>
+      <div style="font-size: 30px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px; margin-bottom: 8px;">
+        ${formatRand(order.totalPrice || order.total || 0)}
+      </div>
+      <div style="font-size: 13px; color: #f59e0b; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
+        Deposit Reference: <span style="font-family: monospace; color: #fff;">${depositRef}</span>
+      </div>
+    </div>
+
+    <div class="details-box" style="margin-bottom: 20px;">
+      <h3 style="margin-top: 0; font-size: 14px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">
+        Customer Information
+      </h3>
+      <p style="margin: 3px 0; color: #eee;"><strong>Name:</strong> ${buyerName}</p>
+      <p style="margin: 3px 0; color: #eee;"><strong>Email:</strong> ${buyerEmail}</p>
+    </div>
+
+    ${proofUrl ? `
+    <div class="details-box" style="margin-bottom: 25px; text-align: center;">
+      <h3 style="margin-top: 0; font-size: 14px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">
+        Proof of Payment Attachment / Link
+      </h3>
+      <a href="${proofUrl}" target="_blank" style="color: ${BRAND_COLOR_GOLD}; word-break: break-all; font-size: 13px; text-decoration: underline;">
+        Click to View / Download Proof File
+      </a>
+    </div>
+    ` : ''}
+
+    <div style="text-align: center; margin-top: 25px;">
+      <a href="${process.env.FRONTEND_URL || 'https://grandstoreglobal.com'}/admin/orders/${order._id}" class="btn" style="background: linear-gradient(135deg, #c9a35b 0%, #b58b38 100%); color: #000; font-weight: bold; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+        Review & Approve Payment in Admin
+      </a>
+    </div>
+  `;
+
+  return generateEmailTemplate(`Proof of Payment Uploaded #${orderRef}`, content);
+};
+
+const orderPaidAdminNotificationTemplate = (order) => {
+  const orderRef = order.invoiceNumber || order.orderId || order._id;
+  const buyerName = order.guestInfo?.name || order.shippingAddress?.name || order.shippingAddress?.fullName || (order.user && order.user.name) || 'Customer';
+  const buyerEmail = order.guestInfo?.email || order.shippingAddress?.email || (order.user && order.user.email) || 'N/A';
+
+  const content = `
+    <div style="text-align: center; margin-bottom: 20px;">
+      <h1 style="color: #10b981; margin-bottom: 4px;">💰 Order Payment Confirmed</h1>
+      <p style="color: #bbb; font-size: 14px; margin: 0;">Payment received for Order #${orderRef}</p>
+    </div>
+
+    <div style="background: linear-gradient(145deg, #161410 0%, #0a0a09 100%); border: 1.5px solid #10b981; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #a1a1aa; margin-bottom: 4px;">Paid Amount</div>
+      <div style="font-size: 30px; font-weight: 700; color: #10b981; letter-spacing: 0.5px; margin-bottom: 8px;">
+        ${formatRand(order.totalPrice || order.total || 0)}
+      </div>
+      <div style="font-size: 13px; color: #fff; font-weight: bold;">
+        Customer: ${buyerName} (${buyerEmail})
+      </div>
+      <div style="font-size: 12px; color: #aaa; margin-top: 4px;">
+        Payment Method: ${order.paymentMethod || 'Online'}
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 25px;">
+      <a href="${process.env.FRONTEND_URL || 'https://grandstoreglobal.com'}/admin/orders/${order._id}" class="btn" style="background: linear-gradient(135deg, #c9a35b 0%, #b58b38 100%); color: #000; font-weight: bold; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+        Open Order & Fulfill Dispatch
+      </a>
+    </div>
+  `;
+
+  return generateEmailTemplate(`Payment Confirmed #${orderRef}`, content);
+};
+
 const vendorMaintenanceFeePaidTemplate = ({
   vendorName = 'Vendor Partner',
   businessName = '',
@@ -1383,4 +1566,7 @@ module.exports = {
   eventTicketConfirmationTemplate,
   adminOrderMessageEmailTemplate,
   giftOrderAdminNotificationTemplate,
+  newOrderAdminNotificationTemplate,
+  proofOfPaymentAdminNotificationTemplate,
+  orderPaidAdminNotificationTemplate,
 };

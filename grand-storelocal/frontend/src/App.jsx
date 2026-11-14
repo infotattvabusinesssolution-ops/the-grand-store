@@ -10,6 +10,8 @@ import TradeExport from './trade/TradeExport'
 import TradeProcedures from './trade/TradeProcedures'
 import TradeContact from './trade/TradeContact'
 import TradePartnerEnquiry from './trade/TradePartnerEnquiry'
+import TradeCatalogue from './trade/TradeCatalogue'
+import BuyerQuoteReview from './trade/BuyerQuoteReview'
 import './trade/TradeProfessional.css'
 import WineFarmPage from './features/wine-farm/WineFarmPage'
 import Hero from './features/home/components/Hero'
@@ -106,6 +108,8 @@ import VendorBankDetails from './features/vendor/VendorBankDetails'
 import VendorOrders from './features/vendor/VendorOrders'
 import VendorOrderDetail from './features/vendor/VendorOrderDetail'
 import VendorShippingProfile from './features/vendor/VendorShippingProfile'
+import VendorExportProfile from './features/vendor/VendorExportProfile'
+import VendorTradeRfqs from './features/vendor/VendorTradeRfqs'
 import AdminLoginPage from './features/admin/AdminLoginPage'
 import AdminLayout from './features/admin/AdminLayout'
 import AdminDashboard from './features/admin/AdminDashboard'
@@ -454,20 +458,18 @@ function App() {
   };
 
   const updateCartQuantity = (productId, option, quantity) => {
+    // Quantity cannot drop below 1 when using quantity controls; item removal must be explicit via removeFromCart
+    const safeQuantity = Math.max(1, Number(quantity) || 1);
+    const targetId = String(productId || '');
     setCartItems((items) => {
-      let updated;
-      if (quantity < 1) {
-        updated = items.filter(
-          (item) =>
-            !((item.id || item._id) === productId && item.option === option),
-        );
-      } else {
-        updated = items.map((item) =>
-          (item.id || item._id) === productId && item.option === option
-            ? { ...item, quantity }
-            : item,
-        );
-      }
+      const updated = items.map((item) => {
+        const itemId = String(item.id || item._id || '');
+        const itemOption = item.option || "Single bottle";
+        const targetOption = option || "Single bottle";
+        return (itemId === targetId && itemOption === targetOption)
+          ? { ...item, quantity: safeQuantity }
+          : item;
+      });
       saveCartToStorage(updated);
       return updated;
     });
@@ -577,14 +579,12 @@ function App() {
           path="/joinwinefarm"
           element={<Navigate to="/winefarm" replace />}
         />
-        <Route
-          path="/wine-farm/*"
-          element={<Navigate to="/winefarm" replace />}
-        />
         <Route path="/vendor-portal" element={<VendorPortalPage />} />
 
         <Route path="/trade" element={<TradeLayout />}>
           <Route index element={<TradePage />} />
+          <Route path="catalogue" element={<TradeCatalogue />} />
+          <Route path="quote/:code" element={<BuyerQuoteReview />} />
           <Route path="about-us" element={<TradeAbout />} />
           <Route path="trade-export" element={<TradeExport />} />
           <Route path="trade-procedures" element={<TradeProcedures />} />
@@ -929,6 +929,8 @@ function App() {
           <Route path="events/:id/attendees" element={<EventAttendees />} />
           <Route path="event-add" element={<EventAdd />} />
           <Route path="auction-submit" element={<AuctionSubmission onNotify={showToast} />} />
+          <Route path="export-profile" element={<VendorExportProfile onNotify={showToast} />} />
+          <Route path="trade-rfqs" element={<VendorTradeRfqs onNotify={showToast} />} />
         </Route>
 
         {/* Public Host Application Forms */}
@@ -1045,11 +1047,11 @@ function App() {
         />
         <Route
           path="/estate/:slug"
-          element={<EstateDetail onNotify={showToast} />}
+          element={<EstateDetail onNotify={showToast} onAdd={addToCart} />}
         />
         <Route
           path="/estates/:slug"
-          element={<EstateDetail onNotify={showToast} />}
+          element={<EstateDetail onNotify={showToast} onAdd={addToCart} />}
         />
         <Route
           path="/bookatasting"
