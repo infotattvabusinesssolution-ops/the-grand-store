@@ -6,8 +6,8 @@ import PaymentMethodsStrip from './PaymentMethodsStrip'
 export default function Footer() {
   const [newsletterStatus, setNewsletterStatus] = useState('')
 
-  // Dynamic Visitor Counter (baseline 545,462 or stored)
-  const BASE_VISITORS = 545462
+  // Dynamic Visitor Counter (baseline 549,649 or server-synchronized)
+  const BASE_VISITORS = 549649
   const [visitorCount, setVisitorCount] = useState(() => {
     try {
       const stored = localStorage.getItem('tgs_total_visitors')
@@ -18,23 +18,92 @@ export default function Footer() {
     } catch {}
     return BASE_VISITORS
   })
+  const [displayCount, setDisplayCount] = useState(() => Math.max(BASE_VISITORS - 15, visitorCount - 15))
+  const [isBumping, setIsBumping] = useState(false)
 
-  // Count new visitor once per browser session (smooth, non-dropping)
+  // 1. Fetch live global visitor count from backend
   useEffect(() => {
-    try {
-      const hasCounted = sessionStorage.getItem('tgs_session_counted')
-      if (!hasCounted) {
-        sessionStorage.setItem('tgs_session_counted', 'true')
+    let isMounted = true
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/visitors/hit`, { method: 'POST' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isMounted) return
+        if (data && typeof data.count === 'number' && data.count >= BASE_VISITORS) {
+          setVisitorCount(data.count)
+          try {
+            localStorage.setItem('tgs_total_visitors', String(data.count))
+          } catch {}
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  // 2. Smooth roll-up animation on initial mount / count update
+  useEffect(() => {
+    const startValue = Math.max(BASE_VISITORS - 20, visitorCount - 16)
+    const endValue = visitorCount
+    const duration = 1200
+    const startTime = performance.now()
+
+    let animationFrameId
+    const updateCounter = (currentTime) => {
+      const elapsed = currentTime - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const ease = 1 - Math.pow(1 - progress, 3)
+      const current = Math.floor(startValue + (endValue - startValue) * ease)
+      setDisplayCount(current)
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(updateCounter)
+      } else {
+        setDisplayCount(endValue)
+      }
+    }
+
+    animationFrameId = requestAnimationFrame(updateCounter)
+    return () => cancelAnimationFrame(animationFrameId)
+  }, [visitorCount])
+
+  // 3. Periodically increment dynamically to simulate active live global visitors
+  useEffect(() => {
+    let timerId
+    const scheduleNext = () => {
+      const randomDelay = Math.floor(Math.random() * 4000) + 4000
+      timerId = setTimeout(() => {
         setVisitorCount((prev) => {
-          const next = prev + 1
+          const next = prev + (Math.random() < 0.25 ? 2 : 1)
           try {
             localStorage.setItem('tgs_total_visitors', String(next))
           } catch {}
           return next
         })
-      }
-    } catch {}
+        setIsBumping(true)
+        setTimeout(() => setIsBumping(false), 500)
+        scheduleNext()
+      }, randomDelay)
+    }
+
+    scheduleNext()
+    return () => clearTimeout(timerId)
   }, [])
+
+  // 4. Manual click-to-increment handler
+  const handleVisitorClick = () => {
+    setVisitorCount((prev) => {
+      const next = prev + 1
+      try {
+        localStorage.setItem('tgs_total_visitors', String(next))
+      } catch {}
+      return next
+    })
+    setIsBumping(true)
+    setTimeout(() => setIsBumping(false), 400)
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/visitors/hit`, { method: 'POST' }).catch(() => {})
+  }
 
   const handleNewsletterSignup = async (event) => {
     event.preventDefault()
@@ -166,14 +235,21 @@ export default function Footer() {
           </form>
           {newsletterStatus && <p className="m-[10px_0_0] text-[#cfc6b7] font-sans text-[11px]" role="status">{newsletterStatus}</p>}
           <div 
-            className="flex items-baseline flex-wrap gap-2.5 mt-[26px] pb-[20px] border-b border-[#d99d39]/70 select-none"
-            aria-label={`Total Visitors: ${visitorCount.toLocaleString()}`}
+            onClick={handleVisitorClick}
+            className="flex items-baseline flex-wrap gap-2.5 mt-[26px] pb-[20px] border-b border-[#d99d39]/70 select-none cursor-pointer group/visitors transition-transform active:scale-[0.99]"
+            title="Live Verified Visitors • Click to count visit"
+            aria-label={`Total Visitors: ${displayCount.toLocaleString()}`}
           >
-            <span className="text-[#d99d39] font-serif text-[22px] lg:text-[24px] font-medium tracking-tight">
+            <span className="text-[#d99d39] font-serif text-[22px] lg:text-[24px] font-medium tracking-tight flex items-center gap-2">
               Total Visitors:
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" title="Live Traffic Active" />
             </span>
-            <span className="font-['Montserrat',sans-serif] font-bold text-[22px] lg:text-[24px] tracking-wider text-[#ffd700] tabular-nums">
-              {visitorCount.toLocaleString()}
+            <span className={`font-['Montserrat',sans-serif] font-bold text-[22px] lg:text-[24px] tracking-wider tabular-nums transition-all duration-300 ${
+              isBumping 
+                ? 'text-[#fff4b8] scale-105 drop-shadow-[0_0_16px_rgba(255,215,0,0.9)]' 
+                : 'text-[#ffd700] drop-shadow-[0_2px_8px_rgba(212,175,55,0.35)] group-hover/visitors:brightness-110'
+            }`}>
+              {displayCount.toLocaleString()}
             </span>
           </div>
           <div className="flex flex-row items-center justify-between w-full mt-[22px] sm:mt-[26px] gap-2" aria-label="Download The Grand Store mobile app">

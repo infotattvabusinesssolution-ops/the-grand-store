@@ -225,6 +225,7 @@ app.use('/api/blogs', require("./routes/blogPostRoutes"));
 app.use('/api/luxury-showcase', require("./routes/luxuryShowcaseRoutes"));
 app.use('/api/tickets', require("./routes/ticketRoutes"));
 app.use('/api/crm', require("./routes/crmRoutes"));
+app.use('/api/visitors', require("./routes/visitorRoutes"));
 
 // Sitemap endpoints (Dynamic XML for Google and crawlers)
 const sitemapRoutes = require("./routes/sitemapRoutes");
