@@ -329,6 +329,7 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   const isWineOrChampagne = /champagne|wine|sparkling|prosecco|cava/i.test(
     `${product.category || ''} ${product.type || ''} ${product.name || ''}`
   );
+  const isWine = isWineOrChampagne;
   const isSpirits = /whisky|whiskey|cognac|brandy|vodka|gin|rum|tequila/i.test(
     `${product.category || ''} ${product.type || ''} ${product.name || ''}`
   );
@@ -851,8 +852,8 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                         <span>
                           Single bottle price <span className="text-white/40">•</span>{' '}
                           {case6Option.discountPct > 0
-                            ? `Case of 6 & Case of 12 available below (${case6Option.discountPct}% off)`
-                            : 'Case of 6 & Case of 12 available below'}
+                            ? `${isWine ? 'Case of 6' : 'Case of 6 & Case of 12'} available below (${case6Option.discountPct}% off)`
+                            : `${isWine ? 'Case of 6' : 'Case of 6 & Case of 12'} available below`}
                         </span>
                       )}
                     </div>
@@ -950,49 +951,34 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
             </dl>
           </div>
 
-          {/* Dynamic Case of Bottle Selector — Single Bottle, Case of 6, and Case of 12 */}
+          {/* Pack size Selector — Clean Norman Goodfellows Style */}
           {isBottleProduct && (
-            <div className="mb-6 p-4 rounded-xl border border-[#c9a35b]/30 bg-gradient-to-b from-[#16130e] to-[#0e0d0a] shadow-lg">
-              <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-                <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#dfbd72] flex items-center gap-2">
-                  <Package size={15} className="text-[#c9a35b]" />
-                  Purchase Format
-                </span>
-                <span className="text-[10px] text-[#918a7f] uppercase tracking-wider font-mono">
-                  Selected: {isCaseSelected ? `Case of ${bottlesPerCase}` : 'Single Bottle'}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {/* Option 1: Single Bottle */}
+            <div className="mb-6">
+              <label className="block text-xs font-semibold text-[#918a7f] uppercase tracking-[0.1em] mb-2.5">
+                Pack size
+              </label>
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Single Bottle */}
                 <button
                   type="button"
                   onClick={() => selectPurchaseUnit('bottle')}
-                  className={`p-3 rounded-lg border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
+                  className={`px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border ${
                     purchaseUnit === 'bottle'
-                      ? 'border-[#c9a35b] bg-[#c9a35b]/15 shadow-[0_0_15px_rgba(201,163,91,0.2)] ring-1 ring-[#c9a35b]'
-                      : 'border-white/10 bg-black/40 hover:border-white/25 text-[#918a7f]'
+                      ? 'bg-[#c9a35b] border-[#c9a35b] text-black shadow-[0_0_15px_rgba(201,163,91,0.35)]'
+                      : 'bg-black/40 border-white/20 text-[#eee8dd] hover:border-[#c9a35b]/60 hover:text-white'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                    <span className={`text-[11px] font-bold uppercase tracking-wider ${purchaseUnit === 'bottle' ? 'text-white' : 'text-[#eee8dd]'}`}>
-                      🍾 Single Bottle
-                    </span>
-                    <span className="text-[10px] text-[#918a7f] font-mono shrink-0">1 × {bottleSize}</span>
-                  </div>
-                  <div className="flex items-baseline justify-between mt-1 gap-1.5">
-                    <span className="text-sm font-bold text-[#dfbd72] font-mono">
-                      <Price amount={singleBottlePrice} presentation="badge" />
-                    </span>
-                    <span className="text-[10px] text-white/50">per bottle</span>
-                  </div>
+                  Single
                 </button>
 
-                {/* Options 2 & 3: Case of 6 & Case of 12 Bottles */}
-                {[
-                  { unit: 'case6', opt: case6Option },
-                  { unit: 'case12', opt: case12Option },
-                ].map(({ unit, opt }) => {
+                {/* Case Options (Strictly Case of 6 for Wine, or available cases for other beverages) */}
+                {(isWine
+                  ? [{ unit: 'case6', opt: case6Option, label: 'Case of 6' }]
+                  : [
+                      { unit: 'case6', opt: case6Option, label: 'Case of 6' },
+                      { unit: 'case12', opt: case12Option, label: 'Case of 12' },
+                    ]
+                ).map(({ unit, opt, label }) => {
                   const isActive = purchaseUnit === unit;
                   const lowStockForCase = hasStockLimit && Number(product.stock) > 0 && Number(product.stock) < opt.bottles;
                   return (
@@ -1000,41 +986,27 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
                       key={unit}
                       type="button"
                       onClick={() => selectPurchaseUnit(unit)}
-                      className={`p-3 rounded-lg border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
-                        isActive
-                          ? 'border-[#c9a35b] bg-[#c9a35b]/15 shadow-[0_0_15px_rgba(201,163,91,0.2)] ring-1 ring-[#c9a35b]'
-                          : 'border-white/10 bg-black/40 hover:border-white/25 text-[#918a7f]'
+                      disabled={lowStockForCase}
+                      className={`px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border flex items-center gap-2 ${
+                        lowStockForCase
+                          ? 'opacity-40 cursor-not-allowed border-white/10 text-white/40'
+                          : isActive
+                          ? 'bg-[#c9a35b] border-[#c9a35b] text-black shadow-[0_0_15px_rgba(201,163,91,0.35)]'
+                          : 'bg-black/40 border-white/20 text-[#eee8dd] hover:border-[#c9a35b]/60 hover:text-white'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                        <span className={`text-[11px] font-bold uppercase tracking-wider ${isActive ? 'text-white' : 'text-[#eee8dd]'}`}>
-                          📦 Case of {opt.bottles}
+                      <span>{label}</span>
+                      {opt.discountPct > 0 && (
+                        <span
+                          className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                            isActive
+                              ? 'bg-black/20 text-black font-semibold'
+                              : 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/30'
+                          }`}
+                        >
+                          Save {opt.discountPct}%
                         </span>
-                        {opt.discountPct > 0 ? (
-                          <span className="text-[9.5px] text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30 font-mono shrink-0">
-                            Save {opt.discountPct}%
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-[#918a7f] font-mono shrink-0">
-                            {opt.bottles} × {bottleSize}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-baseline justify-between mt-1 gap-1.5 flex-wrap">
-                        <span className="text-sm font-bold text-[#dfbd72] font-mono flex items-baseline gap-1">
-                          <Price amount={opt.effectivePrice} presentation="badge" />
-                          {opt.discountAmount > 0 && (
-                            <del className="text-[10px] font-normal text-white/40">
-                              <Price amount={opt.regularPrice} presentation="badge" />
-                            </del>
-                          )}
-                        </span>
-                        <span className={`text-[10px] font-mono ${lowStockForCase ? 'text-amber-400' : 'text-[#c9a35b]'}`}>
-                          {lowStockForCase
-                            ? `Only ${product.stock} in stock`
-                            : <><Price amount={opt.effectiveBottlePrice} presentation="badge" /> / btl</>}
-                        </span>
-                      </div>
+                      )}
                     </button>
                   );
                 })}
