@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Counter = require('../models/Counter');
 
-const BASE_VISITOR_COUNT = 549649;
+const BASE_VISITOR_COUNT = 549841;
 
 // GET /api/visitors - get current visitor count
 router.get('/', async (req, res) => {
@@ -20,12 +20,12 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/visitors/hit - register a visitor hit and increment count
+// POST /api/visitors/hit - register a visitor hit and increment count by 5
 router.post('/hit', async (req, res) => {
   try {
     const counter = await Counter.findOneAndUpdate(
       { id: 'total_visitors' },
-      { $inc: { seq: 1 } },
+      { $inc: { seq: 5 } },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
     const finalCount = Math.max(BASE_VISITOR_COUNT, counter.seq);

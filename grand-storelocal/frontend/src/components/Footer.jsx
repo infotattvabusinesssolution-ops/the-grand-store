@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { FacebookIcon, TwitterIcon, InstagramIcon, YoutubeIcon, PinterestIcon, TiktokIcon } from './SocialIcons'
 import PaymentMethodsStrip from './PaymentMethodsStrip'
@@ -6,8 +6,8 @@ import PaymentMethodsStrip from './PaymentMethodsStrip'
 export default function Footer() {
   const [newsletterStatus, setNewsletterStatus] = useState('')
 
-  // Dynamic Visitor Counter (baseline 549,649 or server-synchronized)
-  const BASE_VISITORS = 549649
+  // Dynamic Visitor Counter (baseline 549,841 or server-synchronized)
+  const BASE_VISITORS = 549841
   const [visitorCount, setVisitorCount] = useState(() => {
     try {
       const stored = localStorage.getItem('tgs_total_visitors')
@@ -18,11 +18,15 @@ export default function Footer() {
     } catch {}
     return BASE_VISITORS
   })
-  const [displayCount, setDisplayCount] = useState(() => Math.max(BASE_VISITORS - 15, visitorCount - 15))
+  const [displayCount, setDisplayCount] = useState(visitorCount)
   const [isBumping, setIsBumping] = useState(false)
+  const hitFiredRef = useRef(false)
 
-  // 1. Fetch live global visitor count from backend
+  // 1. Register visitor hit on page visit (adds exactly 5 to global count)
   useEffect(() => {
+    if (hitFiredRef.current) return
+    hitFiredRef.current = true
+
     let isMounted = true
     fetch(`${import.meta.env.VITE_API_URL || ''}/api/visitors/hit`, { method: 'POST' })
       .then((res) => res.json())
@@ -30,6 +34,7 @@ export default function Footer() {
         if (!isMounted) return
         if (data && typeof data.count === 'number' && data.count >= BASE_VISITORS) {
           setVisitorCount(data.count)
+          setDisplayCount(data.count)
           try {
             localStorage.setItem('tgs_total_visitors', String(data.count))
           } catch {}
@@ -42,67 +47,31 @@ export default function Footer() {
     }
   }, [])
 
-  // 2. Smooth roll-up animation on initial mount / count update
-  useEffect(() => {
-    const startValue = Math.max(BASE_VISITORS - 20, visitorCount - 16)
-    const endValue = visitorCount
-    const duration = 1200
-    const startTime = performance.now()
-
-    let animationFrameId
-    const updateCounter = (currentTime) => {
-      const elapsed = currentTime - startTime
-      const progress = Math.min(elapsed / duration, 1)
-      const ease = 1 - Math.pow(1 - progress, 3)
-      const current = Math.floor(startValue + (endValue - startValue) * ease)
-      setDisplayCount(current)
-
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(updateCounter)
-      } else {
-        setDisplayCount(endValue)
-      }
-    }
-
-    animationFrameId = requestAnimationFrame(updateCounter)
-    return () => cancelAnimationFrame(animationFrameId)
-  }, [visitorCount])
-
-  // 3. Periodically increment dynamically to simulate active live global visitors
-  useEffect(() => {
-    let timerId
-    const scheduleNext = () => {
-      const randomDelay = Math.floor(Math.random() * 4000) + 4000
-      timerId = setTimeout(() => {
+  // 2. Manual click-to-increment handler (adds 5)
+  const handleVisitorClick = () => {
+    setIsBumping(true)
+    setTimeout(() => setIsBumping(false), 400)
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/visitors/hit`, { method: 'POST' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && typeof data.count === 'number') {
+          setVisitorCount(data.count)
+          setDisplayCount(data.count)
+          try {
+            localStorage.setItem('tgs_total_visitors', String(data.count))
+          } catch {}
+        }
+      })
+      .catch(() => {
         setVisitorCount((prev) => {
-          const next = prev + (Math.random() < 0.25 ? 2 : 1)
+          const next = prev + 5
+          setDisplayCount(next)
           try {
             localStorage.setItem('tgs_total_visitors', String(next))
           } catch {}
           return next
         })
-        setIsBumping(true)
-        setTimeout(() => setIsBumping(false), 500)
-        scheduleNext()
-      }, randomDelay)
-    }
-
-    scheduleNext()
-    return () => clearTimeout(timerId)
-  }, [])
-
-  // 4. Manual click-to-increment handler
-  const handleVisitorClick = () => {
-    setVisitorCount((prev) => {
-      const next = prev + 1
-      try {
-        localStorage.setItem('tgs_total_visitors', String(next))
-      } catch {}
-      return next
-    })
-    setIsBumping(true)
-    setTimeout(() => setIsBumping(false), 400)
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/visitors/hit`, { method: 'POST' }).catch(() => {})
+      })
   }
 
   const handleNewsletterSignup = async (event) => {
@@ -272,7 +241,7 @@ export default function Footer() {
             {socialLinks.map((social) => {
               const IconComponent = social.Icon
               return (
-                <a
+                <a 
                   key={social.label}
                   href={social.href}
                   target="_blank"
