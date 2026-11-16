@@ -21,6 +21,7 @@ import WhiskyShowcase from './features/home/components/WhiskyShowcase'
 import TastingCampaign from './features/home/components/TastingCampaign'
 import TequilaShowcase from './features/home/components/TequilaShowcase'
 import WineCategoryShowcase from './features/home/components/WineCategoryShowcase'
+import PartnerWineriesSection from './features/home/components/PartnerWineriesSection'
 import BrandyShowcase from './features/home/components/BrandyShowcase'
 import CategoryShowcase from './features/home/components/CategoryShowcase'
 import PrivateCollection from './features/home/components/PrivateCollection'
@@ -638,6 +639,7 @@ function App() {
                 compareItems={compareItems}
               />
               <WineCategoryShowcase />
+              <PartnerWineriesSection />
               <BrandyShowcase
                 onAdd={addToCart}
                 onWish={handleWishlist}

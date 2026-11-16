@@ -23,7 +23,7 @@ exports.listEstates = async (req, res) => {
     }
 
     const estates = await EstateProfile.find({ isPublished: true })
-      .select('slug estateName region country tagline heroImageUrl followers awards')
+      .select('slug estateName region country tagline heroImageUrl logoUrl followers awards')
       .lean();
     
     setCache(cacheKey, estates, 300); // cache for 5 minutes
