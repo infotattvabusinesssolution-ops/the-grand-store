@@ -198,16 +198,16 @@ const sendEmail = async ({
     const plainText = text || (typeof html === "string" ? html.replace(/<[^>]+>/g, "\n").replace(/\n\s*\n/g, "\n").trim() : "");
     const emailPayload = skipBranding ? { html, attachments: attachments || [] } : prepareEmailBranding(html, attachments);
 
-    // Auto-BCC store designated admin mailbox for customer billing / checkout / order emails so store never misses an order
-    const adminMailbox = getAdminEmail().toLowerCase();
-    let effectiveBcc = bcc;
-    if (selectedChannel === "billing" && adminMailbox) {
+    // Auto-BCC store designated admin mailboxes for customer billing / checkout / order emails so store never misses an order
+    const adminMailboxStr = getAdminEmail().toLowerCase();
+    let effectiveBcc = bcc ? String(bcc).trim() : "";
+    if (selectedChannel === "billing" && adminMailboxStr) {
       const recipientStr = String(to || "").toLowerCase();
-      if (!recipientStr.includes(adminMailbox)) {
-        if (!effectiveBcc) {
-          effectiveBcc = adminMailbox;
-        } else if (!String(effectiveBcc).toLowerCase().includes(adminMailbox)) {
-          effectiveBcc = `${effectiveBcc}, ${adminMailbox}`;
+      const currentBccLower = effectiveBcc.toLowerCase();
+      const adminAddresses = adminMailboxStr.split(",").map(e => e.trim()).filter(Boolean);
+      for (const addr of adminAddresses) {
+        if (!recipientStr.includes(addr) && !currentBccLower.includes(addr)) {
+          effectiveBcc = effectiveBcc ? `${effectiveBcc}, ${addr}` : addr;
         }
       }
     }
