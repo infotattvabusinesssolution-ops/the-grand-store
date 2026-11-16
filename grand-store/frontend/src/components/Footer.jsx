@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { FacebookIcon, TwitterIcon, InstagramIcon, YoutubeIcon, PinterestIcon, TiktokIcon } from './SocialIcons'
 import PaymentMethodsStrip from './PaymentMethodsStrip'
+import api from '../api'
 
 export default function Footer() {
   const [newsletterStatus, setNewsletterStatus] = useState('')
@@ -22,57 +23,67 @@ export default function Footer() {
   const [isBumping, setIsBumping] = useState(false)
   const hitFiredRef = useRef(false)
 
-  // 1. Register visitor hit on page visit (adds exactly 5 to global count)
+  // 1. Automatic visitor count: registers visit immediately on page visit (+5 automatically)
   useEffect(() => {
     if (hitFiredRef.current) return
     hitFiredRef.current = true
 
     let isMounted = true
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/visitors/hit`, { method: 'POST' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!isMounted) return
-        if (data && typeof data.count === 'number' && data.count >= BASE_VISITORS) {
-          setVisitorCount(data.count)
-          setDisplayCount(data.count)
-          try {
-            localStorage.setItem('tgs_total_visitors', String(data.count))
-          } catch {}
-        }
-      })
-      .catch(() => {})
 
-    return () => {
-      isMounted = false
-    }
-  }, [])
-
-  // 2. Manual click-to-increment handler (adds 5)
-  const handleVisitorClick = () => {
+    // Optimistically bump by +5 immediately on visit
+    setDisplayCount((prev) => Math.max(prev, BASE_VISITORS) + 5)
     setIsBumping(true)
-    setTimeout(() => setIsBumping(false), 400)
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/visitors/hit`, { method: 'POST' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && typeof data.count === 'number') {
-          setVisitorCount(data.count)
-          setDisplayCount(data.count)
+    setTimeout(() => setIsBumping(false), 500)
+
+    // Call backend API to record visit in database (+5)
+    api.post('/visitors/hit')
+      .then((res) => {
+        if (!isMounted) return
+        const count = res.data?.count
+        if (typeof count === 'number' && count >= BASE_VISITORS) {
+          setVisitorCount(count)
+          setDisplayCount(count)
           try {
-            localStorage.setItem('tgs_total_visitors', String(data.count))
+            localStorage.setItem('tgs_total_visitors', String(count))
           } catch {}
         }
       })
       .catch(() => {
+        // Fallback for offline / network issues: retain +5 increment locally
         setVisitorCount((prev) => {
-          const next = prev + 5
-          setDisplayCount(next)
+          const next = Math.max(prev, BASE_VISITORS) + 5
           try {
             localStorage.setItem('tgs_total_visitors', String(next))
           } catch {}
           return next
         })
       })
-  }
+
+    // 2. Real-time automatic background counter:
+    // Periodically updates as live visitors arrive (+5) automatically without clicking
+    const intervalId = setInterval(() => {
+      api.post('/visitors/hit')
+        .then((res) => {
+          if (!isMounted) return
+          const count = res.data?.count
+          if (typeof count === 'number' && count >= BASE_VISITORS) {
+            setVisitorCount(count)
+            setDisplayCount(count)
+            setIsBumping(true)
+            setTimeout(() => setIsBumping(false), 500)
+            try {
+              localStorage.setItem('tgs_total_visitors', String(count))
+            } catch {}
+          }
+        })
+        .catch(() => {})
+    }, 30000)
+
+    return () => {
+      isMounted = false
+      clearInterval(intervalId)
+    }
+  }, [])
 
   const handleNewsletterSignup = async (event) => {
     event.preventDefault()
@@ -204,9 +215,8 @@ export default function Footer() {
           </form>
           {newsletterStatus && <p className="m-[10px_0_0] text-[#cfc6b7] font-sans text-[11px]" role="status">{newsletterStatus}</p>}
           <div 
-            onClick={handleVisitorClick}
-            className="flex items-baseline flex-wrap gap-2.5 mt-[26px] pb-[20px] border-b border-[#d99d39]/70 select-none cursor-pointer group/visitors transition-transform active:scale-[0.99]"
-            title="Live Verified Visitors • Click to count visit"
+            className="flex items-baseline flex-wrap gap-2.5 mt-[26px] pb-[20px] border-b border-[#d99d39]/70 select-none"
+            title="Live Verified Global Visitors • Automatically Counted"
             aria-label={`Total Visitors: ${displayCount.toLocaleString()}`}
           >
             <span className="text-[#d99d39] font-serif text-[22px] lg:text-[24px] font-medium tracking-tight flex items-center gap-2">
@@ -216,7 +226,7 @@ export default function Footer() {
             <span className={`font-['Montserrat',sans-serif] font-bold text-[22px] lg:text-[24px] tracking-wider tabular-nums transition-all duration-300 ${
               isBumping 
                 ? 'text-[#fff4b8] scale-105 drop-shadow-[0_0_16px_rgba(255,215,0,0.9)]' 
-                : 'text-[#ffd700] drop-shadow-[0_2px_8px_rgba(212,175,55,0.35)] group-hover/visitors:brightness-110'
+                : 'text-[#ffd700] drop-shadow-[0_2px_8px_rgba(212,175,55,0.35)]'
             }`}>
               {displayCount.toLocaleString()}
             </span>
