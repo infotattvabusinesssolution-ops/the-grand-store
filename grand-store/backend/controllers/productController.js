@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const Vendor = require('../models/Vendor');
 const EstateProfile = require('../models/EstateProfile');
@@ -5,6 +6,7 @@ const PlatformSettings = require('../models/PlatformSettings');
 const { computeCaseSummary, DEFAULT_INTERNATIONAL_CASE_DISCOUNT_PCT } = require('../utils/casePricing');
 const { normalizeProduct } = require('../utils/productNormalization');
 const { slugify } = require('../utils/slugify');
+const { generateTastingNotePdf } = require('../utils/tastingNotePdfGenerator');
 
 const INTERNAL_PRODUCT_ROLES = ['admin', 'super_admin', 'product_manager'];
 const canManageInternalProducts = (user) => INTERNAL_PRODUCT_ROLES.includes(user?.role);
@@ -820,6 +822,42 @@ const bulkUpdateMosiPricing = async (req, res) => {
   }
 };
 
+const getTastingNotePdf = async (req, res) => {
+  try {
+    const { identifier } = req.params;
+    let product = null;
+
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+      product = await Product.findById(identifier).lean();
+    }
+    if (!product) {
+      product = await Product.findOne({ slug: identifier }).lean();
+    }
+    if (!product) {
+      product = await Product.findOne({ id: identifier }).lean();
+    }
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    if (product.factSheetPdf) {
+      const pdfUrl = String(product.factSheetPdf).trim();
+      return res.redirect(pdfUrl);
+    }
+
+    const pdfBuffer = await generateTastingNotePdf(product);
+    const cleanFileName = `Tasting-Note-${(product.slug || product.name || 'wine').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${cleanFileName}"`);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating tasting note PDF:', error);
+    res.status(500).json({ message: 'Error generating tasting note PDF' });
+  }
+};
+
 module.exports = {
   getProducts,
   getProductById,
@@ -831,5 +869,6 @@ module.exports = {
   uploadBarcodeImage,
   getMosiPricing,
   updateMosiPricing,
-  bulkUpdateMosiPricing
+  bulkUpdateMosiPricing,
+  getTastingNotePdf,
 };

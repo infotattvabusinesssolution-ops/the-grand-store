@@ -81,14 +81,15 @@ export default function StoreFront() {
     <div className="min-h-screen bg-[#050505] text-[var(--color-ivory)] font-sans">
       
       {/* --- BANNER --- */}
-      <div className="w-full h-44 sm:h-56 md:h-64 lg:h-[300px] relative bg-[#111] overflow-hidden">
+      <div className="w-full h-56 sm:h-72 md:h-80 lg:h-[380px] xl:h-[420px] relative bg-[#111] overflow-hidden">
         <img 
           src={storeData.bannerUrl || '/assets/grand-store-whisky-banner.jpg'} 
           alt="Store Banner" 
           onError={(e) => {
             e.currentTarget.src = '/assets/grand-store-whisky-banner.jpg';
           }}
-          className="w-full h-full object-cover brightness-[0.85]"
+          className="w-full h-full object-cover brightness-[0.88]"
+          style={{ objectPosition: storeData?.bannerPosition || 'center 32%' }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-90" />
       </div>

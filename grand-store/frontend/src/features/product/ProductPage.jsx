@@ -18,6 +18,7 @@ import {
   Globe,
   Sparkles,
   Mail,
+  FileText,
 } from "lucide-react";
 import { useWishlist } from "../../wishlistContext";
 import { useGeoLocation } from "../../context/LocationContext";
@@ -31,6 +32,7 @@ import { getProductIdentity } from "../../utils/productTaxonomy";
 import { isCigarProduct, getCigarQuotationMailto } from "../../utils/cigarUtils";
 import api from "../../api";
 import ConfirmCheckoutModal from "../../components/modals/ConfirmCheckoutModal";
+import { openTastingNotePdf } from "../../utils/tastingNotePdf";
 
 const KNOWN_ESTATE_VENDORS = [
   { match: 'cantina del conte', name: 'Cantina del Conte', slug: 'cantina-del-conte', vendorType: 'international' },
@@ -43,6 +45,16 @@ const KNOWN_ESTATE_VENDORS = [
   { match: 'tesselaarsdal', name: 'Tesselaarsdal Wines', slug: 'tesselaarsdal-wines', vendorType: 'local' },
   { match: 'long dog', name: 'Long Dog Wines', slug: 'long-dog-wines', vendorType: 'local' },
   { match: 'mont rochelle', name: 'Mont Rochelle Reserve Estates', slug: 'mont-rochelle-reserve-estates', vendorType: 'local' },
+];
+
+const WINE_VENDOR_KEYWORDS = [
+  'cantina del conte',
+  'dogliotti',
+  'tesselaarsdal',
+  'bruno andreu',
+  'giuliani',
+  'long dog',
+  'mont rochelle',
 ];
 
 const resolveVendorLinkInfo = (product) => {
@@ -335,6 +347,27 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   );
   const isCigar = isCigarProduct(product);
   const vendorLinkInfo = resolveVendorLinkInfo(product);
+
+  const isWineVendorProduct = (() => {
+    if (!product) return false;
+    const haystack = `${product.storeName || ''} ${product.brand || ''} ${product.name || ''} ${product.fullName || ''} ${product.estateName || ''}`.toLowerCase();
+    return WINE_VENDOR_KEYWORDS.some((kw) => haystack.includes(kw)) || Boolean(product.estateSlug && isWineOrChampagne);
+  })();
+
+  const getTastingNotePdfUrl = () => {
+    if (!product) return '#';
+    if (product.factSheetPdf) {
+      const raw = String(product.factSheetPdf).trim();
+      const lower = raw.toLowerCase();
+      if (!lower.includes('presentation') && !lower.includes('brochure') && !lower.includes('cantina-del-conte-tasting-notes')) {
+        return raw;
+      }
+    }
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5015';
+    const cleanApiUrl = apiUrl.replace(/\/$/, '');
+    const targetId = product._id || product.id || product.slug;
+    return `${cleanApiUrl}/api/products/tasting-note-pdf/${encodeURIComponent(targetId)}`;
+  };
 
   // Case of Bottle Analysis (Section 4 of International Vendor Specification)
   // Only applies to bottle beverages (Wine, Spirits, Champagne), NOT for everyone (e.g. cigars, accessories)
@@ -951,6 +984,25 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
             </dl>
           </div>
 
+          {/* View Tasting Note Button (Wine Vendors Only) */}
+          {isWineVendorProduct && (
+            <div className="mb-6">
+              <a
+                href={getTastingNotePdfUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  openTastingNotePdf(product);
+                }}
+                className="inline-flex w-full sm:w-auto items-center justify-center gap-2.5 rounded-lg border border-[#c9a35b] bg-[#c9a35b]/10 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-[#e1bd70] transition-all hover:bg-[#c9a35b] hover:text-black shadow-sm cursor-pointer"
+              >
+                <FileText size={15} />
+                <span>View Tasting Note</span>
+              </a>
+            </div>
+          )}
+
           {/* Pack size Selector — Clean Norman Goodfellows Style */}
           {isBottleProduct && (
             <div className="mb-6">
@@ -1351,20 +1403,6 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
 
       {/* Stacked Info Sections */}
       <section className="max-w-7xl mx-auto">
-        {/* Fact Sheet PDF (Moved up) */}
-        {product.factSheetPdf && (
-          <div className="flex justify-center mb-10">
-            <a
-              href={product.factSheetPdf}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex w-full items-center justify-center gap-3 rounded-full border border-[#c9a35b] px-5 py-4 text-center text-xs font-bold uppercase tracking-[0.1em] text-gold-gradient transition-colors hover:bg-gold-gradient hover:text-black sm:w-auto sm:px-8 sm:text-sm"
-            >
-              Download Official Fact Sheet PDF <ArrowRight size={16} />
-            </a>
-          </div>
-        )}
-
         {/* Description Section (Mobile/Tablet only) */}
         <div className="lg:hidden grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 py-8 border-t border-b border-white/10">
           <div className="md:col-span-3">

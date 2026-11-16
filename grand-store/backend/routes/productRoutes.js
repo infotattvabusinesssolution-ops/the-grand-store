@@ -11,7 +11,8 @@ const {
   uploadBarcodeImage,
   getMosiPricing,
   updateMosiPricing,
-  bulkUpdateMosiPricing
+  bulkUpdateMosiPricing,
+  getTastingNotePdf,
 } = require('../controllers/productController');
 const { protect } = require('../middleware/authMiddleware');
 const multer = require('multer');
@@ -48,6 +49,10 @@ router.route('/mosi/pricing/:id')
 // =========================================================================
 router.route('/slugs/:slug')
   .get(getProductBySlug);
+
+// Dedicated route for downloading or viewing tasting note PDF
+router.route('/tasting-note-pdf/:identifier')
+  .get(getTastingNotePdf);
 
 // Dedicated route for uploading/updating barcode image to Cloudinary
 router.route('/:id/barcode-image')
