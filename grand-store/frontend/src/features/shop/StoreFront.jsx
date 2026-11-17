@@ -89,7 +89,7 @@ export default function StoreFront() {
             e.currentTarget.src = '/assets/grand-store-whisky-banner.jpg';
           }}
           className="w-full h-full object-cover brightness-[0.88]"
-          style={{ objectPosition: storeData?.bannerPosition || 'center 32%' }}
+          style={{ objectPosition: storeData?.bannerPosition || 'center top' }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-90" />
       </div>

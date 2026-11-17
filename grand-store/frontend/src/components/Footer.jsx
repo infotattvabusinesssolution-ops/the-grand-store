@@ -7,81 +7,93 @@ import api from '../api'
 export default function Footer() {
   const [newsletterStatus, setNewsletterStatus] = useState('')
 
-  // Dynamic Visitor Counter (baseline 549,841 or server-synchronized)
+  // Dynamic Visitor Counter (baseline 549,841)
   const BASE_VISITORS = 549841
-  const [visitorCount, setVisitorCount] = useState(() => {
-    try {
-      const stored = localStorage.getItem('tgs_total_visitors')
-      if (stored) {
-        const parsed = parseInt(stored, 10)
-        if (!isNaN(parsed) && parsed >= BASE_VISITORS) return parsed
-      }
-    } catch {}
-    return BASE_VISITORS
-  })
-  const [displayCount, setDisplayCount] = useState(visitorCount)
+  const [visitorCount, setVisitorCount] = useState(BASE_VISITORS)
+  const [displayCount, setDisplayCount] = useState(BASE_VISITORS)
   const [isBumping, setIsBumping] = useState(false)
   const hitFiredRef = useRef(false)
 
-  // 1. Automatic visitor count: registers visit immediately on page visit (+5 automatically)
+  // Automatic visitor counter: increments atomically on visit (+5)
   useEffect(() => {
     if (hitFiredRef.current) return
     hitFiredRef.current = true
 
     let isMounted = true
 
-    // Optimistically bump by +5 immediately on visit
-    setDisplayCount((prev) => Math.max(prev, BASE_VISITORS) + 5)
-    setIsBumping(true)
-    setTimeout(() => setIsBumping(false), 500)
+    const recordVisit = async () => {
+      let finalCount = null
 
-    // Call backend API to record visit in database (+5)
-    api.post('/visitors/hit')
-      .then((res) => {
-        if (!isMounted) return
-        const count = res.data?.count
-        if (typeof count === 'number' && count >= BASE_VISITORS) {
-          setVisitorCount(count)
-          setDisplayCount(count)
-          try {
-            localStorage.setItem('tgs_total_visitors', String(count))
-          } catch {}
+      try {
+        // Try /stats/traffic/hit first (immune to browser adblockers / tracking protection)
+        const res = await api.post('/stats/traffic/hit')
+        if (res.data && typeof res.data.count === 'number') {
+          finalCount = res.data.count
         }
-      })
-      .catch(() => {
-        // Fallback for offline / network issues: retain +5 increment locally
-        setVisitorCount((prev) => {
-          const next = Math.max(prev, BASE_VISITORS) + 5
-          try {
-            localStorage.setItem('tgs_total_visitors', String(next))
-          } catch {}
-          return next
-        })
-      })
-
-    // 2. Real-time automatic background counter:
-    // Periodically updates as live visitors arrive (+5) automatically without clicking
-    const intervalId = setInterval(() => {
-      api.post('/visitors/hit')
-        .then((res) => {
-          if (!isMounted) return
-          const count = res.data?.count
-          if (typeof count === 'number' && count >= BASE_VISITORS) {
-            setVisitorCount(count)
-            setDisplayCount(count)
-            setIsBumping(true)
-            setTimeout(() => setIsBumping(false), 500)
-            try {
-              localStorage.setItem('tgs_total_visitors', String(count))
-            } catch {}
+      } catch (err1) {
+        try {
+          // Secondary fallback to /visitors/hit
+          const res = await api.post('/visitors/hit')
+          if (res.data && typeof res.data.count === 'number') {
+            finalCount = res.data.count
           }
-        })
-        .catch(() => {})
-    }, 30000)
+        } catch (err2) {
+          console.warn('[Visitors] Auto-hit fallback used:', err2?.message)
+        }
+      }
+
+      if (!isMounted) return
+
+      // If network / offline fallback
+      if (!finalCount || finalCount < BASE_VISITORS) {
+        const stored = (() => {
+          try {
+            const v = localStorage.getItem('tgs_total_visitors')
+            return v ? parseInt(v, 10) : null
+          } catch { return null }
+        })()
+        finalCount = Math.max(stored || BASE_VISITORS, BASE_VISITORS) + 5
+      }
+
+      try {
+        localStorage.setItem('tgs_total_visitors', String(finalCount))
+      } catch {}
+
+      setVisitorCount(finalCount)
+
+      // Smooth count-up roll animation: rolls up from (finalCount - 5) to finalCount
+      const startValue = Math.max(BASE_VISITORS, finalCount - 5)
+      const endValue = finalCount
+      const duration = 1200
+      const startTime = performance.now()
+
+      const animate = (currentTime) => {
+        if (!isMounted) return
+        const elapsed = currentTime - startTime
+        const progress = Math.min(elapsed / duration, 1)
+        // ease-out cubic
+        const ease = 1 - Math.pow(1 - progress, 3)
+        const current = Math.floor(startValue + (endValue - startValue) * ease)
+        setDisplayCount(current)
+
+        if (progress < 1) {
+          requestAnimationFrame(animate)
+        } else {
+          setDisplayCount(endValue)
+          setIsBumping(true)
+          setTimeout(() => {
+            if (isMounted) setIsBumping(false)
+          }, 600)
+        }
+      }
+
+      requestAnimationFrame(animate)
+    }
+
+    recordVisit()
 
     return () => {
       isMounted = false
-      clearInterval(intervalId)
     }
   }, [])
 

@@ -4,8 +4,8 @@ const Counter = require('../models/Counter');
 
 const BASE_VISITOR_COUNT = 549841;
 
-// GET /api/visitors - get current visitor count
-router.get('/', async (req, res) => {
+// GET current visitor count
+router.get(['/', '/count'], async (req, res) => {
   try {
     let counter = await Counter.findOne({ id: 'total_visitors' });
     if (!counter) {
@@ -20,8 +20,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/visitors/hit - register a visitor hit and increment count by 5
-router.post('/hit', async (req, res) => {
+// POST register a visitor hit and increment count by exactly 5
+const handleHit = async (req, res) => {
   try {
     const counter = await Counter.findOneAndUpdate(
       { id: 'total_visitors' },
@@ -37,6 +37,8 @@ router.post('/hit', async (req, res) => {
   } catch (err) {
     res.status(500).json({ count: BASE_VISITOR_COUNT, error: err.message });
   }
-});
+};
+
+router.post(['/hit', '/record', '/'], handleHit);
 
 module.exports = router;
