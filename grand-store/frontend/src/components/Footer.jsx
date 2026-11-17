@@ -1,100 +1,126 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { FacebookIcon, TwitterIcon, InstagramIcon, YoutubeIcon, PinterestIcon, TiktokIcon } from './SocialIcons'
 import PaymentMethodsStrip from './PaymentMethodsStrip'
 import api from '../api'
 
 export default function Footer() {
   const [newsletterStatus, setNewsletterStatus] = useState('')
+  const location = useLocation()
 
   // Dynamic Visitor Counter (baseline 549,841)
   const BASE_VISITORS = 549841
-  const [visitorCount, setVisitorCount] = useState(BASE_VISITORS)
-  const [displayCount, setDisplayCount] = useState(BASE_VISITORS)
+  const [visitorCount, setVisitorCount] = useState(() => {
+    try {
+      const stored = localStorage.getItem('tgs_total_visitors')
+      if (stored) {
+        const parsed = parseInt(stored, 10)
+        if (!isNaN(parsed) && parsed >= BASE_VISITORS) return parsed
+      }
+    } catch {}
+    return BASE_VISITORS
+  })
+  const [displayCount, setDisplayCount] = useState(visitorCount)
   const [isBumping, setIsBumping] = useState(false)
-  const hitFiredRef = useRef(false)
+  const lastPathRef = useRef('')
+  const isIncrementingRef = useRef(false)
+  const displayCountRef = useRef(displayCount)
 
-  // Automatic visitor counter: increments atomically on visit (+5)
   useEffect(() => {
-    if (hitFiredRef.current) return
-    hitFiredRef.current = true
+    displayCountRef.current = displayCount
+  }, [displayCount])
 
-    let isMounted = true
+  // Smooth count-up roll animation (+5)
+  const animateRollUp = (fromVal, toVal) => {
+    if (fromVal >= toVal) {
+      setDisplayCount(toVal)
+      return
+    }
+    const startValue = fromVal
+    const endValue = toVal
+    const duration = 1000
+    const startTime = performance.now()
 
-    const recordVisit = async () => {
-      let finalCount = null
+    const animate = (currentTime) => {
+      const elapsed = currentTime - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const ease = 1 - Math.pow(1 - progress, 3)
+      const current = Math.floor(startValue + (endValue - startValue) * ease)
+      setDisplayCount(current)
 
+      if (progress < 1) {
+        requestAnimationFrame(animate)
+      } else {
+        setDisplayCount(endValue)
+        setIsBumping(true)
+        setTimeout(() => setIsBumping(false), 600)
+      }
+    }
+
+    requestAnimationFrame(animate)
+  }
+
+  // Core increment function: increments atomically by exactly 5
+  const triggerIncrement = async () => {
+    if (isIncrementingRef.current) return
+    isIncrementingRef.current = true
+
+    let serverCount = null
+    try {
+      const res = await api.post('/stats/traffic/hit')
+      if (res.data && typeof res.data.count === 'number') {
+        serverCount = res.data.count
+      }
+    } catch {
       try {
-        // Try /stats/traffic/hit first (immune to browser adblockers / tracking protection)
-        const res = await api.post('/stats/traffic/hit')
+        const res = await api.post('/visitors/hit')
         if (res.data && typeof res.data.count === 'number') {
-          finalCount = res.data.count
+          serverCount = res.data.count
         }
-      } catch (err1) {
-        try {
-          // Secondary fallback to /visitors/hit
-          const res = await api.post('/visitors/hit')
-          if (res.data && typeof res.data.count === 'number') {
-            finalCount = res.data.count
-          }
-        } catch (err2) {
-          console.warn('[Visitors] Auto-hit fallback used:', err2?.message)
-        }
-      }
+      } catch {}
+    }
 
-      if (!isMounted) return
-
-      // If network / offline fallback
-      if (!finalCount || finalCount < BASE_VISITORS) {
-        const stored = (() => {
-          try {
-            const v = localStorage.getItem('tgs_total_visitors')
-            return v ? parseInt(v, 10) : null
-          } catch { return null }
-        })()
-        finalCount = Math.max(stored || BASE_VISITORS, BASE_VISITORS) + 5
-      }
+    const fromVal = displayCountRef.current || BASE_VISITORS
+    setVisitorCount((prev) => {
+      const target = (serverCount && serverCount >= BASE_VISITORS)
+        ? serverCount
+        : Math.max(fromVal, prev, BASE_VISITORS) + 5
 
       try {
-        localStorage.setItem('tgs_total_visitors', String(finalCount))
+        localStorage.setItem('tgs_total_visitors', String(target))
       } catch {}
 
-      setVisitorCount(finalCount)
+      animateRollUp(fromVal, target)
+      return target
+    })
 
-      // Smooth count-up roll animation: rolls up from (finalCount - 5) to finalCount
-      const startValue = Math.max(BASE_VISITORS, finalCount - 5)
-      const endValue = finalCount
-      const duration = 1200
-      const startTime = performance.now()
+    setTimeout(() => {
+      isIncrementingRef.current = false
+    }, 1200)
+  }
 
-      const animate = (currentTime) => {
-        if (!isMounted) return
-        const elapsed = currentTime - startTime
-        const progress = Math.min(elapsed / duration, 1)
-        // ease-out cubic
-        const ease = 1 - Math.pow(1 - progress, 3)
-        const current = Math.floor(startValue + (endValue - startValue) * ease)
-        setDisplayCount(current)
+  // 1. Dynamic increment on initial visit & every page/route change
+  useEffect(() => {
+    if (lastPathRef.current === location.pathname) return
+    lastPathRef.current = location.pathname
 
-        if (progress < 1) {
-          requestAnimationFrame(animate)
-        } else {
-          setDisplayCount(endValue)
-          setIsBumping(true)
-          setTimeout(() => {
-            if (isMounted) setIsBumping(false)
-          }, 600)
-        }
-      }
+    triggerIncrement()
+  }, [location.pathname])
 
-      requestAnimationFrame(animate)
+  // 2. Real-time dynamic visitor activity:
+  // Dynamically ticks up by +5 every 12 to 20 seconds so visitors see live activity
+  useEffect(() => {
+    let timerId
+    const scheduleNext = () => {
+      const randomDelay = Math.floor(Math.random() * 8000) + 12000 // 12-20s
+      timerId = setTimeout(() => {
+        triggerIncrement()
+        scheduleNext()
+      }, randomDelay)
     }
 
-    recordVisit()
-
-    return () => {
-      isMounted = false
-    }
+    scheduleNext()
+    return () => clearTimeout(timerId)
   }, [])
 
   const handleNewsletterSignup = async (event) => {
