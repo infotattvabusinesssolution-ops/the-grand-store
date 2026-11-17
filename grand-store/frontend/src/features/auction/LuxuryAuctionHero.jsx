@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api';
 import { ArrowRight, Clock, ShieldCheck, ChevronDown, Check } from 'lucide-react';
@@ -7,9 +7,43 @@ import { getAuctionPhase, getAuctionTargetTime } from './auctionPhase';
 import Price from '../../components/ui/Price';
 import { useCurrency, getCountryForCurrency, CURRENCY_SYMBOLS, ZERO_DECIMAL_CURRENCIES } from '../../context/CurrencyContext';
 import { CountryFlag } from '../../components/CountryCodeSelect';
+import ArrivalsMandala from '../home/components/ArrivalsMandala';
+import ProteaEmblem from '../home/components/ProteaEmblem';
+import AgeVerificationPromptModal from '../../components/modals/AgeVerificationPromptModal';
+import BidderVerificationModal from '../../components/modals/BidderVerificationModal';
 
 export default function LuxuryAuctionHero({ lots, now, onNotify, onRefresh }) {
   if (!lots || lots.length === 0) return null;
+
+  const [showAgePrompt, setShowAgePrompt] = useState(false);
+  const [promptMessage, setPromptMessage] = useState(
+    "Bidder qualification required. Please submit your 18+ age verification and ID details to request bidding approval."
+  );
+  const [verificationModalOpen, setVerificationModalOpen] = useState(false);
+  const [bidderProfile, setBidderProfile] = useState(null);
+
+  const fetchBidderStatus = async () => {
+    try {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      if (userInfo?.token) {
+        const res = await api.get('/auction/bidder/status', {
+          headers: { Authorization: `Bearer ${userInfo.token}` }
+        });
+        setBidderProfile(res.data);
+      }
+    } catch (err) {
+      console.warn('Could not fetch bidder status:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchBidderStatus();
+  }, []);
+
+  const handleRequestVerification = (msg) => {
+    if (msg) setPromptMessage(msg);
+    setShowAgePrompt(true);
+  };
 
   const handleScrollToGrid = () => {
     document.getElementById('current-auctions')?.scrollIntoView({ behavior: 'smooth' });
@@ -26,8 +60,34 @@ export default function LuxuryAuctionHero({ lots, now, onNotify, onRefresh }) {
           total={lots.length}
           onNotify={onNotify}
           onRefresh={onRefresh}
+          bidderProfile={bidderProfile}
+          onRequestVerification={handleRequestVerification}
         />
       ))}
+
+      {/* 1st Centered Modal: Age Verification Prompt */}
+      <AgeVerificationPromptModal
+        isOpen={showAgePrompt}
+        message={promptMessage}
+        onClose={() => setShowAgePrompt(false)}
+        onConfirm={() => {
+          setShowAgePrompt(false);
+          setVerificationModalOpen(true);
+        }}
+      />
+
+      {/* 2nd Modal: Full 18+ Age & Bidder Verification */}
+      <BidderVerificationModal
+        isOpen={verificationModalOpen}
+        onClose={() => setVerificationModalOpen(false)}
+        bidderProfile={bidderProfile}
+        onSuccess={(updated) => {
+          setBidderProfile(prev => ({ ...(prev || {}), ...(updated || {}), isVerified: true }));
+          fetchBidderStatus();
+          if (onRefresh) onRefresh();
+        }}
+        onNotify={onNotify}
+      />
       
       {/* Global View All button at the bottom of the hero sections */}
       <div className="absolute bottom-10 left-0 w-full flex justify-center z-50 pointer-events-none">
@@ -45,7 +105,7 @@ export default function LuxuryAuctionHero({ lots, now, onNotify, onRefresh }) {
   );
 }
 
-function LuxuryAuctionSlide({ lot, now, index, total, onNotify, onRefresh }) {
+function LuxuryAuctionSlide({ lot, now, index, total, onNotify, onRefresh, bidderProfile, onRequestVerification }) {
   const { currency, rates, changeCurrency, availableCurrencies } = useCurrency();
   const [bidAmount, setBidAmount] = useState('');
   const [isMaxBid, setIsMaxBid] = useState(false);
@@ -101,11 +161,48 @@ function LuxuryAuctionSlide({ lot, now, index, total, onNotify, onRefresh }) {
       return;
     }
     
-    const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
     const token = userInfo?.token;
     if (!token) {
       onNotify('You must be logged in to place a bid.');
       return;
+    }
+
+    const userRole = userInfo.role || '';
+    if (['admin', 'super_admin'].includes(userRole) || userRole.startsWith('vendor') || userRole === 'auction_host') {
+      onNotify('Admins and Vendors cannot participate in bidding.');
+      return;
+    }
+
+    if (bidderProfile) {
+      if (bidderProfile.isPending) {
+        onNotify('Your bidder verification application is pending administrator review and approval.');
+        return;
+      }
+      if (bidderProfile.bidderApprovalStatus === 'rejected') {
+        onNotify(`Your application was rejected: ${bidderProfile.bidderRejectionReason || 'Please re-verify.'}`);
+        if (onRequestVerification) {
+          onRequestVerification(bidderProfile.bidderRejectionReason || 'Please submit your 18+ age verification and ID details.');
+        }
+        return;
+      }
+      if (!bidderProfile.isVerified) {
+        if (onRequestVerification) {
+          onRequestVerification('Bidder qualification required. Please submit your 18+ age verification and ID details to request bidding approval.');
+        }
+        return;
+      }
+      if (bidderProfile.isBiddingSuspended) {
+        onNotify(`Your bidding privileges are suspended: ${bidderProfile.biddingSuspensionReason || 'Account under review'}`);
+        return;
+      }
+      if (bidderProfile.biddingLimit > 0 && amtInZar > bidderProfile.biddingLimit) {
+        onNotify(`Bid of R${amtInZar.toLocaleString()} exceeds your current limit of R${bidderProfile.biddingLimit.toLocaleString()}. Please upgrade to Premium VIP Bidding.`);
+        if (onRequestVerification) {
+          onRequestVerification(`Bid of R${amtInZar.toLocaleString()} exceeds your current limit of R${bidderProfile.biddingLimit.toLocaleString()}. Please upgrade to Premium VIP Bidding to place this bid.`);
+        }
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -122,7 +219,17 @@ function LuxuryAuctionSlide({ lot, now, index, total, onNotify, onRefresh }) {
       if (onRefresh) onRefresh();
     } catch (err) {
       console.error(err);
-      onNotify(err.response?.data?.message || 'Failed to place bid');
+      const errData = err.response?.data;
+      const msg = errData?.message || 'Failed to place bid';
+      if (errData?.requiresVerification || /bidder qualification|18\+|age verification/i.test(msg)) {
+        if (onRequestVerification) {
+          onRequestVerification(msg);
+        } else {
+          onNotify(msg);
+        }
+      } else {
+        onNotify(msg);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -133,6 +240,13 @@ function LuxuryAuctionSlide({ lot, now, index, total, onNotify, onRefresh }) {
       {/* Abstract Background Glows */}
       <div className="absolute top-1/4 -left-1/4 w-[50%] h-[50%] rounded-full bg-[var(--color-gold)]/5 blur-[150px] mix-blend-screen pointer-events-none" />
       <div className="absolute bottom-1/4 -right-1/4 w-[50%] h-[50%] rounded-full bg-red-500/5 blur-[150px] mix-blend-screen pointer-events-none" />
+      
+      {/* Subtle South African Heritage Mandala Watermark */}
+      <ArrivalsMandala 
+        className="!opacity-[0.05] !w-[600px] sm:!w-[750px] md:!w-[900px] pointer-events-none" 
+        gradientId={`auction-slide-mandala-${lot._id || index}`} 
+        position="top-right" 
+      />
       
       <div className="w-full max-w-[1400px] mx-auto px-6 py-24 flex flex-col lg:flex-row items-center gap-12 lg:gap-24 relative z-10">
         
@@ -161,8 +275,9 @@ function LuxuryAuctionSlide({ lot, now, index, total, onNotify, onRefresh }) {
 
         {/* Right: Auction Details & Bidding Console */}
         <div className="flex-1 w-full flex flex-col justify-center">
-          <div className="flex items-center gap-4 mb-4">
-             <div className="h-px w-12 bg-gold-gradient" />
+          <div className="flex items-center gap-3 mb-4">
+             <ProteaEmblem className="w-3.5 h-3.5 text-[#caa458] shrink-0" />
+             <div className="h-px w-10 bg-gold-gradient" />
              <span className="text-gold-gradient text-[10px] uppercase tracking-widest font-bold">Featured Collection {index + 1}/{total}</span>
           </div>
           

@@ -444,32 +444,32 @@ export default function AdminNewsletter() {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#0a0a0a] p-6 rounded-2xl border border-white/5 shadow-xl">
-        <div>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-[#0a0a0a] p-5 sm:p-6 rounded-2xl border border-white/5 shadow-xl">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] uppercase tracking-widest text-[#c9a35b] font-mono font-bold bg-[#c9a35b]/10 border border-[#c9a35b]/20 px-2.5 py-0.5 rounded-full">
               Unified Campaign Hub
             </span>
           </div>
-          <h1 className="text-2xl font-serif text-[var(--color-ivory,#eee8dd)] font-normal tracking-wide mb-1 flex items-center gap-2.5">
-            <Mail className="text-[#c9a35b]" size={24} /> Newsletter Subscribers
+          <h1 className="text-xl sm:text-2xl font-serif text-[var(--color-ivory,#eee8dd)] font-normal tracking-wide mb-1 flex items-center gap-2.5">
+            <Mail className="text-[#c9a35b] shrink-0" size={24} /> Newsletter Subscribers
           </h1>
-          <p className="text-white/50 text-sm">
+          <p className="text-white/50 text-xs sm:text-sm leading-relaxed max-w-2xl">
             Manage subscriber audiences across Grand Store, Cigar Store, and Millionaires Store from a single console.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0 self-start lg:self-auto">
           {selectedEmails.length > 0 && (
             <button 
               onClick={() => openComposeModal('selected')}
-              className="bg-[#c9a35b] hover:bg-[#d4af37] text-black px-5 py-2.5 rounded-xl font-bold uppercase tracking-wider text-xs transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(201,163,91,0.3)] cursor-pointer"
+              className="bg-[#c9a35b] hover:bg-[#d4af37] text-black px-4 sm:px-5 py-2.5 rounded-xl font-bold uppercase tracking-wider text-xs transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(201,163,91,0.3)] cursor-pointer shrink-0 whitespace-nowrap"
             >
               <Send size={15} /> Send to Selected ({selectedEmails.length})
             </button>
           )}
           <button 
             onClick={() => openComposeModal(selectedEmails.length > 0 ? 'selected' : (filterSource !== 'All' ? 'source' : 'all'))}
-            className="bg-white/10 hover:bg-white/20 text-white border border-white/10 px-5 py-2.5 rounded-xl font-medium text-xs uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer"
+            className="bg-white/10 hover:bg-white/20 text-white border border-white/10 px-4 sm:px-5 py-2.5 rounded-xl font-medium text-xs uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap shadow-sm"
           >
             <Send size={15} /> Compose Broadcast
           </button>

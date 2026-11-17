@@ -230,7 +230,7 @@ export default function VendorLayout() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 w-full md:ml-64 p-3 sm:p-6 md:p-8 lg:p-12 flex flex-col z-10 min-h-[calc(100vh-5rem)] relative">
+        <main className="flex-1 min-w-0 w-full md:w-[calc(100%-16rem)] md:ml-64 p-3 sm:p-6 md:p-8 lg:p-10 flex flex-col z-10 min-h-[calc(100vh-5rem)] relative overflow-x-hidden">
           {/* Mobile Quick Return to Home bar */}
           <div className="md:hidden flex items-center justify-between pb-3 border-b border-white/[0.06] mb-4">
             <button

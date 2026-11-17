@@ -12,6 +12,7 @@ import {
 import AuctionCountdown from './AuctionCountdown';
 import BidConfirmationModal from '../../components/modals/BidConfirmationModal';
 import BidderVerificationModal from '../../components/modals/BidderVerificationModal';
+import AgeVerificationPromptModal from '../../components/modals/AgeVerificationPromptModal';
 import GoldenCelebrationShower from './GoldenCelebrationShower';
 import MagicalBidEffect from './MagicalBidEffect';
 import AuctionWinnerCelebrationModal from './components/AuctionWinnerCelebrationModal';
@@ -56,6 +57,10 @@ export default function AuctionLotDetail({ onNotify }) {
   
   const [modalOpen, setModalOpen] = useState(false);
   const [verificationModalOpen, setVerificationModalOpen] = useState(false);
+  const [showAgePrompt, setShowAgePrompt] = useState(false);
+  const [promptMessage, setPromptMessage] = useState(
+    "Bidder qualification required. Please submit your 18+ age verification and ID details to request bidding approval."
+  );
   const [bidderProfile, setBidderProfile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
@@ -266,11 +271,13 @@ export default function AuctionLotDetail({ onNotify }) {
       }
       if (bidderProfile.bidderApprovalStatus === 'rejected') {
         onNotify(`Your application was rejected: ${bidderProfile.bidderRejectionReason || 'Please re-verify.'}`);
-        setVerificationModalOpen(true);
+        setPromptMessage(bidderProfile.bidderRejectionReason || 'Please submit your 18+ age verification and ID details.');
+        setShowAgePrompt(true);
         return;
       }
       if (!bidderProfile.isVerified) {
-        setVerificationModalOpen(true);
+        setPromptMessage('Bidder qualification required. Please submit your 18+ age verification and ID details to request bidding approval.');
+        setShowAgePrompt(true);
         return;
       }
       if (bidderProfile.isBiddingSuspended) {
@@ -283,7 +290,8 @@ export default function AuctionLotDetail({ onNotify }) {
         return;
       }
     } else {
-      setVerificationModalOpen(true);
+      setPromptMessage('Bidder qualification required. Please submit your 18+ age verification and ID details to request bidding approval.');
+      setShowAgePrompt(true);
       return;
     }
 
@@ -315,8 +323,15 @@ export default function AuctionLotDetail({ onNotify }) {
       setBidAmount('');
     } catch (err) {
       console.error(err);
-      onNotify(err.response?.data?.message || 'Failed to place bid');
+      const errData = err.response?.data;
+      const msg = errData?.message || 'Failed to place bid';
       setModalOpen(false);
+      if (errData?.requiresVerification || /bidder qualification|18\+|age verification/i.test(msg)) {
+        setPromptMessage(msg);
+        setShowAgePrompt(true);
+      } else {
+        onNotify(msg);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -1329,6 +1344,17 @@ export default function AuctionLotDetail({ onNotify }) {
         isMaxBid={isMaxBid} 
         onConfirm={submitBid} 
         loading={submitting} 
+      />
+
+      {/* 1st Centered Modal: Age Verification Prompt */}
+      <AgeVerificationPromptModal
+        isOpen={showAgePrompt}
+        message={promptMessage}
+        onClose={() => setShowAgePrompt(false)}
+        onConfirm={() => {
+          setShowAgePrompt(false);
+          setVerificationModalOpen(true);
+        }}
       />
 
       <BidderVerificationModal

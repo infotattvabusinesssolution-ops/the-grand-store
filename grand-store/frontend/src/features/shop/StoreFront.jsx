@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../api';
-import { Store, MapPin, CheckCircle, Search, ShieldCheck, X } from 'lucide-react';
+import { Store, MapPin, CheckCircle, Search, ShieldCheck, X, Award } from 'lucide-react';
 import ProductCard from '../../components/ProductCard';
+import LongDogAwards from '../../components/LongDogAwards';
 
 export default function StoreFront() {
   const { storeId } = useParams();
@@ -71,6 +72,10 @@ export default function StoreFront() {
   }
 
   const isFlagship = storeData.type === 'flagship' || storeData.type === 'Flagship House' || storeData._id === 'admin';
+  const isLongDog = 
+    storeId === '6af46e02e813edbc5d47f014' ||
+    storeData?._id === '6af46e02e813edbc5d47f014' ||
+    /long\s*dog/i.test(storeData?.businessName || '');
   const storeTypeLabel = isFlagship
     ? 'Flagship House'
     : storeData.type === 'local'
@@ -122,6 +127,11 @@ export default function StoreFront() {
                   <CheckCircle size={14} /> Verified Store
                 </span>
               )}
+              {isLongDog && (
+                <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-600/20 via-yellow-500/20 to-amber-600/20 border border-yellow-500/40 text-amber-300 text-xs font-semibold px-3 py-0.5 rounded-full shadow-[0_0_12px_rgba(201,163,91,0.2)]">
+                  <Award size={14} className="text-[#ffd700]" /> 6× Award-Winning Winery
+                </span>
+              )}
               {isFlagship && (
                 <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-600/20 to-yellow-500/20 border border-yellow-500/30 text-amber-300 text-xs font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                   <ShieldCheck size={14} /> Official Flagship
@@ -145,6 +155,9 @@ export default function StoreFront() {
             )}
           </div>
         </div>
+
+        {/* --- LONG DOG OFFICIAL AWARDS & MEDALS SHOWCASE --- */}
+        {isLongDog && <LongDogAwards variant="storefront" />}
 
         {/* Divider */}
         <div className="w-full h-px bg-white/10 mb-8" />

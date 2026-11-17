@@ -33,6 +33,7 @@ import { isCigarProduct, getCigarQuotationMailto } from "../../utils/cigarUtils"
 import api from "../../api";
 import ConfirmCheckoutModal from "../../components/modals/ConfirmCheckoutModal";
 import { openTastingNotePdf } from "../../utils/tastingNotePdf";
+import LongDogAwards from "../../components/LongDogAwards";
 
 const KNOWN_ESTATE_VENDORS = [
   { match: 'cantina del conte', name: 'Cantina del Conte', slug: 'cantina-del-conte', vendorType: 'international' },
@@ -347,6 +348,15 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
   );
   const isCigar = isCigarProduct(product);
   const vendorLinkInfo = resolveVendorLinkInfo(product);
+
+  const isLongDogProduct = Boolean(
+    (product?.brand && /long\s*dog/i.test(product.brand)) ||
+    (product?.name && /long\s*dog/i.test(product.name)) ||
+    (product?.storeName && /long\s*dog/i.test(product.storeName)) ||
+    product?.vendorId === '6af46e02e813edbc5d47f014' ||
+    product?.storeId === '6af46e02e813edbc5d47f014' ||
+    product?.estateSlug === 'long-dog-wines'
+  );
 
   const isWineVendorProduct = (() => {
     if (!product) return false;
@@ -1179,6 +1189,9 @@ export default function ProductPage({ onAdd, onWish, compareItems, onNotify }) {
               </button>
             </div>
           )}
+
+          {/* Long Dog Certified Awards & Medals Showcase Strip */}
+          {isLongDogProduct && <LongDogAwards variant="product" />}
 
           {/* South Africa Legal Drinking Warning Banner */}
           <div className="w-full bg-[#0a0a0a] border border-white/10 p-3 sm:p-4 flex flex-col xl:flex-row items-center justify-center gap-4 xl:gap-6 mb-8 rounded">

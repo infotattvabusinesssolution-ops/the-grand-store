@@ -454,30 +454,30 @@ export default function AdminVendors() {
         )}
         
         {/* Page Header */}
-        <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-          <div>
+        <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-2">
+          <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c9a35b]">
               Vendor Management Workspace
             </p>
-            <h1 className="mt-2 font-serif text-3xl font-semibold sm:text-4xl">
+            <h1 className="mt-1 font-serif text-2xl sm:text-3xl lg:text-4xl font-semibold text-white tracking-wide">
               {activeTab === "applications" ? "Vendor Applications" : "Vendor Payout Requests"}
             </h1>
-            <p className="mt-2 max-w-2xl text-sm text-white/50">
+            <p className="mt-1.5 max-w-2xl text-xs sm:text-sm text-white/50 leading-relaxed">
               {activeTab === "applications"
                 ? "Review registrations, documents, KYC verification, and banking details in one place."
                 : "Manage and authorize vendor withdrawals, set settlement statuses (Paid, Delayed, Pending), and dispatch custom messages."}
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 sm:gap-3 shrink-0">
             {/* Search Input */}
-            <div className="relative w-full sm:w-72">
+            <div className="relative w-full sm:w-64 md:w-72 min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35" size={17} />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={activeTab === "applications" ? "Search vendor name or email..." : "Search payouts, ref, or bank..."}
-                className="w-full rounded-lg border border-white/10 bg-[#121212] py-2.5 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-[#c9a35b]/70"
+                className="w-full rounded-lg border border-white/10 bg-[#121212] py-2.5 pl-10 pr-4 text-xs sm:text-sm text-white outline-none transition placeholder:text-white/30 focus:border-[#c9a35b]/70"
               />
             </div>
 
@@ -487,7 +487,7 @@ export default function AdminVendors() {
                 else fetchPayouts();
               }}
               title="Refresh Data"
-              className="p-2.5 rounded-lg border border-white/10 bg-[#121212] text-white/60 hover:text-white hover:border-white/20 transition-colors cursor-pointer self-end sm:self-auto"
+              className="p-2.5 rounded-lg border border-white/10 bg-[#121212] text-white/60 hover:text-white hover:border-white/20 transition-colors cursor-pointer shrink-0"
             >
               <RefreshCw size={16} className={(loadingVendors || loadingPayouts) ? "animate-spin" : ""} />
             </button>
@@ -498,7 +498,7 @@ export default function AdminVendors() {
                 setAddError("");
                 setIsAddModalOpen(true);
               }}
-              className="flex items-center justify-center gap-2 rounded-lg bg-[#c9a35b] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-black shadow-[0_0_15px_rgba(201,163,91,0.25)] hover:bg-[#d8b76f] transition-all cursor-pointer whitespace-nowrap self-stretch sm:self-auto"
+              className="flex items-center justify-center gap-2 rounded-lg bg-[#c9a35b] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-black shadow-[0_0_15px_rgba(201,163,91,0.25)] hover:bg-[#d8b76f] transition-all cursor-pointer whitespace-nowrap shrink-0 self-stretch sm:self-auto"
             >
               <Plus size={16} /> Add Vendor
             </button>
@@ -506,7 +506,7 @@ export default function AdminVendors() {
         </header>
 
         {/* NAVIGATION TABS: APPLICATIONS vs PAYOUT REQUESTS */}
-        <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 border-b border-white/10 pb-3 overflow-x-auto scrollbar-none">
           <button
             type="button"
             onClick={() => handleTabChange("applications")}

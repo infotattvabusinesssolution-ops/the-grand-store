@@ -11,6 +11,7 @@ import {
   ExternalLink, ArrowDown, Play, Download, Sparkles
 } from 'lucide-react';
 import { resolveImageUrl } from '../../utils/imageUtils';
+import LongDogAwards from '../../components/LongDogAwards';
 
 const API = import.meta.env.VITE_API_URL;
 const APP = import.meta.env.VITE_APP_URL || '';
@@ -1243,6 +1244,13 @@ export default function EstateDetail({ onNotify, onAdd }) {
                 }
               </p>
             </div>
+
+            {/* Long Dog Certified Awards & Medals Showcase */}
+            {isLongDog && (
+              <div className="mb-14">
+                <LongDogAwards variant="storefront" />
+              </div>
+            )}
 
             {/* Product Grid */}
             {isLongDog ? (

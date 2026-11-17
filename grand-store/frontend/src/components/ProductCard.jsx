@@ -242,11 +242,82 @@ export default function ProductCard({
   const badge = product.badge || fallbackBadges[index % fallbackBadges.length];
   const isCigar = isCigarProduct(product);
 
+  const isWineVendorProduct = !isCigar && Boolean(
+    isGlobalWine ||
+    product.estateSlug ||
+    product.estateName ||
+    /wine|champagne|sparkling|prosecco|cava/i.test(`${product.category || ''} ${product.type || ''} ${product.subcategory || ''}`) ||
+    /cantina|dogliotti|giuliani|bruno\s*andreu|tesselaarsdal|long\s*dog|mont\s*rochelle|winery|vineyard|wine\s*estate|vini|domaine|chateau|cellar|bodega|spumante/i.test(
+      `${product.brand || ''} ${product.storeName || ''} ${product.estateName || ''} ${product.vendorName || ''} ${product.vendor || ''}`
+    )
+  );
+
+  const safeId = String(productId || index).replace(/[^a-zA-Z0-9_-]/g, '') || String(index);
+  const curveId = `export-curve-${safeId}`;
+  const gradId = `goldGrad-${safeId}`;
+
   return (
     <>
       <article className="product-card relative">
         <div className="product-visual">
           <span className="product-badge">{badge}</span>
+
+          {/* Curved S-wave "EXPORT READY" link along left bottle contour for all wine vendors */}
+          {isWineVendorProduct && (
+            <Link
+              to="/trade"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              title="Export Ready — Grand Store International B2B Trade Portal"
+              aria-label="Export Ready — View Trade Portal"
+              className="export-ready-curved-link group/export absolute left-0 top-0 bottom-0 w-24 sm:w-28 z-20 pointer-events-none select-none"
+            >
+              <svg
+                viewBox="0 0 100 280"
+                className="w-full h-full overflow-visible pointer-events-none"
+              >
+                <defs>
+                  {/* Highlighting vibrant 24k gold gradient */}
+                  <linearGradient id={gradId} x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#fff8d6" />
+                    <stop offset="35%" stopColor="#ffd54f" />
+                    <stop offset="100%" stopColor="#ffb300" />
+                  </linearGradient>
+                </defs>
+
+                <g className="pointer-events-auto cursor-pointer transition-all duration-300 group-hover/export:brightness-125">
+                  {/* Clean, spacious, un-crowded upright characters undulating along the wave with gap below JUST IN */}
+                  <g
+                    fontFamily="'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+                    fontSize="11.5"
+                    fontWeight="900"
+                    fill={`url(#${gradId})`}
+                    textAnchor="middle"
+                    className="font-black uppercase select-none transition-all duration-300"
+                    style={{
+                      filter: 'drop-shadow(0 1px 2px rgba(0,0,0,1)) drop-shadow(0 0 5px rgba(255,213,79,0.7))',
+                    }}
+                  >
+                    {/* EXPORT (starts at y=66 for generous gap below JUST IN badge) */}
+                    <text x="35" y="66">E</text>
+                    <text x="42" y="84">X</text>
+                    <text x="46" y="102">P</text>
+                    <text x="43" y="120">O</text>
+                    <text x="36" y="138">R</text>
+                    <text x="28" y="156">T</text>
+
+                    {/* READY */}
+                    <text x="33" y="182">R</text>
+                    <text x="42" y="200">E</text>
+                    <text x="46" y="218">A</text>
+                    <text x="42" y="236">D</text>
+                    <text x="34" y="254">Y</text>
+                  </g>
+                </g>
+              </svg>
+            </Link>
+          )}
 
           <div className="quick-actions">
             {onCompare && (
