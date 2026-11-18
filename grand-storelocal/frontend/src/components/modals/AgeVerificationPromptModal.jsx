@@ -7,7 +7,7 @@ export default function AgeVerificationPromptModal({
   onClose,
   onConfirm,
   title = "18+ Age & Bidder Verification Required",
-  message = "Bidder qualification required. Please submit your 18+ age verification and ID details to request bidding approval."
+  message = "Please confirm you are 18+ years of age to participate in wine, spirit and luxury lot bidding."
 }) {
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -78,9 +78,9 @@ export default function AgeVerificationPromptModal({
           <button
             type="button"
             onClick={onClose}
-            className="mt-1 text-xs uppercase tracking-widest text-white/40 hover:text-white transition-colors cursor-pointer py-1"
+            className="mt-1 text-xs uppercase tracking-widest text-white/50 hover:text-white transition-colors cursor-pointer py-2 px-4 rounded-xl hover:bg-white/5 font-semibold"
           >
-            Cancel
+            NO, I AM UNDER 18
           </button>
         </div>
       </div>

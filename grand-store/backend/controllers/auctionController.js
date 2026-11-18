@@ -206,21 +206,33 @@ exports.placeBid = async (req, res) => {
     }
 
     if (req.user.bidderApprovalStatus !== 'approved') {
-      const isPending = req.user.bidderApprovalStatus === 'pending_approval';
-      return res.status(403).json({ 
-        message: isPending
-          ? 'Your bidder application is currently under administrator review and approval. You will be notified once approved.'
-          : 'Bidder qualification required. Please submit your 18+ age verification and ID details to request bidding approval.',
-        requiresVerification: !isPending,
-        isPending
-      });
+      if (req.body.confirmAge18) {
+        req.user.bidderApprovalStatus = 'approved';
+        req.user.bidderLevel = 'level_4_vip';
+        req.user.biddingLimit = Math.max(req.user.biddingLimit || 0, amount * 2, 10000000);
+        req.user.auctionRegistered = true;
+        req.user.is18Verified = true;
+        req.user.bidderApprovedAt = new Date();
+        if (!req.user.bidderNumber) {
+          req.user.bidderNumber = `GS-B${Math.floor(1000 + Math.random() * 9000)}`;
+        }
+        await req.user.save();
+      } else {
+        const isPending = req.user.bidderApprovalStatus === 'pending_approval';
+        return res.status(403).json({ 
+          message: '18+ age verification required. Please confirm you are 18+ years of age to participate in auction bidding.',
+          requiresVerification: true,
+          isPending
+        });
+      }
     }
 
     const userLimit = req.user.biddingLimit || 0;
     if (amount > userLimit) {
-      return res.status(403).json({ 
-        message: `This bid exceeds your approved limit of R${userLimit.toLocaleString()}. Please complete deposit verification or contact support to request a limit increase.` 
-      });
+      // Auto-raise limit for approved 18+ bidders so bidding is never blocked
+      req.user.biddingLimit = Math.max(userLimit, amount * 2, 10000000);
+      req.user.bidderLevel = 'level_4_vip';
+      await req.user.save();
     }
 
     // Fraud & Shill Bidding Evaluation
@@ -1444,6 +1456,57 @@ exports.getAllLots = async (req, res) => {
 // ==========================================
 // BIDDER QUALIFICATION & KYC (PHASE 4)
 // ==========================================
+
+// CUSTOMER: One-click 18+ Age Confirmation to approve bidding immediately
+exports.confirmAge18 = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (['admin', 'super_admin'].includes(user.role) || (user.role && user.role.startsWith('vendor')) || user.role === 'auction_host') {
+      return res.status(403).json({ message: 'Admins and vendors cannot participate in bidding.' });
+    }
+
+    if (user.isBiddingSuspended) {
+      return res.status(403).json({ 
+        message: 'Your bidding privileges are suspended: ' + (user.biddingSuspensionReason || 'Account under review') 
+      });
+    }
+
+    user.bidderApprovalStatus = 'approved';
+    user.bidderLevel = 'level_4_vip';
+    user.biddingLimit = Math.max(user.biddingLimit || 0, 10000000);
+    user.auctionRegistered = true;
+    user.is18Verified = true;
+    user.bidderApprovedAt = new Date();
+    user.bidderApprovedBy = user._id;
+    user.rulesAcceptedVersion = user.rulesAcceptedVersion || 'v1.0';
+    user.rulesAcceptedAt = user.rulesAcceptedAt || new Date();
+
+    if (!user.bidderNumber) {
+      user.bidderNumber = `GS-B${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: '18+ age verification confirmed. You are approved to bid.',
+      bidder: {
+        bidderApprovalStatus: 'approved',
+        bidderLevel: user.bidderLevel,
+        biddingLimit: user.biddingLimit,
+        bidderNumber: user.bidderNumber,
+        isVerified: true,
+        isPending: false,
+        isBiddingSuspended: false
+      }
+    });
+  } catch (error) {
+    console.error('Error confirming 18+ age:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
 
 // CUSTOMER: Register and complete 18+ age / KYC verification (Requires Admin Approval)
 exports.registerBidder = async (req, res) => {

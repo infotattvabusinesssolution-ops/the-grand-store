@@ -242,15 +242,21 @@ export default function ProductCard({
   const badge = product.badge || fallbackBadges[index % fallbackBadges.length];
   const isCigar = isCigarProduct(product);
 
-  const isWineVendorProduct = !isCigar && Boolean(
-    isGlobalWine ||
-    product.estateSlug ||
-    product.estateName ||
-    /wine|champagne|sparkling|prosecco|cava/i.test(`${product.category || ''} ${product.type || ''} ${product.subcategory || ''}`) ||
-    /cantina|dogliotti|giuliani|bruno\s*andreu|tesselaarsdal|long\s*dog|mont\s*rochelle|winery|vineyard|wine\s*estate|vini|domaine|chateau|cellar|bodega|spumante/i.test(
-      `${product.brand || ''} ${product.storeName || ''} ${product.estateName || ''} ${product.vendorName || ''} ${product.vendor || ''}`
-    )
-  );
+  // EXPORT READY badge: strictly for products belonging to approved partner vendors:
+  // Bruno Andreu, Long Dog, Tesselaarsdal, Dogliotti 1870, Cantina del Conte, Maison Dobbé, Giuliani Vini
+  const isWineVendorProduct = !isCigar && (() => {
+    const vendorIdentityString = [
+      product.brand,
+      product.storeName,
+      product.vendorName,
+      typeof product.vendor === 'string' ? product.vendor : (product.vendor?.storeName || product.vendor?.tradingName || product.vendor?.name),
+      product.estateSlug,
+      product.estateName,
+      product.name
+    ].filter(Boolean).join(' ');
+
+    return /bruno\s*andr|long\s*dog|tessel?aarsdal|dogliotti|cantina\s*del|dobb[eé]|g[iu][iu]liani/i.test(vendorIdentityString);
+  })();
 
   const safeId = String(productId || index).replace(/[^a-zA-Z0-9_-]/g, '') || String(index);
   const curveId = `export-curve-${safeId}`;
@@ -262,7 +268,7 @@ export default function ProductCard({
         <div className="product-visual">
           <span className="product-badge">{badge}</span>
 
-          {/* Curved S-wave "EXPORT READY" link along left bottle contour for all wine vendors */}
+          {/* Straight vertical line "EXPORT READY" link strictly for partner vendors */}
           {isWineVendorProduct && (
             <Link
               to="/trade"
@@ -287,7 +293,7 @@ export default function ProductCard({
                 </defs>
 
                 <g className="pointer-events-auto cursor-pointer transition-all duration-300 group-hover/export:brightness-125">
-                  {/* Clean, spacious, un-crowded upright characters undulating along the wave with gap below JUST IN */}
+                  {/* Clean, spacious upright characters aligned in a straight vertical line with gap below JUST IN */}
                   <g
                     fontFamily="'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
                     fontSize="11.5"
@@ -299,20 +305,20 @@ export default function ProductCard({
                       filter: 'drop-shadow(0 1px 2px rgba(0,0,0,1)) drop-shadow(0 0 5px rgba(255,213,79,0.7))',
                     }}
                   >
-                    {/* EXPORT (starts at y=66 for generous gap below JUST IN badge) */}
-                    <text x="35" y="66">E</text>
-                    <text x="42" y="84">X</text>
-                    <text x="46" y="102">P</text>
-                    <text x="43" y="120">O</text>
-                    <text x="36" y="138">R</text>
+                    {/* EXPORT in a straight vertical line at x=28 */}
+                    <text x="28" y="66">E</text>
+                    <text x="28" y="84">X</text>
+                    <text x="28" y="102">P</text>
+                    <text x="28" y="120">O</text>
+                    <text x="28" y="138">R</text>
                     <text x="28" y="156">T</text>
 
-                    {/* READY */}
-                    <text x="33" y="182">R</text>
-                    <text x="42" y="200">E</text>
-                    <text x="46" y="218">A</text>
-                    <text x="42" y="236">D</text>
-                    <text x="34" y="254">Y</text>
+                    {/* READY in a straight vertical line at x=28 */}
+                    <text x="28" y="182">R</text>
+                    <text x="28" y="200">E</text>
+                    <text x="28" y="218">A</text>
+                    <text x="28" y="236">D</text>
+                    <text x="28" y="254">Y</text>
                   </g>
                 </g>
               </svg>

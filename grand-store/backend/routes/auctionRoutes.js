@@ -12,6 +12,7 @@ router.get('/live-status', auctionController.getLiveAuctionStatus);
 
 // 2. Bidder Qualification, Verification & Deposits (Phase 4 & Section 19)
 router.post('/bidder/verify', protect, auctionController.registerBidder);
+router.post('/bidder/confirm-18', protect, auctionController.confirmAge18);
 router.get('/bidder/status', protect, auctionController.getBidderStatus);
 router.post('/bidder/deposit', protect, upload.single('proof'), auctionController.createBidderDeposit);
 

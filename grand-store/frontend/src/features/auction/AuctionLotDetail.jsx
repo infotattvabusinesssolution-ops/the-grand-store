@@ -59,7 +59,7 @@ export default function AuctionLotDetail({ onNotify }) {
   const [verificationModalOpen, setVerificationModalOpen] = useState(false);
   const [showAgePrompt, setShowAgePrompt] = useState(false);
   const [promptMessage, setPromptMessage] = useState(
-    "Bidder qualification required. Please submit your 18+ age verification and ID details to request bidding approval."
+    "Please confirm you are 18+ years of age to participate in wine, spirit and luxury lot bidding."
   );
   const [bidderProfile, setBidderProfile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -271,12 +271,12 @@ export default function AuctionLotDetail({ onNotify }) {
       }
       if (bidderProfile.bidderApprovalStatus === 'rejected') {
         onNotify(`Your application was rejected: ${bidderProfile.bidderRejectionReason || 'Please re-verify.'}`);
-        setPromptMessage(bidderProfile.bidderRejectionReason || 'Please submit your 18+ age verification and ID details.');
+        setPromptMessage(bidderProfile.bidderRejectionReason || 'Please confirm you are 18+ years of age to participate in wine, spirit and luxury lot bidding.');
         setShowAgePrompt(true);
         return;
       }
       if (!bidderProfile.isVerified) {
-        setPromptMessage('Bidder qualification required. Please submit your 18+ age verification and ID details to request bidding approval.');
+        setPromptMessage('Please confirm you are 18+ years of age to participate in wine, spirit and luxury lot bidding.');
         setShowAgePrompt(true);
         return;
       }
@@ -284,13 +284,8 @@ export default function AuctionLotDetail({ onNotify }) {
         onNotify(`Your bidding privileges are suspended: ${bidderProfile.biddingSuspensionReason || 'Account under review'}`);
         return;
       }
-      if (bidderProfile.biddingLimit > 0 && amtInZar > bidderProfile.biddingLimit) {
-        onNotify(`Bid of R${amtInZar.toLocaleString()} exceeds your current limit of R${bidderProfile.biddingLimit.toLocaleString()}. Please upgrade to Premium VIP Bidding to place this bid.`);
-        setVerificationModalOpen(true);
-        return;
-      }
     } else {
-      setPromptMessage('Bidder qualification required. Please submit your 18+ age verification and ID details to request bidding approval.');
+      setPromptMessage('Please confirm you are 18+ years of age to participate in wine, spirit and luxury lot bidding.');
       setShowAgePrompt(true);
       return;
     }
@@ -305,6 +300,81 @@ export default function AuctionLotDetail({ onNotify }) {
     setModalOpen(true);
   };
 
+  const executeDirectBid = async (zarAmt, originalEntered) => {
+    setSubmitting(true);
+    try {
+      const res = await api.post(`/auction/${id}/bid`, {
+        amount: zarAmt,
+        isMaxBid,
+        placedCurrency: currency,
+        placedAmount: Number(originalEntered) || zarAmt,
+        confirmAge18: true
+      });
+      
+      onNotify(res.data.message || 'Bid placed successfully!');
+      setLastBidAmount(zarAmt);
+      setShowMagicalBid(true);
+      await fetchLot();
+      setModalOpen(false);
+      setBidAmount('');
+    } catch (err) {
+      console.error(err);
+      const errData = err.response?.data;
+      const msg = errData?.message || 'Failed to place bid';
+      setModalOpen(false);
+      onNotify(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleConfirmAgeAndBid = async () => {
+    try {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      if (userInfo?.token) {
+        const res = await api.post('/auction/bidder/confirm-18', {}, {
+          headers: { Authorization: `Bearer ${userInfo.token}` }
+        });
+        setBidderProfile(prev => ({
+          ...(prev || {}),
+          ...(res.data?.bidder || {}),
+          isVerified: true,
+          bidderApprovalStatus: 'approved',
+          biddingLimit: res.data?.bidder?.biddingLimit || 10000000
+        }));
+      } else {
+        setBidderProfile(prev => ({
+          ...(prev || {}),
+          isVerified: true,
+          bidderApprovalStatus: 'approved'
+        }));
+      }
+    } catch (err) {
+      console.warn('Could not confirm 18+ age:', err);
+      setBidderProfile(prev => ({
+        ...(prev || {}),
+        isVerified: true,
+        bidderApprovalStatus: 'approved'
+      }));
+    } finally {
+      setShowAgePrompt(false);
+      // Immediately place the bid without opening any KYC validation form
+      const enteredAmt = Number(bidAmount);
+      const amtInZar = Math.round(convertToZar(enteredAmt, currency));
+      if (!isNaN(amtInZar) && amtInZar >= nextMinimum) {
+        setConfirmedZarAmount(amtInZar);
+        executeDirectBid(amtInZar, enteredAmt);
+      }
+    }
+  };
+
+  const handleAgeReject = () => {
+    setShowAgePrompt(false);
+    if (onNotify) {
+      onNotify('Underage restriction: You must be at least 18 years of age to participate in auction bidding.');
+    }
+  };
+
   const submitBid = async () => {
     setSubmitting(true);
     try {
@@ -312,7 +382,8 @@ export default function AuctionLotDetail({ onNotify }) {
         amount: confirmedZarAmount,
         isMaxBid,
         placedCurrency: currency,
-        placedAmount: Number(bidAmount)
+        placedAmount: Number(bidAmount),
+        confirmAge18: true
       });
       
       onNotify(res.data.message || 'Bid placed successfully!');
@@ -327,7 +398,7 @@ export default function AuctionLotDetail({ onNotify }) {
       const msg = errData?.message || 'Failed to place bid';
       setModalOpen(false);
       if (errData?.requiresVerification || /bidder qualification|18\+|age verification/i.test(msg)) {
-        setPromptMessage(msg);
+        setPromptMessage('Please confirm you are 18+ years of age to participate in wine, spirit and luxury lot bidding.');
         setShowAgePrompt(true);
       } else {
         onNotify(msg);
@@ -671,7 +742,10 @@ export default function AuctionLotDetail({ onNotify }) {
                 <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs flex items-center justify-between gap-3">
                   <span>Complete legal 18+ age verification to unlock bidding on this lot.</span>
                   <button 
-                    onClick={() => setVerificationModalOpen(true)}
+                    onClick={() => {
+                      setPromptMessage('Please confirm you are 18+ years of age to participate in wine, spirit and luxury lot bidding.');
+                      setShowAgePrompt(true);
+                    }}
                     className="px-4 py-2 bg-[var(--color-gold)] text-black font-bold uppercase text-[10px] tracking-wider rounded-lg hover:brightness-110 transition-all cursor-pointer"
                   >
                     Verify (18+)
@@ -835,7 +909,10 @@ export default function AuctionLotDetail({ onNotify }) {
                            <p className="text-blue-300/80 text-[11px] mt-0.5">Submit legal verification for admin review to unlock bidding privileges.</p>
                          </div>
                          <button 
-                           onClick={() => setVerificationModalOpen(true)}
+                           onClick={() => {
+                             setPromptMessage('Please confirm you are 18+ years of age to participate in wine, spirit and luxury lot bidding.');
+                             setShowAgePrompt(true);
+                           }}
                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold uppercase tracking-wider shrink-0 cursor-pointer"
                          >
                            Verify Now
@@ -1350,11 +1427,8 @@ export default function AuctionLotDetail({ onNotify }) {
       <AgeVerificationPromptModal
         isOpen={showAgePrompt}
         message={promptMessage}
-        onClose={() => setShowAgePrompt(false)}
-        onConfirm={() => {
-          setShowAgePrompt(false);
-          setVerificationModalOpen(true);
-        }}
+        onClose={handleAgeReject}
+        onConfirm={handleConfirmAgeAndBid}
       />
 
       <BidderVerificationModal
