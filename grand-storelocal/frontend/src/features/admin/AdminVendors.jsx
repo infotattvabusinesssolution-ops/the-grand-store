@@ -22,10 +22,120 @@ import {
   X,
   KeyRound,
   Mail,
-  Lock
+  Lock,
+  Wine
 } from "lucide-react";
 import api from "../../api";
 import VendorPayoutModal from "./VendorPayoutModal";
+
+const EXCLUSIVE_WINE_FARMS = [
+  {
+    id: "bruno-andreu",
+    name: "Bruno Andreu",
+    legalName: "Maison Bruno Andreu SAS",
+    region: "Languedoc",
+    country: "France",
+    flag: "🇫🇷",
+    productsCount: 35,
+    specialty: "Languedoc Terroir & Single-Varietal Fine Wines",
+    status: "approved",
+    vendorType: "international",
+    exportReady: true,
+    email: "brunoandreu@grandstore.co.za"
+  },
+  {
+    id: "dogliotti-1870",
+    name: "Dogliotti 1870",
+    legalName: "Dogliotti 1870 S.S.",
+    region: "Piedmont",
+    country: "Italy",
+    flag: "🇮🇹",
+    productsCount: 28,
+    specialty: "Castiglione Tinella DOCG & Moscato d'Asti Heritage",
+    status: "approved",
+    vendorType: "international",
+    exportReady: true,
+    email: "dogliotti1870@grandstore.co.za"
+  },
+  {
+    id: "giuliani-vini",
+    name: "GIULIANI Vini",
+    legalName: "Azienda Agricola Giuliani Raffaele",
+    region: "Puglia",
+    country: "Italy",
+    flag: "🇮🇹",
+    productsCount: 19,
+    specialty: "Puglian Primitivo & Salento Estate Harvests",
+    status: "approved",
+    vendorType: "international",
+    exportReady: true,
+    email: "giuliani@grandstore.co.za"
+  },
+  {
+    id: "cantina-del-conte",
+    name: "Cantina del Conte",
+    legalName: "Azienda Pelissero snc",
+    region: "Piedmont",
+    country: "Italy",
+    flag: "🇮🇹",
+    productsCount: 12,
+    specialty: "Barolo, Barbaresco & Langhe Nebbiolo Vaults",
+    status: "approved",
+    vendorType: "international",
+    exportReady: true,
+    email: "cantinadelconte@grandstore.co.za"
+  },
+  {
+    id: "maison-dobbe",
+    name: "Maison Dobbé Cognac",
+    legalName: "Maison Dobbé SAS",
+    region: "Cognac",
+    country: "France",
+    flag: "🇫🇷",
+    productsCount: 8,
+    specialty: "Petite Champagne Cognac & Single Malt French Whisky",
+    status: "approved",
+    vendorType: "international",
+    exportReady: true,
+    email: "maisondobbe@grandstore.co.za"
+  },
+  {
+    id: "tesselaarsdal",
+    name: "Tesselaarsdal Wines",
+    legalName: "Tesselaarsdal Wines (Pty) Ltd",
+    region: "Hemel-en-Aarde Ridge",
+    country: "South Africa",
+    flag: "🇿🇦",
+    productsCount: 3,
+    specialty: "Boutique Pinot Noir & Chardonnay by Berene Sauls",
+    status: "approved",
+    vendorType: "local",
+    exportReady: true,
+    email: "tesselaarsdal@grandstore.co.za"
+  },
+  {
+    id: "long-dog",
+    name: "Long Dog Wines",
+    legalName: "Sky Ombre Trading (Pty) Ltd t/a Long Dog Wines",
+    region: "Stellenbosch",
+    country: "South Africa",
+    flag: "🇿🇦",
+    productsCount: 1,
+    specialty: "Helderberg Single Vineyard Cabernet Sauvignon",
+    status: "approved",
+    vendorType: "local",
+    exportReady: true,
+    email: "longdog@grandstore.co.za"
+  }
+];
+
+const isPartnerWineFarm = (vendor) => {
+  const legal = String(vendor.businessInfo?.legalName || '').toLowerCase();
+  const trade = String(vendor.businessInfo?.tradingName || '').toLowerCase();
+  const email = String(vendor.userId?.email || '').toLowerCase();
+  const full = `${legal} ${trade} ${email}`;
+  return /bruno\s*andr|dogliotti|giuliani|cantina\s*del|dobb[eé]|tessel?aarsdal|long\s*dog/i.test(full);
+};
 
 const STATUS_STYLES = {
   approved: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
@@ -78,7 +188,8 @@ function Metric({ icon: Icon, label, value, subtext, onClick, clickable, active 
 export default function AdminVendors() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") === "payouts" ? "payouts" : "applications";
+  const tabParam = searchParams.get("tab");
+  const activeTab = tabParam === "payouts" ? "payouts" : tabParam === "winefarms" ? "winefarms" : "applications";
 
   const [vendors, setVendors] = useState([]);
   const [payouts, setPayouts] = useState([]);
@@ -111,7 +222,7 @@ export default function AdminVendors() {
   // Delete Vendor State
   const [vendorToDelete, setVendorToDelete] = useState(null);
   const [deleteOption, setDeleteOption] = useState("permanent");
-  const [deleteProducts, setDeleteProducts] = useState(false);
+  const [deleteProducts, setDeleteProducts] = useState(true);
   const [deletingVendor, setDeletingVendor] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
@@ -396,6 +507,19 @@ export default function AdminVendors() {
     );
   }, [search, vendors]);
 
+  // Filtered Partner Wine Farms (Excludes Hamilton Russell)
+  const filteredWineFarms = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return EXCLUSIVE_WINE_FARMS;
+    return EXCLUSIVE_WINE_FARMS.filter(f =>
+      f.name.toLowerCase().includes(q) ||
+      f.legalName.toLowerCase().includes(q) ||
+      f.region.toLowerCase().includes(q) ||
+      f.country.toLowerCase().includes(q) ||
+      f.specialty.toLowerCase().includes(q)
+    );
+  }, [search]);
+
   // Filtered Payout Requests
   const filteredPayouts = useMemo(() => {
     return payouts.filter((payout) => {
@@ -460,11 +584,13 @@ export default function AdminVendors() {
               Vendor Management Workspace
             </p>
             <h1 className="mt-1 font-serif text-2xl sm:text-3xl lg:text-4xl font-semibold text-white tracking-wide">
-              {activeTab === "applications" ? "Vendor Applications" : "Vendor Payout Requests"}
+              {activeTab === "applications" ? "Vendor Applications" : activeTab === "winefarms" ? "Partner Wine Farms & Estates" : "Vendor Payout Requests"}
             </h1>
             <p className="mt-1.5 max-w-2xl text-xs sm:text-sm text-white/50 leading-relaxed">
               {activeTab === "applications"
                 ? "Review registrations, documents, KYC verification, and banking details in one place."
+                : activeTab === "winefarms"
+                ? "Exclusive global & South African partner wine estates with verified B2B Export Ready status (106 catalog bottles)."
                 : "Manage and authorize vendor withdrawals, set settlement statuses (Paid, Delayed, Pending), and dispatch custom messages."}
             </p>
           </div>
@@ -476,7 +602,7 @@ export default function AdminVendors() {
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder={activeTab === "applications" ? "Search vendor name or email..." : "Search payouts, ref, or bank..."}
+                placeholder={activeTab === "applications" ? "Search vendor name or email..." : activeTab === "winefarms" ? "Search wine farm or region..." : "Search payouts, ref, or bank..."}
                 className="w-full rounded-lg border border-white/10 bg-[#121212] py-2.5 pl-10 pr-4 text-xs sm:text-sm text-white outline-none transition placeholder:text-white/30 focus:border-[#c9a35b]/70"
               />
             </div>
@@ -505,7 +631,7 @@ export default function AdminVendors() {
           </div>
         </header>
 
-        {/* NAVIGATION TABS: APPLICATIONS vs PAYOUT REQUESTS */}
+        {/* NAVIGATION TABS: APPLICATIONS vs WINE FARMS vs PAYOUT REQUESTS */}
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 border-b border-white/10 pb-3 overflow-x-auto scrollbar-none">
           <button
             type="button"
@@ -525,6 +651,24 @@ export default function AdminVendors() {
                 {pendingApplications} new
               </span>
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleTabChange("winefarms")}
+            className={`px-5 py-2.5 rounded-lg text-xs uppercase tracking-widest font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
+              activeTab === "winefarms"
+                ? "bg-[#c9a35b] text-black shadow-[0_0_15px_rgba(201,163,91,0.3)]"
+                : "bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border border-white/5"
+            }`}
+          >
+            <Wine size={15} />
+            <span>Partner Wine Farms ({EXCLUSIVE_WINE_FARMS.length})</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+              activeTab === "winefarms" ? "bg-black text-amber-300" : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+            }`}>
+              106 Bottles
+            </span>
           </button>
 
           <button
@@ -561,6 +705,20 @@ export default function AdminVendors() {
               subtext={`${formatMoney(totalPendingPayoutAmount)} in queue`}
               clickable
               onClick={() => handleTabChange("payouts")}
+            />
+          </section>
+        ) : activeTab === "winefarms" ? (
+          <section className="grid gap-3 sm:grid-cols-4">
+            <Metric icon={Wine} label="Partner Wine Estates" value="7 Estates" subtext="France, Italy & South Africa" />
+            <Metric icon={Store} label="Catalog Inventory" value="106 Bottles" subtext="All Export Ready Certified" />
+            <Metric icon={CheckCircle2} label="Export Status" value="100% Active" subtext="B2B Wholesale Portal" />
+            <Metric 
+              icon={Building2} 
+              label="Manage In Products" 
+              value="Retail Products" 
+              subtext="Filter by Farm" 
+              clickable 
+              onClick={() => navigate('/admin/products?farm=exclusives')} 
             />
           </section>
         ) : (
@@ -641,7 +799,14 @@ export default function AdminVendors() {
                           className="group cursor-pointer transition hover:bg-white/[0.035]"
                         >
                           <td className="px-5 py-4">
-                            <div className="font-medium text-white">{businessName}</div>
+                            <div className="font-medium text-white flex items-center gap-2">
+                              <span>{businessName}</span>
+                              {isPartnerWineFarm(vendor) && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase">
+                                  🍇 Wine Farm
+                                </span>
+                              )}
+                            </div>
                             <div className="mt-1 text-xs text-white/40">
                               {vendor.userId?.email || "No account email"}
                             </div>
@@ -764,6 +929,8 @@ export default function AdminVendors() {
                                 type="button"
                                 onClick={() => {
                                   setDeleteError("");
+                                  setDeleteOption("permanent");
+                                  setDeleteProducts(true);
                                   setVendorToDelete(vendor);
                                 }}
                                 title="Remove Vendor"
@@ -783,7 +950,122 @@ export default function AdminVendors() {
           </section>
         )}
 
-        {/* TAB 2: VENDOR PAYOUT REQUESTS */}
+        {/* TAB 2: PARTNER WINE FARMS (7 PRODUCERS) */}
+        {activeTab === "winefarms" && (
+          <div className="space-y-6">
+            <section className="overflow-hidden rounded-xl border border-white/10 bg-[#101010]">
+              <div className="p-5 border-b border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-serif text-lg font-semibold text-white flex items-center gap-2">
+                    <Wine size={18} className="text-[#c9a35b]" />
+                    Approved Partner Wine Estates & Distilleries
+                  </h3>
+                  <p className="text-xs text-white/50 mt-0.5">
+                    Exclusive direct vineyard producers with Gold Export Ready status on Grand Store.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/products?farm=exclusives')}
+                  className="px-4 py-2 rounded-lg bg-[#c9a35b]/10 border border-[#c9a35b]/30 text-[#e1bd70] hover:bg-[#c9a35b] hover:text-black transition-all text-xs font-bold uppercase tracking-wider flex items-center gap-2"
+                >
+                  <Store size={14} /> View All 106 Wines in Products
+                </button>
+              </div>
+
+              {filteredWineFarms.length === 0 ? (
+                <div className="flex min-h-64 flex-col items-center justify-center px-5 text-center">
+                  <Wine size={30} className="text-white/25" />
+                  <p className="mt-3 font-medium text-white/70">No partner wine farm matches "{search}"</p>
+                  <p className="mt-1 text-sm text-white/40">Try searching another producer or country.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[860px] text-left">
+                    <thead className="border-b border-white/10 bg-white/[0.025] text-[10px] uppercase tracking-[0.16em] text-white/35">
+                      <tr>
+                        <th className="px-5 py-4 font-medium">Estate / Producer</th>
+                        <th className="px-5 py-4 font-medium">Origin & Terroir</th>
+                        <th className="px-5 py-4 font-medium">Specialty</th>
+                        <th className="px-5 py-4 font-medium">Catalog Stock</th>
+                        <th className="px-5 py-4 font-medium">Export Status</th>
+                        <th className="px-5 py-4 text-right font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.07]">
+                      {filteredWineFarms.map((farm) => {
+                        const matchedVendor = vendors.find((v) => {
+                          const name = (v.businessInfo?.tradingName || v.businessInfo?.legalName || '').toLowerCase();
+                          return name.includes(farm.name.toLowerCase().split(' ')[0]);
+                        });
+                        return (
+                          <tr key={farm.id} className="group hover:bg-white/[0.035] transition">
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <span className="text-2xl">{farm.flag}</span>
+                                <div>
+                                  <div className="font-medium text-white flex items-center gap-2">
+                                    <span>{farm.name}</span>
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30 uppercase">
+                                      🍇 Wine Farm
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-white/40 mt-0.5">{farm.legalName}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="text-sm text-white/80">{farm.region}</div>
+                              <div className="text-xs text-white/40">{farm.country}</div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="text-xs text-white/70 max-w-xs">{farm.specialty}</div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-white">
+                                <Wine size={12} className="text-[#c9a35b]" />
+                                {farm.productsCount} Wines Listed
+                              </span>
+                            </td>
+                            <td className="px-5 py-4">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                EXPORT READY
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/admin/products?farm=${encodeURIComponent(farm.name)}`)}
+                                  className="px-3 py-1.5 rounded-lg border border-[#c9a35b]/30 bg-[#c9a35b]/10 text-[#e1bd70] hover:bg-[#c9a35b] hover:text-black text-xs font-semibold transition"
+                                  title={`View ${farm.name} wines in Admin Products`}
+                                >
+                                  View Products ({farm.productsCount})
+                                </button>
+                                {matchedVendor && (
+                                  <button
+                                    type="button"
+                                    onClick={() => navigate(`/admin/vendors/${matchedVendor._id}`)}
+                                    className="p-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-white hover:border-white/20 transition"
+                                    title="View Vendor Dossier"
+                                  >
+                                    <ExternalLink size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {/* TAB 3: VENDOR PAYOUT REQUESTS */}
         {activeTab === "payouts" && (
           <div className="space-y-4">
             
@@ -1270,7 +1552,7 @@ export default function AdminVendors() {
                       onChange={(e) => setDeleteProducts(e.target.checked)}
                       className="rounded accent-red-500"
                     />
-                    <span>Also permanently delete all products of this vendor</span>
+                    <span className="text-white/80 font-medium">Also permanently delete all products of this vendor from the store</span>
                   </label>
                 )}
               </div>

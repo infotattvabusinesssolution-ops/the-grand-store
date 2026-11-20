@@ -293,33 +293,22 @@ export default function ProductCard({
                 </defs>
 
                 <g className="pointer-events-auto cursor-pointer transition-all duration-300 group-hover/export:brightness-125">
-                  {/* Clean, spacious upright characters aligned in a straight vertical line with gap below JUST IN */}
-                  <g
+                  <text
+                    x="31"
+                    y="200"
+                    transform="rotate(-90, 31, 200)"
                     fontFamily="'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
                     fontSize="11.5"
                     fontWeight="900"
+                    letterSpacing="2.8"
                     fill={`url(#${gradId})`}
-                    textAnchor="middle"
                     className="font-black uppercase select-none transition-all duration-300"
                     style={{
-                      filter: 'drop-shadow(0 1px 2px rgba(0,0,0,1)) drop-shadow(0 0 5px rgba(255,213,79,0.7))',
+                      filter: 'drop-shadow(0 1px 2px rgba(0,0,0,1)) drop-shadow(0 0 5px rgba(255,213,79,0.85)) drop-shadow(0 0 12px rgba(212,175,55,0.5))',
                     }}
                   >
-                    {/* EXPORT in a straight vertical line at x=28 */}
-                    <text x="28" y="66">E</text>
-                    <text x="28" y="84">X</text>
-                    <text x="28" y="102">P</text>
-                    <text x="28" y="120">O</text>
-                    <text x="28" y="138">R</text>
-                    <text x="28" y="156">T</text>
-
-                    {/* READY in a straight vertical line at x=28 */}
-                    <text x="28" y="182">R</text>
-                    <text x="28" y="200">E</text>
-                    <text x="28" y="218">A</text>
-                    <text x="28" y="236">D</text>
-                    <text x="28" y="254">Y</text>
-                  </g>
+                    EXPORT READY
+                  </text>
                 </g>
               </svg>
             </Link>

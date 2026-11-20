@@ -135,10 +135,11 @@ const createEnquiry = async (req, res) => {
 
           // Notify vendor
           try {
-            const vRecord = await Vendor.findById(vId).select('userId');
-            if (vRecord?.userId) {
+            const vRecord = await Vendor.findOne({ $or: [{ _id: vId }, { userId: vId }] }).select('userId');
+            const vendorRecipientId = vRecord?.userId || (await User.exists({ _id: vId }) ? vId : null);
+            if (vendorRecipientId) {
               await Notification.create({
-                recipient: vRecord.userId,
+                recipient: vendorRecipientId,
                 recipientType: 'vendor',
                 title: 'New International Trade RFQ',
                 message: `An international buyer in ${destinationCountry || 'overseas'} requested quotation for ${itemsByVendor[vId].length} of your products (${subCode}).`,
@@ -189,7 +190,10 @@ const createEnquiry = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating trade enquiry:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 };
 

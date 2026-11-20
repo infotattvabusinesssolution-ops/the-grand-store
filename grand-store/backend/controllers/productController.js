@@ -397,7 +397,7 @@ const getVendorProducts = async (req, res) => {
       return res.status(403).json({ message: 'Product management access is required' });
     }
     const filter = canManageInternalProducts(req.user)
-      ? { vendorId: null, isCatalogDuplicate: { $ne: true } }
+      ? (req.query.scope === 'internal' ? { vendorId: null, isCatalogDuplicate: { $ne: true } } : { isCatalogDuplicate: { $ne: true } })
       : { vendorId: req.user._id, isCatalogDuplicate: { $ne: true } };
     const products = await Product.find(filter).sort({ createdAt: -1 });
     res.json(products);

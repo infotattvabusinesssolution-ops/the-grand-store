@@ -3,8 +3,6 @@ const mongoose = require('mongoose');
 const Product = require('./models/Product');
 
 const updates = [
-  { namePattern: /Tshireletso White/i, image: '/assets/products/wine-grandstore/tshireletso-white.png' },
-  { namePattern: /Tshireletso Red/i, image: '/assets/products/wine-grandstore/tshireletso-red.png' },
   { namePattern: /Her Royal Highness Sekhothali/i, image: '/assets/products/wine-grandstore/sekhothali.png' },
   { namePattern: /King Moremoholo Mopeli/i, image: '/assets/products/wine-grandstore/moremoholo.png' },
   { namePattern: /King Makhosonke II/i, image: '/assets/products/wine-grandstore/makhosonke.png' },

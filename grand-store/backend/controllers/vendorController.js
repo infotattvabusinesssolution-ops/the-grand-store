@@ -1034,14 +1034,24 @@ exports.getVendorTradeRfqs = async (req, res) => {
     const Product = require('../models/Product');
     const ExportEnquiry = require('../models/ExportEnquiry');
 
-    const vendorProducts = await Product.find({ vendorId: vendor._id }).select('_id');
+    // Vendor identifier can be stored as either vendor._id or vendor.userId
+    const vendorIds = [vendor._id, vendor.userId].filter(Boolean);
+
+    const vendorProducts = await Product.find({ vendorId: { $in: vendorIds } }).select('_id');
     const productIds = vendorProducts.map(p => p._id);
 
+    // Identify parents that have child split RFQs so vendors only see their clean assigned RFQs
+    const childEnquiries = await ExportEnquiry.find({
+      parentEnquiryId: { $ne: null }
+    }).select('parentEnquiryId');
+    const parentIdsWithChildren = childEnquiries.map(c => c.parentEnquiryId).filter(Boolean);
+
     const rfqs = await ExportEnquiry.find({
+      _id: { $nin: parentIdsWithChildren },
       $or: [
-        { vendorId: vendor._id },
-        { 'vendorQuotes.vendorId': vendor._id },
-        { 'itemsRequested.vendorId': vendor._id },
+        { vendorId: { $in: vendorIds } },
+        { 'vendorQuotes.vendorId': { $in: vendorIds } },
+        { 'itemsRequested.vendorId': { $in: vendorIds } },
         { 'itemsRequested.productId': { $in: productIds } }
       ]
     }).sort({ createdAt: -1 });
@@ -1067,7 +1077,8 @@ exports.submitVendorQuote = async (req, res) => {
 
     if (!enquiry.vendorQuotes) enquiry.vendorQuotes = [];
     
-    const existingQuoteIndex = enquiry.vendorQuotes.findIndex(q => String(q.vendorId) === String(vendor._id));
+    const vendorIdStrings = [String(vendor._id), String(vendor.userId)];
+    const existingQuoteIndex = enquiry.vendorQuotes.findIndex(q => vendorIdStrings.includes(String(q.vendorId)));
     const quoteData = {
       vendorId: vendor._id,
       quotedPricePerUnit: Number(quotedPricePerUnit),

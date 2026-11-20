@@ -875,11 +875,37 @@ const addOrderItems = async (req, res) => {
       // 2. Dedicated New Order Alert dispatched directly to the store admin mailbox
       if (adminEmail) {
         try {
+          const { generateOrderReceiptBuffer } = require('../utils/pdfService');
+          const destCountry = (createdOrder.shippingAddress?.country || 'South Africa').trim();
+          const isLocal = ['south africa', 'za', 'rsa'].includes(destCountry.toLowerCase());
+          const scopeLabel = isLocal ? 'LOCAL' : 'INTERNATIONAL';
+          const orderCode = createdOrder.invoiceNumber || createdOrder.orderId || createdOrder._id;
+
+          const customerMock = user || {
+            name: createdOrder.guestInfo?.name || createdOrder.shippingAddress?.name || 'Customer',
+            email: recipientEmail || 'admin@grandstoreglobal.com',
+            phone: createdOrder.guestInfo?.phone || createdOrder.shippingAddress?.phone || ''
+          };
+
+          let pdfBuffer = null;
+          try {
+            pdfBuffer = await generateOrderReceiptBuffer(createdOrder, customerMock);
+          } catch (pdfErr) {
+            console.warn('Could not generate PDF receipt for new order alert:', pdfErr.message);
+          }
+
+          const attachments = pdfBuffer ? [{
+            filename: `Tax-Invoice-${orderCode}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf'
+          }] : [];
+
           await sendEmail({
             to: adminEmail,
             type: 'billing',
-            subject: `🔔 [NEW ORDER] #${createdOrder.invoiceNumber || createdOrder.orderId || createdOrder._id} - ${paymentMethod} (${createdOrder.isPaid ? 'PAID' : 'Awaiting Payment'})`,
-            html: newOrderAdminNotificationTemplate(createdOrder, paymentMethod)
+            subject: `🔔 [NEW ORDER - ${scopeLabel}] #${orderCode} - ${paymentMethod} (${createdOrder.isPaid ? 'PAID' : 'Awaiting Payment'})`,
+            html: newOrderAdminNotificationTemplate(createdOrder, paymentMethod),
+            attachments
           });
         } catch (adminErr) {
           console.warn('Failed to send new order alert to admin:', adminErr.message);
@@ -1093,14 +1119,19 @@ const processOrderPayment = async (orderId) => {
       // Dedicated payment confirmation alert dispatched to store admin mailbox
       if (adminEmail) {
         try {
+          const destCountry = (order.shippingAddress?.country || 'South Africa').trim();
+          const isLocal = ['south africa', 'za', 'rsa'].includes(destCountry.toLowerCase());
+          const scopeLabel = isLocal ? 'LOCAL' : 'INTERNATIONAL';
+          const orderCode = order.invoiceNumber || order.orderId || order._id;
+
           await sendEmail({
             to: adminEmail,
             type: 'billing',
-            subject: `💰 [PAYMENT RECEIVED] Order #${order.invoiceNumber || order.orderId || order._id} Paid (${order.paymentMethod || 'Online'})`,
+            subject: `💰 [PAYMENT RECEIVED - ${scopeLabel}] Order #${orderCode} Paid (${order.paymentMethod || 'Online'})`,
             html: orderPaidAdminNotificationTemplate(order),
             attachments: [
               {
-                filename: `Receipt-${order.invoiceNumber || order._id}.pdf`,
+                filename: `Tax-Invoice-${orderCode}.pdf`,
                 content: pdfBuffer,
                 contentType: 'application/pdf'
               }

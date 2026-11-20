@@ -1,13 +1,34 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Package, Clock, CheckCircle2, XCircle, Eye, Edit, Trash2, Search, X,
-  Barcode, Copy, Check, UploadCloud, Image as ImageIcon, Flame
+  Barcode, Copy, Check, UploadCloud, Image as ImageIcon, Flame, Wine, Plus
 } from 'lucide-react';
 import Price from '../../components/ui/Price';
 import BarcodeImageModal from '../../components/BarcodeImageModal';
+
+const EXCLUSIVE_WINE_FARMS = [
+  { id: 'bruno-andreu', name: 'Bruno Andreu', country: 'France', match: /bruno\s*andr/i },
+  { id: 'dogliotti-1870', name: 'Dogliotti 1870', country: 'Italy', match: /dogliotti/i },
+  { id: 'giuliani-vini', name: 'GIULIANI Vini', country: 'Italy', match: /giuliani/i },
+  { id: 'cantina-del-conte', name: 'Cantina del Conte', country: 'Italy', match: /cantina\s*del/i },
+  { id: 'maison-dobbe', name: 'Maison Dobbé', country: 'France', match: /dobb/i },
+  { id: 'tesselaarsdal', name: 'Tesselaarsdal Wines', country: 'South Africa', match: /tessel?aarsdal/i },
+  { id: 'long-dog', name: 'Long Dog Wines', country: 'South Africa', match: /long\s*dog/i },
+];
+
+const getProductWineFarm = (product) => {
+  const brand = String(product.brand || '');
+  const name = String(product.name || '');
+  for (const farm of EXCLUSIVE_WINE_FARMS) {
+    if (farm.match.test(brand) || farm.match.test(name)) {
+      return farm;
+    }
+  }
+  return null;
+};
 
 const getProductBarcodes = (product) => {
   let single = product.barcode || product.ean || product.ean13 || product.identity?.barcode || product.identity?.ean;
@@ -83,24 +104,46 @@ const getProductSearchRank = (product, query) => {
 export default function AdminProducts() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialFarmParam = searchParams.get('farm');
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedWineFarm, setSelectedWineFarm] = useState(() => {
+    if (!initialFarmParam) return 'All';
+    const matchFarm = EXCLUSIVE_WINE_FARMS.find(
+      (f) => f.id === initialFarmParam || f.name.toLowerCase() === initialFarmParam.toLowerCase()
+    );
+    return matchFarm ? matchFarm.name : (initialFarmParam === 'exclusives' ? 'EXCLUSIVES_ALL' : 'All');
+  });
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedBarcode, setCopiedBarcode] = useState(null);
   const [selectedBarcodeProduct, setSelectedBarcodeProduct] = useState(null);
 
+  const wineFarmFilteredProducts = useMemo(() => {
+    if (selectedWineFarm === 'All') return products;
+    if (selectedWineFarm === 'EXCLUSIVES_ALL') {
+      return products.filter((product) => getProductWineFarm(product) !== null);
+    }
+    const farm = EXCLUSIVE_WINE_FARMS.find((f) => f.name === selectedWineFarm || f.id === selectedWineFarm);
+    if (farm) {
+      return products.filter((product) => farm.match.test(product.brand || '') || farm.match.test(product.name || ''));
+    }
+    return products;
+  }, [products, selectedWineFarm]);
+
   const categories = useMemo(
-    () => ['All', ...new Set(products.map((product) => product.type || 'Other'))],
-    [products]
+    () => ['All', ...new Set(wineFarmFilteredProducts.map((product) => product.type || 'Other'))],
+    [wineFarmFilteredProducts]
   );
 
   const categoryProducts = useMemo(
     () => selectedCategory === 'All'
-      ? products
-      : products.filter((product) => (product.type || 'Other') === selectedCategory),
-    [products, selectedCategory]
+      ? wineFarmFilteredProducts
+      : wineFarmFilteredProducts.filter((product) => (product.type || 'Other') === selectedCategory),
+    [wineFarmFilteredProducts, selectedCategory]
   );
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
@@ -194,36 +237,34 @@ export default function AdminProducts() {
 
       {/* Data Table Section */}
       <section className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 md:p-8 shadow-2xl">
-        <div className="pb-6 border-b border-white/[0.05] flex flex-col xl:flex-row xl:items-center justify-between gap-5">
-          <h3 className="text-[var(--color-ivory)] font-serif text-2xl flex items-center gap-4">
-            <div className="p-2 rounded-lg bg-[var(--color-gold)]/10 text-[#e1bd70]">
-              <Package size={20} />
+        <div className="pb-5 border-b border-white/[0.05] flex flex-wrap items-center justify-between gap-3">
+          {/* Title & Count */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="p-1.5 rounded-lg bg-[var(--color-gold)]/10 text-[#e1bd70] flex items-center justify-center">
+              <Package size={17} />
             </div>
-            My Retail Products
-            <span className="bg-[#1a1917] text-[#918a7f] text-sm font-sans px-3 py-1 rounded-full border border-white/5">
+            <h3 className="text-[var(--color-ivory)] font-serif text-lg tracking-wide whitespace-nowrap">
+              My Retail Products
+            </h3>
+            <span className="bg-[#141311] text-[#888075] text-[11px] font-sans px-2.5 py-0.5 rounded-full border border-white/5 whitespace-nowrap">
               {filteredProducts.length} Total
             </span>
-          </h3>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full xl:w-auto">
-            <button
-              onClick={() => navigate('/admin/mosi-pricing')}
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 text-xs font-bold uppercase tracking-wider transition-all shrink-0"
-              title="Manage Mosi Oa Tunya Dynamic Pricing"
-            >
-              <Flame size={14} className="text-amber-400" />
-              <span>Mosi Pricing Engine</span>
-            </button>
-            <div className="relative w-full sm:w-80">
-              <div className="flex items-center gap-3 bg-[#1a1917] border border-white/10 rounded-lg px-3 transition-colors focus-within:border-[#c9a35b]/70 focus-within:ring-2 focus-within:ring-[#c9a35b]/10">
-                <Search size={17} className="text-[#918a7f] shrink-0" aria-hidden="true" />
+          </div>
+
+          {/* Controls Group: All on One Single Clean Row */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Compact Search Input */}
+            <div className="relative w-44 sm:w-48">
+              <div className="flex items-center gap-2 bg-[#141311] border border-white/10 rounded-lg px-2.5 py-1.5 transition-colors focus-within:border-[#c9a35b]/70 focus-within:ring-1 focus-within:ring-[#c9a35b]/20">
+                <Search size={13} className="text-[#918a7f] shrink-0" aria-hidden="true" />
                 <input
                   type="search"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Search products or barcode..."
+                  placeholder="Search products..."
                   aria-label="Search products"
                   autoComplete="off"
-                  className="w-full bg-transparent py-2.5 text-sm text-[#eee8dd] placeholder:text-white/30 outline-none [&::-webkit-search-cancel-button]:hidden"
+                  className="w-full bg-transparent text-xs text-[#eee8dd] placeholder:text-white/30 outline-none [&::-webkit-search-cancel-button]:hidden"
                 />
                 {searchTerm && (
                   <button
@@ -232,23 +273,57 @@ export default function AdminProducts() {
                     className="text-[#918a7f] hover:text-white transition-colors"
                     aria-label="Clear product search"
                   >
-                    <X size={16} />
+                    <X size={13} />
                   </button>
                 )}
               </div>
             </div>
+
+            {/* Farm Filter */}
+            <select 
+              value={selectedWineFarm} 
+              onChange={(e) => setSelectedWineFarm(e.target.value)}
+              aria-label="Filter products by Wine Farm"
+              className="bg-[#141311] border border-amber-500/30 text-[#e1bd70] text-xs rounded-lg focus:ring-[#c9a35b] focus:border-[#c9a35b] block py-1.5 px-2.5 transition-colors font-medium max-w-[175px] truncate cursor-pointer"
+            >
+              <option value="All">All Vendors & Farms</option>
+              <option value="EXCLUSIVES_ALL">🍷 All 7 Partner Wine Farms</option>
+              {EXCLUSIVE_WINE_FARMS.map((farm) => (
+                <option key={farm.id} value={farm.name}>
+                  🍇 {farm.name} ({farm.country})
+                </option>
+              ))}
+            </select>
+
+            {/* Category Filter */}
             <select 
               value={selectedCategory} 
               onChange={(e) => setSelectedCategory(e.target.value)}
               aria-label="Filter products by category"
-              className="bg-[#1a1917] border border-white/10 text-[#eee8dd] text-sm rounded-lg focus:ring-[#c9a35b] focus:border-[#c9a35b] block p-2.5 transition-colors sm:max-w-48"
+              className="bg-[#141311] border border-white/10 text-[#eee8dd] text-xs rounded-lg focus:ring-[#c9a35b] focus:border-[#c9a35b] block py-1.5 px-2.5 transition-colors max-w-[125px] cursor-pointer"
             >
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
-            <button onClick={() => navigate('/admin/product-add')} className="px-6 py-2.5 rounded-full bg-[var(--color-gold)]/10 text-[#e1bd70] border border-[var(--color-gold)]/30 font-semibold uppercase tracking-widest text-xs transition-all hover:bg-[#c9a35b] hover:text-black ">
-              + New Product
+
+            {/* Mosi Pricing Button */}
+            <button
+              onClick={() => navigate('/admin/mosi-pricing')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 hover:bg-amber-500/20 text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0 cursor-pointer"
+              title="Manage Mosi Oa Tunya Dynamic Pricing"
+            >
+              <Flame size={12} className="text-amber-400" />
+              <span>Mosi Pricing</span>
+            </button>
+
+            {/* New Product Button */}
+            <button 
+              onClick={() => navigate('/admin/product-add')} 
+              className="px-4 py-1.5 rounded-full bg-[var(--color-gold)]/12 text-[#e1bd70] border border-[var(--color-gold)]/35 font-semibold uppercase tracking-wider text-[11px] transition-all hover:bg-[#c9a35b] hover:text-black whitespace-nowrap shrink-0 inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <Plus size={13} className="shrink-0" />
+              <span>New Product</span>
             </button>
           </div>
         </div>
@@ -281,6 +356,7 @@ export default function AdminProducts() {
               onClick={() => {
                 setSearchTerm('');
                 setSelectedCategory('All');
+                setSelectedWineFarm('All');
               }}
               className="px-5 py-2 rounded-full border border-[var(--color-gold)]/30 text-[#e1bd70] text-xs font-semibold uppercase tracking-widest hover:bg-[var(--color-gold)]/10 transition-colors"
             >
@@ -321,7 +397,17 @@ export default function AdminProducts() {
                           </div>
                           <div>
                             <p className="text-[var(--color-ivory)] font-medium font-serif text-lg tracking-wide">{product.name}</p>
-                            <p className="text-[10px] text-[var(--color-ivory-muted)] tracking-widest uppercase mt-1">{product.brand ? `${product.brand} • ` : ''}{product.type}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                              <p className="text-[10px] text-[var(--color-ivory-muted)] tracking-widest uppercase">{product.brand ? `${product.brand} • ` : ''}{product.type}</p>
+                              {(() => {
+                                const farm = getProductWineFarm(product);
+                                return farm ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9.5px] font-bold tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase">
+                                    🍇 Wine Farm: {farm.name}
+                                  </span>
+                                ) : null;
+                              })()}
+                            </div>
                           </div>
                         </div>
                       </td>

@@ -10,15 +10,15 @@ const GRAND_STORE_ORIGIN = 'https://grandstore.co.za';
 const CLOUDINARY_FOLDER = 'grand-store/products/wine-grandstore';
 
 const GRAND_STORE_IMAGES = {
-  tshireletsoWhite: {
-    name: 'Tshireletso White',
-    productUrl: `${GRAND_STORE_ORIGIN}/product/tshireletso-white`,
-    imageUrl: `${GRAND_STORE_ORIGIN}/public/images/products/1786615886_647f8da55e63a504deca.png`
+  privateCellarWhite: {
+    name: 'Grand Store Private Cellar White',
+    productUrl: `${GRAND_STORE_ORIGIN}/cellar`,
+    imageUrl: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1795159655/grand-store/products/wine-grandstore/grand-store-private-cellar-white.png'
   },
-  tshireletsoRed: {
-    name: 'Tshireletso Red',
-    productUrl: `${GRAND_STORE_ORIGIN}/product/tshireletso-red`,
-    imageUrl: `${GRAND_STORE_ORIGIN}/public/images/products/1786615901_9e3c3defee5d41ffa1d7.png`
+  privateCellarRed: {
+    name: 'Grand Store Private Cellar Red',
+    productUrl: `${GRAND_STORE_ORIGIN}/cellar`,
+    imageUrl: 'https://res.cloudinary.com/oioqrgj0/image/upload/v1795159653/grand-store/products/wine-grandstore/grand-store-private-cellar-red.png'
   },
   queenMother: {
     name: 'Queen Mother Mathokoana Mopeli',
@@ -103,14 +103,14 @@ const pickGrandStoreSource = (product) => {
     return { ...GRAND_STORE_IMAGES.dePizanFraisch, exact: false };
   }
   if (subcategory.includes('non alcoholic red')) return { ...GRAND_STORE_IMAGES.dePizanRouge, exact: false };
-  if (subcategory.includes('non alcoholic')) return { ...GRAND_STORE_IMAGES.tshireletsoWhite, exact: false };
+  if (subcategory.includes('non alcoholic')) return { ...GRAND_STORE_IMAGES.privateCellarWhite, exact: false };
   if (['port', 'sherry', 'madeira', 'vermouth'].includes(subcategory)) {
-    return { ...GRAND_STORE_IMAGES.tshireletsoRed, exact: false };
+    return { ...GRAND_STORE_IMAGES.privateCellarRed, exact: false };
   }
   if (['cabernet sauvignon', 'merlot', 'pinot noir', 'shiraz syrah', 'malbec', 'tempranillo', 'zinfandel'].includes(subcategory)) {
-    return { ...(subcategory === 'merlot' ? GRAND_STORE_IMAGES.makhosonke : GRAND_STORE_IMAGES.tshireletsoRed), exact: false };
+    return { ...(subcategory === 'merlot' ? GRAND_STORE_IMAGES.makhosonke : GRAND_STORE_IMAGES.privateCellarRed), exact: false };
   }
-  return { ...GRAND_STORE_IMAGES.tshireletsoWhite, exact: false };
+  return { ...GRAND_STORE_IMAGES.privateCellarWhite, exact: false };
 };
 
 const publicIdFor = (source) => `${CLOUDINARY_FOLDER}/${keyOf(source.name).replace(/\s+/g, '-')}`;

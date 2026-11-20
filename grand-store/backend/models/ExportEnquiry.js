@@ -95,6 +95,7 @@ const exportEnquirySchema = new mongoose.Schema({
     type: String,
     enum: [
       'enquiry_received',
+      'quote_pending',
       'requirements_verified',
       'availability_checked',
       'quote_prepared',

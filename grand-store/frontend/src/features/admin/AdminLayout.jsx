@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Navigate, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, Gavel, Wallet, Settings, Menu, X, LogOut, ArrowLeft, Star, Package, ShoppingBag, Tv, Mail, Activity, Briefcase, Shield, Gem, Award, MessageSquare, Bot, CalendarCheck, Tag, Layers, Flame, Wine, UserCheck, GraduationCap, Home, Compass, BookOpen, Crown, Coins } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Gavel, Wallet, Settings, Menu, X, LogOut, ArrowLeft, Star, Package, ShoppingBag, Tv, Mail, Activity, Briefcase, Shield, Gem, Award, MessageSquare, Bot, CalendarCheck, Tag, Layers, Flame, Wine, UserCheck, GraduationCap, Home, Compass, BookOpen, Crown, Coins, Bell } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../api';
 
 export default function AdminLayout() {
   const { user, logout } = useAuth();
@@ -128,6 +129,9 @@ export default function AdminLayout() {
                 </button>
                 <button onClick={() => handleNavigate('/admin/vendors')} className={navItemClass('/admin/vendors')}>
                   <Building2 size={16} /> Vendor Management
+                </button>
+                <button onClick={() => handleNavigate('/admin/vendors?tab=winefarms')} className={navItemClass('/admin/vendors?tab=winefarms')}>
+                  <Wine size={16} /> Partner Wine Farms (7)
                 </button>
                 <button onClick={() => handleNavigate('/admin/vendors?tab=payouts')} className={navItemClass('/admin/vendors?tab=payouts')}>
                   <Wallet size={16} /> Vendor Payout Requests

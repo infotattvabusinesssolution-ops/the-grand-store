@@ -1129,6 +1129,13 @@ const deleteVendor = async (req, res) => {
     const vendorUserId = vendor.userId;
     const vendorName = vendor.businessInfo?.tradingName || vendor.businessInfo?.legalName || 'Vendor';
 
+    const vendorProductFilter = {
+      $or: [
+        ...(vendorUserId ? [{ vendorId: vendorUserId }] : []),
+        ...(vendorName ? [{ storeName: vendorName }, { brand: vendorName }] : [])
+      ]
+    };
+
     if (deleteOption === 'soft') {
       vendor.status = 'suspended';
       vendor.isFrozen = true;
@@ -1137,8 +1144,10 @@ const deleteVendor = async (req, res) => {
 
       if (vendorUserId) {
         await User.findByIdAndUpdate(vendorUserId, { role: 'customer', customerTier: 'retail' });
+      }
+      if (vendorProductFilter.$or.length > 0) {
         await Product.updateMany(
-          { vendorId: vendorUserId },
+          vendorProductFilter,
           { isActive: false, status: 'inactive' }
         );
       }
@@ -1150,16 +1159,18 @@ const deleteVendor = async (req, res) => {
     }
 
     // Permanent removal
-    if (vendorUserId) {
+    if (vendorProductFilter.$or.length > 0) {
       if (deleteProducts) {
-        await Product.deleteMany({ vendorId: vendorUserId });
+        await Product.deleteMany(vendorProductFilter);
       } else {
         await Product.updateMany(
-          { vendorId: vendorUserId },
+          vendorProductFilter,
           { isActive: false, status: 'inactive' }
         );
       }
+    }
 
+    if (vendorUserId) {
       const customerOrdersCount = await Order.countDocuments({ user: vendorUserId });
       if (customerOrdersCount > 0) {
         await User.findByIdAndUpdate(vendorUserId, { role: 'customer', customerTier: 'retail' });

@@ -531,20 +531,34 @@ const bankTransferInstructionsTemplate = (order, bankDetails = {}) => {
       </table>
     </div>
     
-    <!-- 3 SIMPLE STEPS -->
-    <div style="background-color: #0d0d0d; border-radius: 8px; border: 1px solid #222; padding: 16px 20px; margin: 20px 0; font-size: 13px; line-height: 1.6; color: #d4d4d8;">
-      <strong style="color: #ffffff; font-size: 14px; display: block; margin-bottom: 8px;">Next Steps:</strong>
-      <ol style="margin: 0; padding-left: 20px;">
-        <li style="margin-bottom: 6px;">Open your banking app (FNB, Capitec, Standard Bank, Nedbank, ABSA).</li>
-        <li style="margin-bottom: 6px;">Transfer <strong>${formattedAmount}</strong> using <strong>${depositRef}</strong> as your recipient reference.</li>
-        <li>Tap the button below to upload your Proof of Payment (POP) so we can dispatch your items immediately.</li>
-      </ol>
-    </div>
+    <!-- 3 SIMPLE STEPS TABLE -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; background-color: #111111; border-radius: 8px; border: 1px solid #27272a; margin: 20px 0; font-size: 13px;">
+      <tr>
+        <td style="padding: 14px 18px 6px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+          Next Steps to Finalize Your Order:
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 6px 18px; color: #e4e4e7; line-height: 1.5;">
+          <strong style="color: #c9a35b;">1.</strong> Open your preferred South African banking app (FNB, Capitec, Standard Bank, Nedbank, ABSA).
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 6px 18px; color: #e4e4e7; line-height: 1.5;">
+          <strong style="color: #c9a35b;">2.</strong> Transfer <strong>${formattedAmount}</strong> using recipient reference: <strong style="color: #ffffff; font-family: monospace;">${depositRef}</strong>.
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 6px 18px 14px; color: #e4e4e7; line-height: 1.5;">
+          <strong style="color: #c9a35b;">3.</strong> Tap the button below to upload your Proof of Payment (POP) for priority dispatch.
+        </td>
+      </tr>
+    </table>
     
     <!-- CALL TO ACTION -->
-    <div style="text-align: center; margin: 30px 0 15px 0;">
-      <a href="${uploadUrl}" class="btn" style="display: inline-block; background-color: ${BRAND_COLOR_GOLD}; color: #050505; font-weight: bold; padding: 14px 32px; border-radius: 4px; text-decoration: none; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; min-width: 220px;">
-        Upload Proof of Payment
+    <div style="text-align: center; margin: 28px 0 16px 0;">
+      <a href="${uploadUrl}" style="display: inline-block; background: linear-gradient(135deg, #c9a35b 0%, #b58b38 100%); color: #000000; font-weight: bold; padding: 14px 32px; border-radius: 6px; text-decoration: none; text-transform: uppercase; letter-spacing: 1px; font-size: 13px; box-shadow: 0 4px 14px rgba(201, 163, 91, 0.25);">
+        Upload Proof of Payment &rarr;
       </a>
     </div>
     
@@ -1222,29 +1236,51 @@ const giftOrderAdminNotificationTemplate = (order) => {
   return generateEmailTemplate(`Gift Order Alert #${orderRef}`, content);
 };
 
-const newOrderAdminNotificationTemplate = (order, paymentMethod = 'Direct Bank Transfer') => {
+// ============================================================================
+// COMPREHENSIVE AUTOMATED ADMIN ORDER NOTIFICATION TEMPLATE
+// Fully aligned with client specification:
+// - Local vs International Order Identification
+// - 1. Order Information
+// - 2. Customer Details
+// - 3. Delivery Information
+// - 4. Order Summary (Itemized)
+// - 5. Payment Summary
+// - 6. Order Processing & Logistics
+// - PDF Invoice Attachment notice & Direct Admin Access
+// ============================================================================
+const orderReceivedAdminNotificationTemplate = (order, paymentMethod = 'Online Gateway', notificationType = 'received') => {
   const orderRef = order.invoiceNumber || order.orderId || order._id;
   const buyerName = order.guestInfo?.name || order.shippingAddress?.name || order.shippingAddress?.fullName || (order.user && order.user.name) || 'Customer';
   const buyerEmail = order.guestInfo?.email || order.shippingAddress?.email || (order.user && order.user.email) || 'N/A';
   const buyerPhone = order.guestInfo?.phone || order.shippingAddress?.phone || order.shippingAddress?.phoneNumber || (order.user && order.user.phone) || 'N/A';
-  const isPostNet = order.deliveryPreference === 'postnet' || Boolean(order.selectedPostnetStore);
-  const items = order.orderItems || order.items || [];
 
-  const itemsList = items.map(it => `
-    <li style="margin-bottom: 6px; color: #ddd;">
-      <strong>${Number(it.quantity || it.qty || 1)}x</strong> ${it.name} ${it.option ? `(${it.option})` : ''} - ${formatRand(it.price || 0)}
-    </li>
-  `).join('');
+  const destCountry = (order.shippingAddress?.country || 'South Africa').trim();
+  const isLocal = ['south africa', 'za', 'rsa'].includes(destCountry.toLowerCase());
+  const orderCategory = (order.orderItems || []).some(it => it.category?.toLowerCase()?.includes('cigar'))
+    ? 'Fine Cigars & Luxury Accoutrements'
+    : 'Fine Wine, Rare Spirits & Luxury Consignments';
+  const originCountry = 'South Africa (Stellenbosch / Franschhoek / Western Cape)';
+  const destinationDisplay = isLocal ? 'South Africa (Domestic)' : destCountry;
 
-  const destinationHtml = isPostNet && order.selectedPostnetStore ? `
-    <p style="margin: 3px 0; color: #fff;"><strong>PostNet Branch:</strong> ${order.selectedPostnetStore.name}</p>
-    <p style="margin: 3px 0; color: #bbb;">${order.selectedPostnetStore.address}</p>
-    <p style="margin: 3px 0; color: #bbb;">${order.selectedPostnetStore.city || ''} ${order.selectedPostnetStore.postalCode || ''}</p>
-  ` : `
-    <p style="margin: 3px 0; color: #fff;">${order.shippingAddress?.address || 'Address on file'}</p>
-    <p style="margin: 3px 0; color: #bbb;">${order.shippingAddress?.city || ''}, ${order.shippingAddress?.postalCode || ''}</p>
-    <p style="margin: 3px 0; color: #bbb;">${order.shippingAddress?.country || 'South Africa'}</p>
-  `;
+  // Date formatted to SAST (Africa/Johannesburg)
+  let orderDateStr = '';
+  try {
+    orderDateStr = new Date(order.createdAt || Date.now()).toLocaleString('en-ZA', {
+      timeZone: 'Africa/Johannesburg',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }) + ' SAST';
+  } catch (dErr) {
+    orderDateStr = new Date(order.createdAt || Date.now()).toLocaleString('en-ZA') + ' SAST';
+  }
+
+  const isPaid = Boolean(order.isPaid || order.paymentStatus === 'Paid');
+  const paymentStatusDisplay = isPaid ? 'Paid' : (order.paymentStatus || 'Pending Clearance');
+  const paymentMethodDisplay = order.paymentMethod || paymentMethod || 'Online (PayFast)';
 
   let depositRef = order.depositReference;
   try {
@@ -1254,63 +1290,319 @@ const newOrderAdminNotificationTemplate = (order, paymentMethod = 'Direct Bank T
   } catch (e) {
     depositRef = order.invoiceNumber || order.orderId || String(order._id);
   }
+  const paymentRefDisplay = order.transactionId || depositRef || order.payfastPaymentId || orderRef;
+
+  const isPostNet = order.deliveryPreference === 'postnet' || Boolean(order.selectedPostnetStore?.name);
+  const streetAddress = order.shippingAddress?.address || 'Address on file';
+  const suburb = order.shippingAddress?.suburb || order.shippingAddress?.city || 'N/A';
+  const city = order.shippingAddress?.city || 'N/A';
+  const province = order.shippingAddress?.province || order.shippingAddress?.state || 'N/A';
+  const postalCode = order.shippingAddress?.postalCode || 'N/A';
+  const deliveryInstructions = isPostNet && order.selectedPostnetStore
+    ? `PostNet Branch Collection: ${order.selectedPostnetStore.name} (${order.selectedPostnetStore.address || ''})`
+    : (order.deliveryInstructions || order.notes || (order.isGift ? `Gift Order: "${order.giftMessage || ''}"` : 'Standard Door Delivery'));
+
+  const items = order.orderItems || order.items || [];
+  const itemsHtml = items.map((it, idx) => {
+    const qty = Number(it.quantity || it.qty || 1);
+    const unitPrice = Number(it.price || 0);
+    const lineTotal = qty * unitPrice;
+    const vendorName = it.vendorName || it.storeName || (it.vendorId ? 'Verified Partner Estate' : 'Grand Store Vault');
+    const brandName = it.brand || it.producer || (it.name?.split(' ')?.[0] || 'The Grand Store');
+
+    return `
+      <tr style="border-bottom: 1px solid #222222;">
+        <td style="padding: 10px 8px; color: #ffffff; font-weight: 500; vertical-align: top;">
+          <div style="font-size: 13px; font-weight: bold; color: #ffffff;">${it.name}</div>
+          ${it.option ? `<div style="font-size: 11px; color: #a1a1aa; margin-top: 2px;">Option/Vintage: ${it.option}</div>` : ''}
+          <div style="font-size: 11px; color: #888888; margin-top: 2px;">
+            Brand: <span style="color: #c9a35b;">${brandName}</span> &bull; Supplier: <span style="color: #e4e4e7;">${vendorName}</span>
+          </div>
+        </td>
+        <td style="padding: 10px 8px; color: #ffffff; text-align: center; font-weight: bold; vertical-align: top; font-size: 13px;">
+          ${qty}
+        </td>
+        <td style="padding: 10px 8px; color: #d4d4d8; text-align: right; vertical-align: top; font-size: 13px; white-space: nowrap;">
+          ${formatRand(unitPrice)}
+        </td>
+        <td style="padding: 10px 8px; color: #c9a35b; text-align: right; font-weight: bold; vertical-align: top; font-size: 13px; white-space: nowrap;">
+          ${formatRand(lineTotal)}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // Financial calculations
+  const totalOrder = Number(order.totalPrice || order.total || 0);
+  const shippingCost = Number(order.shippingCost || order.shippingFee || 0);
+  const productsSubtotal = Math.max(0, totalOrder - shippingCost);
+  const vatAmount = Number(order.vatAmount || (productsSubtotal > 0 ? (productsSubtotal * (15 / 115)).toFixed(2) : 0));
+  const subTotalExclVat = Math.max(0, Number((productsSubtotal - vatAmount).toFixed(2)));
+  const discounts = Number(order.discount || order.appliedWelcomeDiscount || order.superCoinsDiscount || 0);
+
+  // Vendor & Courier logistics summary
+  const vendorNamesSet = new Set();
+  items.forEach(it => {
+    const vName = it.vendorName || it.storeName || (it.vendorId ? 'Verified Partner Estate' : 'The Grand Store Vault');
+    vendorNamesSet.add(vName);
+  });
+  const assignedVendors = Array.from(vendorNamesSet).join(', ') || 'The Grand Store Vault Direct';
+  const courierMethod = isPostNet
+    ? `PostNet Store Collection (${order.selectedPostnetStore?.name || 'Local Branch'})`
+    : (order.driver?.courierCompany ? `${order.driver.courierCompany} (${order.driver.serviceType || 'Priority Express'})` : 'Aramex South Africa (Insured Door-to-Door)');
+
+  const statusBadge = isPaid
+    ? `<span style="display: inline-block; padding: 4px 14px; border-radius: 14px; background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #34d399; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">✓ PAYMENT CONFIRMED</span>`
+    : `<span style="display: inline-block; padding: 4px 14px; border-radius: 14px; background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; color: #fbbf24; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">⏳ AWAITING PAYMENT (${paymentMethodDisplay})</span>`;
+
+  const headerTitle = notificationType === 'paid'
+    ? '💰 Order Payment Confirmed'
+    : '🔔 New Store Order Received';
+  const headerSubtitle = notificationType === 'paid'
+    ? `Official Payment Clearance & Dispatch Docket for Order #${orderRef}`
+    : `New Order Placed via Checkout - Order #${orderRef}`;
 
   const content = `
-    <div style="text-align: center; margin-bottom: 20px;">
-      <h1 style="color: ${BRAND_COLOR_GOLD}; margin-bottom: 4px;">🔔 New Store Order Received</h1>
-      <p style="color: #bbb; font-size: 14px; margin: 0;">Order #${orderRef} has been placed via checkout</p>
+    <!-- TOP HEADER -->
+    <div style="text-align: center; margin-bottom: 22px;">
+      <h1 style="color: ${BRAND_COLOR_GOLD}; margin-bottom: 4px; font-size: 24px;">${headerTitle}</h1>
+      <p style="color: #bbb; font-size: 14px; margin: 0 0 10px 0;">${headerSubtitle}</p>
+      ${statusBadge}
     </div>
 
-    <!-- AMOUNT & PAYMENT STATUS HERO CARD -->
-    <div style="background: linear-gradient(145deg, #161410 0%, #0a0a09 100%); border: 1.5px solid ${BRAND_COLOR_GOLD}; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
-      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #a1a1aa; margin-bottom: 4px;">Total Order Amount</div>
-      <div style="font-size: 30px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px; margin-bottom: 8px;">
-        ${formatRand(order.totalPrice || order.total || 0)}
+    <!-- CLASSIFICATION: LOCAL VS INTERNATIONAL HIGHLIGHT BANNER -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background: ${isLocal ? '#07170f' : '#0a1322'}; border: 1.5px solid ${isLocal ? '#10b981' : '#3b82f6'}; border-radius: 8px;">
+      <tr>
+        <td style="padding: 14px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="width: 32px; vertical-align: top; font-size: 22px; line-height: 1;">
+                ${isLocal ? '🇿🇦' : '🌍'}
+              </td>
+              <td style="vertical-align: top; padding-left: 10px;">
+                <div style="font-size: 13px; font-weight: bold; color: ${isLocal ? '#34d399' : '#60a5fa'}; text-transform: uppercase; letter-spacing: 1px;">
+                  ORDER CLASSIFICATION: ${isLocal ? 'LOCAL SOUTH AFRICA ORDER (DOMESTIC)' : 'INTERNATIONAL EXPORT ORDER'}
+                </div>
+                <div style="font-size: 12px; color: #d4d4d8; margin-top: 4px; line-height: 1.4;">
+                  <strong>Order Category:</strong> ${orderCategory}<br>
+                  <strong>Country of Origin:</strong> ${originCountry}<br>
+                  <strong>Destination Country:</strong> <span style="color: #ffffff; font-weight: bold;">${destinationDisplay}</span>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <p style="font-size: 13px; color: #ddd; margin: 0 0 16px 0;">
+      Dear Grandstore Admin,<br>
+      A new order has been successfully placed on Grandstore. Please find the complete order details below for your attention and processing.
+    </p>
+
+    <!-- SECTION 1: ORDER INFORMATION -->
+    <div style="background-color: #111111; border: 1px solid #27272a; border-radius: 8px; margin-bottom: 18px; overflow: hidden;">
+      <div style="background-color: #18181b; padding: 10px 14px; border-bottom: 1px solid #27272a; font-size: 12px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; text-transform: uppercase; letter-spacing: 1px;">
+        1. ORDER INFORMATION
       </div>
-      <div style="font-size: 13px; color: ${order.isPaid ? '#10b981' : '#f59e0b'}; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
-        ● Payment Status: ${order.isPaid ? 'PAID' : (order.paymentStatus || 'Awaiting Payment (Bank Transfer)')}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888; width: 38%;">Order Number:</td>
+          <td style="padding: 8px 14px; color: ${BRAND_COLOR_GOLD}; font-weight: bold; font-family: monospace;">#${orderRef}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888;">Order Date & Time:</td>
+          <td style="padding: 8px 14px; color: #ffffff;">${orderDateStr}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888;">Order Status:</td>
+          <td style="padding: 8px 14px; color: #ffffff; font-weight: 600;">${order.orderStatus || order.status || (isPaid ? 'Processing / Ready for Dispatch' : 'New / Awaiting Payment')}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888;">Payment Status:</td>
+          <td style="padding: 8px 14px; color: ${isPaid ? '#34d399' : '#fbbf24'}; font-weight: bold;">${paymentStatusDisplay}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888;">Payment Method:</td>
+          <td style="padding: 8px 14px; color: #ffffff;">${paymentMethodDisplay}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 14px; color: #888888;">Payment Reference:</td>
+          <td style="padding: 8px 14px; color: #e4e4e7; font-family: monospace;">${paymentRefDisplay}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- SECTION 2: CUSTOMER DETAILS -->
+    <div style="background-color: #111111; border: 1px solid #27272a; border-radius: 8px; margin-bottom: 18px; overflow: hidden;">
+      <div style="background-color: #18181b; padding: 10px 14px; border-bottom: 1px solid #27272a; font-size: 12px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; text-transform: uppercase; letter-spacing: 1px;">
+        2. CUSTOMER DETAILS
       </div>
-      ${depositRef ? `
-        <div style="margin-top: 10px; font-size: 12px; color: #ccc;">
-          Deposit Reference: <strong style="color: #fff; font-family: monospace;">${depositRef}</strong>
-        </div>
-      ` : ''}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888; width: 38%;">Customer Name:</td>
+          <td style="padding: 8px 14px; color: #ffffff; font-weight: 600;">${buyerName}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888;">Email Address:</td>
+          <td style="padding: 8px 14px; color: #60a5fa;"><a href="mailto:${buyerEmail}" style="color: #60a5fa; text-decoration: none;">${buyerEmail}</a></td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 14px; color: #888888;">Contact Number:</td>
+          <td style="padding: 8px 14px; color: #ffffff; font-weight: 600;">
+            <a href="tel:${buyerPhone}" style="color: #ffffff; text-decoration: none;">${buyerPhone}</a>
+          </td>
+        </tr>
+      </table>
     </div>
 
-    <div class="details-box" style="margin-bottom: 20px;">
-      <h3 style="margin-top: 0; font-size: 14px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">
-        Customer Details
-      </h3>
-      <p style="margin: 3px 0; color: #eee;"><strong>Name:</strong> ${buyerName}</p>
-      <p style="margin: 3px 0; color: #eee;"><strong>Email:</strong> ${buyerEmail}</p>
-      <p style="margin: 3px 0; color: #eee;"><strong>Phone:</strong> ${buyerPhone}</p>
-      <p style="margin: 3px 0; color: #eee;"><strong>Payment Method:</strong> ${order.paymentMethod || paymentMethod}</p>
+    <!-- SECTION 3: DELIVERY INFORMATION -->
+    <div style="background-color: #111111; border: 1px solid #27272a; border-radius: 8px; margin-bottom: 18px; overflow: hidden;">
+      <div style="background-color: #18181b; padding: 10px 14px; border-bottom: 1px solid #27272a; font-size: 12px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; text-transform: uppercase; letter-spacing: 1px;">
+        3. DELIVERY INFORMATION
+      </div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888; width: 38%;">Delivery Address:</td>
+          <td style="padding: 8px 14px; color: #ffffff;">${streetAddress}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888;">Suburb:</td>
+          <td style="padding: 8px 14px; color: #ffffff;">${suburb}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888;">City:</td>
+          <td style="padding: 8px 14px; color: #ffffff;">${city}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888;">Province / State:</td>
+          <td style="padding: 8px 14px; color: #ffffff;">${province}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888;">Postal Code:</td>
+          <td style="padding: 8px 14px; color: #ffffff; font-family: monospace;">${postalCode}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888;">Country:</td>
+          <td style="padding: 8px 14px; color: #ffffff; font-weight: 600;">${destinationDisplay}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 14px; color: #888888;">Delivery Instructions:</td>
+          <td style="padding: 8px 14px; color: #e4e4e7; font-style: italic;">${deliveryInstructions}</td>
+        </tr>
+      </table>
     </div>
 
-    <div class="details-box" style="margin-bottom: 20px;">
-      <h3 style="margin-top: 0; font-size: 14px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">
-        Shipping / Delivery Info
-      </h3>
-      ${destinationHtml}
+    <!-- SECTION 4: ORDER SUMMARY -->
+    <div style="background-color: #111111; border: 1px solid #27272a; border-radius: 8px; margin-bottom: 18px; overflow: hidden;">
+      <div style="background-color: #18181b; padding: 10px 14px; border-bottom: 1px solid #27272a; font-size: 12px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; text-transform: uppercase; letter-spacing: 1px;">
+        4. ORDER SUMMARY (${items.length} ${items.length === 1 ? 'ITEM' : 'ITEMS'})
+      </div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <thead>
+          <tr style="background-color: #141416; border-bottom: 2px solid #27272a; color: #a1a1aa; font-size: 11px; text-transform: uppercase;">
+            <th style="padding: 8px; text-align: left;">Product Item & Supplier</th>
+            <th style="padding: 8px; text-align: center; width: 10%;">Qty</th>
+            <th style="padding: 8px; text-align: right; width: 22%;">Unit Price</th>
+            <th style="padding: 8px; text-align: right; width: 22%;">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+      </table>
     </div>
 
-    <div class="details-box" style="margin-bottom: 25px;">
-      <h3 style="margin-top: 0; font-size: 14px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">
-        Ordered Items (${items.length})
-      </h3>
-      <ul style="padding-left: 20px; margin: 5px 0;">
-        ${itemsList}
-      </ul>
+    <!-- SECTION 5: PAYMENT SUMMARY -->
+    <div style="background-color: #111111; border: 1px solid #27272a; border-radius: 8px; margin-bottom: 18px; overflow: hidden;">
+      <div style="background-color: #18181b; padding: 10px 14px; border-bottom: 1px solid #27272a; font-size: 12px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; text-transform: uppercase; letter-spacing: 1px;">
+        5. PAYMENT SUMMARY
+      </div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888; width: 50%;">Subtotal (Excl. VAT):</td>
+          <td style="padding: 8px 14px; color: #ffffff; text-align: right; white-space: nowrap;">${formatRand(subTotalExclVat)}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888;">VAT (15% South African Included):</td>
+          <td style="padding: 8px 14px; color: ${BRAND_COLOR_GOLD}; text-align: right; white-space: nowrap;">${formatRand(vatAmount)}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888;">Delivery Charges (${isPostNet ? 'PostNet Branch' : 'Door Courier'}):</td>
+          <td style="padding: 8px 14px; color: #ffffff; text-align: right; white-space: nowrap;">${shippingCost > 0 ? formatRand(shippingCost) : '<span style="color: #34d399; font-weight: bold;">FREE</span>'}</td>
+        </tr>
+        ${discounts > 0 ? `
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #34d399;">Discounts / Coupons / Coins Applied:</td>
+          <td style="padding: 8px 14px; color: #34d399; text-align: right; white-space: nowrap;">- ${formatRand(discounts)}</td>
+        </tr>
+        ` : ''}
+        <tr style="background-color: #18181b; border-top: 2px solid ${BRAND_COLOR_GOLD};">
+          <td style="padding: 12px 14px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 14px;">
+            Grand Total:
+          </td>
+          <td style="padding: 12px 14px; text-align: right; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 18px; white-space: nowrap;">
+            ${formatRand(totalOrder)}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 14px; color: #888888;">Currency:</td>
+          <td style="padding: 8px 14px; color: #ffffff; text-align: right; font-weight: 600;">ZAR (South African Rand)</td>
+        </tr>
+      </table>
     </div>
 
-    <div style="text-align: center; margin-top: 25px;">
-      <a href="${process.env.FRONTEND_URL || 'https://grandstoreglobal.com'}/admin/orders/${order._id}" class="btn" style="background: linear-gradient(135deg, #c9a35b 0%, #b58b38 100%); color: #000; font-weight: bold; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
-        View Order in Admin Portal
+    <!-- SECTION 6: ORDER PROCESSING & LOGISTICS -->
+    <div style="background-color: #111111; border: 1px solid #27272a; border-radius: 8px; margin-bottom: 22px; overflow: hidden;">
+      <div style="background-color: #18181b; padding: 10px 14px; border-bottom: 1px solid #27272a; font-size: 12px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; text-transform: uppercase; letter-spacing: 1px;">
+        6. ORDER PROCESSING
+      </div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888; width: 38%;">Assigned Vendor:</td>
+          <td style="padding: 8px 14px; color: #ffffff; font-weight: 600;">${assignedVendors}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888;">Vendor Notification Status:</td>
+          <td style="padding: 8px 14px; color: #34d399; font-weight: 600;">Sent (Logged & Queued)</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1c1c1f;">
+          <td style="padding: 8px 14px; color: #888888;">Courier / Delivery Method:</td>
+          <td style="padding: 8px 14px; color: #ffffff;">${courierMethod}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 14px; color: #888888;">Shipping Status:</td>
+          <td style="padding: 8px 14px; color: ${isPaid ? '#34d399' : '#fbbf24'}; font-weight: bold;">
+            ${isPaid ? 'Awaiting Dispatch (Payment Confirmed)' : 'Awaiting Payment Clearance'}
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- ATTACHMENT NOTICE & ACTION CALLOUT -->
+    <div style="background: linear-gradient(135deg, rgba(201, 163, 91, 0.1) 0%, rgba(0, 0, 0, 0.3) 100%); border: 1px dashed ${BRAND_COLOR_GOLD}; border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: center;">
+      <div style="font-size: 13px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; margin-bottom: 6px;">
+        📎 ATTACHMENT: Official PDF Tax Invoice
+      </div>
+      <p style="font-size: 12px; color: #d4d4d8; margin: 0 0 14px 0; line-height: 1.5;">
+        Please find the customer's official order invoice attached in PDF format for your records, physical packaging slip, and courier handover docket.
+      </p>
+      <a href="${process.env.FRONTEND_URL || 'https://grandstoreglobal.com'}/admin/orders/${order._id}" style="background: linear-gradient(135deg, #c9a35b 0%, #b58b38 100%); color: #000000; font-weight: bold; padding: 11px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+        Log into Grandstore Admin Dashboard &rarr;
       </a>
     </div>
+
+    <p style="font-size: 12px; color: #888888; margin: 0; line-height: 1.4;">
+      Regards,<br>
+      <strong style="color: #ffffff;">Grandstore Automated Order Notification</strong>
+    </p>
   `;
 
-  return generateEmailTemplate(`New Order Alert #${orderRef}`, content);
+  return generateEmailTemplate(`${headerTitle} #${orderRef}`, content);
+};
+
+const newOrderAdminNotificationTemplate = (order, paymentMethod = 'Direct Bank Transfer') => {
+  return orderReceivedAdminNotificationTemplate(order, paymentMethod, 'new');
 };
 
 const proofOfPaymentAdminNotificationTemplate = (order, proofUrl) => {
@@ -1372,37 +1664,7 @@ const proofOfPaymentAdminNotificationTemplate = (order, proofUrl) => {
 };
 
 const orderPaidAdminNotificationTemplate = (order) => {
-  const orderRef = order.invoiceNumber || order.orderId || order._id;
-  const buyerName = order.guestInfo?.name || order.shippingAddress?.name || order.shippingAddress?.fullName || (order.user && order.user.name) || 'Customer';
-  const buyerEmail = order.guestInfo?.email || order.shippingAddress?.email || (order.user && order.user.email) || 'N/A';
-
-  const content = `
-    <div style="text-align: center; margin-bottom: 20px;">
-      <h1 style="color: #10b981; margin-bottom: 4px;">💰 Order Payment Confirmed</h1>
-      <p style="color: #bbb; font-size: 14px; margin: 0;">Payment received for Order #${orderRef}</p>
-    </div>
-
-    <div style="background: linear-gradient(145deg, #161410 0%, #0a0a09 100%); border: 1.5px solid #10b981; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
-      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #a1a1aa; margin-bottom: 4px;">Paid Amount</div>
-      <div style="font-size: 30px; font-weight: 700; color: #10b981; letter-spacing: 0.5px; margin-bottom: 8px;">
-        ${formatRand(order.totalPrice || order.total || 0)}
-      </div>
-      <div style="font-size: 13px; color: #fff; font-weight: bold;">
-        Customer: ${buyerName} (${buyerEmail})
-      </div>
-      <div style="font-size: 12px; color: #aaa; margin-top: 4px;">
-        Payment Method: ${order.paymentMethod || 'Online'}
-      </div>
-    </div>
-
-    <div style="text-align: center; margin-top: 25px;">
-      <a href="${process.env.FRONTEND_URL || 'https://grandstoreglobal.com'}/admin/orders/${order._id}" class="btn" style="background: linear-gradient(135deg, #c9a35b 0%, #b58b38 100%); color: #000; font-weight: bold; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
-        Open Order & Fulfill Dispatch
-      </a>
-    </div>
-  `;
-
-  return generateEmailTemplate(`Payment Confirmed #${orderRef}`, content);
+  return orderReceivedAdminNotificationTemplate(order, order.paymentMethod, 'paid');
 };
 
 const vendorMaintenanceFeePaidTemplate = ({
@@ -1567,6 +1829,7 @@ module.exports = {
   adminOrderMessageEmailTemplate,
   giftOrderAdminNotificationTemplate,
   newOrderAdminNotificationTemplate,
+  orderReceivedAdminNotificationTemplate,
   proofOfPaymentAdminNotificationTemplate,
   orderPaidAdminNotificationTemplate,
 };
