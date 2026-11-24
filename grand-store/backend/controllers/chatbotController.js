@@ -8,7 +8,7 @@ const {
   getProviderOrder
 } = require('../services/chatbotAiService');
 
-const SUPPORT_WHATSAPP = process.env.SUPPORT_WHATSAPP || '+27765809522';
+const SUPPORT_WHATSAPP = process.env.SUPPORT_WHATSAPP || '+27824967256';
 
 // @desc  Answer a customer using current public website data and managed FAQs
 // @route POST /api/chatbot/message

@@ -278,11 +278,18 @@ const vendorSchema = new mongoose.Schema({
     positiveExperiencePercent: { type: Number, default: 0 }
   },
 
-  // Step 10: Agreement
+  // Step 10: Agreement & Electronic Signature
   agreements: {
     termsAccepted: { type: Boolean, default: false },
     informationAccurate: { type: Boolean, default: false },
     acceptedAt: Date,
+    signatoryName: { type: String, trim: true },
+    signatoryTitle: { type: String, trim: true },
+    signatoryIdNumber: { type: String, trim: true },
+    signatureData: { type: String }, // Digital e-signature image or typed vector
+    signatureType: { type: String, enum: ['drawn', 'typed'], default: 'typed' },
+    ipAddress: { type: String, trim: true },
+    agreementVersion: { type: String, default: '1.0-NIVARP' },
   },
   
   // Trial & Coupon System

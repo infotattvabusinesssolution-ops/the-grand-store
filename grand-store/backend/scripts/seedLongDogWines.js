@@ -331,6 +331,7 @@ async function seedLongDogWines(existingConnection = null) {
         facebook: 'https://www.facebook.com/longdogwines',
       },
       awards: [
+        "4.5 Stars (Outstanding) — Platter's Wine Guide 2027 by Diners Club International",
         'Gold Medal — Michelangelo International Wine & Spirits Awards 2025 (Label Mountain)',
         'Gold Medal — Vitis Vinifera Awards 2026',
         'Gold Medal — The Annual Vine & Spirit Awards 2026',
@@ -395,6 +396,7 @@ async function seedLongDogWines(existingConnection = null) {
         'Red Blend',
         'Wine',
         'Sanctuary Winery',
+        "Platter's 4.5 Stars",
         'Michelangelo Gold',
         'IWSC Silver',
       ],

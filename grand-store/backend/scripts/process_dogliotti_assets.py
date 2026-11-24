@@ -12,23 +12,67 @@ for d in [backend_estate_dir, backend_prod_dir, local_estate_dir, local_prod_dir
     os.makedirs(d, exist_ok=True)
 
 def make_transparent_bottle(src_path, dest_paths, threshold=245):
-    img = Image.open(src_path).convert("RGBA")
-    datas = img.getdata()
-    new_data = []
-    for item in datas:
-        # If near white, make transparent
-        if item[0] >= threshold and item[1] >= threshold and item[2] >= threshold:
-            new_data.append((255, 255, 255, 0))
-        else:
-            new_data.append(item)
-    img.putdata(new_data)
+    img = Image.open(src_path)
+    corner = img.convert("RGB").getpixel((0, 0))
+    is_black_bg = (corner[0] < 35 and corner[1] < 35 and corner[2] < 35)
+
+    if is_black_bg:
+        arr = np.array(img.convert("RGB"))
+        h, w, _ = arr.shape
+        top_y, bottom_y = 180, h - 1
+        
+        # Find bottle range
+        nz_rows = np.where(arr.max(axis=-1) > 15)[0]
+        if len(nz_rows):
+            top_y = nz_rows[0]
+            bottom_y = nz_rows[-1]
+            
+        mask = np.zeros((h, w), dtype=np.uint8)
+        lefts = np.zeros(h, dtype=int)
+        rights = np.zeros(h, dtype=int)
+        
+        for y in range(top_y, bottom_y + 1):
+            row = arr[y, :, :].max(axis=-1)
+            nz = np.where(row > 12)[0]
+            if len(nz):
+                lefts[y] = nz[0]
+                rights[y] = nz[-1]
+            else:
+                lefts[y] = lefts[y-1] if y > top_y else w // 2
+                rights[y] = rights[y-1] if y > top_y else w // 2
+                
+        # Fill mask between contours
+        for y in range(top_y, bottom_y + 1):
+            if rights[y] > lefts[y]:
+                mask[y, lefts[y]:rights[y]+1] = 255
+                
+        mask_img = Image.fromarray(mask, mode='L')
+        smooth_mask = mask_img.filter(ImageFilter.GaussianBlur(radius=0.7))
+        img_out = img.convert("RGBA")
+        img_out.putalpha(smooth_mask)
+        
+        # Subtle unsharp mask for clarity
+        r, g, b, a = img_out.split()
+        rgb = Image.merge('RGB', (r, g, b)).filter(ImageFilter.UnsharpMask(radius=1.2, percent=120, threshold=2))
+        r_new, g_new, b_new = rgb.split()
+        img = Image.merge('RGBA', (r_new, g_new, b_new, a))
+    else:
+        img = img.convert("RGBA")
+        datas = img.getdata()
+        new_data = []
+        for item in datas:
+            if item[0] >= threshold and item[1] >= threshold and item[2] >= threshold:
+                new_data.append((255, 255, 255, 0))
+            else:
+                new_data.append(item)
+        img.putdata(new_data)
     
     # Trim excess transparent border
     bbox = img.getbbox()
     if bbox:
         img = img.crop(bbox)
         # Add 10px padding
-        padded = Image.new("RGBA", (img.width + 20, img.height + 20), (255, 255, 255, 0))
+        padded = Image.new("RGBA", (img.width + 20, img.height + 20), (0, 0, 0, 0))
         padded.paste(img, (10, 10))
         img = padded
 

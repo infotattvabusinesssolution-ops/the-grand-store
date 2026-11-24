@@ -193,17 +193,20 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
       // PostNet Store Collection fee
       const postnetCollectionCost = Number(platformSettings?.postnetPickupFee !== undefined ? platformSettings.postnetPickupFee : 100);
 
+      // Ensure The Courier Guy delivery fee minimum floor (R120.00 incl. VAT). Never free.
+      const TCG_MINIMUM_DELIVERY_FEE = 120.00;
+      ecoTotalCost = Math.max(TCG_MINIMUM_DELIVERY_FEE, Number(ecoTotalCost.toFixed(2)));
+      priTotalCost = Math.max(TCG_MINIMUM_DELIVERY_FEE, Number(priTotalCost.toFixed(2)));
+
       // 1A. The Courier Guy - Economy Road (Standard Door-to-Door)
-      // Uses 0.001 so legacy client filters checking `cost > 0` pass, while displaying R0.00 / Free
-      const promoEcoCost = 0.001;
       quotes.push({
         courierName: 'The Courier Guy',
         serviceLevel: 'The Courier Guy - Economy Road',
         serviceCode: 'ECO',
         deliveryType: 'home',
-        cost: promoEcoCost,
+        cost: ecoTotalCost,
         originalCost: ecoTotalCost,
-        isFreeDelivery: true,
+        isFreeDelivery: false,
         estimatedDays: calculatedEco.estimatedDays,
         description: 'Direct door-to-door road courier across South Africa',
         legs: [
@@ -211,7 +214,7 @@ const getShippingQuotes = async (vendorId, customerAddress, shipmentItemsSubtota
             courierName: 'The Courier Guy Road Network',
             origin: originCountry,
             destination: customerAddress.city || destCountry,
-            cost: 0
+            cost: Number((ecoTotalCost * 0.75).toFixed(2))
           }
         ]
       });

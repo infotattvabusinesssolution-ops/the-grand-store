@@ -49,12 +49,12 @@ async function migrate() {
     console.log('\n--- 1. Uploading Rocco Torro Images ---');
     const roccoDir = path.resolve(__dirname, '../../frontend/public/assets/products');
     const roccoMap = {
-      'rt-100-agave-blanco-750': 'rocco-torro-blanco.jpg',
-      'rt-100-agave-reposado-french-oak-750': 'rocco-torro-reposado-french-oak.jpg',
-      'rt-100-agave-reposado-american-oak-750': 'rocco-torro-reposado-american-oak.jpg',
-      'rt-crafted-blend-gold-750': 'rocco-torro-gold.jpg',
-      'rt-crafted-blend-silver-750': 'rocco-torro-silver.jpg',
-      'rt-crafted-blend-white-chocolate-750': 'rocco-torro-white-chocolate.jpg'
+      'rt-100-agave-blanco-750': 'rocco-torro-blanco.png',
+      'rt-100-agave-reposado-french-oak-750': 'rocco-torro-reposado-french-oak.png',
+      'rt-100-agave-reposado-american-oak-750': 'rocco-torro-reposado-american-oak.png',
+      'rt-crafted-blend-gold-750': 'rocco-torro-gold.png',
+      'rt-crafted-blend-silver-750': 'rocco-torro-silver.png',
+      'rt-crafted-blend-white-chocolate-750': 'rocco-torro-white-chocolate.png'
     };
 
     for (const [prodId, filename] of Object.entries(roccoMap)) {

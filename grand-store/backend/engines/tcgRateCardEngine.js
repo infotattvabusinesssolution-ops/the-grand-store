@@ -350,9 +350,10 @@ function calculateDoorDeliveryRate(params = {}) {
       subtotalExclVat,
       vatAmount
     },
-    cost: (serviceCode === 'ECO' || serviceCode === 'ECOR' || serviceCode === 'ECORR') ? 0.001 : totalCost,
+    // The Courier Guy standard delivery has a minimum delivery fee floor (R120.00 incl. VAT). Never free.
+    cost: Math.max(120.00, Number(totalCost.toFixed(2))),
     originalCost: totalCost,
-    isFreeDelivery: (serviceCode === 'ECO' || serviceCode === 'ECOR' || serviceCode === 'ECORR'),
+    isFreeDelivery: false,
     currency: 'ZAR'
   };
 }

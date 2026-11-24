@@ -30,6 +30,21 @@ const tradeEnquirySchema = new mongoose.Schema(
       default: 'enquiry',
       trim: true
     },
+    tradeAgreementAccepted: {
+      type: Boolean,
+      default: false,
+    },
+    signatoryTitle: {
+      type: String,
+      trim: true,
+    },
+    electronicSignature: {
+      type: String,
+      trim: true,
+    },
+    signedAt: {
+      type: Date,
+    },
     status: {
       type: String,
       enum: ['pending', 'reviewed', 'contacted', 'rejected'],

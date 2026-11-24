@@ -7,7 +7,28 @@ const BRAND_COLOR_LIGHT = '#f5f5f5';
 
 const formatRand = (amount) => `R ${Number(amount || 0).toFixed(2)}`;
 
-const generateEmailTemplate = (title, content) => {
+const generateEmailTemplate = (title, content, options = {}) => {
+  const isLight = Boolean(options && (options.theme === 'light' || options.theme === 'luxury-light'));
+
+  const bodyBg = isLight ? '#f6f4ee' : BRAND_COLOR_DARK;
+  const bodyText = isLight ? '#292524' : BRAND_COLOR_LIGHT;
+  const containerBg = isLight ? '#ffffff' : '#0a0a0a';
+  const containerBorder = isLight ? '#e7e0d4' : '#222';
+  const containerShadow = isLight ? 'box-shadow: 0 4px 24px rgba(0,0,0,0.06);' : '';
+  const contentColor = isLight ? '#292524' : '#e0e0e0';
+  const headingColor = isLight ? '#1c1917' : BRAND_COLOR_GOLD;
+  const detailsBg = isLight ? '#faf8f5' : '#111';
+  const detailsBorder = isLight ? '#e8e2d8' : '#333';
+  const footerBg = isLight ? '#f2ede4' : BRAND_COLOR_DARK;
+  const footerBorder = isLight ? '#e7e0d4' : '#222';
+  const footerText = isLight ? '#78716c' : '#888';
+  const goldAccent = isLight ? '#8c6823' : BRAND_COLOR_GOLD;
+  const sigCardBg = isLight ? '#faf8f5' : 'rgba(255, 255, 255, 0.03)';
+  const sigCardBorder = isLight ? '#e8e2d8' : 'rgba(201, 163, 91, 0.15)';
+  const sigTitle = isLight ? '#1c1917' : '#eee8dd';
+  const sigText = isLight ? '#57534e' : '#a39c91';
+  const sigLink = isLight ? '#8c6823' : BRAND_COLOR_GOLD;
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -25,8 +46,8 @@ const generateEmailTemplate = (title, content) => {
       margin: 0;
       padding: 0;
       width: 100% !important;
-      background-color: ${BRAND_COLOR_DARK};
-      color: ${BRAND_COLOR_LIGHT};
+      background-color: ${bodyBg};
+      color: ${bodyText};
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
@@ -34,18 +55,19 @@ const generateEmailTemplate = (title, content) => {
       width: 100% !important;
       max-width: 600px;
       margin: 0 auto;
-      background-color: #0a0a0a;
-      border: 1px solid #222;
+      background-color: ${containerBg};
+      border: 1px solid ${containerBorder};
+      ${containerShadow}
       overflow: hidden;
     }
     .content {
       padding: 30px 22px;
       line-height: 1.6;
       font-size: 14px;
-      color: #e0e0e0;
+      color: ${contentColor};
     }
     h1, h2, h3 {
-      color: ${BRAND_COLOR_GOLD};
+      color: ${headingColor};
       font-family: 'Playfair Display', 'Times New Roman', Times, serif;
       font-weight: normal;
       margin-top: 14px;
@@ -70,11 +92,11 @@ const generateEmailTemplate = (title, content) => {
       line-height: 1.65;
     }
     blockquote {
-      border-left: 3px solid ${BRAND_COLOR_GOLD};
+      border-left: 3px solid ${goldAccent};
       padding: 8px 16px;
       margin: 16px 0;
-      background-color: #12100d;
-      color: #ded8ce;
+      background-color: ${isLight ? '#fcfaf6' : '#12100d'};
+      color: ${isLight ? '#44403c' : '#ded8ce'};
       font-style: italic;
     }
     ul, ol {
@@ -88,35 +110,35 @@ const generateEmailTemplate = (title, content) => {
       display: inline-block;
       padding: 12px 30px;
       background-color: ${BRAND_COLOR_GOLD};
-      color: ${BRAND_COLOR_DARK};
+      color: #050505;
       text-decoration: none;
       font-weight: bold;
       text-transform: uppercase;
       letter-spacing: 1px;
       font-size: 14px;
       margin-top: 20px;
-      border-radius: 2px;
+      border-radius: 4px;
     }
     .footer {
       padding: 30px;
       text-align: center;
-      background-color: ${BRAND_COLOR_DARK};
-      border-top: 1px solid #222;
+      background-color: ${footerBg};
+      border-top: 1px solid ${footerBorder};
       font-size: 12px;
-      color: #888;
+      color: ${footerText};
       letter-spacing: 0.5px;
     }
     .divider {
       height: 1px;
-      background-color: #222;
+      background-color: ${isLight ? '#e7e0d4' : '#222'};
       margin: 25px 0;
     }
     .details-box {
-      background-color: #111;
-      border: 1px solid #333;
+      background-color: ${detailsBg};
+      border: 1px solid ${detailsBorder};
       padding: 18px 16px;
       margin: 18px 0;
-      border-radius: 6px;
+      border-radius: 8px;
       word-wrap: break-word;
       overflow-wrap: break-word;
     }
@@ -124,7 +146,7 @@ const generateEmailTemplate = (title, content) => {
       margin: 5px 0;
     }
     a {
-      color: ${BRAND_COLOR_GOLD};
+      color: ${goldAccent};
       text-decoration: none;
     }
     @media only screen and (max-width: 600px) {
@@ -134,10 +156,10 @@ const generateEmailTemplate = (title, content) => {
         border-right: none !important;
       }
       .content {
-        padding: 20px 12px !important;
+        padding: 20px 14px !important;
       }
       .details-box {
-        padding: 14px 10px !important;
+        padding: 14px 12px !important;
         margin: 14px 0 !important;
       }
     }
@@ -149,12 +171,28 @@ const generateEmailTemplate = (title, content) => {
     <div class="content">
       ${content}
       <br><br>
-      Best Regards,<br>
-      <strong style="color: ${BRAND_COLOR_GOLD}">The Grand Store Team</strong>
+      <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid ${isLight ? '#e7e0d4' : 'rgba(201, 163, 91, 0.25)'}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <p style="margin: 0 0 4px 0; font-size: 13px; color: ${isLight ? '#78716c' : '#a39c91'};">Best Regards,</p>
+        <p style="margin: 0 0 10px 0; font-size: 15px; font-weight: 700; color: ${goldAccent}; letter-spacing: 0.5px;">THE GRAND STORE CONCIERGE</p>
+        <div style="background-color: ${sigCardBg}; border: 1px solid ${sigCardBorder}; border-radius: 8px; padding: 14px 16px; margin-top: 8px;">
+          <p style="margin: 0 0 4px 0; font-size: 12.5px; font-weight: 700; color: ${sigTitle};">NIVARP INTERNATIONAL PTY LTD</p>
+          <p style="margin: 0 0 4px 0; font-size: 11.5px; color: ${sigText}; line-height: 1.45;">
+            Reg No: 2015/268820/07 &bull; VAT No: 4040275077
+          </p>
+          <p style="margin: 0 0 4px 0; font-size: 11.5px; color: ${sigText}; line-height: 1.45;">
+            Registered Office: 1st Floor, Block E, The Pivot, Montecasino, Fourways, 2191, South Africa
+          </p>
+          <p style="margin: 0; font-size: 11.5px; color: ${sigLink};">
+            Direct Concierge: <a href="tel:+27824967256" style="color: ${sigLink}; text-decoration: none; font-weight: 600;">+27 82 496 7256</a> &bull; 
+            Email: <a href="mailto:concierge@grandstoreglobal.com" style="color: ${sigLink}; text-decoration: none; font-weight: 600;">concierge@grandstoreglobal.com</a> &bull; 
+            Web: <a href="https://grandstoreglobal.com" style="color: ${sigLink}; text-decoration: none; font-weight: 600;">grandstoreglobal.com</a>
+          </p>
+        </div>
+      </div>
     </div>
     <div class="footer">
-      <p>&copy; ${new Date().getFullYear()} The Grand Store. All rights reserved.</p>
-      <p>If you have any questions, please contact our concierge team at support@grandstoreglobal.com.</p>
+      <p>&copy; ${new Date().getFullYear()} The Grand Store (NIVARP INTERNATIONAL PTY LTD). All rights reserved.</p>
+      <p>If you have any questions, please contact our concierge team at <a href="mailto:concierge@grandstoreglobal.com" style="color: ${sigLink}; text-decoration: none; font-weight: 600;">concierge@grandstoreglobal.com</a> or call <a href="tel:+27824967256" style="color: ${sigLink}; text-decoration: none; font-weight: 600;">+27 82 496 7256</a>.</p>
     </div>
   </div>
 </body>
@@ -259,15 +297,36 @@ const cigarNewsletterWelcomeTemplate = () => {
 
 
 const orderConfirmationTemplate = (order) => {
-  const orderReference = order.invoiceNumber || order.orderId || order._id;
+  const isMongoId = (val) => typeof val === 'string' && /^[0-9a-fA-F]{24}$/.test(val.trim());
+  const rawOrderRef = order.orderReference || order.orderNumber || order.orderId;
+  const rawInvoiceNo = order.invoiceNumber;
+  const orderDateObj = new Date(order.paidAt || order.createdAt || Date.now());
+  const orderYear = orderDateObj.getFullYear() || 2026;
+  const shortOrderHex = String(order._id || '984201').slice(-6).toUpperCase();
+
+  let orderReference;
+  if (rawInvoiceNo && !isMongoId(rawInvoiceNo)) {
+    orderReference = String(rawInvoiceNo).replace(/^#+/, '');
+  } else if (rawOrderRef && !isMongoId(rawOrderRef)) {
+    orderReference = String(rawOrderRef).replace(/^#+/, '');
+  } else {
+    orderReference = `INV-${orderYear}-${shortOrderHex}`;
+  }
+
   const isPostNet = order.deliveryPreference === 'postnet' || Boolean(order.selectedPostnetStore?.name);
-  const courierName = isPostNet
-    ? `PostNet Store Collection (${order.selectedPostnetStore?.name || 'Local Branch'})`
-    : (order.driver?.courierCompany ? `${order.driver.courierCompany} (${order.driver.serviceType || 'Priority Express'})` : (order.shipments?.[0]?.selectedCourier?.serviceLevel || order.shipments?.[0]?.selectedCourier?.courierName || 'Door Delivery (Aramex / PostNet)'));
+  let courierName;
+  if (isPostNet) {
+    courierName = `PostNet Store Collection (${order.selectedPostnetStore?.name || 'Local Branch'})`;
+  } else if (order.driver?.courierCompany) {
+    courierName = order.driver.courierCompany;
+    if (order.driver.serviceType) courierName += ` (${order.driver.serviceType})`;
+  } else {
+    courierName = 'The Courier Guy (Door-to-Door Priority Express)';
+  }
 
   const subTotal = Number(order.subTotal || order.subtotal || 0);
-  const shippingCost = Number(order.shippingCost || order.shippingFee || 0);
-  const totalPrice = Number(order.totalPrice || order.total || 0);
+  const shippingCost = Number(order.shippingCost || order.shippingFee || 120);
+  const totalPrice = Number(order.totalPrice || order.total || (subTotal + shippingCost));
 
   // 15% South African VAT calculation (Inclusive)
   const vatAmount = Number(order.vatAmount !== undefined && order.vatAmount > 0 
@@ -275,83 +334,91 @@ const orderConfirmationTemplate = (order) => {
     : (subTotal > 0 ? (subTotal * (15 / 115)).toFixed(2) : 0));
   const subTotalExclVat = Math.max(0, Number((subTotal - vatAmount).toFixed(2)));
 
+  const customerName = order.guestInfo?.name || order.shippingAddress?.recipientName || order.shippingAddress?.name || order.user?.name || 'Valued Customer';
+  const customerEmail = order.guestInfo?.email || order.shippingAddress?.email || (order.user?.email) || 'On file';
+  const customerPhone = order.guestInfo?.phone || order.shippingAddress?.phone || order.shippingAddress?.phoneNumber || (order.user?.phone) || '+27 82 496 7256';
+
   const itemsList = order.orderItems || order.items || [];
   const itemsHtml = itemsList.map(item => {
     const qty = Number(item.quantity || item.qty || 1);
     const unitPrice = Number(item.price || 0);
     const lineTotal = unitPrice * qty;
     const itemImg = item.image 
-      ? `<img src="${item.image}" alt="${item.name}" width="46" height="46" style="width: 46px; height: 46px; object-fit: cover; border-radius: 4px; border: 1px solid #333; display: block;" />`
+      ? `<img src="${item.image}" alt="${item.name}" width="50" height="50" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid #e8e2d8; display: block;" />`
       : '';
 
     return `
-      <tr style="border-bottom: 1px solid #1f1f1f;">
-        <td style="padding: 12px 6px 12px 0; vertical-align: top;">
+      <tr style="border-bottom: 1px solid #f0eae1;">
+        <td style="padding: 14px 8px 14px 0; vertical-align: top;">
           <table border="0" cellpadding="0" cellspacing="0" width="100%" style="width: 100%;">
             <tr>
-              ${itemImg ? `<td style="vertical-align: top; width: 54px; padding-right: 10px;">${itemImg}</td>` : ''}
+              ${itemImg ? `<td style="vertical-align: top; width: 60px; padding-right: 12px;">${itemImg}</td>` : ''}
               <td style="vertical-align: top;">
-                <div style="font-weight: 600; color: #ffffff; font-size: 13px; line-height: 1.4; margin-bottom: 3px;">${item.name}</div>
-                <div style="margin-top: 2px; line-height: 1.3;">
-                  ${item.option ? `<span style="display: inline-block; font-size: 11px; color: #a1a1aa; background: #18181b; padding: 1px 6px; border-radius: 3px; border: 1px solid #27272a; margin-right: 6px;">${item.option}</span>` : ''}
-                  ${item.category ? `<span style="font-size: 11px; color: ${BRAND_COLOR_GOLD}; font-weight: 500;">${item.category}</span>` : ''}
+                <div style="font-weight: 700; color: #1c1917; font-size: 13.5px; line-height: 1.4; margin-bottom: 4px;">${item.name}</div>
+                <div style="margin-top: 3px; line-height: 1.3;">
+                  ${item.option ? `<span style="display: inline-block; font-size: 11px; color: #57534e; background: #f5f2eb; padding: 2px 8px; border-radius: 4px; border: 1px solid #e5ded3; margin-right: 6px;">${item.option}</span>` : ''}
+                  ${item.category ? `<span style="font-size: 11.5px; color: #8c6823; font-weight: 600;">${item.category}</span>` : ''}
                 </div>
-                <div style="font-size: 12px; color: #888888; margin-top: 5px;">
-                  Qty: <span style="color: #ffffff; font-weight: bold;">${qty}</span> &times; ${formatRand(unitPrice)}
+                <div style="font-size: 12px; color: #78716c; margin-top: 5px;">
+                  Quantity: <strong style="color: #1c1917;">${qty}</strong> &times; ${formatRand(unitPrice)}
                 </div>
               </td>
             </tr>
           </table>
         </td>
-        <td style="padding: 12px 0 12px 6px; text-align: right; vertical-align: top; white-space: nowrap; width: 28%;">
-          <div style="font-weight: bold; color: #ffffff; font-size: 14px;">${formatRand(lineTotal)}</div>
+        <td style="padding: 14px 0 14px 8px; text-align: right; vertical-align: top; white-space: nowrap; width: 28%;">
+          <div style="font-weight: 700; color: #1c1917; font-size: 14px;">${formatRand(lineTotal)}</div>
         </td>
       </tr>
     `;
   }).join('');
 
   const content = `
-    <div style="text-align: center; margin-bottom: 25px;">
-      <h1 style="margin-bottom: 6px;">Order & Payment Confirmation</h1>
-      <p style="margin: 0; font-size: 14px; color: #a0a0a0;">Official Tax Invoice & Purchase Receipt</p>
-      <div style="display: inline-block; margin-top: 10px; padding: 5px 16px; border-radius: 20px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; font-size: 12px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">
-        ✓ Payment Verified & Confirmed
+    <!-- TITLE & PAYMENT VERIFIED BADGE -->
+    <div style="text-align: center; margin-bottom: 26px;">
+      <h1 style="color: #1c1917; font-family: 'Playfair Display', Georgia, serif; font-size: 25px; font-weight: 700; margin: 0 0 6px 0; letter-spacing: 0.5px;">Order &amp; Payment Confirmation</h1>
+      <p style="margin: 0; font-size: 13.5px; color: #78716c; letter-spacing: 0.3px;">Official Tax Invoice &amp; Purchase Receipt</p>
+      <div style="display: inline-block; margin-top: 12px; padding: 6px 18px; border-radius: 20px; background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;">
+        ✓ Payment Verified &amp; Confirmed
       </div>
     </div>
 
-    <p>Dear ${order.guestInfo?.name || order.shippingAddress?.recipientName || 'Valued Customer'},</p>
-    <p>Thank you for choosing The Grand Store. We are pleased to confirm that your payment for order <strong>#${orderReference}</strong> has been successfully processed. Your order receipt is itemized below, and an official PDF Tax Invoice is attached to this email.</p>
+    <!-- GREETING -->
+    <p style="margin: 0 0 12px 0; font-size: 14px; color: #292524;">Dear ${customerName},</p>
+    <p style="margin: 0 0 16px 0; font-size: 14px; color: #44403c; line-height: 1.6;">
+      Thank you for choosing The Grand Store. We are pleased to confirm that your payment for order <strong style="color: #1c1917;">#${orderReference}</strong> has been successfully processed. Your order receipt is itemized below, and an official PDF Tax Invoice issued by <strong>NIVARP INTERNATIONAL PTY LTD</strong> is attached to this email.
+    </p>
 
     <!-- INVOICE METADATA TABLE -->
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; margin: 18px 0; background: #0e0e0e; border: 1px solid #222; border-radius: 6px; font-size: 13px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #faf8f5; border: 1px solid #e8e2d8; border-radius: 8px; font-size: 13px; overflow: hidden;">
       <tr>
-        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #888; width: 40%;">Invoice Reference:</td>
-        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: ${BRAND_COLOR_GOLD}; font-weight: bold; font-family: monospace; font-size: 13px; word-break: break-all;">${orderReference}</td>
+        <td style="padding: 10px 14px; border-bottom: 1px solid #ede7dc; color: #78716c; width: 40%; font-weight: 500;">Invoice Reference:</td>
+        <td style="padding: 10px 14px; border-bottom: 1px solid #ede7dc; color: #8c6823; font-weight: 700; font-family: 'Courier New', Courier, monospace; font-size: 13.5px;">#${orderReference}</td>
       </tr>
       <tr>
-        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #888;">Order Date:</td>
-        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #eee;">${new Date(order.createdAt || Date.now()).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+        <td style="padding: 10px 14px; border-bottom: 1px solid #ede7dc; color: #78716c; font-weight: 500;">Order Date:</td>
+        <td style="padding: 10px 14px; border-bottom: 1px solid #ede7dc; color: #1c1917; font-weight: 600;">${orderDateObj.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
       </tr>
       <tr>
-        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #888;">Payment Method:</td>
-        <td style="padding: 9px 12px; border-bottom: 1px solid #1a1a1a; color: #eee;">${order.paymentMethod || 'Instant EFT / Card (PayFast)'}</td>
+        <td style="padding: 10px 14px; border-bottom: 1px solid #ede7dc; color: #78716c; font-weight: 500;">Payment Method:</td>
+        <td style="padding: 10px 14px; border-bottom: 1px solid #ede7dc; color: #1c1917; font-weight: 600;">${order.paymentMethod || 'Instant EFT / Card (PayFast)'}</td>
       </tr>
       <tr>
-        <td style="padding: 9px 12px; color: #888;">Delivery Method:</td>
-        <td style="padding: 9px 12px; color: #eee; font-weight: 500;">${courierName}</td>
+        <td style="padding: 10px 14px; color: #78716c; font-weight: 500;">Logistics &amp; Delivery:</td>
+        <td style="padding: 10px 14px; color: #1c1917; font-weight: 600;">${courierName}</td>
       </tr>
     </table>
 
     <!-- PRODUCT RECEIPT TABLE -->
-    <div class="details-box">
-      <h3 style="margin-top: 0; font-size: 15px; border-bottom: 1px solid #222; padding-bottom: 10px; color: ${BRAND_COLOR_GOLD};">
+    <div style="background-color: #ffffff; border: 1px solid #e8e2d8; border-radius: 8px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
+      <h3 style="margin: 0 0 14px 0; font-size: 15px; border-bottom: 1.5px solid #e8e2d8; padding-bottom: 10px; color: #8c6823; font-weight: 700; letter-spacing: 0.5px;">
         Itemized Products
       </h3>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px;">
         <thead>
-          <tr style="border-bottom: 2px solid #333; color: ${BRAND_COLOR_GOLD}; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
-            <th style="padding: 8px 6px 8px 0; text-align: left;">Product Item</th>
-            <th style="padding: 8px 0 8px 6px; text-align: right; white-space: nowrap; width: 28%;">Total</th>
+          <tr style="border-bottom: 1.5px solid #e8e2d8; color: #8c6823; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; background: #fbf9f5;">
+            <th style="padding: 9px 8px 9px 6px; text-align: left;">Product Item</th>
+            <th style="padding: 9px 6px 9px 8px; text-align: right; white-space: nowrap; width: 28%;">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -360,47 +427,47 @@ const orderConfirmationTemplate = (order) => {
       </table>
 
       <!-- FINANCIAL SUMMARY & TAX BREAKDOWN -->
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 14px; border-top: 1px solid #2a2a2a;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 16px; border-top: 1.5px solid #e8e2d8;">
         <tr>
-          <td style="padding: 9px 0 4px; color: #a1a1aa;">Products Subtotal (Excl. VAT):</td>
-          <td style="padding: 9px 0 4px; text-align: right; color: #e4e4e7; white-space: nowrap;">${formatRand(subTotalExclVat)}</td>
+          <td style="padding: 10px 0 4px; color: #57534e;">Products Subtotal (Excl. VAT):</td>
+          <td style="padding: 10px 0 4px; text-align: right; color: #292524; font-weight: 500; white-space: nowrap;">${formatRand(subTotalExclVat)}</td>
         </tr>
         <tr>
-          <td style="padding: 4px 0; color: #a1a1aa;">South African VAT (15% Included):</td>
-          <td style="padding: 4px 0; text-align: right; color: ${BRAND_COLOR_GOLD}; white-space: nowrap;">${formatRand(vatAmount)}</td>
+          <td style="padding: 5px 0; color: #57534e;">South African VAT (15% Included):</td>
+          <td style="padding: 5px 0; text-align: right; color: #8c6823; font-weight: 600; white-space: nowrap;">${formatRand(vatAmount)}</td>
         </tr>
         <tr>
-          <td style="padding: 4px 0; color: #a1a1aa; font-weight: 500;">Products Subtotal (Incl. VAT):</td>
-          <td style="padding: 4px 0; text-align: right; color: #ffffff; font-weight: 500; white-space: nowrap;">${formatRand(subTotal)}</td>
+          <td style="padding: 5px 0; color: #292524; font-weight: 600;">Products Subtotal (Incl. VAT):</td>
+          <td style="padding: 5px 0; text-align: right; color: #1c1917; font-weight: 600; white-space: nowrap;">${formatRand(subTotal)}</td>
         </tr>
         <tr>
-          <td style="padding: 4px 0; color: #a1a1aa;">Shipping & Logistics (${order.deliveryPreference === 'postnet' ? 'PostNet Branch' : (order.driver?.courierCompany || 'Aramex Priority Door-to-Door') }):</td>
-          <td style="padding: 4px 0; text-align: right; color: #e4e4e7; white-space: nowrap;">${shippingCost > 0 ? formatRand(shippingCost) : '<span style="color: #34d399; font-weight: bold;">FREE</span>'}</td>
+          <td style="padding: 5px 0; color: #57534e;">Shipping &amp; Logistics (${isPostNet ? 'PostNet Branch' : (order.driver?.courierCompany || 'The Courier Guy')}):</td>
+          <td style="padding: 5px 0; text-align: right; color: #292524; font-weight: 500; white-space: nowrap;">${shippingCost > 0 ? formatRand(shippingCost) : formatRand(120)}</td>
         </tr>
         ${order.appliedWelcomeDiscount > 0 ? `
         <tr>
-          <td style="padding: 4px 0; color: #34d399;">Welcome Promotion Discount:</td>
-          <td style="padding: 4px 0; text-align: right; color: #34d399; white-space: nowrap;">- ${formatRand(order.appliedWelcomeDiscount)}</td>
+          <td style="padding: 5px 0; color: #047857; font-weight: 500;">Welcome Promotion Discount:</td>
+          <td style="padding: 5px 0; text-align: right; color: #047857; font-weight: 600; white-space: nowrap;">- ${formatRand(order.appliedWelcomeDiscount)}</td>
         </tr>
         ` : ''}
         ${order.superCoinsDiscount > 0 ? `
         <tr>
-          <td style="padding: 4px 0; color: #fbbf24;">Super Coins Redeemed (${order.superCoinsUsed || 0} Coins):</td>
-          <td style="padding: 4px 0; text-align: right; color: #fbbf24; white-space: nowrap;">- ${formatRand(order.superCoinsDiscount)}</td>
+          <td style="padding: 5px 0; color: #b45309; font-weight: 500;">Super Coins Redeemed (${order.superCoinsUsed || 0} Coins):</td>
+          <td style="padding: 5px 0; text-align: right; color: #b45309; font-weight: 600; white-space: nowrap;">- ${formatRand(order.superCoinsDiscount)}</td>
         </tr>
         ` : ''}
         ${order.importDuties > 0 ? `
         <tr>
-          <td style="padding: 4px 0; color: #a1a1aa;">Estimated Import Duties & Customs:</td>
-          <td style="padding: 4px 0; text-align: right; color: #e4e4e7; white-space: nowrap;">${formatRand(order.importDuties + (order.customsFees || 0))}</td>
+          <td style="padding: 5px 0; color: #57534e;">Estimated Import Duties &amp; Customs:</td>
+          <td style="padding: 5px 0; text-align: right; color: #292524; font-weight: 500; white-space: nowrap;">${formatRand(order.importDuties + (order.customsFees || 0))}</td>
         </tr>
         ` : ''}
-        <tr style="border-top: 2px solid ${BRAND_COLOR_GOLD};">
-          <td style="padding: 12px 0 4px; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 14px;">
+        <tr style="border-top: 2px solid #c9a35b;">
+          <td style="padding: 14px 0 4px; font-weight: 700; color: #1c1917; font-size: 14px;">
             Grand Total Paid:
-            <div style="font-size: 11px; color: #71717a; font-weight: normal; margin-top: 2px;">Inclusive of all 15% VAT, duties & taxes</div>
+            <div style="font-size: 11px; color: #78716c; font-weight: normal; margin-top: 2px;">Inclusive of all 15% VAT, duties &amp; logistics</div>
           </td>
-          <td style="padding: 12px 0 4px; text-align: right; font-weight: bold; color: ${BRAND_COLOR_GOLD}; font-size: 17px; white-space: nowrap;">
+          <td style="padding: 14px 0 4px; text-align: right; font-weight: 700; color: #8c6823; font-size: 18px; white-space: nowrap;">
             ${formatRand(totalPrice)}
           </td>
         </tr>
@@ -408,55 +475,56 @@ const orderConfirmationTemplate = (order) => {
     </div>
 
     <!-- DELIVERY / COLLECTION DESTINATION CARD -->
-    <div class="details-box">
-      <h3 style="margin-top: 0; font-size: 15px; color: ${BRAND_COLOR_GOLD};">
+    <div style="background-color: #faf8f5; border: 1px solid #e8e2d8; border-radius: 8px; padding: 18px; margin: 18px 0;">
+      <h3 style="margin: 0 0 8px 0; font-size: 14.5px; color: #8c6823; font-weight: 700;">
         ${isPostNet ? '🏬 PostNet Collection Point' : '📍 Delivery Address'}
       </h3>
       ${isPostNet && order.selectedPostnetStore ? `
-        <p style="font-size: 14px; font-weight: bold; color: #fff; margin: 4px 0;">${order.selectedPostnetStore.name}</p>
-        <p style="font-size: 13px; color: #bbb; margin: 2px 0;">${order.selectedPostnetStore.address}</p>
-        <p style="font-size: 13px; color: #bbb; margin: 2px 0;">${order.selectedPostnetStore.city || ''} ${order.selectedPostnetStore.postalCode || ''}</p>
-        ${order.selectedPostnetStore.telephone ? `<p style="font-size: 12px; color: #888; margin: 4px 0;">Branch Tel: ${order.selectedPostnetStore.telephone}</p>` : ''}
+        <p style="font-size: 14px; font-weight: 700; color: #1c1917; margin: 4px 0;">${order.selectedPostnetStore.name}</p>
+        <p style="font-size: 13px; color: #44403c; margin: 2px 0;">${order.selectedPostnetStore.address}</p>
+        <p style="font-size: 13px; color: #44403c; margin: 2px 0;">${order.selectedPostnetStore.city || ''} ${order.selectedPostnetStore.postalCode || ''}</p>
+        ${order.selectedPostnetStore.telephone ? `<p style="font-size: 12px; color: #78716c; margin: 4px 0;">Branch Tel: ${order.selectedPostnetStore.telephone}</p>` : ''}
       ` : `
-        <p style="font-size: 14px; color: #fff; margin: 4px 0;">${order.shippingAddress?.address || ''}</p>
-        <p style="font-size: 13px; color: #bbb; margin: 2px 0;">${order.shippingAddress?.city || ''}, ${order.shippingAddress?.postalCode || ''}</p>
-        <p style="font-size: 13px; color: #bbb; margin: 2px 0;">${order.shippingAddress?.country || 'South Africa'}</p>
+        <p style="font-size: 14px; font-weight: 600; color: #1c1917; margin: 4px 0;">${order.shippingAddress?.address || 'Standard Delivery Address'}</p>
+        <p style="font-size: 13px; color: #44403c; margin: 2px 0;">${order.shippingAddress?.city || ''}${order.shippingAddress?.postalCode ? ', ' + order.shippingAddress.postalCode : ''}</p>
+        <p style="font-size: 13px; color: #44403c; margin: 2px 0;">${order.shippingAddress?.country || 'South Africa'}</p>
       `}
     </div>
 
     ${order.isGift ? `
     <!-- GIFT DELIVERY CARD -->
-    <div class="details-box" style="border-left: 4px solid ${BRAND_COLOR_GOLD}; background: #161208; margin-top: 15px;">
-      <h3 style="margin-top: 0; color: ${BRAND_COLOR_GOLD}; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
+    <div style="background-color: #fcfaf6; border: 1px solid #e8e2d8; border-left: 4px solid #c9a35b; border-radius: 8px; padding: 18px; margin: 18px 0;">
+      <h3 style="margin: 0 0 8px 0; color: #8c6823; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
         🎁 Complimentary Gift Delivery
       </h3>
-      ${order.giftRecipientName ? `<p style="margin: 4px 0; font-size: 13px; color: #fff;"><strong>Recipient:</strong> ${order.giftRecipientName}</p>` : ''}
-      ${order.giftMessage ? `<p style="margin: 8px 0 2px 0; font-size: 13px; color: #ddd; font-style: italic; background: #0c0a06; padding: 10px; border-radius: 6px; border: 1px dashed rgba(201, 163, 91, 0.3);">"${order.giftMessage}"</p>` : ''}
+      ${order.giftRecipientName ? `<p style="margin: 4px 0; font-size: 13px; color: #1c1917;"><strong>Recipient:</strong> ${order.giftRecipientName}</p>` : ''}
+      ${order.giftMessage ? `<p style="margin: 8px 0 2px 0; font-size: 13px; color: #44403c; font-style: italic; background: #ffffff; padding: 10px 14px; border-radius: 6px; border: 1px dashed rgba(201, 163, 91, 0.4);">"${order.giftMessage}"</p>` : ''}
     </div>
     ` : ''}
 
-    <!-- NOTIFICATIONS & PIN BOX -->
-    <div class="details-box" style="border-left: 4px solid ${BRAND_COLOR_GOLD}; background: #14120c; margin-top: 15px;">
-      <h3 style="margin-top: 0; color: ${BRAND_COLOR_GOLD}; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
-        📦 Waybill Tracking & Collection Alerts
+    <!-- NOTIFICATIONS & TRACKING BOX -->
+    <div style="background-color: #faf8f5; border: 1px solid #e8e2d8; border-left: 4px solid #c9a35b; border-radius: 8px; padding: 18px; margin: 18px 0;">
+      <h3 style="margin: 0 0 8px 0; color: #8c6823; font-size: 14px; font-weight: 700; letter-spacing: 0.5px;">
+        📦 Waybill Tracking &amp; Courier Dispatch
       </h3>
-      <p style="margin-bottom: 8px; font-size: 13px; color: #ccc;">
+      <p style="margin: 0 0 8px 0; font-size: 13px; color: #57534e; line-height: 1.5;">
         Real-time dispatch tracking, SMS delivery PINs, and courier status updates are registered to:
       </p>
-      <p style="margin: 3px 0; font-size: 13px;">
-        ✉️ <strong>Email:</strong> ${order.guestInfo?.email || order.shippingAddress?.email || (order.user?.email) || 'On file'}
+      <p style="margin: 3px 0; font-size: 13px; color: #1c1917;">
+        ✉️ <strong>Email:</strong> ${customerEmail}
       </p>
-      <p style="margin: 3px 0; font-size: 13px;">
-        📱 <strong>Phone / SMS:</strong> ${order.guestInfo?.phone || order.shippingAddress?.phone || order.shippingAddress?.phoneNumber || (order.user?.phone) || 'On file'}
+      <p style="margin: 3px 0; font-size: 13px; color: #1c1917;">
+        📱 <strong>Phone / SMS:</strong> ${customerPhone}
       </p>
     </div>
 
-    <div style="background-color: #0d131a; border: 1px solid #1e293b; border-radius: 6px; padding: 14px; margin-top: 20px; font-size: 12px; color: #94a3b8; line-height: 1.5;">
-      📄 <strong>Tax Invoice PDF Attached:</strong> Your formal South African tax invoice (VAT compliant) is attached to this email. You can retain or print it for accounting and proof of purchase.
+    <!-- TAX INVOICE ATTACHMENT NOTICE -->
+    <div style="background-color: #f0f7ff; border: 1px solid #bae0ff; border-radius: 8px; padding: 14px 16px; margin-top: 20px; font-size: 12.5px; color: #003a8c; line-height: 1.55;">
+      📄 <strong>Tax Invoice PDF Attached:</strong> Your formal South African tax invoice (VAT compliant) issued by <strong>NIVARP INTERNATIONAL PTY LTD</strong> is attached to this email. You can retain or print it for your business records and tax clearance.
     </div>
   `;
 
-  return generateEmailTemplate(`Payment Receipt #${orderReference}`, content);
+  return generateEmailTemplate(`Payment Receipt #${orderReference}`, content, { theme: 'light' });
 };
 
 const bankTransferInstructionsTemplate = (order, bankDetails = {}) => {
@@ -563,7 +631,7 @@ const bankTransferInstructionsTemplate = (order, bankDetails = {}) => {
     </div>
     
     <p style="font-size: 12px; color: #777; text-align: center; margin-top: 15px;">
-      Alternatively, you can reply directly to this email or send your POP to <a href="mailto:support@grandstoreglobal.com" style="color: ${BRAND_COLOR_GOLD}; text-decoration: underline;">support@grandstoreglobal.com</a> referencing <strong>${depositRef}</strong>.
+      Alternatively, you can reply directly to this email or send your POP to <a href="mailto:concierge@grandstoreglobal.com" style="color: ${BRAND_COLOR_GOLD}; text-decoration: underline;">concierge@grandstoreglobal.com</a> referencing <strong>${depositRef}</strong>.
     </p>
   `;
   return generateEmailTemplate(`Payment Required - Order ${depositRef}`, content);
@@ -1795,7 +1863,7 @@ const paymentFailedEmailTemplate = ({ customerName, reference, itemName, amount,
     <div style="height: 1px; background-color: #222222; margin: 25px 0; border: none;"></div>
 
     <p style="font-size: 12px; color: #777777; margin-bottom: 0; line-height: 1.5;">
-      Need assistance? Contact our concierge at <a href="mailto:concierge@grandstoreglobal.com" style="color: #c9a35b; text-decoration: none;">concierge@grandstoreglobal.com</a> or message our VIP Concierge on WhatsApp at +27 76 580 9522.
+      Need assistance? Contact our concierge at <a href="mailto:concierge@grandstoreglobal.com" style="color: #c9a35b; text-decoration: none;">concierge@grandstoreglobal.com</a> or call our VIP Concierge at <a href="tel:+27824967256" style="color: #c9a35b; text-decoration: none;">+27 82 496 7256</a>.
     </p>
   `;
 

@@ -22,7 +22,7 @@ const ARAMEX_CONFIG = {
     postal_code: '2196',
     street_address: '88 Grayston Drive, Sandton Central',
     contact_person: 'GrandStore Dispatch Hub',
-    contact_number: '+27 11 883 4000',
+    contact_number: '+27 82 496 7256',
     email: 'dispatch@grandstoreglobal.com'
   }
 };
@@ -477,7 +477,7 @@ const generateWaybillPdf = async (req, res) => {
     doc.setFontSize(7.5);
     doc.setTextColor(50, 50, 50);
     doc.text('GrandStore Global Fulfillment Vault (Sandton Central Gateway)', 5, line2Y + 8.5);
-    doc.text('88 Grayston Drive, Sandton Central, JHB, 2196, South Africa • +27 11 883 4000', 5, line2Y + 12.5);
+    doc.text('88 Grayston Drive, Sandton Central, JHB, 2196, South Africa • +27 82 496 7256', 5, line2Y + 12.5);
 
     const line3Y = line2Y + 15.5;
     doc.line(5, line3Y, 96.6, line3Y);

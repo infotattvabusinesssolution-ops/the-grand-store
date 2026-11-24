@@ -44,7 +44,11 @@ const createEnquiry = async (req, res) => {
       phone,
       companyname,
       message,
-      source: source || 'enquiry'
+      source: source || 'enquiry',
+      tradeAgreementAccepted: Boolean(req.body.tradeAgreementAccepted),
+      signatoryTitle: req.body.signatoryTitle || '',
+      electronicSignature: req.body.electronicSignature || '',
+      signedAt: req.body.signedAt ? new Date(req.body.signedAt) : (req.body.electronicSignature ? new Date() : null),
     });
 
     let exportEnquiry = null;

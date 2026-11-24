@@ -17,8 +17,32 @@ const generateOrderReceiptBuffer = async (order, user) => {
     const margin = 14;
     const contentWidth = pageWidth - margin * 2; // 182mm
 
-    const invoiceNo = String(order.invoiceNumber || order.orderId || order._id).toUpperCase();
-    const orderRef = String(order.orderId || order.invoiceNumber || order._id).toUpperCase();
+    // Format Invoice Number and Order Reference cleanly
+    const rawOrderRef = order.orderReference || order.orderNumber || order.orderId;
+    const rawInvoiceNo = order.invoiceNumber;
+    
+    // Check if raw values are raw 24-character hexadecimal MongoDB ObjectIds
+    const isMongoId = (val) => typeof val === 'string' && /^[0-9a-fA-F]{24}$/.test(val.trim());
+    
+    const orderDate = new Date(order.paidAt || order.createdAt || Date.now());
+    const orderYear = orderDate.getFullYear() || 2026;
+    const shortOrderHex = String(order._id || '984201').slice(-6).toUpperCase();
+
+    // Clean order reference (e.g. GS-2026-9842 or GS-984201)
+    let orderRef;
+    if (rawOrderRef && !isMongoId(rawOrderRef)) {
+      orderRef = String(rawOrderRef).replace(/^#+/, '').toUpperCase();
+    } else {
+      orderRef = `GS-${orderYear}-${shortOrderHex}`;
+    }
+
+    // Clean Tax Invoice number (e.g. INV-2026-9842 or INV-984201)
+    let invoiceNo;
+    if (rawInvoiceNo && !isMongoId(rawInvoiceNo)) {
+      invoiceNo = String(rawInvoiceNo).replace(/^#+/, '').toUpperCase();
+    } else {
+      invoiceNo = `INV-${orderYear}-${shortOrderHex}`;
+    }
 
     // Theme palette
     const darkObsidian = [18, 16, 14];
@@ -69,28 +93,33 @@ const generateOrderReceiptBuffer = async (order, user) => {
     doc.setLineWidth(0.3);
     doc.roundedRect(margin, curY, contentWidth, 20, 1.5, 1.5, 'S');
 
-    // Metadata items across the bar
-    const colW = contentWidth / 4;
+    // Metadata items across the bar (Content width = 182mm)
+    const col1X = margin + 5;   // 19mm
+    const col2X = margin + 52;  // 66mm
+    const col3X = margin + 100; // 114mm
+
+    const displayInvoiceNo = invoiceNo.startsWith('#') ? invoiceNo : `#${invoiceNo}`;
+    const displayOrderRef = orderRef.startsWith('#') ? orderRef : `#${orderRef}`;
     
     // Col 1: Invoice No
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
     doc.setTextColor(...textMuted);
-    doc.text('TAX INVOICE NUMBER', margin + 4, curY + 6);
+    doc.text('TAX INVOICE NUMBER', col1X, curY + 6);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
+    doc.setFontSize(displayInvoiceNo.length > 18 ? 7.5 : 8.5);
     doc.setTextColor(...darkObsidian);
-    doc.text(`#${invoiceNo}`, margin + 4, curY + 13);
+    doc.text(displayInvoiceNo, col1X, curY + 13, { maxWidth: 44 });
 
     // Col 2: Order Reference
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
     doc.setTextColor(...textMuted);
-    doc.text('ORDER REFERENCE', margin + colW + 4, curY + 6);
+    doc.text('ORDER REFERENCE', col2X, curY + 6);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(displayOrderRef.length > 18 ? 7.5 : 8.5);
     doc.setTextColor(...darkObsidian);
-    doc.text(`#${orderRef}`, margin + colW + 4, curY + 13);
+    doc.text(displayOrderRef, col2X, curY + 13, { maxWidth: 44 });
 
     // Col 3: Date & Time
     const issueDate = order.paidAt || order.createdAt || Date.now();
@@ -98,24 +127,33 @@ const generateOrderReceiptBuffer = async (order, user) => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
     doc.setTextColor(...textMuted);
-    doc.text('TAX POINT / DATE', margin + colW * 2 + 4, curY + 6);
+    doc.text('TAX POINT / DATE', col3X, curY + 6);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setTextColor(...darkObsidian);
-    doc.text(formattedDate, margin + colW * 2 + 4, curY + 13);
+    doc.text(formattedDate, col3X, curY + 13, { maxWidth: 36 });
 
     // Col 4: Payment Status Pill
-    const isPaid = order.isPaid || order.paymentStatus === 'Paid';
+    const isPaid = Boolean(
+      order.isPaid || 
+      String(order.paymentStatus || '').toLowerCase() === 'paid' || 
+      String(order.status || '').toLowerCase() === 'paid'
+    );
+    const pillW = 34;
+    const pillH = 11;
+    const pillX = pageWidth - margin - pillW - 4;
+    const pillY = curY + 4.5;
+
     doc.setFillColor(isPaid ? 235 : 255, isPaid ? 247 : 243, isPaid ? 238 : 230);
-    doc.roundedRect(margin + colW * 3 + 2, curY + 4, colW - 6, 12, 1, 1, 'F');
+    doc.roundedRect(pillX, pillY, pillW, pillH, 1, 1, 'F');
     doc.setDrawColor(isPaid ? 40 : 200, isPaid ? 167 : 120, isPaid ? 69 : 30);
     doc.setLineWidth(0.4);
-    doc.roundedRect(margin + colW * 3 + 2, curY + 4, colW - 6, 12, 1, 1, 'S');
+    doc.roundedRect(pillX, pillY, pillW, pillH, 1, 1, 'S');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setTextColor(isPaid ? emeraldGreen[0] : 180, isPaid ? emeraldGreen[1] : 60, isPaid ? emeraldGreen[2] : 20);
-    doc.text(isPaid ? 'PAID & VERIFIED' : 'PAYMENT PENDING', margin + colW * 3 + (colW - 6) / 2 + 2, curY + 11.5, { align: 'center' });
+    doc.text(isPaid ? 'PAID & VERIFIED' : 'PAYMENT PENDING', pillX + pillW / 2, pillY + 7.5, { align: 'center' });
 
     curY += 25;
 
@@ -124,9 +162,9 @@ const generateOrderReceiptBuffer = async (order, user) => {
 
     // CARD A: MERCHANT & VAULT GATEWAY
     doc.setFillColor(252, 251, 249);
-    doc.roundedRect(margin, curY, halfW, 36, 1, 1, 'F');
+    doc.roundedRect(margin, curY, halfW, 38, 1, 1, 'F');
     doc.setDrawColor(230, 225, 215);
-    doc.roundedRect(margin, curY, halfW, 36, 1, 1, 'S');
+    doc.roundedRect(margin, curY, halfW, 38, 1, 1, 'S');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
@@ -134,24 +172,24 @@ const generateOrderReceiptBuffer = async (order, user) => {
     doc.text('FROM (SELLER & FULFILLMENT VAULT):', margin + 4, curY + 6);
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(9.5);
     doc.setTextColor(...darkObsidian);
-    doc.text('The Grand Store (Pty) Ltd', margin + 4, curY + 12);
+    doc.text('NIVARP INTERNATIONAL PTY LTD', margin + 4, curY + 12);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(...textMuted);
-    doc.text('Sandton Central Vault Gateway, 88 Grayston Drive', margin + 4, curY + 17);
-    doc.text('Johannesburg, Gauteng, 2196, South Africa', margin + 4, curY + 21.5);
-    doc.text('VAT Reg: 4890289141  |  Excise Bond: ZA-EXP-00921', margin + 4, curY + 26);
-    doc.text('Tel: +27 11 883 4000  |  Email: concierge@grandstoreglobal.com', margin + 4, curY + 30.5);
+    doc.text('Reg No: 2015/268820/07  |  VAT No: 4040275077', margin + 4, curY + 17.5);
+    doc.text('1st Floor, Block E, The Pivot, Montecasino', margin + 4, curY + 23);
+    doc.text('Fourways, Johannesburg, 2191, South Africa', margin + 4, curY + 28);
+    doc.text('Tel: +27 82 496 7256  |  Email: concierge@grandstoreglobal.com', margin + 4, curY + 33.5);
 
     // CARD B: CONSIGNEE / BUYER
     const custX = margin + halfW + 6;
     doc.setFillColor(252, 251, 249);
-    doc.roundedRect(custX, curY, halfW, 36, 1, 1, 'F');
+    doc.roundedRect(custX, curY, halfW, 38, 1, 1, 'F');
     doc.setDrawColor(230, 225, 215);
-    doc.roundedRect(custX, curY, halfW, 36, 1, 1, 'S');
+    doc.roundedRect(custX, curY, halfW, 38, 1, 1, 'S');
 
     const customerName = (user && user.name) || order.shippingAddress?.name || (order.guestInfo && order.guestInfo.name) || 'Valued Customer';
     const customerEmail = (user && user.email) || order.shippingAddress?.email || (order.guestInfo && order.guestInfo.email) || '';
@@ -168,29 +206,45 @@ const generateOrderReceiptBuffer = async (order, user) => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(...darkObsidian);
-    doc.text(customerName.substring(0, 38), custX + 4, curY + 12);
+    doc.text(customerName.substring(0, 38), custX + 4, curY + 11.5);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(...textMuted);
-    if (customerEmail) doc.text(`Email: ${customerEmail.substring(0, 38)}`, custX + 4, curY + 17);
-    if (customerPhone) doc.text(`Contact: ${customerPhone}`, custX + 4, curY + 21.5);
+    if (customerEmail) doc.text(`Email: ${customerEmail.substring(0, 38)}`, custX + 4, curY + 16);
+    if (customerPhone) doc.text(`Contact: ${customerPhone}`, custX + 4, curY + 20.5);
 
     const addrStr = order.shippingAddress?.address || 'Standard Delivery Address';
     const splitAddr = doc.splitTextToSize(addrStr, halfW - 8);
-    doc.text(splitAddr.slice(0, 2), custX + 4, curY + 26);
-    doc.text(`${destCity}${destCity ? ', ' : ''}${destPostal}  •  ${destCountry}`, custX + 4, curY + 31.5);
+    doc.text(splitAddr.slice(0, 2), custX + 4, curY + 25);
+    doc.text(`${destCity}${destCity ? ', ' : ''}${destPostal}  •  ${destCountry}`, custX + 4, curY + 31);
 
-    curY += 41;
+    curY += 43;
 
     // --- 4. COURIER LOGISTICS & WAYBILL CONSIGNMENT STRIP ---
     const waybillNumber = String(
       order.driver?.waybillNumber ||
       order.aramexWaybillNumber ||
       (Array.isArray(order.shipments) && order.shipments[0]?.aramexWaybillNumber) ||
-      '31984210642'
+      'TCG-ZA-9928104'
     );
-    const courierCompany = order.driver?.courierCompany || (order.deliveryPreference === 'postnet' ? 'PostNet South Africa' : 'Aramex South Africa (Insured Air Courier)');
+    
+    // Normalize courier brand name cleanly without truncating
+    const rawCourier = String(order.driver?.courierCompany || order.deliveryPreference || '').toLowerCase();
+    let courierCompany = 'The Courier Guy';
+    if (rawCourier.includes('postnet')) {
+      courierCompany = 'PostNet South Africa';
+    } else if (rawCourier.includes('aramex')) {
+      courierCompany = 'Aramex South Africa';
+    } else if (rawCourier.includes('dhl')) {
+      courierCompany = 'DHL Express Air';
+    } else if (rawCourier.includes('courier guy') || rawCourier.includes('tcg')) {
+      courierCompany = 'The Courier Guy';
+    } else if (order.driver?.courierCompany) {
+      // Remove any parenthetical descriptions like "(Door-to-Door...)" so the main brand name is clean
+      courierCompany = order.driver.courierCompany.replace(/\s*\([^)]*\)/g, '').trim() || 'The Courier Guy';
+    }
+
     const serviceType = order.driver?.serviceType || 'ONP Priority Express';
     const packagingObj = order.packaging || {};
     const weightKg = Number(packagingObj.weightKg || 1.85).toFixed(2);
@@ -204,36 +258,57 @@ const generateOrderReceiptBuffer = async (order, user) => {
     doc.setDrawColor(210, 200, 185);
     doc.roundedRect(margin, curY, contentWidth, 15, 1, 1, 'S');
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(...goldAccent);
-    doc.text('LOGISTICS CARRIER:', margin + 4, curY + 5);
-    doc.text('WAYBILL / TRACKING:', margin + 50, curY + 5);
-    doc.text('PACKAGE DIMS & WEIGHT:', margin + 105, curY + 5);
-    doc.text('SECURITY & HANDLING:', margin + 152, curY + 5);
+    // 4 Distinct, proportional columns with guaranteed margins
+    const logCol1X = margin + 5;   // Col 1: Carrier (width 46mm)
+    const logCol2X = margin + 53;  // Col 2: Waybill (width 40mm)
+    const logCol3X = margin + 96;  // Col 3: Package Dims (width 46mm)
+    const logCol4X = margin + 144; // Col 4: Security Badge (width 34mm, 4mm safe margin from right edge)
 
+    // Headers (size 6.5 bold goldAccent)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...goldAccent);
+    doc.text('LOGISTICS CARRIER:', logCol1X, curY + 5);
+    doc.text('WAYBILL / TRACKING:', logCol2X, curY + 5);
+    doc.text('PACKAGE DIMS & WEIGHT:', logCol3X, curY + 5);
+    doc.text('SECURITY & HANDLING:', logCol4X, curY + 5);
+
+    // Values (size 8 bold)
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(...darkObsidian);
-    doc.text(courierCompany.substring(0, 26), margin + 4, curY + 10.5);
+    doc.text(courierCompany, logCol1X, curY + 10.5, { maxWidth: 45 });
+
     doc.setFont('courier', 'bold');
-    doc.text(waybillNumber, margin + 50, curY + 10.5);
+    doc.setFontSize(7.5);
+    doc.text(waybillNumber, logCol2X, curY + 10.5, { maxWidth: 40 });
+
     doc.setFont('helvetica', 'bold');
-    doc.text(`${weightKg} KG (${dimsStr})`, margin + 105, curY + 10.5);
-    doc.setTextColor(190, 30, 30);
-    doc.text('FRAGILE LUXURY GLASS', margin + 152, curY + 10.5);
+    doc.setFontSize(7.5);
+    doc.text(`${weightKg} KG (${dimsStr})`, logCol3X, curY + 10.5, { maxWidth: 45 });
+
+    // Clean handling badge with comfortable margin from edge
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(185, 28, 28);
+    doc.text('FRAGILE LUXURY GLASS', logCol4X, curY + 10.5, { maxWidth: 35 });
 
     curY += 20;
 
     // --- 5. ITEMIZED PRODUCTS AUTOTABLE ---
-    const tableItems = (order.orderItems || []).map((item) => {
+    const rawItems = (Array.isArray(order.orderItems) && order.orderItems.length > 0)
+      ? order.orderItems
+      : (Array.isArray(order.items) && order.items.length > 0 ? order.items : []);
+
+    const tableItems = rawItems.map((item) => {
       const qty = Number(item.qty || item.quantity || 1);
       const total = Number(item.price || 0) * qty;
       const unitExclVat = total / 1.15 / qty;
       const itemVat = (total - (total / 1.15));
+      const vintageStr = item.vintage || item.option || 'Grand Reserve';
 
       return [
-        `${item.name}\nVintage / Option: ${item.option || 'Standard Bottle'}${item.category ? ` • Category: ${item.category}` : ''}`,
+        `${item.name}\nVintage / Release: ${vintageStr}${item.category ? ` • Category: ${item.category}` : ''}`,
         `${boxType}\n${dimsStr} • Gross ${weightKg}kg`,
         qty.toString(),
         pdfPrice(unitExclVat),
@@ -403,8 +478,9 @@ const generateOrderReceiptBuffer = async (order, user) => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.setTextColor(...darkObsidian);
+    const waybillLabel = courierCompany.includes('Courier Guy') ? 'TCG WAYBILL' : (courierCompany.includes('PostNet') ? 'POSTNET REF' : 'WAYBILL');
     doc.text(`CONSIGNMENT: ${orderRef}`, margin + 4, slipY + 12);
-    doc.text(`ARAMEX WAYBILL: ${waybillNumber}`, margin + 65, slipY + 12);
+    doc.text(`${waybillLabel}: ${waybillNumber}`, margin + 65, slipY + 12);
     doc.text(`PIECES: 1 of 1  •  WT: ${weightKg} KG`, margin + 130, slipY + 12);
 
     doc.setFont('helvetica', 'normal');
@@ -412,7 +488,7 @@ const generateOrderReceiptBuffer = async (order, user) => {
     doc.setTextColor(...textMuted);
     doc.text(`Consignee: ${customerName} | Dest: ${destCity}, ${destCountry} | Phone: ${customerPhone}`, margin + 4, slipY + 18);
     doc.text(`Carrier: ${courierCompany} (${serviceType}) | Security: Tamper-Evident Seal Verified`, margin + 4, slipY + 23);
-    doc.text('Declared Luxury Alcoholic Beverage (Tax & Excise Bond Cleared) • The Grand Store South Africa', margin + 4, slipY + 28);
+    doc.text('Declared Luxury Alcoholic Beverage (Tax & Excise Cleared) • NIVARP INTERNATIONAL PTY LTD (VAT No: 4040275077)', margin + 4, slipY + 28);
 
     // Return Node Buffer
     const buffer = Buffer.from(doc.output('arraybuffer'));
