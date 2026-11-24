@@ -129,7 +129,7 @@ export default function AdminUsers() {
                   <tr key={u._id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                     <td className="py-4 pl-6 text-sm text-[var(--color-ivory)] font-serif">{u.name}</td>
                     <td className="py-4 text-sm text-[var(--color-ivory-muted)]">
-                      <a href={`mailto:${u.email}`} className="hover:text-[var(--color-gold)] transition-colors underline decoration-white/20 hover:decoration-[var(--color-gold)] underline-offset-4">
+                      <a href={`mailto:${u.email}?subject=The%20Grand%20Store%20Customer%20Support`} className="hover:text-[var(--color-gold)] transition-colors underline decoration-white/20 hover:decoration-[var(--color-gold)] underline-offset-4">
                         {u.email}
                       </a>
                     </td>

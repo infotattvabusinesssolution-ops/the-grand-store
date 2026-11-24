@@ -20,7 +20,6 @@ const LOCAL_VENDOR_PATTERNS = [
   'long dog',
   'tesselaarsdal',
   'hamilton russell',
-  'mont rochelle',
   'crazy wine',
 ];
 

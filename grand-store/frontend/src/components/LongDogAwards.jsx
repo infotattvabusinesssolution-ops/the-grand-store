@@ -3,13 +3,13 @@ import { Award } from 'lucide-react';
 
 export const LONG_DOG_AWARDS = [
   {
-    id: 'iwsc-silver',
-    title: 'IWSC Silver',
-    year: '2026',
-    competition: 'International Wine & Spirit Competition',
-    badge: 'Silver Medal',
-    image: '/assets/estate/long-dog-wines/award_iwsc_silver.png',
-    alt: 'IWSC Silver Medal 2026',
+    id: 'platters-4-5-star',
+    title: "Platter's 4.5 Stars",
+    year: '2027',
+    competition: "Platter's by Diners Club International",
+    badge: '4.5 Stars (Outstanding)',
+    image: '/assets/estate/long-dog-wines/award_platters_2027.png',
+    alt: "Platter's by Diners Club International 4.5 Stars Wine Guide 2027",
     isWide: false,
   },
   {
@@ -23,13 +23,13 @@ export const LONG_DOG_AWARDS = [
     isWide: true,
   },
   {
-    id: 'aurora-silver',
-    title: 'Aurora Challenge Silver',
+    id: 'iwsc-silver',
+    title: 'IWSC Silver',
     year: '2026',
-    competition: 'Aurora International Taste Challenge',
+    competition: 'International Wine & Spirit Competition',
     badge: 'Silver Medal',
-    image: '/assets/estate/long-dog-wines/award_aurora.png',
-    alt: 'Aurora International Taste Challenge Silver Medal 2026',
+    image: '/assets/estate/long-dog-wines/award_iwsc_silver.png',
+    alt: 'IWSC Silver Medal 2026',
     isWide: false,
   },
   {
@@ -51,6 +51,16 @@ export const LONG_DOG_AWARDS = [
     image: '/assets/estate/long-dog-wines/award_wine_spirit.png',
     alt: 'The Annual Vine & Spirit Awards Gold Medal 2026',
     isWide: true,
+  },
+  {
+    id: 'aurora-silver',
+    title: 'Aurora Challenge Silver',
+    year: '2026',
+    competition: 'Aurora International Taste Challenge',
+    badge: 'Silver Medal',
+    image: '/assets/estate/long-dog-wines/award_aurora.png',
+    alt: 'Aurora International Taste Challenge Silver Medal 2026',
+    isWide: false,
   },
   {
     id: 'fb-silver',
@@ -80,7 +90,7 @@ export default function LongDogAwards({ variant = 'storefront' }) {
             </span>
           </div>
           <span className="text-[10px] font-mono uppercase tracking-wider text-white/50 bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10">
-            6 Certified Medals
+            7 Certified Accolades & Medals
           </span>
         </div>
 
@@ -146,13 +156,13 @@ export default function LongDogAwards({ variant = 'storefront' }) {
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <span className="inline-flex items-center gap-1.5 text-xs text-amber-200 bg-[#c9a35b]/10 border border-[#c9a35b]/30 px-3.5 py-1 rounded-full font-medium shadow-sm">
-            6 Certified Competition Medals
+            7 Certified Accolades & Medals
           </span>
         </div>
       </div>
 
       {/* Awards Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5 items-stretch relative z-10">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4 sm:gap-5 items-stretch relative z-10">
         {LONG_DOG_AWARDS.map((award) => (
           <div 
             key={award.id}

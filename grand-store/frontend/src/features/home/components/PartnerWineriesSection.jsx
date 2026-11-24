@@ -41,15 +41,6 @@ const DEFAULT_PARTNERS = [
     tagline: 'Creator of Iconic Wines — Emotion in Every Glass',
   },
   {
-    slug: 'mont-rochelle-reserve-estates',
-    estateName: 'Mont Rochelle Reserve Estates',
-    type: 'Premier Wine Estate',
-    region: 'Franschhoek, Western Cape',
-    country: 'South Africa',
-    heroImageUrl: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1920&q=80',
-    tagline: 'Bespoke handcrafted terroir and rare library vintages in Franschhoek',
-  },
-  {
     slug: 'cantina-del-conte',
     estateName: 'Cantina del Conte',
     type: 'Heritage Winery',
@@ -83,7 +74,7 @@ export default function PartnerWineriesSection() {
         if (Array.isArray(list) && list.length > 0) {
           // Merge dynamic API results with fallback metadata to ensure complete imagery & text
           const merged = list
-            .filter((e) => e && e.slug && e.estateName && !e.estateName.toLowerCase().includes('crazy') && !e.heroImageUrl?.includes('giulianivini.com'))
+            .filter((e) => e && e.slug && e.estateName && !e.estateName.toLowerCase().includes('crazy') && !e.slug.includes('mont-rochelle') && !e.estateName.toLowerCase().includes('mont rochelle') && !e.heroImageUrl?.includes('giulianivini.com'))
             .map((e) => {
               const fallback = DEFAULT_PARTNERS.find((d) => d.slug === e.slug);
               return {

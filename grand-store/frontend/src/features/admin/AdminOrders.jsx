@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   Clock,
   Gift,
+  Mail,
 } from "lucide-react";
 import Price from '../../components/ui/Price';
 
@@ -273,7 +274,17 @@ export default function AdminOrders() {
                     <div>
                       <p className="text-sm font-bold text-white">{ord.customerName}</p>
                       {ord.customerEmail && (
-                        <p className="text-xs text-white/70 mt-0.5">{ord.customerEmail}</p>
+                        <div className="mt-0.5">
+                          <a
+                            href={`mailto:${ord.customerEmail}?subject=${encodeURIComponent(`The Grand Store - Order #${ord.orderReference || ord.orderNumber || ord._id}`)}`}
+                            onClick={(e) => e.stopPropagation()}
+                            title={`Click to email ${ord.customerEmail}`}
+                            className="inline-flex items-center gap-1 text-xs text-[var(--color-gold)] hover:underline group"
+                          >
+                            <Mail size={11} className="shrink-0 text-white/40 group-hover:text-[var(--color-gold)] transition-colors" />
+                            <span className="truncate max-w-[190px]">{ord.customerEmail}</span>
+                          </a>
+                        </div>
                       )}
                       {ord.customerPhone && (
                         <p className="text-xs text-white/50 mt-0.5 break-words">

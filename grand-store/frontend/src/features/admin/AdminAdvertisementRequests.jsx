@@ -204,8 +204,16 @@ export default function AdminAdvertisementRequests() {
                   </td>
                   <td className="p-4">
                     <div className="text-[var(--color-ivory)] text-sm">{req.contactName}</div>
-                    <div className="text-[var(--color-ivory-muted)] text-xs">{req.email}</div>
-                    <div className="text-[var(--color-ivory-muted)] text-xs">{req.phone}</div>
+                    <div className="text-xs">
+                      {req.email ? (
+                        <a href={`mailto:${req.email}?subject=${encodeURIComponent(`The Grand Store - Advertisement Enquiry (${req.companyName || ''})`)}`} className="text-[var(--color-gold)] hover:underline inline-block">
+                          {req.email}
+                        </a>
+                      ) : '—'}
+                    </div>
+                    <div className="text-[var(--color-ivory-muted)] text-xs">
+                      {req.phone ? <a href={`tel:${req.phone}`} className="hover:text-white transition-colors">{req.phone}</a> : '—'}
+                    </div>
                   </td>
                   <td className="p-4 max-w-xs">
                     <div className="text-[var(--color-ivory)] text-sm font-bold">{req.productName}</div>

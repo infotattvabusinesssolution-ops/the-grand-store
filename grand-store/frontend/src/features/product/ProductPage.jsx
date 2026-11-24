@@ -45,7 +45,6 @@ const KNOWN_ESTATE_VENDORS = [
   { match: 'dobbé', name: 'Maison Dobbé Cognac', slug: 'maison-dobbe', vendorType: 'international' },
   { match: 'tesselaarsdal', name: 'Tesselaarsdal Wines', slug: 'tesselaarsdal-wines', vendorType: 'local' },
   { match: 'long dog', name: 'Long Dog Wines', slug: 'long-dog-wines', vendorType: 'local' },
-  { match: 'mont rochelle', name: 'Mont Rochelle Reserve Estates', slug: 'mont-rochelle-reserve-estates', vendorType: 'local' },
 ];
 
 const WINE_VENDOR_KEYWORDS = [
@@ -55,7 +54,6 @@ const WINE_VENDOR_KEYWORDS = [
   'bruno andreu',
   'giuliani',
   'long dog',
-  'mont rochelle',
 ];
 
 const resolveVendorLinkInfo = (product) => {

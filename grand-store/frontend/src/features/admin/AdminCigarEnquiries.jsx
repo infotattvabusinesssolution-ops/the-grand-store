@@ -110,7 +110,14 @@ export default function AdminCigarEnquiries() {
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-white/75">{enquiry.customerName}</p>
-                  <p className="mt-1 truncate text-xs text-white/40">{enquiry.email} · {enquiry.phone}</p>
+                  <p className="mt-1 truncate text-xs text-white/40">
+                    <a href={`mailto:${enquiry.email}?subject=${encodeURIComponent(`The Grand Store Cigar Enquiry #${enquiry.reference || ''}`)}`} onClick={(e) => e.stopPropagation()} className="text-[var(--color-gold)] hover:underline">
+                      {enquiry.email}
+                    </a>
+                    {enquiry.phone && (
+                      <> · <a href={`tel:${enquiry.phone}`} onClick={(e) => e.stopPropagation()} className="hover:text-white transition-colors">{enquiry.phone}</a></>
+                    )}
+                  </p>
                   <p className="mt-2 text-[10px] uppercase tracking-[0.12em] text-white/25">{new Date(enquiry.createdAt).toLocaleString()}</p>
                 </div>
                 <span className="inline-flex items-center gap-2 justify-self-start text-[10px] font-bold uppercase tracking-[0.13em] text-[#d4b16b] lg:justify-self-end">Review & reply <ArrowRight size={14} className="transition group-hover:translate-x-1" /></span>
