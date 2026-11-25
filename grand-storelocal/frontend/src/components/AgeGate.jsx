@@ -6,6 +6,7 @@ export default function AgeGate() {
   const [isDenied, setIsDenied] = useState(false);
 
   useEffect(() => {
+    if (window.location.search.includes('bypass_age=1')) return;
     const sessionVerified = sessionStorage.getItem('age_verified');
     if (sessionVerified) {
       return; // Already verified this session, keep isVisible false

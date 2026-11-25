@@ -253,6 +253,7 @@ export default function OnboardingWizard() {
             const { data } = await api.get('/vendor/onboarding');
             if (data && data.businessInfo) {
               hasBackendData = true;
+              if (data.sellingCapabilities) setSellingCapabilities(data.sellingCapabilities);
               if (data.businessInfo) setBusinessInfo(data.businessInfo);
               if (data.kycInfo) setKycInfo(data.kycInfo);
               if (data.taxInfo) setTaxInfo(data.taxInfo);
@@ -280,6 +281,7 @@ export default function OnboardingWizard() {
           const belongsToCurrentUser = !user || !data.userId || data.userId === user._id || data.accountInfo?.email === user.email;
           if (!hasBackendData || belongsToCurrentUser) {
             if (data.currentStep) setCurrentStep(data.currentStep);
+            if (data.sellingCapabilities) setSellingCapabilities(data.sellingCapabilities);
             if (data.accountInfo && !user) setAccountInfo(data.accountInfo);
             if (data.businessInfo) setBusinessInfo(data.businessInfo);
             if (data.kycInfo) setKycInfo(data.kycInfo);
@@ -311,6 +313,7 @@ export default function OnboardingWizard() {
     localStorage.setItem('vendor-onboarding-draft', JSON.stringify({
       userId: user?._id,
       currentStep,
+      sellingCapabilities,
       accountInfo,
       businessInfo,
       kycInfo,
@@ -326,7 +329,7 @@ export default function OnboardingWizard() {
       logisticsInfo,
       storyInfo,
     }));
-  }, [loading, user?._id, currentStep, accountInfo, businessInfo, kycInfo, taxInfo, licenceInfo, customsInfo, bankingInfo, productCategories, deliveryInfo, agreements, credentialsInfo, marketInfo, logisticsInfo, storyInfo]);
+  }, [loading, user?._id, currentStep, sellingCapabilities, accountInfo, businessInfo, kycInfo, taxInfo, licenceInfo, customsInfo, bankingInfo, productCategories, deliveryInfo, agreements, credentialsInfo, marketInfo, logisticsInfo, storyInfo]);
 
   const uploadFile = async (file) => {
     const formData = new FormData();
@@ -415,6 +418,7 @@ export default function OnboardingWizard() {
     const dataToSave = {
       currentStep: currentStep + 1,
       userId: user?._id,
+      sellingCapabilities,
       accountInfo, businessInfo, kycInfo, taxInfo, licenceInfo, customsInfo, bankingInfo, productCategories, deliveryInfo, agreements,
       credentialsInfo, marketInfo, logisticsInfo, storyInfo
     };
@@ -604,23 +608,57 @@ export default function OnboardingWizard() {
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {[
-                      { id: 'domestic', label: 'Domestic Retail Only', desc: 'Sell bottles directly to SA consumers' },
-                      { id: 'both', label: 'Both Channels (Recommended)', desc: 'Local retail + international bulk export' },
-                      { id: 'international', label: 'B2B Trade Export Only', desc: 'Bulk pallets & container consignments' }
-                    ].map(cap => (
-                      <div
-                        key={cap.id}
-                        onClick={() => setSellingCapabilities(cap.id)}
-                        className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                          sellingCapabilities === cap.id
-                            ? 'bg-[#c9a35b]/15 border-[#c9a35b] text-[#f5e6c8] shadow-[0_0_12px_rgba(201,163,91,0.15)]'
-                            : 'bg-black/30 border-white/10 text-white/50 hover:border-white/20'
-                        }`}
-                      >
-                        <div className="font-semibold text-xs text-[#eee8dd] mb-1">{cap.label}</div>
-                        <div className="text-[10px] text-white/40 leading-relaxed">{cap.desc}</div>
-                      </div>
-                    ))}
+                      { 
+                        id: 'domestic', 
+                        label: 'Domestic Retail Only', 
+                        desc: 'Sell bottles directly to SA consumers',
+                        icon: Package 
+                      },
+                      { 
+                        id: 'both', 
+                        label: 'Both Channels (Recommended)', 
+                        desc: 'Local retail + international bulk export',
+                        icon: Globe 
+                      },
+                      { 
+                        id: 'international', 
+                        label: 'B2B Trade Export Only', 
+                        desc: 'Bulk pallets & container consignments',
+                        icon: Truck 
+                      }
+                    ].map(cap => {
+                      const isSelected = sellingCapabilities === cap.id;
+                      const Icon = cap.icon;
+                      return (
+                        <button
+                          key={cap.id}
+                          type="button"
+                          onClick={() => setSellingCapabilities(cap.id)}
+                          className={`w-full text-left p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between active:scale-[0.98] ${
+                            isSelected
+                              ? 'bg-[#c9a35b]/15 border-[#c9a35b] text-[#f5e6c8] shadow-[0_0_15px_rgba(201,163,91,0.2)]'
+                              : 'bg-black/40 border-white/10 text-white/50 hover:border-white/30 hover:bg-white/5'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-2.5">
+                              <Icon size={18} className={isSelected ? 'text-[#e1bd70]' : 'text-white/40'} />
+                              <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                                isSelected ? 'border-[#c9a35b] bg-[#c9a35b]' : 'border-white/30'
+                              }`}>
+                                {isSelected && <div className="w-1.5 h-1.5 bg-black rounded-full" />}
+                              </div>
+                            </div>
+                            <div className={`font-semibold text-xs mb-1 transition-colors ${isSelected ? 'text-[#f5e6c8]' : 'text-[#eee8dd]'}`}>
+                              {cap.label}
+                            </div>
+                            <div className={`text-[10px] leading-relaxed transition-colors ${isSelected ? 'text-[#eee8dd]/80' : 'text-white/40'}`}>
+                              {cap.desc}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

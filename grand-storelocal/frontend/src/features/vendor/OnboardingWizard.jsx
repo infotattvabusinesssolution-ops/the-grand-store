@@ -222,7 +222,15 @@ export default function OnboardingWizard() {
   const [bankingInfo, setBankingInfo] = useState({ bankName: '', accountName: '', accountNumber: '', branchCode: '', swiftCode: '', bankConfirmationUrl: '', payoutPreference: 'Monthly' });
   const [productCategories, setProductCategories] = useState([]);
   const [deliveryInfo, setDeliveryInfo] = useState({ fulfillmentMethod: '', dispatchLocation: '', dispatchDays: '', cutoffTime: '', processingTime: '' });
-  const [agreements, setAgreements] = useState({ termsAccepted: false, informationAccurate: false });
+  const [agreements, setAgreements] = useState({ 
+    termsAccepted: false, 
+    informationAccurate: false,
+    signatoryName: '',
+    signatoryTitle: '',
+    signatoryIdNumber: '',
+    signatureData: '',
+    signatureType: 'typed',
+  });
   
   // International specific state
   const [credentialsInfo, setCredentialsInfo] = useState({ exportLicenceNumber: '', homeCountryLicence: '', certificates: '' });
@@ -245,6 +253,7 @@ export default function OnboardingWizard() {
             const { data } = await api.get('/vendor/onboarding');
             if (data && data.businessInfo) {
               hasBackendData = true;
+              if (data.sellingCapabilities) setSellingCapabilities(data.sellingCapabilities);
               if (data.businessInfo) setBusinessInfo(data.businessInfo);
               if (data.kycInfo) setKycInfo(data.kycInfo);
               if (data.taxInfo) setTaxInfo(data.taxInfo);
@@ -272,6 +281,7 @@ export default function OnboardingWizard() {
           const belongsToCurrentUser = !user || !data.userId || data.userId === user._id || data.accountInfo?.email === user.email;
           if (!hasBackendData || belongsToCurrentUser) {
             if (data.currentStep) setCurrentStep(data.currentStep);
+            if (data.sellingCapabilities) setSellingCapabilities(data.sellingCapabilities);
             if (data.accountInfo && !user) setAccountInfo(data.accountInfo);
             if (data.businessInfo) setBusinessInfo(data.businessInfo);
             if (data.kycInfo) setKycInfo(data.kycInfo);
@@ -303,6 +313,7 @@ export default function OnboardingWizard() {
     localStorage.setItem('vendor-onboarding-draft', JSON.stringify({
       userId: user?._id,
       currentStep,
+      sellingCapabilities,
       accountInfo,
       businessInfo,
       kycInfo,
@@ -318,7 +329,7 @@ export default function OnboardingWizard() {
       logisticsInfo,
       storyInfo,
     }));
-  }, [loading, user?._id, currentStep, accountInfo, businessInfo, kycInfo, taxInfo, licenceInfo, customsInfo, bankingInfo, productCategories, deliveryInfo, agreements, credentialsInfo, marketInfo, logisticsInfo, storyInfo]);
+  }, [loading, user?._id, currentStep, sellingCapabilities, accountInfo, businessInfo, kycInfo, taxInfo, licenceInfo, customsInfo, bankingInfo, productCategories, deliveryInfo, agreements, credentialsInfo, marketInfo, logisticsInfo, storyInfo]);
 
   const uploadFile = async (file) => {
     const formData = new FormData();
@@ -358,7 +369,7 @@ export default function OnboardingWizard() {
         case 9:
           return !!(deliveryInfo.fulfillmentMethod && deliveryInfo.dispatchLocation && deliveryInfo.processingTime);
         case 10:
-          return agreements.termsAccepted && agreements.informationAccurate;
+          return agreements.termsAccepted && agreements.informationAccurate && !!agreements.signatoryName?.trim() && !!agreements.signatoryTitle?.trim();
         default:
           return false;
       }
@@ -383,7 +394,7 @@ export default function OnboardingWizard() {
         case 8:
           return productCategories.length > 0;
         case 9:
-          return agreements.termsAccepted && agreements.informationAccurate;
+          return agreements.termsAccepted && agreements.informationAccurate && !!agreements.signatoryName?.trim() && !!agreements.signatoryTitle?.trim();
         default:
           return false;
       }
@@ -407,6 +418,7 @@ export default function OnboardingWizard() {
     const dataToSave = {
       currentStep: currentStep + 1,
       userId: user?._id,
+      sellingCapabilities,
       accountInfo, businessInfo, kycInfo, taxInfo, licenceInfo, customsInfo, bankingInfo, productCategories, deliveryInfo, agreements,
       credentialsInfo, marketInfo, logisticsInfo, storyInfo
     };
@@ -596,23 +608,57 @@ export default function OnboardingWizard() {
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {[
-                      { id: 'domestic', label: 'Domestic Retail Only', desc: 'Sell bottles directly to SA consumers' },
-                      { id: 'both', label: 'Both Channels (Recommended)', desc: 'Local retail + international bulk export' },
-                      { id: 'international', label: 'B2B Trade Export Only', desc: 'Bulk pallets & container consignments' }
-                    ].map(cap => (
-                      <div
-                        key={cap.id}
-                        onClick={() => setSellingCapabilities(cap.id)}
-                        className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                          sellingCapabilities === cap.id
-                            ? 'bg-[#c9a35b]/15 border-[#c9a35b] text-[#f5e6c8] shadow-[0_0_12px_rgba(201,163,91,0.15)]'
-                            : 'bg-black/30 border-white/10 text-white/50 hover:border-white/20'
-                        }`}
-                      >
-                        <div className="font-semibold text-xs text-[#eee8dd] mb-1">{cap.label}</div>
-                        <div className="text-[10px] text-white/40 leading-relaxed">{cap.desc}</div>
-                      </div>
-                    ))}
+                      { 
+                        id: 'domestic', 
+                        label: 'Domestic Retail Only', 
+                        desc: 'Sell bottles directly to SA consumers',
+                        icon: Package 
+                      },
+                      { 
+                        id: 'both', 
+                        label: 'Both Channels (Recommended)', 
+                        desc: 'Local retail + international bulk export',
+                        icon: Globe 
+                      },
+                      { 
+                        id: 'international', 
+                        label: 'B2B Trade Export Only', 
+                        desc: 'Bulk pallets & container consignments',
+                        icon: Truck 
+                      }
+                    ].map(cap => {
+                      const isSelected = sellingCapabilities === cap.id;
+                      const Icon = cap.icon;
+                      return (
+                        <button
+                          key={cap.id}
+                          type="button"
+                          onClick={() => setSellingCapabilities(cap.id)}
+                          className={`w-full text-left p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between active:scale-[0.98] ${
+                            isSelected
+                              ? 'bg-[#c9a35b]/15 border-[#c9a35b] text-[#f5e6c8] shadow-[0_0_15px_rgba(201,163,91,0.2)]'
+                              : 'bg-black/40 border-white/10 text-white/50 hover:border-white/30 hover:bg-white/5'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-2.5">
+                              <Icon size={18} className={isSelected ? 'text-[#e1bd70]' : 'text-white/40'} />
+                              <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                                isSelected ? 'border-[#c9a35b] bg-[#c9a35b]' : 'border-white/30'
+                              }`}>
+                                {isSelected && <div className="w-1.5 h-1.5 bg-black rounded-full" />}
+                              </div>
+                            </div>
+                            <div className={`font-semibold text-xs mb-1 transition-colors ${isSelected ? 'text-[#f5e6c8]' : 'text-[#eee8dd]'}`}>
+                              {cap.label}
+                            </div>
+                            <div className={`text-[10px] leading-relaxed transition-colors ${isSelected ? 'text-[#eee8dd]/80' : 'text-white/40'}`}>
+                              {cap.desc}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -766,18 +812,156 @@ export default function OnboardingWizard() {
               </div>
             )}
 
-            {/* Step: Agreement */}
+            {/* Step: Agreement & Electronic Signature */}
             {activeStep === 'Agreement' && (
-              <div className="animate-in fade-in slide-in-from-bottom-4">
-                <h2 className="text-2xl text-[#eee8dd] mb-6">Final Agreement</h2>
-                <div className="space-y-4 mb-8">
-                  <label className="flex items-start gap-3 text-[#eee8dd] p-4 bg-[#0a0907] border border-white/5 rounded-md cursor-pointer">
-                    <input type="checkbox" className="mt-1" checked={agreements.informationAccurate} onChange={e => setAgreements({...agreements, informationAccurate: e.target.checked})} />
-                    <span className="text-sm">I confirm that all information provided is accurate and I am authorised to represent the business. I hold the required licences applicable to my products.</span>
+              <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-2xl text-[#eee8dd] font-serif">Vendor &amp; Trade Agreement</h2>
+                    <span className="text-[10px] tracking-widest uppercase px-2.5 py-1 rounded bg-[#c9a35b]/10 text-[#c9a35b] border border-[#c9a35b]/30 font-mono">
+                      NIVARP PTY LTD &bull; V2026.1
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#a39c91] leading-relaxed">
+                    Please review the formal Master Services &amp; Trade Agreement below and execute your legally binding electronic signature to complete onboarding.
+                  </p>
+                </div>
+
+                {/* Scrollable Legal Contract Window */}
+                <div className="bg-[#080706] border border-white/10 rounded-lg p-5 max-h-64 overflow-y-auto space-y-4 text-xs text-[#a39c91] leading-relaxed custom-scrollbar">
+                  <div>
+                    <h4 className="font-semibold text-white uppercase tracking-wider text-[11px] mb-1">1. Parties &amp; Legal Framework</h4>
+                    <p>
+                      This Vendor Master Services &amp; Trade Agreement is entered into between <strong>NIVARP INTERNATIONAL PTY LTD</strong> (Registration No: 2015/268820/07, VAT Registration No: 4040275077), trading as <strong>The Grand Store</strong> (&quot;Grand Store&quot; or &quot;Platform Operator&quot;), and the applicant commercial entity identified in this onboarding submission (&quot;Vendor&quot;).
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-white uppercase tracking-wider text-[11px] mb-1">2. Authenticity, Provenance &amp; Regulatory Licences</h4>
+                    <p>
+                      Vendor warrants and covenants that all fine wines, rare spirits, and bespoke merchandise catalogued on The Grand Store are 100% authentic, legally acquired, excise-compliant, and stored under temperature-controlled provenance. Counterfeit or adulterated items will result in immediate termination, civil damages, and reporting to relevant statutory authorities.
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-white uppercase tracking-wider text-[11px] mb-1">3. Logistics, Packaging &amp; Courier Service Floor</h4>
+                    <p>
+                      Vendor agrees to package bottles according to Grand Store certified tamper-evident packaging guidelines. Order fulfillment shall be dispatched via authorized courier networks (The Courier Guy / Aramex) strictly abiding by courier rate tariffs and minimum delivery fee requirements.
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-white uppercase tracking-wider text-[11px] mb-1">4. Commission, Settlements &amp; Financial Accounting</h4>
+                    <p>
+                      Platform commissions shall be reconciled automatically per Section 5 accounting rules. Vendor payouts are disbursed via electronic funds transfer (EFT) to the verified merchant bank account on the chosen settlement cycle.
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-white uppercase tracking-wider text-[11px] mb-1">5. Electronic Signature Enforceability</h4>
+                    <p>
+                      In terms of Section 13 of the South African Electronic Communications and Transactions Act 25 of 2002 (ECTA), by executing this digital signature, Vendor confirms this agreement holds full legal validity and enforceability as if executed by hand.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Signatory Legal Credentials */}
+                <div className="bg-[#0d0c0a] border border-white/10 rounded-lg p-5 space-y-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-[#c9a35b] flex items-center gap-2">
+                    <FileSignature size={16} /> Authorized Signatory Representation
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[#bdb5a6] mb-1.5">Signatory Full Legal Name *</label>
+                      <input
+                        type="text"
+                        value={agreements.signatoryName || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setAgreements(prev => ({
+                            ...prev,
+                            signatoryName: val,
+                            signatureData: prev.signatureType === 'typed' ? val : prev.signatureData
+                          }));
+                        }}
+                        placeholder="e.g. Alexander Vance"
+                        className="w-full bg-black/60 border border-white/10 rounded px-3 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#c9a35b]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[#bdb5a6] mb-1.5">Capacity / Legal Title *</label>
+                      <input
+                        type="text"
+                        value={agreements.signatoryTitle || ''}
+                        onChange={e => setAgreements(prev => ({ ...prev, signatoryTitle: e.target.value }))}
+                        placeholder="e.g. Managing Director / Owner"
+                        className="w-full bg-black/60 border border-white/10 rounded px-3 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#c9a35b]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[#bdb5a6] mb-1.5">National ID / Passport Number</label>
+                      <input
+                        type="text"
+                        value={agreements.signatoryIdNumber || ''}
+                        onChange={e => setAgreements(prev => ({ ...prev, signatoryIdNumber: e.target.value }))}
+                        placeholder="e.g. 8502145028084 / A0829148"
+                        className="w-full bg-black/60 border border-white/10 rounded px-3 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#c9a35b]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Digital Signature Execution Pad */}
+                  <div className="mt-4 pt-4 border-t border-white/5">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#bdb5a6] mb-2">
+                      Digital Electronic Signature *
+                    </label>
+                    <div className="bg-black border border-white/15 rounded-lg p-5 relative overflow-hidden">
+                      <div className="min-h-[70px] flex items-center justify-center border-b border-dashed border-white/15 pb-3">
+                        {agreements.signatoryName?.trim() ? (
+                          <div className="text-center">
+                            <span className="font-serif italic text-3xl sm:text-4xl text-[#c9a35b] tracking-wider select-none">
+                              {agreements.signatoryName}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-white/30 italic">
+                            Enter your full legal name above to generate your certified digital signature
+                          </span>
+                        )}
+                      </div>
+                      <div className="pt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between text-[10px] text-white/40 gap-2">
+                        <div className="flex items-center gap-1.5 font-mono text-[#c9a35b]">
+                          <BadgeCheck size={13} className="text-[#c9a35b]" />
+                          <span>ECTA 25/2002 ENFORCEABLE DIGITAL MARK</span>
+                        </div>
+                        <div>
+                          Timestamp: {new Date().toLocaleDateString('en-ZA')} &bull; Authenticated via NIVARP Gateway
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Consent Checkboxes */}
+                <div className="space-y-3">
+                  <label className="flex items-start gap-3 text-[#eee8dd] p-4 bg-[#0a0907] border border-white/5 rounded-md cursor-pointer hover:border-white/10 transition-colors">
+                    <input 
+                      type="checkbox" 
+                      className="mt-1 accent-[#c9a35b]" 
+                      checked={agreements.informationAccurate} 
+                      onChange={e => setAgreements({ ...agreements, informationAccurate: e.target.checked })} 
+                    />
+                    <span className="text-xs leading-relaxed text-[#eee8dd]">
+                      I confirm that all information provided is accurate and I am authorized to bind the business entity. I hold the required liquor licences applicable to my products.
+                    </span>
                   </label>
-                  <label className="flex items-start gap-3 text-[#eee8dd] p-4 bg-[#0a0907] border border-white/5 rounded-md cursor-pointer">
-                    <input type="checkbox" className="mt-1" checked={agreements.termsAccepted} onChange={e => setAgreements({...agreements, termsAccepted: e.target.checked})} />
-                    <span className="text-sm">I agree to Grand Store's Vendor Terms & Conditions, Commission Structure, and Prohibited Products Policy.</span>
+                  <label className="flex items-start gap-3 text-[#eee8dd] p-4 bg-[#0a0907] border border-white/5 rounded-md cursor-pointer hover:border-white/10 transition-colors">
+                    <input 
+                      type="checkbox" 
+                      className="mt-1 accent-[#c9a35b]" 
+                      checked={agreements.termsAccepted} 
+                      onChange={e => setAgreements({ ...agreements, termsAccepted: e.target.checked })} 
+                    />
+                    <span className="text-xs leading-relaxed text-[#eee8dd]">
+                      I have read, understood, and agree to the <strong>Vendor Master Services &amp; Trade Agreement</strong>, Grand Store commission rates, Courier Guy logistics standards, and prohibited products policy.
+                    </span>
                   </label>
                 </div>
               </div>
@@ -807,7 +991,7 @@ export default function OnboardingWizard() {
             ) : (
               <button 
                 onClick={handleSubmit}
-                disabled={saving || !canAccessStep(currentStep) || !agreements.termsAccepted || !agreements.informationAccurate}
+                disabled={saving || !canAccessStep(currentStep) || !agreements.termsAccepted || !agreements.informationAccurate || !agreements.signatoryName?.trim() || !agreements.signatoryTitle?.trim()}
                 className="px-8 py-4 text-xs font-bold uppercase tracking-widest text-black flex items-center gap-2  transition-all bg-[#c9a35b] hover:brightness-110 disabled:opacity-50"
               >
                 {saving ? 'Submitting...' : 'Submit Application'}

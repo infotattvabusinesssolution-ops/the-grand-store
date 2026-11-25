@@ -40,7 +40,7 @@ export default function useChatbot() {
           id: Date.now() + 1,
           from: 'bot',
           text: 'Something went wrong. Please try again or contact us on WhatsApp.',
-          whatsapp: '+27765809522',
+          whatsapp: '+27824967256',
           showSuggestions: true,
         },
       ]);

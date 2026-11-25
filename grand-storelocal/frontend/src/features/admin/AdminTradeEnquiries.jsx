@@ -125,13 +125,20 @@ export default function AdminTradeEnquiries() {
                   
                   <div className="space-y-2">
                     <div className="flex items-center gap-3 text-white/70 text-sm">
-                      <Mail size={16} className="text-gold-gradient" />
-                      <a href={`mailto:${enquiry.email}`} className="hover:text-white transition-colors">{enquiry.email}</a>
+                      <Mail size={16} className="text-[#c9a35b]" />
+                      <a href={`mailto:${enquiry.email}?subject=${encodeURIComponent(`The Grand Store - Trade Partnership (${enquiry.companyname || enquiry.fullname})`)}`} className="text-[var(--color-gold)] hover:underline">{enquiry.email}</a>
                     </div>
                     {enquiry.phone && (
                       <div className="flex items-center gap-3 text-white/70 text-sm">
-                        <Phone size={16} className="text-gold-gradient" />
+                        <Phone size={16} className="text-[#c9a35b]" />
                         <a href={`tel:${enquiry.phone}`} className="hover:text-white transition-colors">{enquiry.phone}</a>
+                      </div>
+                    )}
+                    {enquiry.electronicSignature && (
+                      <div className="mt-2 p-2.5 rounded bg-black/40 border border-white/10 text-xs">
+                        <span className="text-white/40 block text-[10px] uppercase tracking-wider">Digital Agreement Sign-off:</span>
+                        <span className="font-serif italic text-sm text-[var(--color-gold)]">{enquiry.electronicSignature}</span>
+                        {enquiry.signatoryTitle && <span className="text-white/50 text-[11px] block">{enquiry.signatoryTitle}</span>}
                       </div>
                     )}
                     <div className="flex items-center gap-3 text-white/50 text-xs mt-2">

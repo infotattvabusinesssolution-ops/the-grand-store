@@ -1096,7 +1096,7 @@ export default function AdminOrderDetail({ onNotify }) {
               <div>
                 <span className="text-xs text-white/40 block">Email Address</span>
                 {order.customerEmail ? (
-                  <a href={`mailto:${order.customerEmail}`} className="text-[#c99742] hover:underline flex items-center gap-1.5 font-medium">
+                  <a href={`mailto:${order.customerEmail}?subject=${encodeURIComponent(`The Grand Store - Order #${order.orderReference || order._id}`)}`} className="text-[#c99742] hover:underline flex items-center gap-1.5 font-medium">
                     <Mail size={13} /> {order.customerEmail}
                   </a>
                 ) : (

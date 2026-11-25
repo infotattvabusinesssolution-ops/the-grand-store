@@ -807,8 +807,18 @@ export default function AdminVendors() {
                                 </span>
                               )}
                             </div>
-                            <div className="mt-1 text-xs text-white/40">
-                              {vendor.userId?.email || "No account email"}
+                            <div className="mt-1 text-xs">
+                              {vendor.userId?.email ? (
+                                <a 
+                                  href={`mailto:${vendor.userId.email}?subject=${encodeURIComponent(`The Grand Store - Vendor Partner (${vendor.storeName || vendor.name})`)}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-[var(--color-gold)] hover:underline inline-block"
+                                >
+                                  {vendor.userId.email}
+                                </a>
+                              ) : (
+                                <span className="text-white/40">No account email</span>
+                              )}
                             </div>
                           </td>
                           <td className="px-5 py-4">

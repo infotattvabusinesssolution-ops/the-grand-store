@@ -318,7 +318,7 @@ export const brandData = {
     tagline: 'Where character runs deep, and legacy walks on four legs.',
     heritageStory: [
       'Founded in 2017 by Dennis and Jackie Lamberti on Farm 103 beneath the Simonsberg mountain in Stellenbosch—one of South Africa’s smallest registered wine farms—Long Dog Wines pairs hand-tended, basket-pressed viticulture with a working rescue sanctuary for long-bodied dogs.',
-      'Crafted from just 1.5 acres (1 acre Cabernet Franc and half an acre of Tannat) and matured for 24 months in French oak barrels, the flagship Long Dog Blend 2023 has captured Gold at Michelangelo 2025, Vitis Vinifera 2026, and the Vine & Spirit Awards 2026.'
+      'Crafted from just 1.5 acres (1 acre Cabernet Franc and half an acre of Tannat) and matured for 24 months in French oak barrels, the flagship Long Dog Blend 2023 has captured 4.5 Stars in Platter\'s Wine Guide 2027, Gold at Michelangelo 2025, Vitis Vinifera 2026, and the Vine & Spirit Awards 2026.'
     ],
     tastingProfile: {
       nose: 'Aromatic redcurrant, ripe black plum, crushed vineyard herbs, and lifted violet blossom.',

@@ -109,7 +109,7 @@ const faqs = [
   },
   {
     question: 'What do I do if I get corked, faulty or damaged wine?',
-    answer: 'Contact us immediately at returns@grandstore.co.za or +27 76 580 9522. We will arrange replacement stock as soon as possible.',
+    answer: 'Contact us immediately at concierge@grandstoreglobal.com or +27 82 496 7256. We will arrange replacement stock as soon as possible.',
   },
   {
     question: "What do I do if I buy wine from Grandstore and just don't like it?",

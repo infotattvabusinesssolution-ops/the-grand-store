@@ -1427,9 +1427,23 @@ export default function AdminVendorDetail() {
                   </div>
                 ))}
               </div>
-              <div className="mt-5 border-t border-white/10 pt-4 text-[11px] leading-5 text-white/35">
+              <div className="mt-5 border-t border-white/10 pt-4 text-[11px] leading-5 text-white/35 space-y-1">
                 <p>Terms accepted: <span className="text-white/60">{show(vendor.agreements?.termsAccepted)}</span></p>
                 <p>Information declared accurate: <span className="text-white/60">{show(vendor.agreements?.informationAccurate)}</span></p>
+                {vendor.agreements?.signatoryName && (
+                  <p>Authorized Signatory: <span className="text-[var(--color-gold)] font-medium">{vendor.agreements.signatoryName}</span> {vendor.agreements?.signatoryTitle ? `(${vendor.agreements.signatoryTitle})` : ''}</p>
+                )}
+                {vendor.agreements?.signatoryIdNumber && (
+                  <p>Signatory ID/Passport: <span className="text-white/60 font-mono">{vendor.agreements.signatoryIdNumber}</span></p>
+                )}
+                {vendor.agreements?.signatureData && (
+                  <div className="mt-2 p-2 rounded bg-black/50 border border-white/10 text-center">
+                    <span className="font-serif italic text-lg text-[var(--color-gold)] select-none">
+                      {vendor.agreements.signatureData}
+                    </span>
+                    <p className="text-[9px] text-white/30 uppercase tracking-widest mt-0.5">ECTA 25/2002 Certified Digital Signature</p>
+                  </div>
+                )}
                 <p>Accepted on: <span className="text-white/60">{formatDate(vendor.agreements?.acceptedAt, true)}</span></p>
                 <p>Last updated: <span className="text-white/60">{formatDate(vendor.updatedAt, true)}</span></p>
               </div>

@@ -479,12 +479,12 @@ export default function EstateBuilder() {
   const populateSampleEstate = () => {
     setProfile((prev) => ({
       ...prev,
-      estateName: prev?.estateName || "Mont Rochelle Reserve Estates",
+      estateName: prev?.estateName || "Franschhoek Valley Reserve",
       tagline: prev?.tagline || "Bespoke handcrafted terroir and rare library vintages in the Franschhoek valley.",
       region: prev?.region || "Franschhoek, Western Cape",
       country: prev?.country || "South Africa",
-      seoTitle: prev?.seoTitle || "Mont Rochelle Reserve Estates | Franschhoek Wine Estate & Private Cellars",
-      metaDescription: prev?.metaDescription || "Discover Mont Rochelle Reserve Estates. Award-winning cool-climate Syrah, private barrel tastings, luxury vineyard suites, and fine dining.",
+      seoTitle: prev?.seoTitle || "Franschhoek Valley Reserve | Franschhoek Wine Estate & Private Cellars",
+      metaDescription: prev?.metaDescription || "Discover Franschhoek Valley Reserve. Award-winning cool-climate Syrah, private barrel tastings, luxury vineyard suites, and fine dining.",
       heroImageUrl: prev?.heroImageUrl || "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1920&q=80",
       galleryUrls: prev?.galleryUrls?.length ? prev.galleryUrls : [
         "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1200&q=80",
@@ -495,7 +495,7 @@ export default function EstateBuilder() {
       story: {
         foundedYear: prev?.story?.foundedYear || 1984,
         founders: prev?.story?.founders || "François Du Plessis & Family",
-        history: prev?.story?.history || "Perched upon the sun-kissed slopes of the Franschhoek Mountain Range, Mont Rochelle has cultivated premier South African viticulture for over four decades. Beginning with four hectares of heritage vines, our estate has blossomed into an internationally celebrated sanctuary of rare terroir wines, sustainable farming, and private cellar allocations.",
+        history: prev?.story?.history || "Perched upon the sun-kissed slopes of the Franschhoek Mountain Range, our estate has cultivated premier South African viticulture for over four decades. Beginning with four hectares of heritage vines, our estate has blossomed into an internationally celebrated sanctuary of rare terroir wines, sustainable farming, and private cellar allocations.",
         winemaker: prev?.story?.winemaker || "Etienne Le Roux",
         winemakerBio: prev?.story?.winemakerBio || "Master of Wine Etienne Le Roux brings 22 years of vintage craftsmanship from Bordeaux and the Western Cape, championing low-intervention native fermentations and French oak maturation.",
         philosophy: prev?.story?.philosophy || "We believe great wine is born in ancient weathered soils and guided by minimal cellar interference. Every bottle captures the unvarnished essence of Franschhoek terroir.",

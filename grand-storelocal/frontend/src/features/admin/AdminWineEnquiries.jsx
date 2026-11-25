@@ -170,7 +170,12 @@ export default function AdminWineEnquiries() {
 
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-white/75">
-                    {enquiry.email} · {enquiry.phone}
+                    <a href={`mailto:${enquiry.email}?subject=${encodeURIComponent(`The Grand Store Wine Enquiry #${enquiry.reference || ''}`)}`} onClick={(e) => e.stopPropagation()} className="text-[var(--color-gold)] hover:underline">
+                      {enquiry.email}
+                    </a>
+                    {enquiry.phone && (
+                      <> · <a href={`tel:${enquiry.phone}`} onClick={(e) => e.stopPropagation()} className="hover:text-white transition-colors">{enquiry.phone}</a></>
+                    )}
                   </p>
                   <p className="mt-1 truncate text-xs text-white/40">
                     {enquiry.message || 'No additional occasion notes'}
