@@ -176,8 +176,8 @@ export const analyzeCartScopeConflict = (
   } else if (conflictReason === 'mixed') {
     warningMessage =
       recommendedRemoveScope === 'international'
-        ? 'Local & International products can’t be ordered together — remove the highlighted International item from Summary.'
-        : 'Local & International products can’t be ordered together — remove the highlighted Local item from Summary.';
+        ? 'Local & International products cannot be ordered together — remove the highlighted International item from Summary.'
+        : 'Local & International products cannot be ordered together — remove the highlighted Local item from Summary.';
   }
 
   return {
