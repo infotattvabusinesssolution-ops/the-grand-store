@@ -1377,9 +1377,6 @@ export default function CheckoutPage({
           >
             <ArrowRight size={14} className="rotate-180" /> Back
           </button>
-          <div className="hidden sm:flex items-center gap-2 text-[10px] text-emerald-400 font-medium tracking-widest uppercase bg-emerald-950/40 px-3 py-1 rounded-full border border-emerald-500/20">
-            <Lock size={11} /> 256-Bit Encrypted Luxury Checkout
-          </div>
         </div>
 
         {/* 4-Step Progress Indicator */}
