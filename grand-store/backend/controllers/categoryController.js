@@ -1,7 +1,7 @@
 const Category = require('../models/Category');
 
 const Product = require('../models/Product');
-const { getCache, setCache } = require('../utils/cache');
+const { getCache, setCache, clearCache } = require('../utils/cache');
 
 // @desc    Get all active categories with their taxonomy
 // @route   GET /api/categories
@@ -134,6 +134,8 @@ const createCategory = async (req, res) => {
       brandLogos: brandLogos || []
     });
 
+    clearCache('categories');
+
     res.status(201).json(category);
   } catch (error) {
     console.error('Error creating category:', error);
@@ -163,6 +165,7 @@ const updateCategory = async (req, res) => {
     if (brandLogos !== undefined) category.brandLogos = brandLogos;
 
     await category.save();
+    clearCache('categories');
     res.json(category);
   } catch (error) {
     console.error('Error updating category:', error);
@@ -180,6 +183,7 @@ const deleteCategory = async (req, res) => {
       return res.status(404).json({ message: 'Category not found' });
     }
     await category.deleteOne();
+    clearCache('categories');
     res.json({ message: 'Category removed' });
   } catch (error) {
     console.error('Error deleting category:', error);
